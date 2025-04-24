@@ -12,9 +12,9 @@ export default function Home() {
       <Navbar />
       <main>
         <HeroSection />
+        <WhyUseSection />
         <TravelersSection />
         <HowItWorksSection />
-        <WhyUseSection />
         <Footer />
       </main>
     </div>
