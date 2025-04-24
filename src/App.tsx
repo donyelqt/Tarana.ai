@@ -11,9 +11,9 @@ function App() {
       <Navbar />
       <main>
         <HeroSection />
+        <WhyUseSection />
         <TravelersSection />
         <HowItWorksSection />
-        <WhyUseSection />
         <Footer />
       </main>
     </div>
