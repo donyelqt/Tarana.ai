@@ -10,11 +10,11 @@ function App() {
     <div className="font-sans">
       <Navbar />
       <main>
-        <Footer />
+        <HeroSection />
         <TravelersSection />
         <HowItWorksSection />
         <WhyUseSection />
-        <HeroSection />
+        <Footer />
       </main>
     </div>
   )
