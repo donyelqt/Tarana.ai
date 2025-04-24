@@ -48,7 +48,7 @@ const HeroSection = () => {
                                 priority
                             />
                             {/* Semi-transparent overlay for better text readability */}
-                            <div className="absolute inset-0 bg-white/5"></div>
+                            <div className="absolute inset-0"></div>
                         </div>
                     </div>
                 </div>
