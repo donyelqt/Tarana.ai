@@ -1,3 +1,5 @@
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
 
@@ -30,7 +32,7 @@ const HeroSection = () => {
 
         <div className="rounded-xl overflow-hidden shadow-2xl relative h-[500px]">
           <Image
-            src="/placeholder-baguio.jpg"
+            src=""
             alt="Baguio City Panorama"
             fill
             className="object-cover"
@@ -38,7 +40,7 @@ const HeroSection = () => {
             priority
             onError={(e) => {
               const target = e.target as HTMLImageElement
-              target.src = "/placeholder.svg?height=500&width=1200"
+              // target.src = "/placeholder.svg?height=500&width=1200" 
             }}
           />
         </div>
