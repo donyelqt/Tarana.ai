@@ -38,7 +38,7 @@ const TravelersSection = () => {
   ])
 
   return (
-    <section className="py-16 px-4 bg-gradient-to-b from-white to-blue-50">
+    <section className="py-16 px-4 bg-gradient-to-b from-white">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-4xl md:text-5xl font-bold text-center mb-16 text-blue-500">Perfect for All Travelers</h2>
 
