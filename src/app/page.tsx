@@ -13,8 +13,8 @@ export default function Home() {
       <main>
         <HeroSection />
         <WhyUseSection />
-        <TravelersSection />
         <HowItWorksSection />
+        <TravelersSection />
         <Footer />
       </main>
     </div>
