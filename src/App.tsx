@@ -12,8 +12,8 @@ function App() {
       <main>
         <HeroSection />
         <WhyUseSection />
-        <TravelersSection />
         <HowItWorksSection />
+        <TravelersSection />
         <Footer />
       </main>
     </div>
