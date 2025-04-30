@@ -16,7 +16,7 @@ const WhyUseSection = () => {
                         </div>
                         <h3 className="text-xl font-bold mb-3">Personalized Itinerary</h3>
                         <p className="text-gray-600">
-                            No more guesswork. Just tell us what you love — food, culture, nature, chill vibes — and we'll do the rest.
+                            No more guesswork. Just tell us what you love — food, culture, nature, chill vibes — and we will do the rest.
                         </p>
                     </div>
 
