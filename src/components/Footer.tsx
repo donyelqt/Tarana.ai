@@ -2,15 +2,15 @@ import Link from "next/link"
 
 const Footer = () => {
   return (
-    <section className="bg-blue-500 text-white py-20 rounded-3xl mx-4 my-8">
-      <div className="max-w-4xl mx-auto text-center px-4">
+    <section className="p-6">
+      <div className="max-w-7xl mx-auto text-center px-4 bg-gradient-to-b from-blue-700 to-blue-500 text-white py-20 rounded-3xl my-8">
         <h2 className="text-4xl md:text-5xl font-bold mb-4">Ready to Plan Less and Enjoy More?</h2>
         <p className="text-lg mb-2">Get your personalized Baguio itinerary in under a minute.</p>
         <p className="text-lg mb-8">Tap below to start your smart travel experience.</p>
 
         <Link
           href="#"
-          className="inline-flex items-center justify-center bg-white text-blue-500 px-8 py-3 rounded-full text-lg font-medium hover:bg-gray-100 transition-colors"
+          className="inline-flex items-center justify-center bg-white text-blue-500 px-8 py-3 rounded-3xl text-lg font-medium hover:bg-gray-100 transition-colors"
         >
           Plan My Baguio Trip
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
@@ -24,9 +24,9 @@ const Footer = () => {
       </div>
 
       <div className="max-w-7xl mx-auto mt-32 px-4">
-        <div className="flex flex-col md:flex-row justify-between items-center border-t border-blue-400 pt-8">
+        <div className="flex flex-col md:flex-row justify-between items-center border-t border-gray-500 pt-8">
           <Link href="/" className="text-2xl font-bold mb-4 md:mb-0">
-            Tarana.<span className="text-blue-300">ai</span>
+            Tarana.<span className="text-blue-600">ai</span>
           </Link>
 
           <div className="flex space-x-8 mb-4 md:mb-0">
@@ -61,7 +61,7 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="text-center text-blue-200 text-sm mt-8">Copyright © tarana.ai</div>
+        <div className="text-center text-gray-500 text-sm mt-8">Copyright © tarana.ai</div>
       </div>
     </section>
   )
