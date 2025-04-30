@@ -32,7 +32,7 @@ const TravelersSection = () => {
     {
       title: "Barkadas",
       description:
-        "Whether it's food trips or thrill spots, Tarana.ai keeps your crew in sync. Real-time updates, shared plans, zero chaos.",
+        "Whether its food trips or thrill spots, Tarana.ai keeps your crew in sync. Real-time updates, shared plans, zero chaos.",
       image: "/placeholder-friends.jpg",
     },
   ])
