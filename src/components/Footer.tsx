@@ -10,7 +10,7 @@ const Footer = () => {
 
         <Link
           href="#"
-          className="inline-flex items-center justify-center bg-white text-blue-500 px-8 py-3 rounded-3xl text-lg font-medium hover:bg-gray-100 transition-colors"
+          className="inline-flex items-center justify-center bg-white text-blue-500 px-8 py-3 rounded-2xl text-lg font-medium hover:bg-gray-100 transition-colors"
         >
           Plan My Baguio Trip
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
