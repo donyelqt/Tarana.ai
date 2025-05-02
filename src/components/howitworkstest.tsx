@@ -44,7 +44,7 @@ const HowItWorksSection = () => {
                             </div>
                             <h3 className="text-xl font-bold mb-3 font-sans">Let AI Handle the Planning</h3>
                             <p className="text-blue-100 font-sans">
-                                We instantly create a day-by-day itinerary optimized for your style and the city's real-time conditions.
+                                We instantly create a day-by-day itinerary optimized for your style and the citys real-time conditions.
                             </p>
                         </div>
 
