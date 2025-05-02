@@ -1,7 +1,5 @@
 import Image from 'next/image';
-import step1 from '@/public/images/step1.png';
-import step2 from '@/public/images/step2.png';
-import step3 from '@/public/images/step3.png';
+import { explore, letai, set } from '../../public';
 
 const HowItWorksSection = () => {
     return (
@@ -18,7 +16,7 @@ const HowItWorksSection = () => {
                         <div className="flex flex-col items-center text-center">
                             <div className="bg-white/20 p-4 rounded-full mb-6 w-16 h-16 flex items-center justify-center">
                                 <Image
-                                    src={step1}
+                                    src={set}
                                     alt="Step 1: Set Your Trip Details"
                                     width={32}
                                     height={32}
@@ -35,7 +33,7 @@ const HowItWorksSection = () => {
                         <div className="flex flex-col items-center text-center">
                             <div className="bg-white/20 p-4 rounded-full mb-6 w-16 h-16 flex items-center justify-center">
                                 <Image
-                                    src={step2}
+                                    src={letai}
                                     alt="Step 2: Let AI Handle the Planning"
                                     width={32}
                                     height={32}
@@ -52,7 +50,7 @@ const HowItWorksSection = () => {
                         <div className="flex flex-col items-center text-center">
                             <div className="bg-white/20 p-4 rounded-full mb-6 w-16 h-16 flex items-center justify-center">
                                 <Image
-                                    src={step3}
+                                    src={explore}
                                     alt="Step 3: Explore Baguio Effortlessly"
                                     width={32}
                                     height={32}
