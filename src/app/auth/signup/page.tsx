@@ -26,8 +26,8 @@ const SignUp = () => {
                 </div>
             </div>
             {/* Right Panel */}
-            <div className="flex flex-1 items-center justify-center bg-gray-50">
-                <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-3xl shadow-lg mx-4">
+            <div className="flex flex-1 items-center justify-center bg-gray-100">
+                <div className="w-full max-w-md space-y-8 p-10 mx-4">
                     <div>
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Tarana.ai</h2>
                         <p className="text-sm text-gray-600 mb-6">Please Sign up to Continue</p>
@@ -46,7 +46,7 @@ const SignUp = () => {
                                     type="text"
                                     autoComplete="name"
                                     required
-                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF]"
+                                    className="mt-1 block w-full px-3 py-2 border border-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF]"
                                     placeholder="Enter your Full Name"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
@@ -60,7 +60,7 @@ const SignUp = () => {
                                     type="email"
                                     autoComplete="email"
                                     required
-                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF]"
+                                    className="mt-1 block w-full px-3 py-2 border border-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF]"
                                     placeholder="Enter your Email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -75,7 +75,7 @@ const SignUp = () => {
                                         type="password"
                                         autoComplete="new-password"
                                         required
-                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
+                                        className="mt-1 block w-full px-3 py-2 border border-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
                                         placeholder="Enter your Password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
@@ -94,7 +94,7 @@ const SignUp = () => {
                                         type="password"
                                         autoComplete="new-password"
                                         required
-                                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
+                                        className="mt-1 block w-full px-3 py-2 border border-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
                                         placeholder="Re-enter your Password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
