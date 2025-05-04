@@ -28,10 +28,10 @@ const Navbar = () => {
             </div>
 
             <div className="hidden md:flex items-center space-x-4">
-                <Link href="#" className="bg-gray-100 text-gray-900 px-3 py-2 rounded-2xl hover:text-blue-500">
+                <Link href="/auth/signin" className="bg-gray-100 text-gray-900 px-3 py-2 rounded-2xl hover:text-blue-500">
                     Sign In
                 </Link>
-                <Link href="#" className="bg-blue-500 text-white px-4 py-2 rounded-2xl hover:bg-blue-600 transition-colors">
+                <Link href="/auth/signup" className="bg-blue-500 text-white px-4 py-2 rounded-2xl hover:bg-blue-600 transition-colors">
                     Get Started
                 </Link>
             </div>
@@ -62,11 +62,11 @@ const Navbar = () => {
                         <Link href="#" className="text-gray-900 hover:text-blue-500">
                             Contact
                         </Link>
-                        <Link href="#" className="text-gray-900 hover:text-blue-500">
+                        <Link href="/auth/signin" className="text-gray-900 hover:text-blue-500">
                             Sign In
                         </Link>
                         <Link
-                            href="#"
+                            href="/auth/signup"
                             className="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors text-center"
                         >
                             Get Started
