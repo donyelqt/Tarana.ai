@@ -2,6 +2,11 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+
 
 const SignIn = () => {
     const [email, setEmail] = useState("")
@@ -38,29 +43,29 @@ const SignIn = () => {
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
-                                <input
+                                <Label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</Label>
+                                <Input
                                     id="email"
                                     name="email"
                                     type="email"
                                     autoComplete="email"
                                     required
-                                    className="mt-1 block w-full px-3 py-2 border border-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF]"
+                                    className="mt-1 block w-full px-3 py-2 border bg-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF]"
                                     placeholder="Enter your Email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                 />
                             </div>
                             <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+                                <Label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</Label>
                                 <div className="relative">
-                                    <input
+                                    <Input
                                         id="password"
                                         name="password"
                                         type="password"
                                         autoComplete="current-password"
                                         required
-                                        className="mt-1 block w-full px-3 py-2 border border-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
+                                        className="mt-1 block w-full px-3 py-2 border bg-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
                                         placeholder="Enter your Password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
@@ -73,24 +78,23 @@ const SignIn = () => {
                         </div>
                         <div className="flex items-center justify-between text-xs">
                             <div className="flex items-center">
-                                <input
+                                <Checkbox
                                     id="remember-me"
                                     name="remember-me"
-                                    type="checkbox"
                                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                     checked={rememberMe}
-                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                    onCheckedChange={setRememberMe}
                                 />
-                                <label htmlFor="remember-me" className="ml-2 block text-gray-900">Remember me</label>
+                                <Label htmlFor="remember-me" className="ml-2 block text-gray-900">Remember me</Label>
                             </div>
                             <Link href="#" className="text-gray-400 hover:text-[#0066FF]">Forgot Password ?</Link>
                         </div>
-                        <button
+                        <Button
                             type="submit"
                             className="w-full flex justify-center py-3 px-4 rounded-2xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-[#0066FF] to-[#1E90FF] hover:from-[#0052cc] hover:to-[#3388ff] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0066FF] mt-2"
                         >
                             Login
-                        </button>
+                        </Button>
                     </form>
                 </div>
             </div>
