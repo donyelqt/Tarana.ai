@@ -29,7 +29,9 @@ const SignUp = () => {
                 </div>
             </div>
             {/* Right Panel */}
-            <div className="flex flex-1 items-center justify-center bg-gray-100">
+            <div className="flex flex-1 items-center justify-center bg-gray-100 relative">
+                {/* Mobile Back to Home Button */}
+                <Link href="/" className="md:hidden absolute top-4 left-4 bg-white text-[#0066FF] font-medium rounded-xl px-6 py-2 text-base shadow-md hover:bg-gray-100 transition z-10">Back to Home</Link>
                 <div className="w-full max-w-md space-y-8 p-10 mx-4">
                     <div>
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Tarana.ai</h2>
