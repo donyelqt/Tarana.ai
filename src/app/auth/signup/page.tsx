@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 const SignUp = () => {
     const [fullName, setFullName] = useState("")
@@ -33,49 +36,49 @@ const SignUp = () => {
                         <p className="text-sm text-gray-600 mb-6">Please Sign up to Continue</p>
                         <div className="flex justify-center mb-6">
                             <Link href="/auth/signin" className="px-8 py-2 rounded-full bg-blue-50 text-[#0066FF] font-medium hover:bg-blue-100 transition">Login</Link>
-                            <button type="button" className="px-8 py-2 rounded-full bg-[#0066FF] text-white font-medium shadow-md focus:outline-none ml-2">Register</button>
+                            <Button type="button" className="px-8 py-2 rounded-full bg-[#0066FF] text-white font-medium shadow-md focus:outline-none ml-2">Register</Button>
                         </div>
                     </div>
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">Full Name</label>
-                                <input
+                                <Label htmlFor="fullName" className="block text-sm font-medium text-gray-700">Full Name</Label>
+                                <Input
                                     id="fullName"
                                     name="fullName"
                                     type="text"
                                     autoComplete="name"
                                     required
-                                    className="mt-1 block w-full px-3 py-2 border border-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF]"
+                                    className="mt-1 block w-full px-3 py-2 border bg-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF]"
                                     placeholder="Enter your Full Name"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
                                 />
                             </div>
                             <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
-                                <input
+                                <Label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</Label>
+                                <Input
                                     id="email"
                                     name="email"
                                     type="email"
                                     autoComplete="email"
                                     required
-                                    className="mt-1 block w-full px-3 py-2 border border-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF]"
+                                    className="mt-1 block w-full px-3 py-2 border bg-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF]"
                                     placeholder="Enter your Email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                 />
                             </div>
                             <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+                                <Label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</Label>
                                 <div className="relative">
-                                    <input
+                                    <Input
                                         id="password"
                                         name="password"
                                         type="password"
                                         autoComplete="new-password"
                                         required
-                                        className="mt-1 block w-full px-3 py-2 border border-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
+                                        className="mt-1 block w-full px-3 py-2 border bg-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
                                         placeholder="Enter your Password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
@@ -86,15 +89,15 @@ const SignUp = () => {
                                 </div>
                             </div>
                             <div>
-                                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+                                <Label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</Label>
                                 <div className="relative">
-                                    <input
+                                    <Input
                                         id="confirmPassword"
                                         name="confirmPassword"
                                         type="password"
                                         autoComplete="new-password"
                                         required
-                                        className="mt-1 block w-full px-3 py-2 border border-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
+                                        className="mt-1 block w-full px-3 py-2 border bg-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
                                         placeholder="Re-enter your Password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
@@ -105,12 +108,12 @@ const SignUp = () => {
                                 </div>
                             </div>
                         </div>
-                        <button
+                        <Button
                             type="submit"
                             className="w-full flex justify-center py-3 px-4 rounded-2xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-[#0066FF] to-[#1E90FF] hover:from-[#0052cc] hover:to-[#3388ff] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0066FF] mt-2"
                         >
                             Create Account
-                        </button>
+                        </Button>
                         <div className="text-center">
                             <p className="text-sm text-gray-600">
                                 Already have an account?{' '}
