@@ -2,6 +2,7 @@
 
 import Sidebar from "../../components/Sidebar"
 import { useState } from "react"
+import Image from "next/image"
 
 const budgetOptions = [
   "less than ₱3,000/day",
@@ -190,7 +191,7 @@ export default function ItineraryGenerator() {
                   </div>
                   {section.activities.map((act, i) => (
                     <div key={i} className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden border border-gray-100">
-                      <img src={act.image} alt={act.title} className="w-full h-32 object-cover" />
+                      <Image src={act.image} alt={act.title} width={400} height={128} className="w-full h-32 object-cover" />
                       <div className="p-4">
                         <div className="font-semibold text-gray-900 text-base mb-1">{act.title}</div>
                         <div className="text-xs text-gray-500 mb-2">{act.time}</div>

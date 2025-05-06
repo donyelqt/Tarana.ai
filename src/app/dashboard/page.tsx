@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+// (remove this line)
 import Link from "next/link"
 import { sampleprofile } from "../../../public"
 import Sidebar from "../../components/Sidebar"
