@@ -4,7 +4,7 @@ import Link from "next/link"
 
 const Sidebar = () => {
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between py-8 px-6 hidden md:flex">
+    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between py-8 px-6 md:flex">
       <div>
         <div className="text-2xl font-bold mb-12">
           Tarana.<span className="text-blue-500">ai</span>
@@ -16,7 +16,7 @@ const Sidebar = () => {
             </span>
             Dashboard
           </Link>
-          <Link href="#" className="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-blue-50 transition">
+          <Link href="/itinerary-generator" className="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-blue-50 transition">
             <span className="mr-3">
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a4 4 0 014-4h4m0 0V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h5" /></svg>
             </span>
