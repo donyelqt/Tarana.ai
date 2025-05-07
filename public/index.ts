@@ -11,7 +11,10 @@ import family from "./images/family.png"
 import couples from "./images/couples.png"
 import barkadas from "./images/barkadas.png"
 import sampleprofile from "./images/sampleprofile.png"
+import goodtaste from "./images/goodtaste.png"
+import burnham from "./images/burnham.png"
 
 export { baguio_panorama, how_it_works, letai, 
     set, explore, local, 
-    personalized, traffic, solo_travel, family, couples, barkadas, sampleprofile }
+    personalized, traffic, solo_travel, family, couples, barkadas, 
+    sampleprofile, goodtaste, burnham }

@@ -3,6 +3,7 @@
 import Sidebar from "../../components/Sidebar"
 import { useState } from "react"
 import Image from "next/image"
+import { burnham, goodtaste } from "../../../public"
 
 const budgetOptions = [
   "less than ₱3,000/day",
@@ -31,14 +32,14 @@ const sampleItinerary = {
       period: "Morning (8AM-12NN)",
       activities: [
         {
-          image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80",
+          image: goodtaste,
           title: "Breakfast at Goodtaste",
           time: "7:30AM-9:00AM",
           desc: "Fuel up with a hearty Filipino-Chinese breakfast at Goodtaste, a Baguio favorite for generous portions and fast service.",
           tags: ["Food & Culinary"]
         },
         {
-          image: "https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=400&q=80",
+          image: burnham,
           title: "Burnham Park",
           time: "9:00AM-10:30AM",
           desc: "Start your day with a scenic boat ride or a relaxed stroll at Burnham Park.",
