@@ -3,8 +3,10 @@
 import Image from "next/image"
 import { sampleprofile } from "../../../public"
 import Sidebar from "../../components/Sidebar"
+import { useRouter } from "next/navigation"
 
 const Dashboard = () => {
+  const router = useRouter()
   return (
     <div className="min-h-screen bg-[#f7f9fb] flex">
       {/* Sidebar */}
@@ -21,7 +23,7 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-2xl shadow p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
+            <div className="bg-white rounded-2xl shadow p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/itinerary-generator")}>
               <div className="text-3xl mb-2">+</div>
               <div className="font-semibold text-lg">Create New Itinerary</div>
               <div className="text-gray-500 text-sm mt-1">Create a personalized travel plan</div>
