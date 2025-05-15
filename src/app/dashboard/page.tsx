@@ -48,7 +48,7 @@ const Dashboard = () => {
           </div>
         </div>
         {/* Right Sidebar */}
-        <div className="w-full md:w-80 bg-white rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-fit">
+        <div className="w-full md:w-80 bg-white rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-full">
           <div className="mb-6">
             <div className="font-semibold text-lg mb-2">Baguio Weather</div>
             <div className="bg-blue-50 rounded-xl p-4 flex items-center justify-between">
