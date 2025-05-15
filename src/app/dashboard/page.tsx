@@ -8,13 +8,13 @@ import { useRouter } from "next/navigation"
 const Dashboard = () => {
   const router = useRouter()
   return (
-    <div className="min-h-screen bg-[#f7f9fb] flex">
+    <div className="min-h-screen bg-[#f7f9fb]">
       {/* Sidebar */}
       <Sidebar />
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col md:flex-row">
+      {/* Main Content - add left padding on desktop to accommodate fixed sidebar */}
+      <main className="md:pl-64 flex-1 flex flex-col md:flex-row">
         {/* Center Content */}
-        <div className="flex-1 p-8 md:p-12">
+        <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
           <div className="bg-blue-50 rounded-2xl p-6 flex items-center mb-8">
             <Image src={sampleprofile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div>
@@ -50,7 +50,7 @@ const Dashboard = () => {
           </div>
         </div>
         {/* Right Sidebar */}
-        <div className="w-full md:w-80 bg-white rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-fit">
+        <div className="w-full md:w-80 bg-white rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-full">
           <div className="mb-6">
             <div className="font-semibold text-lg mb-2">Baguio Weather</div>
             <div className="bg-blue-50 rounded-xl p-4 flex items-center justify-between">
