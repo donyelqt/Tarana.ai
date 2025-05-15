@@ -4,6 +4,10 @@ import Sidebar from "../../components/Sidebar"
 import { useState } from "react"
 import Image from "next/image"
 import { burnham, goodtaste } from "../../../public"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
 
 const budgetOptions = [
   "less than ₱3,000/day",
@@ -86,9 +90,13 @@ export default function ItineraryGenerator() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Budget Range */}
             <div>
-              <label className="block font-medium mb-2 text-gray-700">Budget Range</label>
+              <Label htmlFor="budget" className="block font-medium mb-2 text-gray-700">Budget Range</Label>
               <select
-                className={`w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 ${showPreview ? 'border-gray-300' : 'border-gray-300 focus:ring-blue-200'}`}
+                id="budget"
+                className={cn(
+                  "w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2",
+                  showPreview ? 'border-gray-300' : 'border-gray-300 focus:ring-blue-200'
+                )}
                 value={budget}
                 onChange={e => setBudget(e.target.value)}
                 disabled={showPreview}
@@ -100,49 +108,65 @@ export default function ItineraryGenerator() {
             </div>
             {/* Number of Pax */}
             <div>
-              <label className="block font-medium mb-2 text-gray-700">Number of Pax.</label>
+              <Label className="block font-medium mb-2 text-gray-700">Number of Pax.</Label>
               <div className="grid grid-cols-4 gap-3">
                 {paxOptions.map(opt => (
-                  <button
+                  <Button
                     type="button"
                     key={opt}
-                    className={`border rounded-lg py-2 font-medium transition ${pax === opt ? 'bg-blue-500 text-white' : 'bg-white border-gray-300 text-gray-700'} ${showPreview ? 'cursor-not-allowed' : ''}`}
+                    variant="outline"
+                    className={cn(
+                      "py-2 font-medium transition",
+                      pax === opt ? 'bg-blue-500 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
+                      showPreview ? 'cursor-not-allowed' : ''
+                    )}
                     onClick={() => !showPreview && setPax(opt)}
                     disabled={showPreview}
-                  >{opt}</button>
+                  >{opt}</Button>
                 ))}
               </div>
             </div>
             {/* Duration */}
             <div>
-              <label className="block font-medium mb-2 text-gray-700">Duration</label>
+              <Label className="block font-medium mb-2 text-gray-700">Duration</Label>
               <div className="grid grid-cols-4 gap-3">
                 {durationOptions.map(opt => (
-                  <button
+                  <Button
                     type="button"
                     key={opt}
-                    className={`border rounded-lg py-2 font-medium transition ${duration === opt ? 'bg-blue-500 text-white' : 'bg-white border-gray-300 text-gray-700'} ${showPreview ? 'cursor-not-allowed' : ''}`}
+                    variant="outline"
+                    className={cn(
+                      "py-2 font-medium transition",
+                      duration === opt ? 'bg-blue-500 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
+                      showPreview ? 'cursor-not-allowed' : ''
+                    )}
                     onClick={() => !showPreview && setDuration(opt)}
                     disabled={showPreview}
-                  >{opt}</button>
+                  >{opt}</Button>
                 ))}
               </div>
             </div>
             {/* Travel Dates */}
             <div>
-              <label className="block font-medium mb-2 text-gray-700">Travel Dates</label>
+              <Label className="block font-medium mb-2 text-gray-700">Travel Dates</Label>
               <div className="flex gap-3">
-                <input
+                <Input
                   type="date"
-                  className={`border rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 ${showPreview ? 'border-gray-300' : 'border-gray-300 focus:ring-blue-200'}`}
+                  className={cn(
+                    "border rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2",
+                    showPreview ? 'border-gray-300' : 'border-gray-300 focus:ring-blue-200'
+                  )}
                   value={dates.start}
                   onChange={e => setDates({ ...dates, start: e.target.value })}
                   disabled={showPreview}
                   placeholder="mm/dd/yyyy"
                 />
-                <input
+                <Input
                   type="date"
-                  className={`border rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 ${showPreview ? 'border-gray-300' : 'border-gray-300 focus:ring-blue-200'}`}
+                  className={cn(
+                    "border rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2",
+                    showPreview ? 'border-gray-300' : 'border-gray-300 focus:ring-blue-200'
+                  )}
                   value={dates.end}
                   onChange={e => setDates({ ...dates, end: e.target.value })}
                   disabled={showPreview}
@@ -152,32 +176,41 @@ export default function ItineraryGenerator() {
             </div>
             {/* Travel Interests */}
             <div>
-              <label className="block font-medium mb-2 text-gray-700">Travel Interests</label>
+              <Label className="block font-medium mb-2 text-gray-700">Travel Interests</Label>
               <div className="grid grid-cols-2 gap-3">
                 {interests.map(({ label, icon }) => (
-                  <button
+                  <Button
                     type="button"
                     key={label}
-                    className={`flex items-center justify-center gap-2 border rounded-lg py-2 font-medium transition ${selectedInterests.includes(label) ? 'bg-blue-500 text-white' : 'bg-white border-gray-300 text-gray-700'} ${showPreview ? 'cursor-not-allowed' : ''}`}
+                    variant="outline"
+                    className={cn(
+                      "flex items-center justify-center gap-2 py-2 font-medium transition",
+                      selectedInterests.includes(label) ? 'bg-blue-500 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
+                      showPreview ? 'cursor-not-allowed' : ''
+                    )}
                     onClick={() => !showPreview && handleInterest(label)}
                     disabled={showPreview}
                   >
                     <span>{icon}</span>
                     {label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
             {/* Generate Button */}
             <div>
-              <button
+              <Button
                 type="submit"
-                className={`w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition ${showPreview ? 'bg-blue-500 text-white shadow-lg' : 'bg-blue-500 hover:bg-blue-600 text-white'} ${showPreview ? 'cursor-not-allowed' : ''}`}
+                className={cn(
+                  "w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition",
+                  showPreview ? 'bg-blue-500 text-white shadow-lg' : 'bg-blue-500 hover:bg-blue-600 text-white',
+                  showPreview ? 'cursor-not-allowed' : ''
+                )}
                 disabled={showPreview}
               >
                 Generate My Itinerary
                 <span className="ml-2">→</span>
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -209,12 +242,12 @@ export default function ItineraryGenerator() {
                   ))}
                 </div>
               ))}
-              <button
+              <Button
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4"
                 onClick={handleSave}
               >
                 Save Itinerary
-              </button>
+              </Button>
             </div>
           )}
         </aside>
