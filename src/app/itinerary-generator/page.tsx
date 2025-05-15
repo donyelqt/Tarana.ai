@@ -90,7 +90,7 @@ export default function ItineraryGenerator() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Budget Range */}
             <div>
-              <Label htmlFor="budget" className="block font-medium mb-2 text-gray-700">Budget Range</Label>
+              <Label htmlFor="budget" className="block font-bold mb-2 text-gray-700">Budget Range</Label>
               <select
                 id="budget"
                 className={cn(
@@ -108,7 +108,7 @@ export default function ItineraryGenerator() {
             </div>
             {/* Number of Pax */}
             <div>
-              <Label className="block font-medium mb-2 text-gray-700">Number of Pax.</Label>
+              <Label className="block font-bold mb-2 text-gray-700">Number of Pax.</Label>
               <div className="grid grid-cols-4 gap-3">
                 {paxOptions.map(opt => (
                   <Button
@@ -128,7 +128,7 @@ export default function ItineraryGenerator() {
             </div>
             {/* Duration */}
             <div>
-              <Label className="block font-medium mb-2 text-gray-700">Duration</Label>
+              <Label className="block font-bold mb-2 text-gray-700">Duration</Label>
               <div className="grid grid-cols-4 gap-3">
                 {durationOptions.map(opt => (
                   <Button
@@ -148,7 +148,7 @@ export default function ItineraryGenerator() {
             </div>
             {/* Travel Dates */}
             <div>
-              <Label className="block font-medium mb-2 text-gray-700">Travel Dates</Label>
+              <Label className="block font-bold mb-2 text-gray-700">Travel Dates</Label>
               <div className="flex gap-3">
                 <Input
                   type="date"
@@ -176,7 +176,7 @@ export default function ItineraryGenerator() {
             </div>
             {/* Travel Interests */}
             <div>
-              <Label className="block font-medium mb-2 text-gray-700">Travel Interests</Label>
+              <Label className="block font-bold mb-2 text-gray-700">Travel Interests</Label>
               <div className="grid grid-cols-2 gap-3">
                 {interests.map(({ label, icon }) => (
                   <Button
