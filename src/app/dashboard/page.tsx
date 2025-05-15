@@ -6,13 +6,13 @@ import Sidebar from "../../components/Sidebar"
 
 const Dashboard = () => {
   return (
-    <div className="min-h-screen bg-[#f7f9fb] flex">
+    <div className="min-h-screen bg-[#f7f9fb]">
       {/* Sidebar */}
       <Sidebar />
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col md:flex-row">
+      {/* Main Content - add left padding on desktop to accommodate fixed sidebar */}
+      <main className="md:pl-64 flex-1 flex flex-col md:flex-row">
         {/* Center Content */}
-        <div className="flex-1 p-8 md:p-12">
+        <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
           <div className="bg-blue-50 rounded-2xl p-6 flex items-center mb-8">
             <Image src={sampleprofile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div>

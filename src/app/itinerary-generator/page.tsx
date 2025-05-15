@@ -81,9 +81,9 @@ export default function ItineraryGenerator() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb] flex">
+    <div className="min-h-screen bg-[#f7f9fb]">
       <Sidebar />
-      <main className="flex-1 flex flex-row items-start justify-start gap-8 p-4 md:p-12">
+      <main className="md:pl-64 flex-1 flex flex-col md:flex-row items-start justify-start gap-8 p-4 md:p-12 pt-16 md:pt-12">
         {/* Left: Form */}
         <div className="w-full max-w-2xl bg-white rounded-2xl p-8 shadow-md">
           <div className="text-2xl font-bold mb-6 text-gray-900">Let's Plan Your Baguio Adventure</div>
