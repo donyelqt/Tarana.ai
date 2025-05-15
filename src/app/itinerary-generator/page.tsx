@@ -82,7 +82,7 @@ export default function ItineraryGenerator() {
       <main className="flex-1 flex flex-row items-start justify-start gap-8 p-4 md:p-12">
         {/* Left: Form */}
         <div className="w-full max-w-2xl bg-white rounded-2xl p-8 shadow-md">
-          <div className="text-2xl font-bold mb-6 text-gray-900">Let’s Plan Your Baguio Adventure</div>
+          <div className="text-2xl font-bold mb-6 text-gray-900">Let's Plan Your Baguio Adventure</div>
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Budget Range */}
             <div>
@@ -106,7 +106,7 @@ export default function ItineraryGenerator() {
                   <button
                     type="button"
                     key={opt}
-                    className={`border rounded-lg py-2 font-medium transition ${pax === opt ? (showPreview ? 'bg-blue-600 border-blue-700 text-white' : 'bg-blue-100 border-blue-400 text-blue-700') : 'bg-white border-gray-300 text-gray-700'} ${showPreview ? 'cursor-not-allowed' : ''}`}
+                    className={`border rounded-lg py-2 font-medium transition ${pax === opt ? 'bg-blue-500 text-white' : 'bg-white border-gray-300 text-gray-700'} ${showPreview ? 'cursor-not-allowed' : ''}`}
                     onClick={() => !showPreview && setPax(opt)}
                     disabled={showPreview}
                   >{opt}</button>
@@ -121,7 +121,7 @@ export default function ItineraryGenerator() {
                   <button
                     type="button"
                     key={opt}
-                    className={`border rounded-lg py-2 font-medium transition ${duration === opt ? (showPreview ? 'bg-blue-600 border-blue-700 text-white' : 'bg-blue-100 border-blue-400 text-blue-700') : 'bg-white border-gray-300 text-gray-700'} ${showPreview ? 'cursor-not-allowed' : ''}`}
+                    className={`border rounded-lg py-2 font-medium transition ${duration === opt ? 'bg-blue-500 text-white' : 'bg-white border-gray-300 text-gray-700'} ${showPreview ? 'cursor-not-allowed' : ''}`}
                     onClick={() => !showPreview && setDuration(opt)}
                     disabled={showPreview}
                   >{opt}</button>
@@ -138,6 +138,7 @@ export default function ItineraryGenerator() {
                   value={dates.start}
                   onChange={e => setDates({ ...dates, start: e.target.value })}
                   disabled={showPreview}
+                  placeholder="mm/dd/yyyy"
                 />
                 <input
                   type="date"
@@ -145,6 +146,7 @@ export default function ItineraryGenerator() {
                   value={dates.end}
                   onChange={e => setDates({ ...dates, end: e.target.value })}
                   disabled={showPreview}
+                  placeholder="mm/dd/yyyy"
                 />
               </div>
             </div>
@@ -156,7 +158,7 @@ export default function ItineraryGenerator() {
                   <button
                     type="button"
                     key={label}
-                    className={`flex items-center justify-center gap-2 border rounded-lg py-2 font-medium transition ${selectedInterests.includes(label) ? (showPreview ? 'bg-blue-600 border-blue-700 text-white' : 'bg-blue-100 border-blue-400 text-blue-700') : 'bg-white border-gray-300 text-gray-700'} ${showPreview ? 'cursor-not-allowed' : ''}`}
+                    className={`flex items-center justify-center gap-2 border rounded-lg py-2 font-medium transition ${selectedInterests.includes(label) ? 'bg-blue-500 text-white' : 'bg-white border-gray-300 text-gray-700'} ${showPreview ? 'cursor-not-allowed' : ''}`}
                     onClick={() => !showPreview && handleInterest(label)}
                     disabled={showPreview}
                   >
@@ -170,7 +172,7 @@ export default function ItineraryGenerator() {
             <div>
               <button
                 type="submit"
-                className={`w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition ${showPreview ? 'bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-lg' : 'bg-gray-600 hover:bg-gray-700 text-white'} ${showPreview ? 'cursor-not-allowed' : ''}`}
+                className={`w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition ${showPreview ? 'bg-blue-500 text-white shadow-lg' : 'bg-blue-500 hover:bg-blue-600 text-white'} ${showPreview ? 'cursor-not-allowed' : ''}`}
                 disabled={showPreview}
               >
                 Generate My Itinerary
@@ -208,7 +210,7 @@ export default function ItineraryGenerator() {
                 </div>
               ))}
               <button
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4"
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4"
                 onClick={handleSave}
               >
                 Save Itinerary
