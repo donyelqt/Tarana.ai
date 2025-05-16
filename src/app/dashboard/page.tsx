@@ -3,9 +3,10 @@
 import Image from "next/image"
 import { sampleprofile } from "../../../public"
 import Sidebar from "../../components/Sidebar"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 const Dashboard = () => {
+  const router = useRouter()
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
       {/* Sidebar */}
@@ -22,13 +23,11 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <Link href="/itinerary-generator" className="block">
-              <div className="bg-white rounded-2xl shadow p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
-                <div className="text-3xl mb-2">+</div>
-                <div className="font-semibold text-lg">Create New Itinerary</div>
-                <div className="text-gray-500 text-sm mt-1">Create a personalized travel plan</div>
-              </div>
-            </Link>
+            <div className="bg-white rounded-2xl shadow p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/itinerary-generator")}>
+              <div className="text-3xl mb-2">+</div>
+              <div className="font-semibold text-lg">Create New Itinerary</div>
+              <div className="text-gray-500 text-sm mt-1">Create a personalized travel plan</div>
+            </div>
             <div className="bg-white rounded-2xl shadow p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
               <div className="mb-2">
                 <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
