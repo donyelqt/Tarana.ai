@@ -35,7 +35,7 @@ const Sidebar = () => {
       </button>
 
       {/* Sidebar - hidden on mobile unless toggled */}
-      <aside className={`w-64 bg-white border-r border-gray-200 flex flex-col justify-between py-8 px-6 fixed inset-y-0 left-0 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40`}>
+      <aside className={`w-64 ${pathname === "/itinerary-generator" ? "bg-gray-100" : "bg-white"} border-r border-gray-200 flex flex-col justify-between py-8 px-6 fixed inset-y-0 left-0 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40`}>
         <div>
           <div className="text-2xl font-bold mb-12">
             Tarana.<span className="text-blue-500">ai</span>
