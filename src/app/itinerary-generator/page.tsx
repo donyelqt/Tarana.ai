@@ -109,7 +109,7 @@ export default function ItineraryGenerator() {
             {/* Number of Pax */}
             <div>
               <Label className="block font-bold mb-2 text-gray-700">Number of Pax.</Label>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-4 gap-3 lg:mr-48">
                 {paxOptions.map(opt => (
                   <Button
                     type="button"
@@ -129,7 +129,7 @@ export default function ItineraryGenerator() {
             {/* Duration */}
             <div>
               <Label className="block font-bold mb-2 text-gray-700">Duration</Label>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-4 gap-3 lg:mr-48">
                 {durationOptions.map(opt => (
                   <Button
                     type="button"
@@ -149,7 +149,7 @@ export default function ItineraryGenerator() {
             {/* Travel Dates */}
             <div>
               <Label className="block font-bold mb-2 text-gray-700">Travel Dates</Label>
-              <div className="flex gap-3">
+              <div className="flex gap-3 lg:mr-48">
                 <Input
                   type="date"
                   className={cn(
