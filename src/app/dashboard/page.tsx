@@ -96,11 +96,11 @@ const Dashboard = () => {
                 <div className="text-red-500">{error}</div>
               </div>
             ) : weatherData ? (
-              <div className="bg-blue-50 rounded-xl p-4 flex flex-col">
+              <div className="bg-blue-500 rounded-xl p-4 flex flex-col">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center">
-                    <span className="text-3xl font-bold mr-2">{Math.round(weatherData.main.temp)}° C</span>
-                    <span className="text-gray-500 capitalize">{weatherData.weather[0].description}</span>
+                    <span className="text-3xl text-white font-bold mr-2">{Math.round(weatherData.main.temp)}° C</span>
+                    <span className="text-white capitalize">{weatherData.weather[0].description}</span>
                   </div>
                   {weatherData.weather[0].icon && (
                     <Image 
@@ -112,7 +112,7 @@ const Dashboard = () => {
                     />
                   )}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-white">
                   <div className="flex justify-between">
                     <span>Feels like:</span>
                     <span className="font-medium">{Math.round(weatherData.main.feels_like)}° C</span>
