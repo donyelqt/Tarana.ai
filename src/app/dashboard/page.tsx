@@ -4,9 +4,43 @@ import Image from "next/image"
 import { sampleprofile } from "../../../public"
 import Sidebar from "../../components/Sidebar"
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { BAGUIO_COORDINATES, WeatherData, fetchWeatherData, getWeatherIconUrl } from "@/lib/utils"
 
 const Dashboard = () => {
   const router = useRouter()
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const getWeather = async () => {
+      try {
+        setLoading(true)
+        const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
+        
+        if (!apiKey) {
+          throw new Error("API key not found")
+        }
+        
+        const data = await fetchWeatherData(
+          BAGUIO_COORDINATES.lat,
+          BAGUIO_COORDINATES.lon,
+          apiKey
+        )
+        
+        setWeatherData(data)
+      } catch (err) {
+        console.error("Failed to fetch weather:", err)
+        setError("Could not load weather data")
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    getWeather()
+  }, [])
+
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
       {/* Sidebar */}
@@ -53,15 +87,57 @@ const Dashboard = () => {
         <div className="w-full md:w-80 bg-white rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-full">
           <div className="mb-6">
             <div className="font-semibold text-lg mb-2">Baguio Weather</div>
-            <div className="bg-blue-50 rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center">
-                <span className="text-2xl font-bold mr-2">18° C</span>
-                <span className="text-gray-500">Sunny</span>
+            {loading ? (
+              <div className="bg-blue-50 rounded-xl p-4 flex items-center justify-center h-24">
+                <div className="animate-pulse text-gray-500">Loading weather data...</div>
               </div>
-              <span>
-                <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="5" strokeWidth={2} /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1v2m0 18v2m11-11h-2M3 12H1m16.95 7.07l-1.41-1.41M6.34 6.34L4.93 4.93m12.02 0l-1.41 1.41M6.34 17.66l-1.41 1.41" /></svg>
-              </span>
-            </div>
+            ) : error ? (
+              <div className="bg-red-50 rounded-xl p-4 flex items-center justify-center h-24">
+                <div className="text-red-500">{error}</div>
+              </div>
+            ) : weatherData ? (
+              <div className="bg-blue-50 rounded-xl p-4 flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center">
+                    <span className="text-3xl font-bold mr-2">{Math.round(weatherData.main.temp)}° C</span>
+                    <span className="text-gray-500 capitalize">{weatherData.weather[0].description}</span>
+                  </div>
+                  {weatherData.weather[0].icon && (
+                    <Image 
+                      src={getWeatherIconUrl(weatherData.weather[0].icon)} 
+                      alt={weatherData.weather[0].description} 
+                      width={50} 
+                      height={50} 
+                      className="object-contain"
+                    />
+                  )}
+                </div>
+                <div className="text-sm text-gray-600">
+                  <div className="flex justify-between">
+                    <span>Feels like:</span>
+                    <span className="font-medium">{Math.round(weatherData.main.feels_like)}° C</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Humidity:</span>
+                    <span className="font-medium">{weatherData.main.humidity}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Location:</span>
+                    <span className="font-medium">{BAGUIO_COORDINATES.name}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-blue-50 rounded-xl p-4 flex items-center justify-between">
+                <div className="flex items-center">
+                  <span className="text-2xl font-bold mr-2">18° C</span>
+                  <span className="text-gray-500">Sunny</span>
+                </div>
+                <span>
+                  <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="5" strokeWidth={2} /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 1v2m0 18v2m11-11h-2M3 12H1m16.95 7.07l-1.41-1.41M6.34 6.34L4.93 4.93m12.02 0l-1.41 1.41M6.34 17.66l-1.41 1.41" /></svg>
+                </span>
+              </div>
+            )}
           </div>
           <div className="mb-6">
             <div className="font-semibold text-lg mb-2">Recommended For You</div>
