@@ -5,15 +5,23 @@ import { sampleprofile } from "../../../public"
 import Sidebar from "../../components/Sidebar"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { useSession, signOut } from "next-auth/react"
 import { BAGUIO_COORDINATES, WeatherData, fetchWeatherData, getWeatherIconUrl } from "@/lib/utils"
 
 const Dashboard = () => {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Redirect to login if not authenticated
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+      return
+    }
+    
     const getWeather = async () => {
       try {
         setLoading(true)
@@ -39,8 +47,20 @@ const Dashboard = () => {
     }
     
     getWeather()
-  }, [])
+  }, [status, router])
 
+  // Show loading state while checking authentication
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
+        <div className="text-center">
+          <div className="text-2xl font-semibold mb-2">Loading...</div>
+          <p className="text-gray-500">Please wait while we load your dashboard</p>
+        </div>
+      </div>
+    )
+  }
+  
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
       {/* Sidebar */}
@@ -51,10 +71,16 @@ const Dashboard = () => {
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
           <div className="bg-blue-50 rounded-2xl p-6 flex items-center mb-8">
             <Image src={sampleprofile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
-            <div>
-              <div className="text-xl font-bold text-gray-900">Welcome Back, Carl!<span className="ml-1">👋</span></div>
+            <div className="flex-grow">
+              <div className="text-xl font-bold text-gray-900">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="ml-1">👋</span></div>
               <div className="text-gray-500 text-sm">Ready to plan your next adventure?</div>
             </div>
+            <button 
+              onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+              className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+            >
+              Sign Out
+            </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-white rounded-2xl shadow p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/itinerary-generator")}>

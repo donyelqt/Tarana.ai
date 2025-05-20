@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { signIn } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,10 +16,44 @@ const SignIn = () => {
     const [rememberMe, setRememberMe] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const [error, setError] = useState<string | null>(null)
+    const [success, setSuccess] = useState<string | null>(null)
+    const [isLoading, setIsLoading] = useState(false)
+    
+    const searchParams = useSearchParams()
+    
+    useEffect(() => {
+        // Check if user has just registered
+        if (searchParams?.get('registered') === 'true') {
+            setSuccess('Account created successfully! Please sign in.')
+        }
+    }, [searchParams])
+    
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        // Handle sign in logic here
-        console.log({ email, password, rememberMe })
+        setError(null)
+        setIsLoading(true)
+        
+        try {
+            const result = await signIn('credentials', {
+                email,
+                password,
+                redirect: false
+            })
+            
+            if (result?.error) {
+                setError('Invalid email or password')
+                console.error('Authentication error:', result.error)
+            } else {
+                // Redirect to dashboard on success
+                window.location.href = '/dashboard'
+            }
+        } catch (error) {
+            setError('An unexpected error occurred')
+            console.error('Sign in error:', error)
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (
@@ -96,11 +132,22 @@ const SignIn = () => {
                             </div>
                             <Link href="#" className="text-gray-400 hover:text-[#0066FF]">Forgot Password ?</Link>
                         </div>
+                        {error && (
+                            <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm mb-4">
+                                {error}
+                            </div>
+                        )}
+                        {success && (
+                            <div className="bg-green-50 text-green-500 p-3 rounded-lg text-sm mb-4">
+                                {success}
+                            </div>
+                        )}
                         <Button
                             type="submit"
                             className="w-full flex justify-center py-3 px-4 rounded-2xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-[#0066FF] to-[#1E90FF] hover:from-[#0052cc] hover:to-[#3388ff] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0066FF] mt-2"
+                            disabled={isLoading}
                         >
-                            Login
+                            {isLoading ? 'Signing in...' : 'Login'}
                         </Button>
                     </form>
                 </div>
