@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,10 +16,48 @@ const SignUp = () => {
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const router = useRouter()
+    const [error, setError] = useState<string | null>(null)
+    const [isLoading, setIsLoading] = useState(false)
+    
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        // Handle sign up logic here
-        console.log({ fullName, email, password, confirmPassword })
+        setError(null)
+        setIsLoading(true)
+        
+        // Basic validation
+        if (password !== confirmPassword) {
+            setError("Passwords do not match")
+            return
+        }
+        
+        if (password.length < 6) {
+            setError("Password must be at least 6 characters long")
+            return
+        }
+        
+        try {
+            // Make API call to register the user
+            const response = await fetch('/api/auth/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fullName, email, password }),
+            })
+            
+            const data = await response.json()
+            
+            if (!response.ok) {
+              throw new Error(data.error || 'Registration failed')
+            }
+            
+            // Redirect to sign in page after successful registration
+            router.push('/auth/signin?registered=true')
+        } catch (error: any) {
+            console.error('Registration error:', error)
+            setError(error.message || 'Registration failed. Please try again.')
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (
@@ -120,11 +160,17 @@ const SignUp = () => {
                                 </div>
                             </div>
                         </div>
+                        {error && (
+                            <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm mb-4">
+                                {error}
+                            </div>
+                        )}
                         <Button
                             type="submit"
                             className="w-full flex justify-center py-3 px-4 rounded-2xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-[#0066FF] to-[#1E90FF] hover:from-[#0052cc] hover:to-[#3388ff] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0066FF] mt-2"
+                            disabled={isLoading}
                         >
-                            Create Account
+                            {isLoading ? 'Creating Account...' : 'Create Account'}
                         </Button>
                         <div className="text-center">
                             <p className="text-sm text-gray-600">
