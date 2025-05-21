@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
+import { addUser } from '@/lib/auth';
 
-// This is a simple demo implementation
+// This is a simple demo implementation with in-memory storage
 // In a real application, you would:
-// 1. Validate the input data
+// 1. Validate the input data more thoroughly
 // 2. Hash the password
 // 3. Store the user in a database
 // 4. Handle errors properly
@@ -26,10 +27,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // In a real application, you would check if the user already exists
-    // and hash the password before storing it
+    // Add the user to our in-memory storage
+    const user = addUser(fullName, email, password);
 
-    // For demo purposes, we'll just return a success response
+    // Return success response
     return NextResponse.json(
       { success: true, message: 'User registered successfully' },
       { status: 201 }

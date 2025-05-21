@@ -2,6 +2,30 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
+// Simple in-memory user storage for demo purposes
+// In a real application, you would use a database
+let registeredUsers: { email: string; password: string; fullName: string; id: string }[] = [
+  // Default demo user
+  {
+    id: "1",
+    email: "user@example.com",
+    password: "password",
+    fullName: "Demo User"
+  }
+];
+
+// Function to add a new user (called from register API)
+export function addUser(fullName: string, email: string, password: string) {
+  const id = (registeredUsers.length + 1).toString();
+  registeredUsers.push({ id, fullName, email, password });
+  return { id, fullName, email };
+}
+
+// Function to find a user by email and password
+export function findUserByCredentials(email: string, password: string) {
+  return registeredUsers.find(user => user.email === email && user.password === password);
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -20,13 +44,14 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // For demo purposes, we'll use a simple check
-        // In a real application, you would check against your database
-        if (credentials.email === "user@example.com" && credentials.password === "password") {
+        // Check if the user exists in our in-memory storage
+        const user = findUserByCredentials(credentials.email, credentials.password);
+        
+        if (user) {
           return {
-            id: "1",
-            name: "Demo User",
-            email: credentials.email,
+            id: user.id,
+            name: user.fullName,
+            email: user.email,
           };
         }
 
