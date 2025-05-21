@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,9 +51,9 @@ const SignUp = () => {
             
             // Redirect to sign in page after successful registration
             router.push('/auth/signin?registered=true')
-        } catch (error: any) {
+        } catch (error: Error | unknown) {
             console.error('Registration error:', error)
-            setError(error.message || 'Registration failed. Please try again.')
+            setError(error instanceof Error ? error.message : 'Registration failed. Please try again.')
         } finally {
             setIsLoading(false)
         }
