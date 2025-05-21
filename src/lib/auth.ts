@@ -4,7 +4,7 @@ import GoogleProvider from "next-auth/providers/google";
 
 // Simple in-memory user storage for demo purposes
 // In a real application, you would use a database
-let registeredUsers: { email: string; password: string; fullName: string; id: string }[] = [
+const registeredUsers: { email: string; password: string; fullName: string; id: string }[] = [
   // Default demo user
   {
     id: "1",

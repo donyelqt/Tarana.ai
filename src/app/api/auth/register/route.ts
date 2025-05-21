@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     // Add the user to our in-memory storage
-    const user = addUser(fullName, email, password);
+    addUser(fullName, email, password);
 
     // Return success response
     return NextResponse.json(
