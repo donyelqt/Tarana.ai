@@ -8,8 +8,8 @@ let registeredUsers: { email: string; password: string; fullName: string; id: st
   // Default demo user
   {
     id: "1",
-    email: "user@example.com",
-    password: "password",
+    email: "taranaai@userdemo.com",
+    password: "taranaai123",
     fullName: "Demo User"
   }
 ];
