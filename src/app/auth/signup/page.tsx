@@ -51,7 +51,7 @@ const SignUp = () => {
             
             // Redirect to sign in page after successful registration
             router.push('/auth/signin?registered=true')
-        } catch (error: Error | unknown) {
+        } catch (error: unknown) {
             console.error('Registration error:', error)
             setError(error instanceof Error ? error.message : 'Registration failed. Please try again.')
         } finally {

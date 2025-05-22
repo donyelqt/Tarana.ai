@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     }
 
     // Add the user to our in-memory storage
+    // Not using the returned user object
     addUser(fullName, email, password);
 
     // Return success response
