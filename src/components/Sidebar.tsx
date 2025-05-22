@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
+import { signOut } from "next-auth/react"
 
 const Sidebar = () => {
   const pathname = usePathname()
@@ -67,7 +68,10 @@ const Sidebar = () => {
             </Link>
           </nav>
         </div>
-        <button className="flex items-center text-gray-400 hover:text-blue-500 transition">
+        <button 
+          onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+          className="flex items-center text-gray-400 hover:text-blue-500 transition"
+        >
           <span className="mr-2">
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" /></svg>
           </span>

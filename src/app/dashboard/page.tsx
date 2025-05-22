@@ -5,7 +5,7 @@ import { sampleprofile } from "../../../public"
 import Sidebar from "../../components/Sidebar"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { useSession, signOut } from "next-auth/react"
+import { useSession } from "next-auth/react"
 import { BAGUIO_COORDINATES, WeatherData, fetchWeatherData, getWeatherIconUrl } from "@/lib/utils"
 
 const Dashboard = () => {
@@ -75,12 +75,6 @@ const Dashboard = () => {
               <div className="text-xl font-bold text-gray-900">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="ml-1">👋</span></div>
               <div className="text-gray-500 text-sm">Ready to plan your next adventure?</div>
             </div>
-            <button 
-              onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-              className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
-            >
-              Sign Out
-            </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-white rounded-2xl shadow p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/itinerary-generator")}>
