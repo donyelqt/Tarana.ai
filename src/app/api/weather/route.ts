@@ -41,16 +41,24 @@ export async function GET(request: Request) {
       return NextResponse.json(weatherData);
     } catch (fetchError) {
       console.error('Error in fetchWeatherData:', fetchError);
+      const errorMessage = fetchError instanceof Error 
+        ? fetchError.message 
+        : 'Unknown error occurred';
+      
       return NextResponse.json(
-        { error: `Weather data fetch error: ${fetchError.message}` },
+        { error: `Weather data fetch error: ${errorMessage}` },
         { status: 500 }
       );
     }
     
   } catch (error) {
     console.error('Weather API route error:', error);
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : 'Unknown error occurred';
+      
     return NextResponse.json(
-      { error: `Failed to fetch weather data: ${error.message}` },
+      { error: `Failed to fetch weather data: ${errorMessage}` },
       { status: 500 }
     );
   }
