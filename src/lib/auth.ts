@@ -1,29 +1,54 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import bcrypt from "bcryptjs";
 
 // Simple in-memory user storage for demo purposes
 // In a real application, you would use a database
-const registeredUsers: { email: string; password: string; fullName: string; id: string }[] = [
-  // Default demo user
+interface User {
+  id: string;
+  email: string;
+  password: string; // This will store the hashed password
+  fullName: string;
+}
+
+const registeredUsers: User[] = [
+  // Default demo user with hashed password (taranaai123)
   {
     id: "1",
     email: "taranaai@userdemo.com",
-    password: "taranaai123",
+    // Pre-hashed password for demo purposes
+    password: "$2a$10$8Ux8HXH9XRlop/P.yONfxeRbDcQfpYl0jVwqOKgS9bTJ7AzNxvJHe", // taranaai123
     fullName: "Demo User"
   }
 ];
 
 // Function to add a new user (called from register API)
-export function addUser(fullName: string, email: string, password: string) {
+export async function addUser(fullName: string, email: string, password: string) {
+  // Check if user already exists
+  const existingUser = registeredUsers.find(user => user.email.toLowerCase() === email.toLowerCase());
+  if (existingUser) {
+    throw new Error("User with this email already exists");
+  }
+  
+  // Hash the password with a salt factor of 10
+  const hashedPassword = await bcrypt.hash(password, 10);
+  
   const id = (registeredUsers.length + 1).toString();
-  registeredUsers.push({ id, fullName, email, password });
+  registeredUsers.push({ id, fullName, email, password: hashedPassword });
+  
+  // Return user without password
   return { id, fullName, email };
 }
 
-// Function to find a user by email and password
-export function findUserByCredentials(email: string, password: string) {
-  return registeredUsers.find(user => user.email === email && user.password === password);
+// Function to find a user by email (without exposing password comparison)
+export async function findUserByEmail(email: string) {
+  return registeredUsers.find(user => user.email.toLowerCase() === email.toLowerCase());
+}
+
+// Function to verify password (using constant-time comparison)
+export async function verifyPassword(storedPassword: string, suppliedPassword: string): Promise<boolean> {
+  return await bcrypt.compare(suppliedPassword, storedPassword);
 }
 
 export const authOptions: NextAuthOptions = {
@@ -44,19 +69,34 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // Check if the user exists in our in-memory storage
-        const user = findUserByCredentials(credentials.email, credentials.password);
-        
-        if (user) {
+        try {
+          // Find user by email first
+          const user = await findUserByEmail(credentials.email);
+          
+          // If no user found or password doesn't match
+          if (!user) {
+            return null;
+          }
+          
+          // Verify password using constant-time comparison
+          const isPasswordValid = await verifyPassword(user.password, credentials.password);
+          
+          if (!isPasswordValid) {
+            // Add a small delay to prevent timing attacks
+            await new Promise(resolve => setTimeout(resolve, 250 + Math.random() * 100));
+            return null;
+          }
+          
+          // Return user data without password
           return {
             id: user.id,
             name: user.fullName,
             email: user.email,
           };
+        } catch (error) {
+          console.error('Authentication error:', error);
+          return null;
         }
-
-        // If you return null, an error will be displayed advising the user to check their details
-        return null;
       },
     }),
   ],
