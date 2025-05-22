@@ -116,7 +116,7 @@ const Dashboard = () => {
                 <div className="text-red-500">{error}</div>
               </div>
             ) : weatherData ? (
-              <div className="bg-blue-500 rounded-xl p-4 flex flex-col">
+              <div className="bg-blue-300 rounded-xl p-4 flex flex-col">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center">
                     <span className="text-3xl text-white font-bold mr-2">{Math.round(weatherData.main.temp)}° C</span>
