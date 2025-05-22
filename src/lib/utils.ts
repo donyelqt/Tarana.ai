@@ -24,7 +24,8 @@ export interface WeatherData {
   }
 }
 
-// Function to fetch current weather data
+// Function to fetch current weather data directly from OpenWeather API
+// This should only be used server-side where API key is secure
 export async function fetchWeatherData(lat: number, lon: number, apiKey: string): Promise<WeatherData | null> {
   try {
     const response = await fetch(
@@ -38,6 +39,22 @@ export async function fetchWeatherData(lat: number, lon: number, apiKey: string)
     return await response.json()
   } catch (error) {
     console.error('Error fetching weather data:', error)
+    return null
+  }
+}
+
+// Client-side function to fetch weather data through our secure API route
+export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, lon: number = BAGUIO_COORDINATES.lon): Promise<WeatherData | null> {
+  try {
+    const response = await fetch(`/api/weather?lat=${lat}&lon=${lon}`)
+    
+    if (!response.ok) {
+      throw new Error(`Weather API error: ${response.status}`)
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error fetching weather data from API:', error)
     return null
   }
 }

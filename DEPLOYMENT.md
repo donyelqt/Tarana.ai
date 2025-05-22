@@ -10,7 +10,7 @@ When deploying to production (Vercel), make sure to set up the following environ
 - `NEXTAUTH_SECRET`: Your NextAuth secret key for JWT encryption
 - `GOOGLE_CLIENT_ID`: Your Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret
-- `NEXT_PUBLIC_OPENWEATHER_API_KEY`: Your OpenWeather API key
+- `OPENWEATHER_API_KEY`: Your OpenWeather API key (server-side only, not exposed to client)
 
 ### Setting Up Environment Variables on Vercel
 
@@ -27,6 +27,14 @@ When deploying to production (Vercel), make sure to set up the following environ
 - Make sure "Automatically expose System Environment Variables" is checked in your Vercel Project Settings.
 - For local development, use the `.env.local` file.
 - For production, environment variables should be set in the Vercel dashboard.
+
+### Security Best Practices
+
+- Never expose API keys directly to the client-side code. Use server-side API routes to protect sensitive credentials.
+- The application now uses bcrypt for password hashing with a salt factor of 10.
+- All authentication operations use constant-time comparison to prevent timing attacks.
+- Input validation has been improved for registration to prevent common security issues.
+- For a production environment, consider implementing rate limiting on authentication endpoints to prevent brute force attacks.
 
 ## Troubleshooting Authentication Issues
 

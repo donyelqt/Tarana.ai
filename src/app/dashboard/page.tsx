@@ -6,7 +6,7 @@ import Sidebar from "../../components/Sidebar"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
-import { BAGUIO_COORDINATES, WeatherData, fetchWeatherData, getWeatherIconUrl } from "@/lib/utils"
+import { BAGUIO_COORDINATES, WeatherData, fetchWeatherFromAPI, getWeatherIconUrl } from "@/lib/utils"
 
 const Dashboard = () => {
   const router = useRouter()
@@ -25,17 +25,9 @@ const Dashboard = () => {
     const getWeather = async () => {
       try {
         setLoading(true)
-        const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY
         
-        if (!apiKey) {
-          throw new Error("API key not found")
-        }
-        
-        const data = await fetchWeatherData(
-          BAGUIO_COORDINATES.lat,
-          BAGUIO_COORDINATES.lon,
-          apiKey
-        )
+        // Use the secure API endpoint instead of exposing API key on client
+        const data = await fetchWeatherFromAPI()
         
         setWeatherData(data)
       } catch (err) {
