@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
@@ -9,17 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 
-
-const SignIn = () => {
-    const [email, setEmail] = useState("")
-    const [password, setPassword] = useState("")
-    const [rememberMe, setRememberMe] = useState(false)
-    const [showPassword, setShowPassword] = useState(false)
-
-    const [error, setError] = useState<string | null>(null)
+// Component that uses useSearchParams
+function RegisteredMessage() {
     const [success, setSuccess] = useState<string | null>(null)
-    const [isLoading, setIsLoading] = useState(false)
-    
     const searchParams = useSearchParams()
     
     useEffect(() => {
@@ -28,6 +20,24 @@ const SignIn = () => {
             setSuccess('Account created successfully! Please sign in.')
         }
     }, [searchParams])
+    
+    if (!success) return null
+    
+    return (
+        <div className="bg-green-50 text-green-500 p-3 rounded-lg text-sm mb-4">
+            {success}
+        </div>
+    )
+}
+
+const SignIn = () => {
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
+    const [rememberMe, setRememberMe] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
+
+    const [error, setError] = useState<string | null>(null)
+    const [isLoading, setIsLoading] = useState(false)
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -137,11 +147,10 @@ const SignIn = () => {
                                 {error}
                             </div>
                         )}
-                        {success && (
-                            <div className="bg-green-50 text-green-500 p-3 rounded-lg text-sm mb-4">
-                                {success}
-                            </div>
-                        )}
+                        {/* Wrap the component that uses useSearchParams in Suspense */}
+                        <Suspense fallback={<div className="h-10"></div>}>
+                            <RegisteredMessage />
+                        </Suspense>
                         <Button
                             type="submit"
                             className="w-full flex justify-center py-3 px-4 rounded-2xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-[#0066FF] to-[#1E90FF] hover:from-[#0052cc] hover:to-[#3388ff] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0066FF] mt-2"
