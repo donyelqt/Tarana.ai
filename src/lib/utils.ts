@@ -28,34 +28,76 @@ export interface WeatherData {
 // This should only be used server-side where API key is secure
 export async function fetchWeatherData(lat: number, lon: number, apiKey: string): Promise<WeatherData | null> {
   try {
+    console.log(`Making request to OpenWeather API for coordinates: ${lat}, ${lon}`);
+    
     const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`,
+      { 
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        cache: 'no-store' // Disable caching to ensure fresh data
+      }
     )
     
     if (!response.ok) {
-      throw new Error(`Weather API error: ${response.status}`)
+      const errorText = await response.text().catch(() => 'No error details available');
+      console.error(`Weather API responded with status ${response.status}: ${errorText}`);
+      throw new Error(`Weather API error: ${response.status}`);
     }
     
-    return await response.json()
+    const data = await response.json();
+    console.log('Weather data fetched successfully');
+    return data;
   } catch (error) {
-    console.error('Error fetching weather data:', error)
-    return null
+    console.error('Error fetching weather data:', error);
+    throw error; // Propagate the error to be handled by the caller
   }
 }
 
 // Client-side function to fetch weather data through our secure API route
 export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, lon: number = BAGUIO_COORDINATES.lon): Promise<WeatherData | null> {
   try {
-    const response = await fetch(`/api/weather?lat=${lat}&lon=${lon}`)
+    // Add a timestamp to prevent caching issues
+    const timestamp = new Date().getTime();
+    const response = await fetch(`/api/weather?lat=${lat}&lon=${lon}&_t=${timestamp}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      cache: 'no-store' // Disable caching
+    });
     
     if (!response.ok) {
-      throw new Error(`Weather API error: ${response.status}`)
+      const errorText = await response.text().catch(() => 'No error details');
+      console.error(`Weather API responded with status ${response.status}: ${errorText}`);
+      throw new Error(`Weather API error: ${response.status}`);
     }
     
-    return await response.json()
+    return await response.json();
   } catch (error) {
-    console.error('Error fetching weather data from API:', error)
-    return null
+    console.error('Error fetching weather data from API:', error);
+    
+    // Return a fallback weather data object when API fails
+    // This prevents the UI from breaking completely
+    return {
+      main: {
+        temp: 18, // Default temperature for Baguio
+        feels_like: 16,
+        humidity: 70
+      },
+      weather: [{
+        id: 800,
+        main: 'Clear',
+        description: 'clear sky (fallback data)',
+        icon: '01d'
+      }],
+      name: BAGUIO_COORDINATES.name,
+      sys: {
+        country: 'PH'
+      }
+    };
   }
 }
 
