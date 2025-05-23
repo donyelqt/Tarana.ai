@@ -85,7 +85,10 @@ export default function ItineraryGenerator() {
       <Sidebar />
       <main className="md:pl-64 flex-1 flex flex-col md:flex-row items-start justify-start gap-8 p-4 md:p-12 pt-16 md:pt-12">
         {/* Left: Form */}
-        <div className="w-full max-w-2xl bg-white rounded-2xl p-8 shadow-md">
+        <div className={cn(
+          "w-full bg-white rounded-2xl p-8 shadow-md",
+          showPreview ? "lg:max-w-2xl" : "max-w-2xl mx-auto"
+        )}>
           <div className="text-2xl font-bold mb-6 text-gray-900">Let&apos;s Plan Your Baguio Adventure</div>
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Budget Range */}
@@ -215,9 +218,12 @@ export default function ItineraryGenerator() {
           </form>
         </div>
         {/* Right: Results Panel */}
-        <aside className="hidden lg:block w-[370px] ml-4">
-          {showPreview && (
-            <div className="bg-white rounded-2xl shadow-md p-6 sticky top-8">
+        {showPreview && (
+          <aside className={cn(
+            "w-full lg:w-[370px] lg:ml-4",
+            showPreview ? "block" : "hidden"
+          )}>
+            <div className="bg-white rounded-2xl shadow-md p-6 sticky top-8 mt-8 lg:mt-0">
               <div className="mb-2 text-sm text-gray-500 font-medium">{sampleItinerary.title}</div>
               <div className="mb-4 text-xs text-gray-400">{sampleItinerary.subtitle}</div>
               {sampleItinerary.items.map((section, idx) => (
@@ -249,8 +255,8 @@ export default function ItineraryGenerator() {
                 Save Itinerary
               </Button>
             </div>
-          )}
-        </aside>
+          </aside>
+        )}
       </main>
     </div>
   )
