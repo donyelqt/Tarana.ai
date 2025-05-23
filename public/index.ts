@@ -13,8 +13,9 @@ import barkadas from "./images/barkadas.png"
 import sampleprofile from "./images/sampleprofile.png"
 import goodtaste from "./images/goodtaste.png"
 import burnham from "./images/burnham.png"
+import dashboard from "./images/dashboard.png"
 
 export { baguio_panorama, how_it_works, letai, 
     set, explore, local, 
     personalized, traffic, solo_travel, family, couples, barkadas, 
-    sampleprofile, goodtaste, burnham }
+    sampleprofile, goodtaste, burnham, dashboard }
