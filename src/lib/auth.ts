@@ -17,8 +17,8 @@ const registeredUsers: User[] = [
   {
     id: "1",
     email: "taranaai@userdemo.com",
-    // Pre-hashed password for demo purposes
-    password: "taranaai123", // $2a$10$8Ux8HXH9XRlop/P.yONfxeRbDcQfpYl0jVwqOKgS9bTJ7AzNxvJHe
+    // Pre-hashed password for demo purposes (taranaai123)
+    password: "$2a$10$8Ux8HXH9XRlop/P.yONfxeRbDcQfpYl0jVwqOKgS9bTJ7AzNxvJHe",
     fullName: "Demo User"
   }
 ];
