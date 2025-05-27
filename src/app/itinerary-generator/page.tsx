@@ -87,7 +87,7 @@ export default function ItineraryGenerator() {
         {/* Left: Form */}
         <div className={cn(
           "w-full bg-white rounded-2xl p-8 shadow-md",
-          showPreview ? "lg:max-w-2xl" : "max-w-2xl mx-auto"
+          showPreview ? "lg:max-w-2xl" : "max-w-2xl"
         )}>
           <div className="text-2xl font-bold mb-6 text-gray-900">Let&apos;s Plan Your Baguio Adventure</div>
           <form className="space-y-6" onSubmit={handleSubmit}>
