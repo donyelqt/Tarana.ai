@@ -37,15 +37,15 @@ const SavedTrips = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb]">
+    <div className=" mr-8 ml-8 min-h-screen bg-[#f7f9fb]">
       <Sidebar />
       <main className="md:pl-64 flex-1 p-6 md:p-8 pt-16 md:pt-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Saved Itineraries</h1>
+          <h1 className="text-2xl bg-white p-3 rounded-lg md:text-3xl font-bold text-gray-900 mb-6">Saved Itineraries</h1>
           
           {/* Search Bar */}
-          <div className="relative max-w-md">
+          <div className="relative max-w-full bg-white rounded-lg">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -79,8 +79,7 @@ const SavedTrips = () => {
               <div className="p-6">
                 {/* Title and ID */}
                 <div className="mb-3">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{itinerary.title}</h3>
-                  <p className="text-sm text-gray-500">#{itinerary.id}</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{itinerary.title} <span className="text-sm text-gray-400 font-normal">#{itinerary.id}</span></h3>
                 </div>
                 
                 {/* Date and Time */}
@@ -119,7 +118,7 @@ const SavedTrips = () => {
                 </div>
                 
                 {/* Action Button */}
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                <Button className="w-full bg-[#0066FF] hover:bg-[#0052cc] text-white font-medium py-2 px-4 rounded-lg transition-colors">
                   View Itinerary
                 </Button>
               </div>
@@ -137,7 +136,7 @@ const SavedTrips = () => {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No itineraries found</h3>
             <p className="text-gray-500 mb-4">Try adjusting your search or create a new itinerary.</p>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button className="bg-[#0066FF] hover:bg-[#0052cc] text-white">
               Create New Itinerary
             </Button>
           </div>
