@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { saveItinerary, formatDateRange } from "@/lib/savedItineraries"
+import { useRouter } from "next/navigation"
 
 const budgetOptions = [
   "less than ₱3,000/day",
@@ -55,12 +57,14 @@ const sampleItinerary = {
 }
 
 export default function ItineraryGenerator() {
+  const router = useRouter()
   const [budget, setBudget] = useState(budgetOptions[0])
   const [pax, setPax] = useState("")
   const [duration, setDuration] = useState("")
   const [dates, setDates] = useState({ start: "", end: "" })
   const [selectedInterests, setSelectedInterests] = useState<string[]>([])
   const [showPreview, setShowPreview] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
@@ -75,9 +79,43 @@ export default function ItineraryGenerator() {
     setShowPreview(true)
   }
 
-  const handleSave = () => {
-    // Save itinerary logic here
-    alert("Itinerary saved!")
+  const handleSave = async () => {
+    if (isSaving) return;
+    
+    setIsSaving(true);
+    
+    try {
+      const formData = {
+        budget,
+        pax,
+        duration,
+        dates,
+        selectedInterests
+      };
+      
+      const itineraryToSave = {
+        title: `${duration || '1 Day'} Itinerary`,
+        date: formatDateRange(dates.start, dates.end),
+        budget: budget,
+        image: burnham, // Using burnham as default image
+        tags: selectedInterests.length > 0 ? selectedInterests : ['General'],
+        formData,
+        itineraryData: sampleItinerary
+      };
+      
+      const savedItinerary = saveItinerary(itineraryToSave);
+      
+      // Show success message
+      alert(`Itinerary saved successfully! ID: #${savedItinerary.id}`);
+      
+      // Navigate to saved trips page
+      router.push('/saved-trips');
+    } catch (error) {
+      console.error('Error saving itinerary:', error);
+      alert('Failed to save itinerary. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -245,8 +283,9 @@ export default function ItineraryGenerator() {
               <Button
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4"
                 onClick={handleSave}
+                disabled={isSaving}
               >
-                Save Itinerary
+                {isSaving ? 'Saving...' : 'Save Itinerary'}
               </Button>
             </div>
           )}

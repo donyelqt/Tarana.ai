@@ -1,27 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Sidebar from "../../components/Sidebar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { burnham } from "../../../public"
+import { getSavedItineraries, SavedItinerary } from "@/lib/savedItineraries"
+import { useRouter } from "next/navigation"
 
-// Sample saved itineraries data
-const savedItineraries = [
-  {
-    id: "BC402",
-    title: "1 Day Itinerary",
-    date: "April 26 - 27, 2025 | 7:30AM - 8:00PM",
-    budget: "₱3,000.00",
-    image: burnham,
-    tags: ["Food & Culinary", "Nature & Scenery"]
-  }
-]
+
 
 const SavedTrips = () => {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
-  const [filteredItineraries, setFilteredItineraries] = useState(savedItineraries)
+  const [savedItineraries, setSavedItineraries] = useState<SavedItinerary[]>([])
+  const [filteredItineraries, setFilteredItineraries] = useState<SavedItinerary[]>([])
+
+  useEffect(() => {
+    // Load saved itineraries from localStorage
+    const loadedItineraries = getSavedItineraries()
+    setSavedItineraries(loadedItineraries)
+    setFilteredItineraries(loadedItineraries)
+  }, [])
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
@@ -118,7 +118,13 @@ const SavedTrips = () => {
                 </div>
                 
                 {/* Action Button */}
-                <Button className="w-full bg-[#0066FF] hover:bg-[#0052cc] text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                <Button 
+                  className="w-full bg-[#0066FF] hover:bg-[#0052cc] text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                  onClick={() => {
+                    // For now, just show an alert. In a real app, this would navigate to a detailed view
+                    alert(`Viewing itinerary #${itinerary.id}`);
+                  }}
+                >
                   View Itinerary
                 </Button>
               </div>
@@ -136,7 +142,10 @@ const SavedTrips = () => {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No itineraries found</h3>
             <p className="text-gray-500 mb-4">Try adjusting your search or create a new itinerary.</p>
-            <Button className="bg-[#0066FF] hover:bg-[#0052cc] text-white">
+            <Button 
+              className="bg-[#0066FF] hover:bg-[#0052cc] text-white"
+              onClick={() => router.push('/itinerary-generator')}
+            >
               Create New Itinerary
             </Button>
           </div>
