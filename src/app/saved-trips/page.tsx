@@ -5,7 +5,7 @@ import Image from "next/image"
 import Sidebar from "../../components/Sidebar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { getSavedItineraries, SavedItinerary } from "@/lib/savedItineraries"
+import { getSavedItineraries, SavedItinerary, deleteItinerary } from "@/lib/savedItineraries"
 import { useRouter } from "next/navigation"
 
 
@@ -33,6 +33,26 @@ const SavedTrips = () => {
         itinerary.id.toLowerCase().includes(query.toLowerCase())
       )
       setFilteredItineraries(filtered)
+    }
+  }
+
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent triggering parent click events
+    
+    if (confirm(`Are you sure you want to delete itinerary #${id}?`)) {
+      try {
+        deleteItinerary(id)
+        
+        // Update the state to reflect the deletion
+        const updatedItineraries = savedItineraries.filter(itinerary => itinerary.id !== id)
+        setSavedItineraries(updatedItineraries)
+        setFilteredItineraries(filteredItineraries.filter(itinerary => itinerary.id !== id))
+        
+        alert(`Itinerary #${id} deleted successfully!`)
+      } catch (error) {
+        console.error('Error deleting itinerary:', error)
+        alert('Failed to delete itinerary. Please try again.')
+      }
     }
   }
 
@@ -117,16 +137,24 @@ const SavedTrips = () => {
                   </div>
                 </div>
                 
-                {/* Action Button */}
-                <Button 
-                  className="w-full bg-[#0066FF] hover:bg-[#0052cc] text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                  onClick={() => {
-                    // For now, just show an alert. In a real app, this would navigate to a detailed view
-                    alert(`Viewing itinerary #${itinerary.id}`);
-                  }}
-                >
-                  View Itinerary
-                </Button>
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <Button 
+                    className="flex-1 bg-[#0066FF] hover:bg-[#0052cc] text-white font-medium py-2 px-4 rounded-xl transition-colors"
+                    onClick={() => {
+                      // For now, just show an alert. In a real app, this would navigate to a detailed view
+                      alert(`Viewing itinerary #${itinerary.id}`);
+                    }}
+                  >
+                    View Itinerary
+                  </Button>
+                  <Button 
+                    className="bg-gray-200 hover:bg-gray-300 text-black font-medium py-2 px-4 rounded-xl transition-colors"
+                    onClick={(e) => handleDelete(itinerary.id, e)}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
