@@ -49,16 +49,16 @@ export async function POST(request: Request) {
 
     try {
       // Add the user to our in-memory storage with password hashing
-      const newUser = await addUser(sanitizedFullName, sanitizedEmail, password);
+      await addUser(sanitizedFullName, sanitizedEmail, password);
 
       // Return success response (without exposing sensitive data)
       return NextResponse.json(
         { success: true, message: 'User registered successfully' },
         { status: 201 }
       );
-    } catch (userError: any) {
+    } catch (userError: unknown) {
       // Handle specific user creation errors
-      if (userError.message === 'User with this email already exists') {
+      if (userError instanceof Error && userError.message === 'User with this email already exists') {
         return NextResponse.json(
           { error: userError.message },
           { status: 409 } // Conflict status code
