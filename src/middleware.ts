@@ -10,6 +10,7 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = [
     '/dashboard',
     '/itinerary-generator',
+    '/saved-trips',
     '/profile',
   ].some(route => pathname.startsWith(route));
   
