@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getSavedItineraries, SavedItinerary, deleteItinerary } from "@/lib/savedItineraries"
 import { useRouter } from "next/navigation"
+import Toast from "@/components/ui/Toast"
 
 
 
@@ -15,6 +16,8 @@ const SavedTrips = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [savedItineraries, setSavedItineraries] = useState<SavedItinerary[]>([])
   const [filteredItineraries, setFilteredItineraries] = useState<SavedItinerary[]>([])
+  const [showToast, setShowToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState("")
 
   useEffect(() => {
     // Load saved itineraries from localStorage
@@ -48,7 +51,8 @@ const SavedTrips = () => {
         setSavedItineraries(updatedItineraries)
         setFilteredItineraries(filteredItineraries.filter(itinerary => itinerary.id !== id))
         
-        alert(`Itinerary #${id} deleted successfully!`)
+        setToastMessage(`Itinerary #${id} deleted successfully!`)
+        setShowToast(true)
       } catch (error) {
         console.error('Error deleting itinerary:', error)
         alert('Failed to delete itinerary. Please try again.')
@@ -58,6 +62,7 @@ const SavedTrips = () => {
 
   return (
     <div className=" mr-8 ml-8 min-h-screen bg-[#f7f9fb]">
+      <Toast message={toastMessage} show={showToast} onClose={() => setShowToast(false)} type="success" />
       <Sidebar />
       <main className="md:pl-64 flex-1 p-6 md:p-8 pt-16 md:pt-8">
         {/* Header */}
