@@ -281,8 +281,9 @@ export default function ItineraryGenerator() {
               <Button
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4"
                 onClick={handleSave}
+                disabled={isSaving}
               >
-                Save Itinerary
+                {isSaving ? 'Saving...' : 'Save Itinerary'}
               </Button>
             </div>
           </aside>
