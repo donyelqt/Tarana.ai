@@ -74,7 +74,7 @@ const Dashboard = () => {
               <div className="font-semibold text-lg">Create New Itinerary</div>
               <div className="text-gray-500 text-sm mt-1">Create a personalized travel plan</div>
             </div>
-            <div className="bg-white rounded-2xl shadow p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
+            <div className="bg-white rounded-2xl shadow p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/saved-trips")}>
               <div className="mb-2">
                 <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
               </div>

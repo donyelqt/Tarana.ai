@@ -79,35 +79,9 @@ export default function ItineraryGenerator() {
     setShowPreview(true)
   }
 
-  const handleSave = async () => {
-    if (isSaving) return;
-    setIsSaving(true);
-    try {
-      const formData = {
-        budget,
-        pax,
-        duration,
-        dates,
-        selectedInterests
-      };
-      const itineraryToSave = {
-        title: `My ${duration || '1 Day'} Baguio Trip`,
-        date: formatDateRange(dates.start, dates.end),
-        budget,
-        image: baguio_panorama,
-        tags: selectedInterests.length > 0 ? selectedInterests : ['General'],
-        formData,
-        itineraryData: sampleItinerary
-      };
-      const savedItinerary = saveItinerary(itineraryToSave);
-      alert(`Itinerary saved successfully!${savedItinerary && savedItinerary.id ? ` ID: #${savedItinerary.id}` : ''}`);
-      router.push('/saved-trips');
-    } catch (error) {
-      console.error('Error saving itinerary:', error);
-      alert('Failed to save itinerary. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
+  const handleSave = () => {
+    // Save itinerary logic here
+    alert("Itinerary saved!")
   }
 
   return (
