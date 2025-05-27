@@ -61,7 +61,6 @@ export default function ItineraryGenerator() {
   const [dates, setDates] = useState({ start: "", end: "" })
   const [selectedInterests, setSelectedInterests] = useState<string[]>([])
   const [showPreview, setShowPreview] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
 
   const handleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
@@ -77,11 +76,9 @@ export default function ItineraryGenerator() {
   }
 
   const handleSave = () => {
-    setIsSaving(true)
     // Simulate saving
     setTimeout(() => {
       alert("Itinerary saved!")
-      setIsSaving(false)
     }, 1000)
   }
 
