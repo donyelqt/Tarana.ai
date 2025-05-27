@@ -18,6 +18,8 @@ const SavedTrips = () => {
   const [filteredItineraries, setFilteredItineraries] = useState<SavedItinerary[]>([])
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState("")
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [itineraryToDelete, setItineraryToDelete] = useState<SavedItinerary | null>(null)
 
   useEffect(() => {
     // Load saved itineraries from localStorage
@@ -39,25 +41,32 @@ const SavedTrips = () => {
     }
   }
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent triggering parent click events
-    
-    if (confirm(`Are you sure you want to delete itinerary #${id}?`)) {
-      try {
-        deleteItinerary(id)
-        
-        // Update the state to reflect the deletion
-        const updatedItineraries = savedItineraries.filter(itinerary => itinerary.id !== id)
-        setSavedItineraries(updatedItineraries)
-        setFilteredItineraries(filteredItineraries.filter(itinerary => itinerary.id !== id))
-        
-        setToastMessage(`Itinerary #${id} deleted successfully!`)
-        setShowToast(true)
-      } catch (error) {
-        console.error('Error deleting itinerary:', error)
-        alert('Failed to delete itinerary. Please try again.')
-      }
+  const handleDeleteClick = (itinerary: SavedItinerary, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setItineraryToDelete(itinerary)
+    setShowDeleteModal(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!itineraryToDelete) return
+    try {
+      deleteItinerary(itineraryToDelete.id)
+      const updatedItineraries = savedItineraries.filter(itinerary => itinerary.id !== itineraryToDelete.id)
+      setSavedItineraries(updatedItineraries)
+      setFilteredItineraries(filteredItineraries.filter(itinerary => itinerary.id !== itineraryToDelete.id))
+      setToastMessage(`Itinerary #${itineraryToDelete.id} deleted successfully!`)
+      setShowToast(true)
+    } catch (error) {
+      console.error('Error deleting itinerary:', error)
+      alert('Failed to delete itinerary. Please try again.')
     }
+    setShowDeleteModal(false)
+    setItineraryToDelete(null)
+  }
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false)
+    setItineraryToDelete(null)
   }
 
   return (
@@ -155,7 +164,7 @@ const SavedTrips = () => {
                   </Button>
                   <Button 
                     className="bg-gray-200 hover:bg-gray-300 text-black font-medium py-2 px-4 rounded-xl transition-colors"
-                    onClick={(e) => handleDelete(itinerary.id, e)}
+                    onClick={(e) => handleDeleteClick(itinerary, e)}
                   >
                     Delete
                   </Button>
@@ -181,6 +190,20 @@ const SavedTrips = () => {
             >
               Create New Itinerary
             </Button>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && itineraryToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-xl shadow-lg p-8 max-w-sm w-full">
+              <h2 className="text-lg font-bold mb-4 text-gray-900">Delete Itinerary</h2>
+              <p className="mb-6 text-gray-700">Are you sure you want to delete itinerary <span className="font-semibold">#{itineraryToDelete.id}</span>? This action cannot be undone.</p>
+              <div className="flex justify-end gap-2">
+                <Button className="bg-gray-200 hover:bg-gray-300 text-black" onClick={handleCancelDelete}>Cancel</Button>
+                <Button className="bg-gradient-to-b from-blue-700 to-blue-500 hover:bg-opacity-90 text-white" onClick={handleConfirmDelete}>Delete</Button>
+              </div>
+            </div>
           </div>
         )}
       </main>
