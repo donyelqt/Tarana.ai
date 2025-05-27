@@ -49,24 +49,39 @@ const SavedItineraryDetail = () => {
       <main className="md:pl-64 flex-1 p-6 md:p-8 pt-16 md:pt-8">
         <div className="max-w-5xl mx-auto">
           {/* Header */}
-          <div className="bg-white rounded-2xl p-6 md:p-8 mb-8 shadow flex flex-col gap-4">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Saved Itineraries &gt; 1 Day Itinerary</h1>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="bg-gray-50 rounded-lg p-4 flex flex-col gap-1">
-                <span className="text-xs text-gray-500 font-medium">Duration</span>
-                <span className="font-semibold text-gray-800">{formatDateRange(dates.start, dates.end)}</span>
+          <div className="bg-white rounded-2xl p-6 md:p-8 mb-8 shadow">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Saved Itineraries &gt; 1 Day Itinerary</h1>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 flex items-center justify-center bg-blue-50 rounded-full">
+                  <span className="text-blue-500 text-sm">📅</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500 font-medium">Duration</span>
+                  <span className="font-semibold text-gray-800">{formatDateRange(dates.start, dates.end)}</span>
+                </div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4 flex flex-col gap-1">
-                <span className="text-xs text-gray-500 font-medium">Number of Person</span>
-                <span className="font-semibold text-gray-800">{pax || "-"} Person</span>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 flex items-center justify-center bg-blue-50 rounded-full">
+                  <span className="text-blue-500 text-sm">👥</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500 font-medium">Number of Person</span>
+                  <span className="font-semibold text-gray-800">{pax || "-"} Person</span>
+                </div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4 flex flex-col gap-1">
-                <span className="text-xs text-gray-500 font-medium">Budget</span>
-                <span className="font-semibold text-gray-800">{budget || itinerary.budget}</span>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 flex items-center justify-center bg-blue-50 rounded-full">
+                  <span className="text-blue-500 text-sm">💰</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500 font-medium">Budget</span>
+                  <span className="font-semibold text-gray-800">{budget || itinerary.budget}</span>
+                </div>
               </div>
             </div>
             {/* Travel Interests */}
-            <div>
+            <div className="mb-2">
               <span className="text-xs text-gray-500 font-medium block mb-2">Travel Interests</span>
               <div className="flex flex-wrap gap-3">
                 {(selectedInterests.length > 0 ? selectedInterests : itinerary.tags).map((interest) => (
@@ -107,9 +122,17 @@ const SavedItineraryDetail = () => {
                           </span>
                         ))}
                       </div>
-                      <div className="flex gap-3 mt-auto">
-                        <Button variant="outline" className="text-blue-600 border-blue-100">Reviews</Button>
-                        <Button variant="outline" className="text-blue-600 border-blue-100">View on Map</Button>
+                      <div className="flex items-center justify-between mt-auto">
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" className="text-xs text-gray-600 border-gray-200 rounded-full px-3 py-1 h-auto">Check In</Button>
+                          <Button variant="outline" size="sm" className="text-xs text-gray-600 border-gray-200 rounded-full px-3 py-1 h-auto">View on Map</Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+                          <span className="text-xs text-gray-500">Ongoing</span>
+                          <div className="w-2 h-2 rounded-full bg-gray-300 ml-2"></div>
+                          <span className="text-xs text-gray-500">Not Started</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -123,4 +146,4 @@ const SavedItineraryDetail = () => {
   )
 }
 
-export default SavedItineraryDetail 
+export default SavedItineraryDetail
