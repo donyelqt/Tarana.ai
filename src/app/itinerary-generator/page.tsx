@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { saveItinerary } from "@/lib/savedItineraries"
 import { useRouter } from "next/navigation"
+import Toast from "@/components/ui/Toast"
 
 const budgetOptions = [
   "less than ₱3,000/day",
@@ -63,6 +64,8 @@ export default function ItineraryGenerator() {
   const [dates, setDates] = useState({ start: "", end: "" })
   const [selectedInterests, setSelectedInterests] = useState<string[]>([])
   const [showPreview, setShowPreview] = useState(false)
+  const [showToast, setShowToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState("")
   const router = useRouter()
 
   const handleInterest = (interest: string) => {
@@ -97,8 +100,11 @@ export default function ItineraryGenerator() {
         itineraryData: sampleItinerary,
       }
       saveItinerary(itineraryToSave)
-      alert("Itinerary saved!")
-      router.push("/saved-trips")
+      setToastMessage("Itinerary saved!")
+      setShowToast(true)
+      setTimeout(() => {
+        router.push("/saved-trips")
+      }, 1200)
     } catch {
       alert("Failed to save itinerary. Please try again.")
     }
@@ -106,6 +112,7 @@ export default function ItineraryGenerator() {
 
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
+      <Toast message={toastMessage} show={showToast} onClose={() => setShowToast(false)} type="success" />
       <Sidebar />
       <main className="md:pl-64 flex-1 flex flex-col md:flex-row items-start justify-start gap-8 p-4 md:p-12 pt-16 md:pt-12">
         {/* Left: Form */}
