@@ -3,11 +3,13 @@
 import Sidebar from "../../components/Sidebar"
 import { useState } from "react"
 import Image from "next/image"
-import { burnham, goodtaste } from "../../../public"
+import { burnham, goodtaste, baguio_panorama } from "../../../public"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { saveItinerary, formatDateRange } from "@/lib/savedItineraries"
+import { useRouter } from "next/navigation"
 
 const budgetOptions = [
   "less than ₱3,000/day",
@@ -55,6 +57,7 @@ const sampleItinerary = {
 }
 
 export default function ItineraryGenerator() {
+  const router = useRouter()
   const [budget, setBudget] = useState(budgetOptions[0])
   const [pax, setPax] = useState("")
   const [duration, setDuration] = useState("")
@@ -76,8 +79,31 @@ export default function ItineraryGenerator() {
   }
 
   const handleSave = () => {
-    // Save itinerary logic here
-    alert("Itinerary saved!")
+    const newItinerary = {
+      title: `My ${duration} Baguio Trip`,
+      date: formatDateRange(dates.start, dates.end),
+      budget,
+      image: baguio_panorama,
+      tags: selectedInterests,
+      formData: {
+        budget,
+        pax,
+        duration,
+        dates,
+        selectedInterests
+      },
+      itineraryData: sampleItinerary
+    };
+    
+    try {
+      saveItinerary(newItinerary);
+      alert("Itinerary saved successfully!");
+      // Redirect to saved trips page
+      router.push("/saved-trips");
+    } catch (error) {
+      console.error('Error saving itinerary:', error);
+      alert('Failed to save itinerary');
+    }
   }
 
   return (
