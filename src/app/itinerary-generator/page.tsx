@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { saveItinerary } from "@/lib/savedItineraries"
+import { useRouter } from "next/navigation"
 
 const budgetOptions = [
   "less than ₱3,000/day",
@@ -61,6 +63,7 @@ export default function ItineraryGenerator() {
   const [dates, setDates] = useState({ start: "", end: "" })
   const [selectedInterests, setSelectedInterests] = useState<string[]>([])
   const [showPreview, setShowPreview] = useState(false)
+  const router = useRouter()
 
   const handleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
@@ -76,10 +79,29 @@ export default function ItineraryGenerator() {
   }
 
   const handleSave = () => {
-    // Simulate saving
-    setTimeout(() => {
+    try {
+      // Compose the itinerary object
+      const itineraryToSave = {
+        title: sampleItinerary.title,
+        date: dates.start && dates.end ? `${dates.start} - ${dates.end}` : "Date not specified",
+        budget,
+        image: sampleItinerary.items[0].activities[0].image, // Use first activity image as cover
+        tags: selectedInterests.length > 0 ? selectedInterests : sampleItinerary.items.flatMap(i => i.activities.flatMap(a => a.tags)),
+        formData: {
+          budget,
+          pax,
+          duration,
+          dates,
+          selectedInterests,
+        },
+        itineraryData: sampleItinerary,
+      }
+      saveItinerary(itineraryToSave)
       alert("Itinerary saved!")
-    }, 1000)
+      router.push("/saved-trips")
+    } catch {
+      alert("Failed to save itinerary. Please try again.")
+    }
   }
 
   return (
