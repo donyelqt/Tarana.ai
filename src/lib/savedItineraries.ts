@@ -1,11 +1,31 @@
 // Utility functions for managing saved itineraries
+import { StaticImageData } from "next/image";
+
+export interface ItineraryActivity {
+  image: StaticImageData;
+  title: string;
+  time: string;
+  desc: string;
+  tags: string[];
+}
+
+export interface ItineraryPeriod {
+  period: string;
+  activities: ItineraryActivity[];
+}
+
+export interface ItineraryData {
+  title: string;
+  subtitle: string;
+  items: ItineraryPeriod[];
+}
 
 export interface SavedItinerary {
   id: string;
   title: string;
   date: string;
   budget: string;
-  image: any;
+  image: StaticImageData;
   tags: string[];
   formData: {
     budget: string;
@@ -14,7 +34,7 @@ export interface SavedItinerary {
     dates: { start: string; end: string };
     selectedInterests: string[];
   };
-  itineraryData: any;
+  itineraryData: ItineraryData;
   createdAt: string;
 }
 
