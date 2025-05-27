@@ -33,7 +33,7 @@ const SavedItineraryDetail = () => {
         <Sidebar />
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">Itinerary Not Found</h2>
-          <p className="mb-4 text-gray-500">We couldn't find this itinerary. It may have been deleted.</p>
+          <p className="mb-4 text-gray-500">We couldn&apos;t find this itinerary. It may have been deleted.</p>
           <Button onClick={() => router.push("/saved-trips")}>Back to Saved Trips</Button>
         </div>
       </div>
