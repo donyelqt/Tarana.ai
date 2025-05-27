@@ -3,12 +3,11 @@
 import Sidebar from "../../components/Sidebar"
 import { useState } from "react"
 import Image from "next/image"
-import { burnham, goodtaste, baguio_panorama } from "../../../public"
+import { burnham, goodtaste } from "../../../public"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { saveItinerary, formatDateRange } from "@/lib/savedItineraries"
 import { useRouter } from "next/navigation"
 
 const budgetOptions = [
@@ -57,7 +56,6 @@ const sampleItinerary = {
 }
 
 export default function ItineraryGenerator() {
-  const router = useRouter()
   const [budget, setBudget] = useState(budgetOptions[0])
   const [pax, setPax] = useState("")
   const [duration, setDuration] = useState("")
