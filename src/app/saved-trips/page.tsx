@@ -155,10 +155,7 @@ const SavedTrips = () => {
                 <div className="flex gap-2">
                   <Button 
                     className="flex-1 bg-[#0066FF] hover:bg-[#0052cc] text-white font-medium py-2 px-4 rounded-xl transition-colors"
-                    onClick={() => {
-                      // For now, just show an alert. In a real app, this would navigate to a detailed view
-                      alert(`Viewing itinerary #${itinerary.id}`);
-                    }}
+                    onClick={() => router.push(`/saved-trips/${itinerary.id}`)}
                   >
                     View Itinerary
                   </Button>
