@@ -124,8 +124,8 @@ const SavedItineraryDetail = () => {
                       </div>
                       <div className="flex items-center justify-between mt-auto">
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="text-xs text-gray-600 border-gray-200 rounded-full px-3 py-1 h-auto">Check In</Button>
-                          <Button variant="outline" size="sm" className="text-xs text-gray-600 border-gray-200 rounded-full px-3 py-1 h-auto">View on Map</Button>
+                          <Button variant="outline" className="text-xs text-gray-600 border-gray-200 rounded-full px-3 py-1 h-auto">Check In</Button>
+                          <Button variant="outline" className="text-xs text-gray-600 border-gray-200 rounded-full px-3 py-1 h-auto">View on Map</Button>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-orange-400"></div>
