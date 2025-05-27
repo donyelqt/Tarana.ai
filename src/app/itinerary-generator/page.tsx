@@ -99,7 +99,7 @@ export default function ItineraryGenerator() {
       saveItinerary(itineraryToSave)
       alert("Itinerary saved!")
       router.push("/saved-trips")
-    } catch (err) {
+    } catch {
       alert("Failed to save itinerary. Please try again.")
     }
   }
