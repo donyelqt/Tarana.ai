@@ -64,6 +64,7 @@ export default function ItineraryGenerator() {
   const [dates, setDates] = useState({ start: "", end: "" })
   const [selectedInterests, setSelectedInterests] = useState<string[]>([])
   const [showPreview, setShowPreview] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
@@ -78,31 +79,34 @@ export default function ItineraryGenerator() {
     setShowPreview(true)
   }
 
-  const handleSave = () => {
-    const newItinerary = {
-      title: `My ${duration} Baguio Trip`,
-      date: formatDateRange(dates.start, dates.end),
-      budget,
-      image: baguio_panorama,
-      tags: selectedInterests,
-      formData: {
+  const handleSave = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const formData = {
         budget,
         pax,
         duration,
         dates,
         selectedInterests
-      },
-      itineraryData: sampleItinerary
-    };
-    
-    try {
-      saveItinerary(newItinerary);
-      alert("Itinerary saved successfully!");
-      // Redirect to saved trips page
-      router.push("/saved-trips");
+      };
+      const itineraryToSave = {
+        title: `My ${duration || '1 Day'} Baguio Trip`,
+        date: formatDateRange(dates.start, dates.end),
+        budget,
+        image: baguio_panorama,
+        tags: selectedInterests.length > 0 ? selectedInterests : ['General'],
+        formData,
+        itineraryData: sampleItinerary
+      };
+      const savedItinerary = saveItinerary(itineraryToSave);
+      alert(`Itinerary saved successfully!${savedItinerary && savedItinerary.id ? ` ID: #${savedItinerary.id}` : ''}`);
+      router.push('/saved-trips');
     } catch (error) {
       console.error('Error saving itinerary:', error);
-      alert('Failed to save itinerary');
+      alert('Failed to save itinerary. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   }
 
