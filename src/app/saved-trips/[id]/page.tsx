@@ -41,7 +41,7 @@ const SavedItineraryDetail = () => {
   }
 
   const { formData, itineraryData } = itinerary
-  const { selectedInterests, pax, duration, dates, budget } = formData
+  const { selectedInterests, pax, dates, budget } = formData
 
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
