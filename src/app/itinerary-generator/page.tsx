@@ -85,7 +85,7 @@ export default function ItineraryGenerator() {
     try {
       // Compose the itinerary object
       const itineraryToSave = {
-        title: sampleItinerary.title,
+        title: duration ? `Your ${duration} Itinerary` : "Your Itinerary",
         date: dates.start && dates.end ? `${dates.start} - ${dates.end}` : "Date not specified",
         budget,
         image: sampleItinerary.items[0].activities[0].image, // Use first activity image as cover
