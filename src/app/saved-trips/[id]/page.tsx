@@ -114,12 +114,12 @@ const SavedItineraryDetail = () => {
                 {period.activities.map((activity, idx) => (
                   <div key={idx} className="flex flex-col md:flex-row bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
                     {/* Time column for desktop */}
-                    <div className="hidden md:flex flex-col justify-center items-center w-32 bg-[#f7f9fb] border-r border-gray-100">
+                    <div className="hidden md:flex flex-col justify-center items-center w-32 bg-blue-50 border-r border-gray-100">
                       <span className="text-blue-700 font-semibold text-base">{activity.time}</span>
                     </div>
                     {/* Image */}
-                    <div className="relative w-full md:w-60 h-40 md:h-auto flex-shrink-0">
-                      <Image src={activity.image} alt={activity.title} fill className="object-cover rounded-2xl md:rounded-none md:rounded-l-2xl" />
+                    <div className="relative w-full md:w-60 h-40 md:h-auto md:mt-8 md:mb-8 md:ml-8 flex-shrink-0">
+                      <Image src={activity.image} alt={activity.title} fill className="object-center rounded-2xl md:rounded-l-2xl" />
                     </div>
                     {/* Details */}
                     <div className="flex-1 p-6 flex flex-col gap-2">
