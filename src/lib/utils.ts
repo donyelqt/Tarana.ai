@@ -24,8 +24,12 @@ export interface WeatherData {
   }
 }
 
-// Function to fetch current weather data directly from OpenWeather API
-// This should only be used server-side where API key is secure
+// Baguio City coordinates
+export const BAGUIO_COORDINATES = {
+  lat: 16.4023,
+  lon: 120.5960
+}
+
 export async function fetchWeatherData(lat: number, lon: number, apiKey: string): Promise<WeatherData | null> {
   try {
     console.log(`Making request to OpenWeather API for coordinates: ${lat}, ${lon}`);
@@ -56,7 +60,6 @@ export async function fetchWeatherData(lat: number, lon: number, apiKey: string)
   }
 }
 
-// Client-side function to fetch weather data through our secure API route
 export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, lon: number = BAGUIO_COORDINATES.lon): Promise<WeatherData | null> {
   try {
     // Add a timestamp to prevent caching issues
@@ -90,10 +93,10 @@ export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, 
       weather: [{
         id: 800,
         main: 'Clear',
-        description: 'clear sky (fallback data)',
+        description: 'clear sky',
         icon: '01d'
       }],
-      name: BAGUIO_COORDINATES.name,
+      name: 'Baguio',
       sys: {
         country: 'PH'
       }
@@ -101,14 +104,78 @@ export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, 
   }
 }
 
-// Function to get weather icon URL
 export function getWeatherIconUrl(iconCode: string): string {
   return `https://openweathermap.org/img/wn/${iconCode}@2x.png`
 }
 
-// Default coordinates for Baguio City, Philippines
-export const BAGUIO_COORDINATES = {
-  lat: 16.4023,
-  lon: 120.5960,
-  name: "Baguio City"
+// Gemini API response type
+export interface GeminiResponse {
+  candidates: {
+    content: {
+      parts: {
+        text: string
+      }[]
+    },
+    finishReason: string
+  }[]
+}
+
+// Itinerary data type
+export interface ItineraryItem {
+  period: string
+  activities: {
+    image: any
+    title: string
+    time: string
+    desc: string
+    tags: string[]
+  }[]
+}
+
+export interface ItineraryData {
+  title: string
+  subtitle: string
+  items: ItineraryItem[]
+}
+
+// Function to generate itinerary using Gemini API
+export async function generateItinerary(
+  prompt: string,
+  weatherData: WeatherData | null = null
+): Promise<ItineraryData | null> {
+  try {
+    const timestamp = new Date().getTime();
+    const response = await fetch(`/api/gemini?_t=${timestamp}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+        weatherData
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'No error details');
+      console.error(`Gemini API responded with status ${response.status}: ${errorText}`);
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+    
+    const data: GeminiResponse = await response.json();
+    
+    // Parse the response text to create an itinerary
+    // This is a simplified version - in a real app, you'd want more robust parsing
+    const responseText = data.candidates[0]?.content.parts[0]?.text;
+    
+    if (!responseText) {
+      throw new Error('Empty response from Gemini API');
+    }
+    
+    // For now, return null as we'll handle the parsing in the component
+    return null;
+  } catch (error) {
+    console.error('Error generating itinerary:', error);
+    return null;
+  }
 }
