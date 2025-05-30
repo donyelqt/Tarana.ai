@@ -6,6 +6,7 @@ import Sidebar from "../../../components/Sidebar"
 import { Button } from "@/components/ui/button"
 import { getSavedItineraries, SavedItinerary, formatDateRange } from "@/lib/savedItineraries"
 import Image from "next/image"
+import PlaceDetail from "@/components/PlaceDetail"
 
 const interestIcons: Record<string, string> = {
   "Nature & Scenery": "🌿",
@@ -20,12 +21,29 @@ const SavedItineraryDetail = () => {
   const params = useParams()
   const { id } = params as { id: string }
   const [itinerary, setItinerary] = useState<SavedItinerary | null>(null)
+  const [selectedActivity, setSelectedActivity] = useState<any>(null)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [activeTab, setActiveTab] = useState<'description' | 'map' | 'reviews'>('description')
 
   useEffect(() => {
     const all = getSavedItineraries()
     const found = all.find((i) => i.id === id)
     setItinerary(found || null)
   }, [id])
+
+  const handleViewOnMap = (activity: any, e: React.MouseEvent) => {
+    e.preventDefault()
+    setSelectedActivity(activity)
+    setActiveTab('map')
+    setShowDetailModal(true)
+  }
+
+  const handleViewReviews = (activity: any, e: React.MouseEvent) => {
+    e.preventDefault()
+    setSelectedActivity(activity)
+    setActiveTab('reviews')
+    setShowDetailModal(true)
+  }
 
   if (!itinerary) {
     return (
@@ -42,6 +60,73 @@ const SavedItineraryDetail = () => {
 
   const { formData, itineraryData } = itinerary
   const { selectedInterests, pax, dates, budget } = formData
+
+  // Transform activity data for PlaceDetail component
+  const transformActivityToPlace = (activity: any) => {
+    return {
+      id: activity.title.toLowerCase().replace(/\s+/g, '-'),
+      name: activity.title,
+      rating: 4.2, // Default rating
+      totalReviews: 120, // Default review count
+      description: activity.desc,
+      address: `Baguio City, Philippines`,
+      location: {
+        lat: 16.4023, // Default to Baguio coordinates
+        lng: 120.5960,
+      },
+      images: [activity.image.src], // Use the activity image
+      amenities: [
+        { icon: "🍽️", name: "Restaurant" },
+        { icon: "🚻", name: "Restrooms" },
+        { icon: "♿", name: "Wheelchair Accessible" },
+        { icon: "🅿️", name: "Parking" },
+        { icon: "🚭", name: "Non-smoking sections" },
+        { icon: "🌡️", name: "Air-conditioned" },
+      ],
+      reviews: [
+        {
+          id: "1",
+          author: "J.J. Mendoza",
+          avatar: "/images/avatar-1.png",
+          rating: 5,
+          date: "2 months ago",
+          content: "I couldn't believe how delicious the food was! The service was impeccable and the ambiance was perfect for our family dinner. Will definitely come back again.",
+        },
+        {
+          id: "2",
+          author: "Maria Santos",
+          avatar: "/images/avatar-2.png",
+          rating: 4,
+          date: "3 months ago",
+          content: "Great place for authentic Filipino cuisine. The portions are generous and prices are reasonable. The only downside was the waiting time during peak hours.",
+        },
+        {
+          id: "3",
+          author: "David Chen",
+          avatar: "/images/avatar-3.png",
+          rating: 4,
+          date: "4 months ago",
+          content: "Visited during our trip to Baguio and was not disappointed. The food was fresh and flavorful. Would recommend trying their specialty dishes.",
+        },
+        {
+          id: "4",
+          author: "Sarah Johnson",
+          avatar: "/images/avatar-4.png",
+          rating: 5,
+          date: "5 months ago",
+          content: "One of the best dining experiences in Baguio! The staff was friendly and attentive. The food came quickly and exceeded our expectations.",
+        },
+        {
+          id: "5",
+          author: "Michael Lee",
+          avatar: "/images/avatar-5.png",
+          rating: 3,
+          date: "6 months ago",
+          content: "The food was good but the place was quite crowded. Had to wait for about 30 minutes to get a table. The prices are reasonable though.",
+        },
+      ],
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
@@ -140,11 +225,19 @@ const SavedItineraryDetail = () => {
                         ))}
                       </div>
                       <div className="flex items-center justify-end mt-auto gap-6">
-                        <a href="#" className="flex items-center gap-1 text-yellow-500 text-sm font-medium hover:underline">
+                        <a 
+                          href="#" 
+                          className="flex items-center gap-1 text-yellow-500 text-sm font-medium hover:underline"
+                          onClick={(e) => handleViewReviews(activity, e)}
+                        >
                           <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" className="w-4 h-4"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
                           Reviews
                         </a>
-                        <a href="#" className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:underline">
+                        <a 
+                          href="#" 
+                          className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:underline"
+                          onClick={(e) => handleViewOnMap(activity, e)}
+                        >
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                           View on Map
                         </a>
@@ -157,6 +250,30 @@ const SavedItineraryDetail = () => {
           ))}
         </div>
       </main>
+
+      {/* Restaurant Detail Modal */}
+      {showDetailModal && selectedActivity && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center z-10">
+              <h2 className="text-xl font-bold">{selectedActivity.title}</h2>
+              <button 
+                onClick={() => setShowDetailModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <PlaceDetail 
+                place={transformActivityToPlace(selectedActivity)} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
