@@ -3,7 +3,7 @@
 import Sidebar from "../../components/Sidebar"
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { burnham, goodtaste } from "../../../public"
+import { baguio_panorama, burnham, goodtaste, letai } from "../../../public"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -194,13 +194,45 @@ export default function ItineraryGenerator() {
       
       console.log('Generated text:', generatedText);
       
-      // For now, we'll use the sample itinerary data structure
-      // In a production app, you would parse the Gemini response into the proper format
-      // This would require more sophisticated parsing logic
-      
-      // Show the preview with sample data for now
-      setGeneratedItinerary(sampleItinerary);
-      setShowPreview(true);
+      // Try to parse the JSON response from Gemini
+      try {
+        // Look for JSON content in the response
+        const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+        
+        if (jsonMatch) {
+          const jsonContent = jsonMatch[0];
+          const parsedItinerary = JSON.parse(jsonContent);
+          
+          // Ensure the parsed data has the expected structure
+          if (parsedItinerary && parsedItinerary.items) {
+            // Add image data to each activity since Gemini doesn't provide images
+            const processedItinerary = {
+              ...parsedItinerary,
+              items: parsedItinerary.items.map((item: any) => ({
+                ...item,
+                activities: item.activities.map((activity: any, index: number) => ({
+                  ...activity,
+                  // Use sample images for now - in a production app, you might use a more sophisticated approach
+                  image: sampleItinerary.items[0].activities[index % sampleItinerary.items[0].activities.length].image
+                }))
+              }))
+            };
+            
+            setGeneratedItinerary(processedItinerary);
+            setShowPreview(true);
+            return;
+          }
+        }
+        
+        // If we couldn't parse JSON or the structure wasn't as expected, fall back to sample data
+        console.log('Could not parse valid itinerary JSON from Gemini response, using sample data');
+        setGeneratedItinerary(sampleItinerary);
+        setShowPreview(true);
+      } catch (parseError) {
+        console.error('Error parsing Gemini response:', parseError);
+        setGeneratedItinerary(sampleItinerary);
+        setShowPreview(true);
+      }
     } catch (error) {
       console.error('Error generating itinerary:', error);
       // Use sample itinerary as fallback when any error occurs

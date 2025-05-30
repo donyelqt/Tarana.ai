@@ -83,8 +83,19 @@ export async function POST(request: Request) {
     
     console.log('Sending prompt to Gemini:', fullPrompt);
     
+    // Get the API key from environment variables
+    const apiKey = process.env.GEMINI_API_KEY;
+    
+    if (!apiKey) {
+      console.error('Gemini API key not configured');
+      return NextResponse.json(
+        { error: 'Gemini service not configured' },
+        { status: 500 }
+      );
+    }
+    
     // Call the Gemini API using the free model endpoint
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -11,6 +11,7 @@ When deploying to production (Vercel), make sure to set up the following environ
 - `GOOGLE_CLIENT_ID`: Your Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret
 - `OPENWEATHER_API_KEY`: Your OpenWeather API key (server-side only, not exposed to client)
+- `GEMINI_API_KEY`: Your Google Gemini API key (server-side only, not exposed to client)
 
 ### Setting Up Environment Variables on Vercel
 
