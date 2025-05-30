@@ -16,70 +16,65 @@ const MapView = ({ title, address, lat = 16.4023, lng = 120.5960 }: MapViewProps
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Load Google Maps API script
-    const loadGoogleMapsAPI = () => {
-      const googleMapsScript = document.createElement('script')
-      googleMapsScript.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`
-      googleMapsScript.async = true
-      googleMapsScript.defer = true
-      googleMapsScript.onload = initializeMap
-      googleMapsScript.onerror = () => setError("Failed to load Google Maps API")
-      document.head.appendChild(googleMapsScript)
+    // Load HERE Maps API script
+    const loadHereMapsAPI = () => {
+      const hereMapsScript = document.createElement('script')
+      hereMapsScript.src = `https://js.api.here.com/v3/3.1/mapsjs.bundle.js`
+      hereMapsScript.async = true
+      hereMapsScript.defer = true
+      hereMapsScript.onload = initializeMap
+      hereMapsScript.onerror = () => setError("Failed to load HERE Maps API")
+      document.head.appendChild(hereMapsScript)
 
       return () => {
-        // Clean up script tag on unmount
-        document.head.removeChild(googleMapsScript)
+        document.head.removeChild(hereMapsScript)
       }
     }
 
     const initializeMap = () => {
       if (!mapRef.current) return
-      
       try {
-        // Create map instance
-        const mapOptions = {
-          center: { lat, lng },
-          zoom: 15,
-          mapTypeControl: true,
-          streetViewControl: true,
-          fullscreenControl: true,
+        // @ts-ignore - HERE Maps API is loaded dynamically
+        const H = window.H
+        if (!H) {
+          setError("HERE Maps API not available")
+          return
         }
-        
-        // @ts-ignore - Google Maps API is loaded dynamically
-        const map = new google.maps.Map(mapRef.current, mapOptions)
-        
-        // Add marker for the location
-        // @ts-ignore - Google Maps API is loaded dynamically
-        const marker = new google.maps.Marker({
-          position: { lat, lng },
-          map,
-          title,
+        // Create platform
+        const platform = new H.service.Platform({
+          apikey: process.env.NEXT_PUBLIC_HERE_MAPS_API_KEY
         })
-        
-        // Add info window
-        // @ts-ignore - Google Maps API is loaded dynamically
-        const infoWindow = new google.maps.InfoWindow({
-          content: `<div><strong>${title}</strong><br>${address}</div>`,
+        const defaultLayers = platform.createDefaultLayers()
+        // Create map instance
+        const map = new H.Map(
+          mapRef.current,
+          defaultLayers.vector.normal.map,
+          {
+            center: { lat, lng },
+            zoom: 15,
+            pixelRatio: window.devicePixelRatio || 1
+          }
+        )
+        // Enable map events
+        const behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map))
+        // Add UI controls
+        H.ui.UI.createDefault(map, defaultLayers)
+        // Add marker
+        const marker = new H.map.Marker({ lat, lng })
+        map.addObject(marker)
+        // Add info bubble
+        const bubble = new H.ui.InfoBubble({ lat, lng }, {
+          content: `<div><strong>${title}</strong><br>${address}</div>`
         })
-        
-        // Open info window when marker is clicked
-        // @ts-ignore - Google Maps API is loaded dynamically
-        marker.addListener("click", () => {
-          infoWindow.open(map, marker)
-        })
-        
-        // Open info window by default
-        infoWindow.open(map, marker)
-        
+        map.getUi().addBubble(bubble)
         setIsLoaded(true)
       } catch (err) {
-        console.error("Error initializing map:", err)
-        setError("Failed to initialize map")
+        console.error("Error initializing HERE map:", err)
+        setError("Failed to initialize HERE map")
       }
     }
 
-    const cleanup = loadGoogleMapsAPI()
-    
+    const cleanup = loadHereMapsAPI()
     return cleanup
   }, [title, address, lat, lng])
 
@@ -89,20 +84,17 @@ const MapView = ({ title, address, lat = 16.4023, lng = 120.5960 }: MapViewProps
         <h2 className="text-xl font-bold">Location/Map</h2>
         <Button 
           variant="outline" 
-          size="sm" 
           className="text-blue-600 border-blue-600 hover:bg-blue-50"
-          onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank')}
+          onClick={() => window.open(`https://www.here.com/search/?q=${lat},${lng}`, '_blank')}
         >
-          View on Google Maps
+          View on HERE Maps
         </Button>
       </div>
-      
       {error && (
         <div className="bg-red-50 text-red-500 p-4 rounded-lg mb-4">
           {error}
         </div>
       )}
-      
       <div 
         ref={mapRef} 
         className="w-full h-[300px] rounded-lg bg-gray-100"
@@ -114,7 +106,6 @@ const MapView = ({ title, address, lat = 16.4023, lng = 120.5960 }: MapViewProps
           </div>
         )}
       </div>
-      
       <div className="mt-4 text-sm text-gray-600">
         <p>{address}</p>
       </div>
