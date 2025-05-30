@@ -41,17 +41,69 @@ const sampleItinerary = {
       activities: [
         {
           image: goodtaste,
-          title: "Breakfast at Goodtaste",
+          title: "Breakfast at Good Taste Restaurant",
           time: "7:30AM-9:00AM",
-          desc: "Fuel up with a hearty Filipino-Chinese breakfast at Goodtaste, a Baguio favorite for generous portions and fast service.",
+          desc: "Fuel up with a hearty Filipino-Chinese breakfast at Good Taste, a Baguio favorite known for generous portions and affordable prices. Try their famous buttered chicken and pancit canton.",
           tags: ["Food & Culinary"]
         },
         {
           image: burnham,
-          title: "Burnham Park",
-          time: "9:00AM-10:30AM",
-          desc: "Start your day with a scenic boat ride or a relaxed stroll at Burnham Park.",
+          title: "Burnham Park Activities",
+          time: "9:15AM-11:00AM",
+          desc: "Enjoy boating on the man-made lake or rent a bike to tour this historic park at the heart of the city. Perfect for both sunny and cloudy weather.",
           tags: ["Nature & Scenery", "Adventure"]
+        },
+        {
+          image: baguio_panorama,
+          title: "Mt. Ulap Eco-Trail (Half-Day Hike)",
+          time: "8:00AM-12:30PM",
+          desc: "Experience this popular day hike on the Ampucao-Sta Fe ridge with stunning views of the Cordillera mountains. Visit highlights like Gungal Rock and Ambanao Paoay Peak. Guide fee: PHP 600 + PHP 100/person. Transportation: Jeepney from Baguio (PHP 30).",
+          tags: ["Nature & Scenery", "Adventure", "Hiking"]
+        }
+      ]
+    },
+    {
+      period: "Afternoon (12NN-6PM)",
+      activities: [
+        {
+          image: letai,
+          title: "Lunch at Hill Station",
+          time: "12:45PM-2:00PM",
+          desc: "Enjoy international cuisine with a Filipino twist at this award-winning restaurant located in Casa Vallejo. Known for its cozy ambiance and historic setting.",
+          tags: ["Food & Culinary"]
+        },
+        {
+          image: baguio_panorama,
+          title: "Tam-awan Village Cultural Experience",
+          time: "2:30PM-4:30PM",
+          desc: "Immerse yourself in Cordilleran culture at this reconstructed indigenous village featuring traditional Ifugao and Kalinga huts, art galleries, and cultural workshops. Enjoy scenic viewpoints and local crafts. Entrance fee: PHP 60. Located in Pinsao Proper, 15-20 minutes from city center.",
+          tags: ["Culture & Arts", "Local Heritage", "Shopping & Local Finds"]
+        },
+        {
+          image: baguio_panorama,
+          title: "Tree Top Adventure at Camp John Hay",
+          time: "4:45PM-6:00PM",
+          desc: "Experience thrilling activities like the Superman Ride (PHP 300), Canopy Ride (PHP 250), or Silver Surfer (PHP 200). Perfect for adventure seekers looking for an adrenaline rush. Located in Camp John Hay Special Economic Zone.",
+          tags: ["Nature & Scenery", "Adventure", "Adrenaline & Extreme"]
+        }
+      ]
+    },
+    {
+      period: "Evening (6PM onwards)",
+      activities: [
+        {
+          image: baguio_panorama,
+          title: "Dinner at Café by the Ruins",
+          time: "6:30PM-8:00PM",
+          desc: "Experience farm-to-table dining at this iconic Baguio restaurant located at 25 Shuntug Road (across City Hall). Founded by artists in the 1980s, it's built on actual ruins of a historic building. Try their signature dishes made with locally-sourced ingredients - from Warm Shiitake Salad (₱280) to Pasta Carbonara (₱240). Don't miss their famous Camote Bread (₱100) with homemade spreads. Open daily from 7AM to 9PM.",
+          tags: ["Food & Culinary", "Culture & Arts", "Local Heritage"]
+        },
+        {
+          image: baguio_panorama,
+          title: "Night Market on Harrison Road",
+          time: "9:00PM-11:00PM",
+          desc: "End your day at the vibrant Night Market along Harrison Road near Burnham Park (open 9PM-2AM). Find ukay-ukay (thrift clothes) for ₱50-250, local handicrafts, souvenirs, and delicious street food. Enjoy Filipino street food like fishballs, isaw, and sisig rice meals for under ₱100, or try the popular strawberry taho. Don't forget to bring cash and haggle for better prices!",
+          tags: ["Shopping & Local Finds", "Food & Culinary", "Budget-friendly", "Local Experience", "Night Activity"]
         }
       ]
     }
