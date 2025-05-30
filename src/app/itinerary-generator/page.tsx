@@ -173,7 +173,11 @@ export default function ItineraryGenerator() {
         },
         body: JSON.stringify({
           prompt,
-          weatherData
+          weatherData,
+          interests: selectedInterests,
+          duration,
+          budget,
+          pax
         })
       });
       
@@ -201,27 +205,60 @@ export default function ItineraryGenerator() {
         
         if (jsonMatch) {
           const jsonContent = jsonMatch[0];
-          const parsedItinerary = JSON.parse(jsonContent);
+          console.log('Extracted JSON content:', jsonContent);
           
-          // Ensure the parsed data has the expected structure
-          if (parsedItinerary && parsedItinerary.items) {
-            // Add image data to each activity since Gemini doesn't provide images
-            const processedItinerary = {
-              ...parsedItinerary,
-              items: parsedItinerary.items.map((item: any) => ({
-                ...item,
-                activities: item.activities.map((activity: any, index: number) => ({
-                  ...activity,
-                  // Use sample images for now - in a production app, you might use a more sophisticated approach
-                  image: sampleItinerary.items[0].activities[index % sampleItinerary.items[0].activities.length].image
-                }))
-              }))
-            };
+          try {
+            const parsedItinerary = JSON.parse(jsonContent);
             
-            setGeneratedItinerary(processedItinerary);
-            setShowPreview(true);
-            return;
+            // Ensure the parsed data has the expected structure
+            if (parsedItinerary && parsedItinerary.items) {
+              console.log('Successfully parsed itinerary with structure:', parsedItinerary.title);
+              
+              // Add image data to each activity since Gemini doesn't provide images
+              const processedItinerary = {
+                ...parsedItinerary,
+                items: parsedItinerary.items.map((item: any) => ({
+                  ...item,
+                  activities: item.activities.map((activity: any, index: number) => {
+                    // Find a relevant sample image based on activity tags if possible
+                    let sampleImageIndex = index % sampleItinerary.items[0].activities.length;
+                    
+                    // Try to match activity tags with sample activities for better image selection
+                    if (activity.tags && activity.tags.length > 0) {
+                      const tagLowerCase = activity.tags[0].toLowerCase();
+                      const matchingIndex = sampleItinerary.items[0].activities.findIndex(
+                        (sampleActivity: any) => {
+                          return sampleActivity.tags.some((tag: string) => 
+                            tag.toLowerCase().includes(tagLowerCase) || 
+                            tagLowerCase.includes(tag.toLowerCase())
+                          );
+                        }
+                      );
+                      
+                      if (matchingIndex !== -1) {
+                        sampleImageIndex = matchingIndex;
+                      }
+                    }
+                    
+                    return {
+                      ...activity,
+                      image: sampleItinerary.items[0].activities[sampleImageIndex].image
+                    };
+                  })
+                }))
+              };
+              
+              setGeneratedItinerary(processedItinerary);
+              setShowPreview(true);
+              return;
+            } else {
+              console.error('Parsed JSON does not have expected structure:', parsedItinerary);
+            }
+          } catch (jsonError) {
+            console.error('Error parsing JSON content:', jsonError);
           }
+        } else {
+          console.error('No JSON content found in response');
         }
         
         // If we couldn't parse JSON or the structure wasn't as expected, fall back to sample data

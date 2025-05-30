@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     console.log('Sending prompt to Gemini:', fullPrompt);
     
     // Get the API key from environment variables
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
     
     if (!apiKey) {
       console.error('Gemini API key not configured');
