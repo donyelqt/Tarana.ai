@@ -31,10 +31,10 @@ const interests = [
   { label: "Adventure", icon: "\u2699\uFE0F" }
 ]
 
-// Sample itinerary data for preview
+// Enhanced sample itinerary data with detailed information for Google Gemini
 const sampleItinerary = {
   title: "Your 1 Day Itinerary",
-  subtitle: "A preview of your Baguio Experience",
+  subtitle: "A personalized Baguio Experience",
   items: [
     {
       period: "Morning (8AM-12NN)",
@@ -43,22 +43,29 @@ const sampleItinerary = {
           image: goodtaste,
           title: "Breakfast at Good Taste Restaurant",
           time: "7:30AM-9:00AM",
-          desc: "Fuel up with a hearty Filipino-Chinese breakfast at Good Taste, a Baguio favorite known for generous portions and affordable prices. Try their famous buttered chicken and pancit canton.",
-          tags: ["Food & Culinary"]
+          desc: "Fuel up with a hearty Filipino-Chinese breakfast at Good Taste, a Baguio favorite known for generous portions and affordable prices. Try their famous buttered chicken (₱180-250) and pancit canton (₱150-200). Located at Carino St., this 24-hour restaurant is perfect for early risers. Budget-friendly with meals averaging ₱150-300 per person. Travel time from city center: 5-10 minutes by taxi (₱70-100).",
+          tags: ["Food & Culinary", "Budget-friendly", "Local Favorite", "Indoor-Friendly"]
         },
         {
           image: burnham,
           title: "Burnham Park Activities",
           time: "9:15AM-11:00AM",
-          desc: "Enjoy boating on the man-made lake or rent a bike to tour this historic park at the heart of the city. Perfect for both sunny and cloudy weather.",
-          tags: ["Nature & Scenery", "Adventure"]
+          desc: "Enjoy boating on the man-made lake (₱150/hour) or rent a bike (₱60-100/hour) to tour this historic park at the heart of the city. The rose garden and orchidarium are perfect for nature lovers. Street food vendors offer affordable snacks (₱20-50). Located at the city center, it's easily accessible by walking from most downtown hotels. Duration: 1.5-2 hours including walking around. Perfect for both sunny and cloudy weather.",
+          tags: ["Nature & Scenery", "Adventure", "Budget-friendly", "Family-friendly", "Outdoor-Friendly"]
+        },
+        {
+          image: baguio_panorama,
+          title: "BenCab Museum Visit",
+          time: "9:30AM-12:00PM",
+          desc: "Explore the works of National Artist Benedicto Cabrera at this world-class museum featuring Filipino art, indigenous artifacts, and a serene garden with duck ponds and eco-trail. Entrance fee: ₱150 (adults), ₱120 (students). Located in Tuba, Benguet, about 15-20 minutes from city center by taxi (₱200-250). The on-site Café Sabel offers farm-to-table dishes (₱250-450) with ingredients from their own garden. Perfect indoor activity for rainy days. Duration: 2-2.5 hours including garden walk.",
+          tags: ["Culture & Arts", "Museum", "Indoor-Friendly", "Mid-range Budget", "Educational"]
         },
         {
           image: baguio_panorama,
           title: "Mt. Ulap Eco-Trail (Half-Day Hike)",
           time: "8:00AM-12:30PM",
-          desc: "Experience this popular day hike on the Ampucao-Sta Fe ridge with stunning views of the Cordillera mountains. Visit highlights like Gungal Rock and Ambanao Paoay Peak. Guide fee: PHP 600 + PHP 100/person. Transportation: Jeepney from Baguio (PHP 30).",
-          tags: ["Nature & Scenery", "Adventure", "Hiking"]
+          desc: "Experience this popular day hike on the Ampucao-Sta Fe ridge with stunning views of the Cordillera mountains. Visit highlights like Gungal Rock and Ambanao Paoay Peak. Guide fee: ₱600 + ₱100/person. Transportation: Jeepney from Baguio (₱30) or taxi (₱350-400). Duration: 4-5 hours for the beginner trail. Difficulty: Moderate. Best during clear weather. Bring: 1L water, trail snacks, sunscreen, hat, light jacket. Not recommended during rainy season due to slippery trails.",
+          tags: ["Nature & Scenery", "Adventure", "Hiking", "Outdoor-Friendly", "Physical Activity", "Clear Weather Only"]
         }
       ]
     },
@@ -69,22 +76,29 @@ const sampleItinerary = {
           image: letai,
           title: "Lunch at Hill Station",
           time: "12:45PM-2:00PM",
-          desc: "Enjoy international cuisine with a Filipino twist at this award-winning restaurant located in Casa Vallejo. Known for its cozy ambiance and historic setting.",
-          tags: ["Food & Culinary"]
+          desc: "Enjoy international cuisine with a Filipino twist at this award-winning restaurant located in Casa Vallejo, a historic hotel built in 1909. Known for its cozy ambiance and historic setting. Try their US Angus Beef Salpicao (₱650) or Cordillera Chicken Roulade (₱450). Reservation recommended. Price range: ₱450-800 per person. Located at Upper Session Road, 5-minute walk from SM Baguio. Perfect for any weather condition. Duration: 1-1.5 hours for a leisurely meal.",
+          tags: ["Food & Culinary", "Fine Dining", "Historic Site", "Indoor-Friendly", "High-end Budget"]
         },
         {
           image: baguio_panorama,
           title: "Tam-awan Village Cultural Experience",
           time: "2:30PM-4:30PM",
-          desc: "Immerse yourself in Cordilleran culture at this reconstructed indigenous village featuring traditional Ifugao and Kalinga huts, art galleries, and cultural workshops. Enjoy scenic viewpoints and local crafts. Entrance fee: PHP 60. Located in Pinsao Proper, 15-20 minutes from city center.",
-          tags: ["Culture & Arts", "Local Heritage", "Shopping & Local Finds"]
+          desc: "Immerse yourself in Cordilleran culture at this reconstructed indigenous village featuring traditional Ifugao and Kalinga huts, art galleries, and cultural workshops. Enjoy scenic viewpoints and local crafts. Entrance fee: ₱60 (adults), ₱50 (students). Art workshops available (₱250-500). Located in Pinsao Proper, 15-20 minutes from city center by taxi (₱150-200). Has covered walkways between huts, making it suitable for light rain. Duration: 1.5-2 hours for a complete tour. Cultural performances on weekends (additional ₱100).",
+          tags: ["Culture & Arts", "Local Heritage", "Shopping & Local Finds", "Educational", "Weather-Flexible", "Mid-range Budget"]
         },
         {
           image: baguio_panorama,
           title: "Tree Top Adventure at Camp John Hay",
           time: "4:45PM-6:00PM",
-          desc: "Experience thrilling activities like the Superman Ride (PHP 300), Canopy Ride (PHP 250), or Silver Surfer (PHP 200). Perfect for adventure seekers looking for an adrenaline rush. Located in Camp John Hay Special Economic Zone.",
-          tags: ["Nature & Scenery", "Adventure", "Adrenaline & Extreme"]
+          desc: "Experience thrilling activities like the Superman Ride (₱300), Canopy Ride (₱250), or Silver Surfer (₱200). Perfect for adventure seekers looking for an adrenaline rush. Located in Camp John Hay Special Economic Zone, 10-15 minutes from city center by taxi (₱120-150). Package deals available: ₱650 for 3 rides. Height and weight restrictions apply. Not operational during heavy rain or strong winds. Duration: 1-1.5 hours for multiple activities. Last ride usually at 5:30PM.",
+          tags: ["Nature & Scenery", "Adventure", "Adrenaline & Extreme", "Outdoor-Friendly", "Mid-range Budget", "Clear Weather Only"]
+        },
+        {
+          image: baguio_panorama,
+          title: "Mines View Park Scenic Overlook",
+          time: "3:00PM-4:30PM",
+          desc: "Visit this famous lookout point offering panoramic views of the Cordillera mountains and the abandoned gold and copper mines. Entrance is free. Souvenir shops and food stalls line the approach to the park. Try on traditional Igorot attire for photos (₱20-50). Sample strawberry taho (₱30-50) or fresh strawberries when in season. Located 15-20 minutes from city center by jeepney (₱10) or taxi (₱120-150). Best visited on clear days for optimal views. Duration: 1-1.5 hours including shopping. Crowded on weekends and holidays.",
+          tags: ["Nature & Scenery", "Shopping & Local Finds", "Photography Spot", "Budget-friendly", "Outdoor-Friendly", "Family-friendly"]
         }
       ]
     },
@@ -95,15 +109,22 @@ const sampleItinerary = {
           image: baguio_panorama,
           title: "Dinner at Café by the Ruins",
           time: "6:30PM-8:00PM",
-          desc: "Experience farm-to-table dining at this iconic Baguio restaurant located at 25 Shuntug Road (across City Hall). Founded by artists in the 1980s, it's built on actual ruins of a historic building. Try their signature dishes made with locally-sourced ingredients - from Warm Shiitake Salad (₱280) to Pasta Carbonara (₱240). Don't miss their famous Camote Bread (₱100) with homemade spreads. Open daily from 7AM to 9PM.",
-          tags: ["Food & Culinary", "Culture & Arts", "Local Heritage"]
+          desc: "Experience farm-to-table dining at this iconic Baguio restaurant located at 25 Shuntug Road (across City Hall). Founded by artists in the 1980s, it's built on actual ruins of a historic building. Try their signature dishes made with locally-sourced ingredients - from Warm Shiitake Salad (₱280) to Pasta Carbonara (₱240). Don't miss their famous Camote Bread (₱100) with homemade spreads. Average meal cost: ₱350-500 per person. Reservation recommended on weekends. Open daily from 7AM to 9PM. Duration: 1.5 hours for a relaxed dinner. Indoor seating available for rainy evenings.",
+          tags: ["Food & Culinary", "Culture & Arts", "Local Heritage", "Indoor-Friendly", "Mid-range Budget", "Romantic"]
         },
         {
           image: baguio_panorama,
           title: "Night Market on Harrison Road",
           time: "9:00PM-11:00PM",
-          desc: "End your day at the vibrant Night Market along Harrison Road near Burnham Park (open 9PM-2AM). Find ukay-ukay (thrift clothes) for ₱50-250, local handicrafts, souvenirs, and delicious street food. Enjoy Filipino street food like fishballs, isaw, and sisig rice meals for under ₱100, or try the popular strawberry taho. Don't forget to bring cash and haggle for better prices!",
-          tags: ["Shopping & Local Finds", "Food & Culinary", "Budget-friendly", "Local Experience", "Night Activity"]
+          desc: "End your day at the vibrant Night Market along Harrison Road near Burnham Park (open 9PM-2AM). Find ukay-ukay (thrift clothes) for ₱50-250, local handicrafts, souvenirs, and delicious street food. Enjoy Filipino street food like fishballs (₱15), isaw (₱15), and sisig rice meals (₱60-80), or try the popular strawberry taho (₱25-35). Bring small bills and be prepared to haggle. Located at the city center, easily accessible by walking from most downtown hotels. Not recommended during heavy rain as it's an open-air market. Duration: 1-2 hours for shopping and snacking. Security is present but watch your belongings in crowds.",
+          tags: ["Shopping & Local Finds", "Food & Culinary", "Budget-friendly", "Local Experience", "Night Activity", "Weather-Dependent"]
+        },
+        {
+          image: baguio_panorama,
+          title: "Dessert at Vizco's Restaurant & Cake Shop",
+          time: "8:15PM-9:30PM",
+          desc: "Satisfy your sweet tooth at this famous Baguio bakery known for their signature strawberry shortcake (₱120/slice, ₱650 whole). Also try their blueberry cheesecake (₱130/slice) or ube cake (₱110/slice). Located at Session Road, 5-minute walk from Burnham Park. Also serves meals (₱180-350) if you prefer a full dinner. Indoor seating makes it perfect for any weather. Duration: 45 minutes to 1 hour. Two branches available: Session Road and SM Baguio. Take-out boxes available for bringing cakes back to your accommodation.",
+          tags: ["Food & Culinary", "Desserts", "Local Favorite", "Indoor-Friendly", "Budget-friendly", "Family-friendly"]
         }
       ]
     }
@@ -148,28 +169,26 @@ export default function ItineraryGenerator() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsGenerating(true);
-    
+    e.preventDefault()
+    setIsGenerating(true)
+
     try {
-      // Construct a prompt for Gemini based on user preferences
-      const interestsText = selectedInterests.length > 0 
-        ? `with interests in ${selectedInterests.join(', ')}` 
-        : 'with general interests';
-      
-      const budgetText = `on a budget of ${budget}`;
-      const paxText = pax ? `for ${pax} ${parseInt(pax) === 1 ? 'person' : 'people'}` : '';
-      const durationText = duration ? `for ${duration}` : 'for a day';
-      
-      const prompt = `Generate a detailed Baguio City itinerary ${durationText} ${paxText} ${budgetText} ${interestsText}. Include specific places, activities, and time allocations.`;
-      
-      console.log('Generating itinerary with prompt:', prompt);
-      
-      // Call the Gemini API through our utility function
-      const response = await fetch('/api/gemini', {
-        method: 'POST',
+      // Validate form
+      if (!budget || !pax || !duration || selectedInterests.length === 0) {
+        setToastMessage("Please fill in all fields")
+        setShowToast(true)
+        setIsGenerating(false)
+        return
+      }
+
+      // Construct a simple prompt for Gemini API
+      const prompt = `Create a personalized ${duration}-day itinerary for Baguio City, Philippines based on the user preferences and current weather conditions.`
+
+      // Call Gemini API with all user preferences and sample itinerary data
+      const response = await fetch("/api/gemini", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           prompt,
@@ -177,108 +196,161 @@ export default function ItineraryGenerator() {
           interests: selectedInterests,
           duration,
           budget,
-          pax
-        })
-      });
-      
+          pax,
+          sampleItinerary // Pass the sample itinerary data to the API
+        }),
+      })
+
       if (!response.ok) {
-        console.log(`API returned status: ${response.status}. Using sample itinerary as fallback.`);
-        // Instead of throwing an error, we'll use the sample itinerary as fallback
-        setGeneratedItinerary(sampleItinerary);
-        setShowPreview(true);
-        return;
+        console.error(`API responded with status ${response.status}`)
+        setToastMessage("Failed to connect to the itinerary generator. Using sample data instead.")
+        setShowToast(true)
+        setGeneratedItinerary(sampleItinerary)
+        setShowPreview(true)
+        setIsGenerating(false)
+        return
       }
-      
-      const data = await response.json();
-      const generatedText = data.candidates[0]?.content.parts[0]?.text;
-      
-      if (!generatedText) {
-        throw new Error('No content generated');
+
+      const data = await response.json()
+      const responseText = data.text
+
+      if (!responseText) {
+        console.error("Empty response from API")
+        setToastMessage("Received empty response from the itinerary generator. Using sample data instead.")
+        setShowToast(true)
+        setGeneratedItinerary(sampleItinerary)
+        setShowPreview(true)
+        setIsGenerating(false)
+        return
       }
-      
-      console.log('Generated text:', generatedText);
-      
-      // Try to parse the JSON response from Gemini
+
+      let parsedData
       try {
-        // Look for JSON content in the response
-        const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+        // The API now returns pre-cleaned JSON
+        parsedData = typeof responseText === 'string' ? JSON.parse(responseText) : responseText
+      } catch (e) {
+        console.error("Failed to parse JSON from response:", e)
         
-        if (jsonMatch) {
-          const jsonContent = jsonMatch[0];
-          console.log('Extracted JSON content:', jsonContent);
+        // Fallback: Try to extract JSON from the response if direct parsing fails
+        try {
+          const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
+                          responseText.match(/```([\s\S]*?)```/) ||
+                          responseText.match(/{[\s\S]*?}/)
           
-          try {
-            const parsedItinerary = JSON.parse(jsonContent);
+          if (jsonMatch) {
+            // If we found a JSON block, parse it
+            parsedData = JSON.parse(jsonMatch[1] || jsonMatch[0])
+          } else {
+            throw new Error("No JSON found in response")
+          }
+        } catch (extractError) {
+          console.error("Extraction fallback also failed:", extractError)
+          setToastMessage("Failed to parse the generated itinerary. Using sample data instead.")
+          setShowToast(true)
+          // Fall back to sample data
+          parsedData = sampleItinerary
+        }
+      }
+
+      // Validate the structure of the parsed data
+      if (!parsedData || !parsedData.items || !Array.isArray(parsedData.items)) {
+        console.error("Invalid itinerary structure")
+        setToastMessage("The generated itinerary has an invalid structure. Using sample data instead.")
+        setShowToast(true)
+        // Fall back to sample data
+        parsedData = sampleItinerary
+      }
+
+      // Process the generated itinerary
+      const processedItinerary = {
+        ...parsedData,
+        items: parsedData.items.map((section: any) => ({
+          ...section,
+          activities: section.activities.map((activity: any) => {
+            // Find a matching image from the sample itinerary based on tags and title
+            let matchingImage = burnham // Default image
+            let bestMatchScore = 0
             
-            // Ensure the parsed data has the expected structure
-            if (parsedItinerary && parsedItinerary.items) {
-              console.log('Successfully parsed itinerary with structure:', parsedItinerary.title);
-              
-              // Add image data to each activity since Gemini doesn't provide images
-              const processedItinerary = {
-                ...parsedItinerary,
-                items: parsedItinerary.items.map((item: any) => ({
-                  ...item,
-                  activities: item.activities.map((activity: any, index: number) => {
-                    // Find a relevant sample image based on activity tags if possible
-                    let sampleImageIndex = index % sampleItinerary.items[0].activities.length;
+            // Try to find a matching activity in the sample itinerary
+            for (const sampleSection of sampleItinerary.items) {
+              for (const sampleActivity of sampleSection.activities) {
+                let currentScore = 0
+                
+                // Check for title match (highest priority)
+                if (activity.title && sampleActivity.title) {
+                  const activityTitle = activity.title.toLowerCase()
+                  const sampleTitle = sampleActivity.title.toLowerCase()
+                  
+                  // Exact title match
+                  if (activityTitle === sampleTitle) {
+                    currentScore += 10
+                  } 
+                  // Partial title match
+                  else if (activityTitle.includes(sampleTitle) || sampleTitle.includes(activityTitle)) {
+                    currentScore += 5
+                  }
+                  // Word match in title
+                  else {
+                    const activityWords = activityTitle.split(/\s+/)
+                    const sampleWords = sampleTitle.split(/\s+/)
                     
-                    // Try to match activity tags with sample activities for better image selection
-                    if (activity.tags && activity.tags.length > 0) {
-                      const tagLowerCase = activity.tags[0].toLowerCase();
-                      const matchingIndex = sampleItinerary.items[0].activities.findIndex(
-                        (sampleActivity: any) => {
-                          return sampleActivity.tags.some((tag: string) => 
-                            tag.toLowerCase().includes(tagLowerCase) || 
-                            tagLowerCase.includes(tag.toLowerCase())
-                          );
-                        }
-                      );
-                      
-                      if (matchingIndex !== -1) {
-                        sampleImageIndex = matchingIndex;
+                    for (const word of activityWords) {
+                      if (word.length > 3 && sampleWords.includes(word)) { // Only consider words longer than 3 chars
+                        currentScore += 2
                       }
                     }
-                    
-                    return {
-                      ...activity,
-                      image: sampleItinerary.items[0].activities[sampleImageIndex].image
-                    };
-                  })
-                }))
-              };
-              
-              setGeneratedItinerary(processedItinerary);
-              setShowPreview(true);
-              return;
-            } else {
-              console.error('Parsed JSON does not have expected structure:', parsedItinerary);
+                  }
+                }
+                
+                // Check for tag matches
+                if (activity.tags && sampleActivity.tags) {
+                  for (const tag of activity.tags) {
+                    if (sampleActivity.tags.includes(tag)) {
+                      currentScore += 3
+                    }
+                  }
+                }
+                
+                // Update best match if this activity has a higher score
+                if (currentScore > bestMatchScore) {
+                  bestMatchScore = currentScore
+                  matchingImage = sampleActivity.image
+                }
+              }
             }
-          } catch (jsonError) {
-            console.error('Error parsing JSON content:', jsonError);
-          }
-        } else {
-          console.error('No JSON content found in response');
-        }
-        
-        // If we couldn't parse JSON or the structure wasn't as expected, fall back to sample data
-        console.log('Could not parse valid itinerary JSON from Gemini response, using sample data');
-        setGeneratedItinerary(sampleItinerary);
-        setShowPreview(true);
-      } catch (parseError) {
-        console.error('Error parsing Gemini response:', parseError);
-        setGeneratedItinerary(sampleItinerary);
-        setShowPreview(true);
+            
+            // Add weather-appropriate tags if not already present
+            let tags = [...(activity.tags || [])]
+            const weatherCondition = weatherData?.weather?.[0]?.main?.toLowerCase() || ""
+            
+            // Add weather tags if they don't already exist
+            if (weatherCondition.includes("rain") && !tags.includes("Indoor-Friendly")) {
+              tags.push("Indoor-Friendly")
+            } else if (weatherCondition.includes("clear") && !tags.includes("Outdoor-Friendly")) {
+              tags.push("Outdoor-Friendly")
+            } else if (!tags.includes("Weather-Flexible")) {
+              tags.push("Weather-Flexible")
+            }
+            
+            return {
+              ...activity,
+              image: matchingImage,
+              tags: tags
+            }
+          })
+        }))
       }
+
+      setGeneratedItinerary(processedItinerary)
+      setShowPreview(true)
     } catch (error) {
-      console.error('Error generating itinerary:', error);
-      // Use sample itinerary as fallback when any error occurs
-      setGeneratedItinerary(sampleItinerary);
-      setShowPreview(true);
-      setToastMessage('Using sample itinerary as API request failed.');
-      setShowToast(true);
+      console.error("Error generating itinerary:", error)
+      setToastMessage("An unexpected error occurred. Using sample data instead.")
+      setShowToast(true)
+      setGeneratedItinerary(sampleItinerary)
+      setShowPreview(true)
     } finally {
-      setIsGenerating(false);
+      setIsGenerating(false)
     }
   }
 
