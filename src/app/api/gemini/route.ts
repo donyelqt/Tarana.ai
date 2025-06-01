@@ -206,6 +206,7 @@ export async function POST(req: NextRequest) {
       ${paxContext}
       
       Please generate a detailed itinerary for Baguio City by selecting and adapting activities from the provided sample itinerary database.
+      IMPORTANT: Do NOT invent, create, or recommend any activities, places, or experiences that are not present in the provided sample itinerary database. Only select, adapt, and recommend from the given sample database. If no suitable activity exists for a time slot or condition, leave it empty or state "No suitable activity available from the sample database for this slot."
       Follow these guidelines:
       
       1. Organize activities by time periods: Morning (8AM-12NN), Afternoon (12NN-6PM), and Evening (6PM onwards)
@@ -224,7 +225,7 @@ export async function POST(req: NextRequest) {
       4. Ensure realistic time allocations including travel time between locations
       5. For multi-day itineraries, pace activities appropriately (more activities for shorter trips, more relaxed pace for longer trips)
       6. IMPORTANT: Match activities with both user interests AND current weather conditions
-      7. IMPORTANT: Select activities primarily from the provided sample itinerary database, adapting descriptions as needed
+      7. IMPORTANT: Select activities strictly from the provided sample itinerary database, adapting descriptions as needed. Do NOT generate or invent any new activities.
       
       Format the response as a JSON object with this structure:
       {
