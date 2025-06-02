@@ -1,4 +1,5 @@
 import { clsx, type ClassValue } from "clsx"
+import { StaticImageData } from "next/image"
 import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
@@ -125,7 +126,7 @@ export interface GeminiResponse {
 export interface ItineraryItem {
   period: string
   activities: {
-    image: any
+    image: string | StaticImageData
     title: string
     time: string
     desc: string

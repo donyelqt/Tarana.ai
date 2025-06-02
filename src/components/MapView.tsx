@@ -34,7 +34,7 @@ const MapView = ({ title, address, lat = 16.4023, lng = 120.5960 }: MapViewProps
     const initializeMap = () => {
       if (!mapRef.current) return
       try {
-        // @ts-ignore - HERE Maps API is loaded dynamically
+        // @ts-expect-error - HERE Maps API is loaded dynamically
         const H = window.H
         if (!H) {
           setError("HERE Maps API not available")
@@ -56,7 +56,7 @@ const MapView = ({ title, address, lat = 16.4023, lng = 120.5960 }: MapViewProps
           }
         )
         // Enable map events
-        const behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map))
+        new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
         // Add UI controls
         H.ui.UI.createDefault(map, defaultLayers)
         // Add marker

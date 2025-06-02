@@ -2,7 +2,7 @@
 import { StaticImageData } from "next/image";
 
 export interface ItineraryActivity {
-  image: StaticImageData;
+  image: string | StaticImageData;
   title: string;
   time: string;
   desc: string;
@@ -25,7 +25,7 @@ export interface SavedItinerary {
   title: string;
   date: string;
   budget: string;
-  image: StaticImageData;
+  image: string | StaticImageData;
   tags: string[];
   formData: {
     budget: string;
