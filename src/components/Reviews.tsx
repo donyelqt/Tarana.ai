@@ -141,7 +141,7 @@ const Reviews = ({
           <div className="flex justify-center items-center gap-2 mt-6">
             <Button
               variant="outline"
-              size="icon"
+         
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
             >
@@ -156,7 +156,6 @@ const Reviews = ({
             
             <Button
               variant="outline"
-              size="icon"
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
             >
