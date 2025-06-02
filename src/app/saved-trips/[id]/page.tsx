@@ -21,7 +21,7 @@ const SavedItineraryDetail = () => {
   const params = useParams()
   const { id } = params as { id: string }
   const [itinerary, setItinerary] = useState<SavedItinerary | null>(null)
-  const [selectedActivity, setSelectedActivity] = useState<Record<string, any> | null>(null)
+  const [selectedActivity, setSelectedActivity] = useState<Record<string, unknown> | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
 
 
@@ -31,17 +31,15 @@ const SavedItineraryDetail = () => {
     setItinerary(found || null)
   }, [id])
 
-  const handleViewOnMap = (activity: Record<string, any>, e: React.MouseEvent) => {
+  const handleViewOnMap = (activity: any, e: React.MouseEvent) => {
     e.preventDefault()
     setSelectedActivity(activity)
-
     setShowDetailModal(true)
   }
 
-  const handleViewReviews = (activity: Record<string, any>, e: React.MouseEvent) => {
+  const handleViewReviews = (activity: any, e: React.MouseEvent) => {
     e.preventDefault()
     setSelectedActivity(activity)
-
     setShowDetailModal(true)
   }
 
@@ -62,19 +60,19 @@ const SavedItineraryDetail = () => {
   const { selectedInterests, pax, dates, budget } = formData
 
   // Transform activity data for PlaceDetail component
-  const transformActivityToPlace = (activity: Record<string, any>) => {
+  const transformActivityToPlace = (activity: Record<string, unknown>) => {
     return {
-      id: activity.title.toLowerCase().replace(/\s+/g, '-'),
-      name: activity.title,
+      id: (activity.title as string).toLowerCase().replace(/\s+/g, '-'),
+      name: activity.title as string,
       rating: 4.2, // Default rating
       totalReviews: 120, // Default review count
-      description: activity.desc,
+      description: activity.desc as string,
       address: `Baguio City, Philippines`,
       location: {
         lat: 16.4023, // Default to Baguio coordinates
         lng: 120.5960,
       },
-      images: [activity.image.src], // Use the activity image
+      images: [(activity.image as {src: string}).src], // Use the activity image
       amenities: [
         { icon: "🍽️", name: "Restaurant" },
         { icon: "🚻", name: "Restrooms" },
@@ -204,20 +202,20 @@ const SavedItineraryDetail = () => {
                     </div>
                     {/* Image */}
                     <div className="relative w-full md:w-60 h-40 md:h-auto md:mt-8 md:mb-8 md:ml-8 flex-shrink-0">
-                      <Image src={activity.image} alt={activity.title} fill className="object-center rounded-2xl md:rounded-l-2xl" />
+                      <Image src={activity.image as any} alt={(activity.title as string)} fill className="object-center rounded-2xl md:rounded-l-2xl" />
                     </div>
                     {/* Details */}
                     <div className="flex-1 p-6 flex flex-col gap-2">
                       {/* Time for mobile */}
                       <div className="flex md:hidden mb-1">
-                        <span className="text-blue-700 font-semibold text-sm">{activity.time}</span>
+                        <span className="text-blue-700 font-semibold text-sm">{activity.time as string}</span>
                       </div>
                       <div className="flex flex-col md:flex-row md:items-center md:gap-4 mb-1">
-                        <span className="font-bold text-lg text-gray-900 md:ml-0 ml-1">{activity.title}</span>
+                        <span className="font-bold text-lg text-gray-900 md:ml-0 ml-1">{activity.title as string}</span>
                       </div>
-                      <div className="text-gray-700 text-sm mb-2">{activity.desc}</div>
+                      <div className="text-gray-700 text-sm mb-2">{activity.desc as string}</div>
                       <div className="flex flex-wrap gap-2 mb-2">
-                        {activity.tags.map((tag, i) => (
+                        {((activity.tags as string[]) || []).map((tag, i) => (
                           <span key={i} className="flex items-center gap-1 bg-gray-100 px-3 py-1 rounded-full text-xs text-gray-600">
                             <span>{interestIcons[tag] || ""}</span>
                             {tag}
@@ -256,7 +254,7 @@ const SavedItineraryDetail = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center z-10">
-              <h2 className="text-xl font-bold">{selectedActivity.title}</h2>
+              <h2 className="text-xl font-bold">{selectedActivity.title as string}</h2>
               <button 
                 onClick={() => setShowDetailModal(false)}
                 className="text-gray-500 hover:text-gray-700"

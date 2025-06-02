@@ -320,7 +320,7 @@ export default function ItineraryGenerator() {
             }
             
             // Add weather-appropriate tags if not already present
-            let tags = [...(activity.tags || [])]
+            const tags = [...(activity.tags || [])]
             const weatherCondition = weatherData?.weather?.[0]?.main?.toLowerCase() || ""
             
             // Add weather tags if they don't already exist
