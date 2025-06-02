@@ -1,3 +1,0 @@
-# Ignore specific files with ESLint issues
-src/app/saved-trips/[id]/page.tsx
-src/app/itinerary-generator/page.tsx
