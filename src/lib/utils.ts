@@ -27,7 +27,8 @@ export interface WeatherData {
 // Baguio City coordinates
 export const BAGUIO_COORDINATES = {
   lat: 16.4023,
-  lon: 120.5960
+  lon: 120.5960,
+  name: 'Baguio City'
 }
 
 export async function fetchWeatherData(lat: number, lon: number, apiKey: string): Promise<WeatherData | null> {
