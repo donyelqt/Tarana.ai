@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
     const text = response.text();
     
     // Try to extract JSON from the response
-    let jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || 
+    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || 
                   text.match(/```([\s\S]*?)```/) ||
                   text.match(/{[\s\S]*?}/);
                   

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { saveItinerary } from "@/lib/savedItineraries"
 import { useRouter } from "next/navigation"
 import Toast from "@/components/ui/Toast"
-import { fetchWeatherFromAPI, WeatherData, generateItinerary, ItineraryData } from "@/lib/utils"
+import { fetchWeatherFromAPI, WeatherData, ItineraryData } from "@/lib/utils"
 
 const budgetOptions = [
   "less than ₱3,000/day",
@@ -264,9 +264,9 @@ export default function ItineraryGenerator() {
       // Process the generated itinerary
       const processedItinerary = {
         ...parsedData,
-        items: parsedData.items.map((section: any) => ({
+        items: parsedData.items.map((section: ItineraryData['items'][0]) => ({
           ...section,
-          activities: section.activities.map((activity: any) => {
+          activities: section.activities.map((activity: ItineraryData['items'][0]['activities'][0]) => {
             // Find a matching image from the sample itinerary based on tags and title
             let matchingImage = burnham // Default image
             let bestMatchScore = 0

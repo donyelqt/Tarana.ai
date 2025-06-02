@@ -19,7 +19,7 @@ interface AmenityProps {
 }
 
 interface ReviewsProps {
-  placeName: string
+  placeName: string; // Add placeName property
   overallRating: number
   totalReviews: number
   amenities: AmenityProps[]
@@ -49,7 +49,6 @@ const StarRating = ({ rating }: { rating: number }) => {
 }
 
 const Reviews = ({
-  placeName,
   overallRating,
   totalReviews,
   amenities,

@@ -21,9 +21,9 @@ const SavedItineraryDetail = () => {
   const params = useParams()
   const { id } = params as { id: string }
   const [itinerary, setItinerary] = useState<SavedItinerary | null>(null)
-  const [selectedActivity, setSelectedActivity] = useState<any>(null)
+  const [selectedActivity, setSelectedActivity] = useState<Record<string, any> | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
-  const [activeTab, setActiveTab] = useState<'description' | 'map' | 'reviews'>('description')
+
 
   useEffect(() => {
     const all = getSavedItineraries()
@@ -31,17 +31,17 @@ const SavedItineraryDetail = () => {
     setItinerary(found || null)
   }, [id])
 
-  const handleViewOnMap = (activity: any, e: React.MouseEvent) => {
+  const handleViewOnMap = (activity: Record<string, any>, e: React.MouseEvent) => {
     e.preventDefault()
     setSelectedActivity(activity)
-    setActiveTab('map')
+
     setShowDetailModal(true)
   }
 
-  const handleViewReviews = (activity: any, e: React.MouseEvent) => {
+  const handleViewReviews = (activity: Record<string, any>, e: React.MouseEvent) => {
     e.preventDefault()
     setSelectedActivity(activity)
-    setActiveTab('reviews')
+
     setShowDetailModal(true)
   }
 
@@ -62,7 +62,7 @@ const SavedItineraryDetail = () => {
   const { selectedInterests, pax, dates, budget } = formData
 
   // Transform activity data for PlaceDetail component
-  const transformActivityToPlace = (activity: any) => {
+  const transformActivityToPlace = (activity: Record<string, any>) => {
     return {
       id: activity.title.toLowerCase().replace(/\s+/g, '-'),
       name: activity.title,
