@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
         
         You can modify the descriptions and details as needed to better match the current context,
         but try to use these pre-vetted activities as your primary recommendations.
+        **IMPORTANT: You MUST NOT recommend any place or activity that is not present in this sample itinerary database.**
       `;
     }
 
