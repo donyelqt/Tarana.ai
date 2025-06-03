@@ -249,7 +249,7 @@ export async function POST(req: NextRequest) {
 
     // Configure the generation
     const generationConfig = {
-      temperature: 0.6, // Reduced for more consistent outputs and better adherence to the sample database
+      temperature: 0.2, // Reduced for more consistent outputs and better adherence to the sample database
       topK: 32,
       topP: 0.95,
       maxOutputTokens: 4096,
