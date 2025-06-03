@@ -14,8 +14,18 @@ import sampleprofile from "./images/sampleprofile.png"
 import goodtaste from "./images/goodtaste.png"
 import burnham from "./images/burnham.png"
 import dashboard from "./images/dashboard.png"
+import bencab from "./images/bencab.png"
+import mtulap from "./images/mtulap.png"
+import hillstation from "./images/hillstation.png"
+import tamawan from "./images/tamawan.png"
+import treetopcampjohnhay from "./images/treetopcampjohnhay.png"
+import viewspark from "./images/viewspark.png"
+import caferuins from "./images/caferuins.png"
+import nightmarket from "./images/nightmarket.png"
+import vizcossessionroad from "./images/vizcossessionroad.png"
 
 export { baguio_panorama, how_it_works, letai, 
     set, explore, local, 
     personalized, traffic, solo_travel, family, couples, barkadas, 
-    sampleprofile, goodtaste, burnham, dashboard }
+    sampleprofile, goodtaste, burnham, dashboard, bencab, mtulap, 
+    hillstation, tamawan, treetopcampjohnhay, viewspark, caferuins, nightmarket, vizcossessionroad }

@@ -3,7 +3,9 @@
 import Sidebar from "../../components/Sidebar"
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { baguio_panorama, burnham, goodtaste, letai } from "../../../public"
+import { baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation, 
+  mtulap, nightmarket, tamawan, treetopcampjohnhay, viewspark, 
+  vizcossessionroad} from "../../../public"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -54,14 +56,14 @@ const sampleItinerary = {
           tags: ["Nature & Scenery", "Adventure", "Budget-friendly", "Family-friendly", "Outdoor-Friendly"]
         },
         {
-          image: baguio_panorama,
+          image: bencab,
           title: "BenCab Museum Visit",
           time: "9:30AM-12:00PM",
           desc: "Explore the works of National Artist Benedicto Cabrera at this world-class museum featuring Filipino art, indigenous artifacts, and a serene garden with duck ponds and eco-trail. Entrance fee: ₱150 (adults), ₱120 (students). Located in Tuba, Benguet, about 15-20 minutes from city center by taxi (₱200-250). The on-site Café Sabel offers farm-to-table dishes (₱250-450) with ingredients from their own garden. Perfect indoor activity for rainy days. Duration: 2-2.5 hours including garden walk.",
           tags: ["Culture & Arts", "Museum", "Indoor-Friendly", "Mid-range Budget", "Educational"]
         },
         {
-          image: baguio_panorama,
+          image: mtulap,
           title: "Mt. Ulap Eco-Trail (Half-Day Hike)",
           time: "8:00AM-12:30PM",
           desc: "Experience this popular day hike on the Ampucao-Sta Fe ridge with stunning views of the Cordillera mountains. Visit highlights like Gungal Rock and Ambanao Paoay Peak. Guide fee: ₱600 + ₱100/person. Transportation: Jeepney from Baguio (₱30) or taxi (₱350-400). Duration: 4-5 hours for the beginner trail. Difficulty: Moderate. Best during clear weather. Bring: 1L water, trail snacks, sunscreen, hat, light jacket. Not recommended during rainy season due to slippery trails.",
@@ -73,28 +75,28 @@ const sampleItinerary = {
       period: "Afternoon (12NN-6PM)",
       activities: [
         {
-          image: letai,
+          image: hillstation,
           title: "Lunch at Hill Station",
           time: "12:45PM-2:00PM",
           desc: "Enjoy international cuisine with a Filipino twist at this award-winning restaurant located in Casa Vallejo, a historic hotel built in 1909. Known for its cozy ambiance and historic setting. Try their US Angus Beef Salpicao (₱650) or Cordillera Chicken Roulade (₱450). Reservation recommended. Price range: ₱450-800 per person. Located at Upper Session Road, 5-minute walk from SM Baguio. Perfect for any weather condition. Duration: 1-1.5 hours for a leisurely meal.",
           tags: ["Food & Culinary", "Fine Dining", "Historic Site", "Indoor-Friendly", "High-end Budget"]
         },
         {
-          image: baguio_panorama,
+          image: tamawan,
           title: "Tam-awan Village Cultural Experience",
           time: "2:30PM-4:30PM",
           desc: "Immerse yourself in Cordilleran culture at this reconstructed indigenous village featuring traditional Ifugao and Kalinga huts, art galleries, and cultural workshops. Enjoy scenic viewpoints and local crafts. Entrance fee: ₱60 (adults), ₱50 (students). Art workshops available (₱250-500). Located in Pinsao Proper, 15-20 minutes from city center by taxi (₱150-200). Has covered walkways between huts, making it suitable for light rain. Duration: 1.5-2 hours for a complete tour. Cultural performances on weekends (additional ₱100).",
           tags: ["Culture & Arts", "Local Heritage", "Shopping & Local Finds", "Educational", "Weather-Flexible", "Mid-range Budget"]
         },
         {
-          image: baguio_panorama,
+          image: treetopcampjohnhay,
           title: "Tree Top Adventure at Camp John Hay",
           time: "4:45PM-6:00PM",
           desc: "Experience thrilling activities like the Superman Ride (₱300), Canopy Ride (₱250), or Silver Surfer (₱200). Perfect for adventure seekers looking for an adrenaline rush. Located in Camp John Hay Special Economic Zone, 10-15 minutes from city center by taxi (₱120-150). Package deals available: ₱650 for 3 rides. Height and weight restrictions apply. Not operational during heavy rain or strong winds. Duration: 1-1.5 hours for multiple activities. Last ride usually at 5:30PM.",
           tags: ["Nature & Scenery", "Adventure", "Adrenaline & Extreme", "Outdoor-Friendly", "Mid-range Budget", "Clear Weather Only"]
         },
         {
-          image: baguio_panorama,
+          image: viewspark,
           title: "Mines View Park Scenic Overlook",
           time: "3:00PM-4:30PM",
           desc: "Visit this famous lookout point offering panoramic views of the Cordillera mountains and the abandoned gold and copper mines. Entrance is free. Souvenir shops and food stalls line the approach to the park. Try on traditional Igorot attire for photos (₱20-50). Sample strawberry taho (₱30-50) or fresh strawberries when in season. Located 15-20 minutes from city center by jeepney (₱10) or taxi (₱120-150). Best visited on clear days for optimal views. Duration: 1-1.5 hours including shopping. Crowded on weekends and holidays.",
@@ -106,21 +108,21 @@ const sampleItinerary = {
       period: "Evening (6PM onwards)",
       activities: [
         {
-          image: baguio_panorama,
+          image: caferuins,
           title: "Dinner at Café by the Ruins",
           time: "6:30PM-8:00PM",
           desc: "Experience farm-to-table dining at this iconic Baguio restaurant located at 25 Shuntug Road (across City Hall). Founded by artists in the 1980s, it's built on actual ruins of a historic building. Try their signature dishes made with locally-sourced ingredients - from Warm Shiitake Salad (₱280) to Pasta Carbonara (₱240). Don't miss their famous Camote Bread (₱100) with homemade spreads. Average meal cost: ₱350-500 per person. Reservation recommended on weekends. Open daily from 7AM to 9PM. Duration: 1.5 hours for a relaxed dinner. Indoor seating available for rainy evenings.",
           tags: ["Food & Culinary", "Culture & Arts", "Local Heritage", "Indoor-Friendly", "Mid-range Budget", "Romantic"]
         },
         {
-          image: baguio_panorama,
+          image: nightmarket,
           title: "Night Market on Harrison Road",
           time: "9:00PM-11:00PM",
           desc: "End your day at the vibrant Night Market along Harrison Road near Burnham Park (open 9PM-2AM). Find ukay-ukay (thrift clothes) for ₱50-250, local handicrafts, souvenirs, and delicious street food. Enjoy Filipino street food like fishballs (₱15), isaw (₱15), and sisig rice meals (₱60-80), or try the popular strawberry taho (₱25-35). Bring small bills and be prepared to haggle. Located at the city center, easily accessible by walking from most downtown hotels. Not recommended during heavy rain as it's an open-air market. Duration: 1-2 hours for shopping and snacking. Security is present but watch your belongings in crowds.",
           tags: ["Shopping & Local Finds", "Food & Culinary", "Budget-friendly", "Local Experience", "Night Activity", "Weather-Dependent"]
         },
         {
-          image: baguio_panorama,
+          image: vizcossessionroad,
           title: "Dessert at Vizco's Restaurant & Cake Shop",
           time: "8:15PM-9:30PM",
           desc: "Satisfy your sweet tooth at this famous Baguio bakery known for their signature strawberry shortcake (₱120/slice, ₱650 whole). Also try their blueberry cheesecake (₱130/slice) or ube cake (₱110/slice). Located at Session Road, 5-minute walk from Burnham Park. Also serves meals (₱180-350) if you prefer a full dinner. Indoor seating makes it perfect for any weather. Duration: 45 minutes to 1 hour. Two branches available: Session Road and SM Baguio. Take-out boxes available for bringing cakes back to your accommodation.",
