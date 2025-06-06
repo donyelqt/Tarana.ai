@@ -546,7 +546,7 @@ export default function ItineraryGenerator() {
             "w-full lg:w-[370px] lg:ml-4",
             showPreview ? "block" : "hidden"
           )}>
-            <div className="bg-white rounded-2xl shadow-md p-6 sticky top-8 mt-8 lg:mt-0">
+            <div className="bg-white rounded-2xl shadow-md p-6 sticky top-8 mt-8 lg:mt-0 max-h-[100vh] overflow-y-auto">
               <div className="mb-2 text-sm text-gray-500 font-medium">{generatedItinerary?.title || sampleItinerary.title}</div>
               <div className="mb-4 text-xs text-gray-400">{generatedItinerary?.subtitle || sampleItinerary.subtitle}</div>
               
