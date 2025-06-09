@@ -580,8 +580,8 @@ export default function ItineraryGenerator() {
             showPreview ? "block" : "hidden"
           )}>
             <div className="bg-white rounded-2xl shadow-md p-6"> 
-              <div className="mb-2 text-sm text-gray-500 font-medium">{generatedItinerary?.title || sampleItinerary.title}</div>
-              <div className="mb-4 text-xs text-gray-400">{generatedItinerary?.subtitle || sampleItinerary.subtitle}</div>
+              <div className="mb-2 text-sm text-gray-900 font-bold">{generatedItinerary?.title || sampleItinerary.title}</div>
+              <div className="mb-4 text-xs text-gray-700">{generatedItinerary?.subtitle || sampleItinerary.subtitle}</div>
               
               {/* Weather information */}
               {weatherData && (
@@ -618,8 +618,13 @@ export default function ItineraryGenerator() {
                         <div className="text-xs text-gray-500 mb-2">{act.time}</div>
                         <div className="text-sm text-gray-700 mb-3">{act.desc}</div>
                         <div className="flex gap-2 flex-wrap">
-                          {act.tags.map((tag, t) => (
-                            <span key={t} className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium">{tag}</span>
+                          {act.tags.map((tag, index) => (
+                            <span
+                              key={index}
+                              className="inline-block bg-white rounded-lg px-2 py-1 text-xs font-medium text-gray-500 border border-gray-300"
+                            >
+                              {tag}
+                            </span>
                           ))}
                         </div>
                       </div>
