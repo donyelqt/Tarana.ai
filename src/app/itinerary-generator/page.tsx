@@ -144,6 +144,7 @@ export default function ItineraryGenerator() {
   const [toastMessage, setToastMessage] = useState("")
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isLoadingItinerary, setIsLoadingItinerary] = useState<boolean>(false);
   const [generatedItinerary, setGeneratedItinerary] = useState<ItineraryData | null>(null)
   const router = useRouter()
   
@@ -173,6 +174,7 @@ export default function ItineraryGenerator() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsGenerating(true)
+    setIsLoadingItinerary(true); // Start loading itinerary
 
     try {
       // Validate form
@@ -353,6 +355,7 @@ export default function ItineraryGenerator() {
       setShowPreview(true)
     } finally {
       setIsGenerating(false)
+      setIsLoadingItinerary(false);
     }
   }
 
@@ -397,17 +400,17 @@ export default function ItineraryGenerator() {
     <div className="min-h-screen bg-[#f7f9fb]">
       <Toast message={toastMessage} show={showToast} onClose={() => setShowToast(false)} type="success" />
       <Sidebar />
-      <main className="md:pl-64 flex-1 flex flex-col md:flex-row items-start justify-start gap-8 p-4 md:p-12 pt-16 md:pt-12">
+      <main className="md:pl-64 flex-1 flex flex-col md:flex-row md:items-stretch justify-start gap-8 p-4 md:p-12 pt-16 md:pt-12">
         {/* Left: Form */}
         <div className={cn(
-          "w-full bg-white rounded-2xl p-8 shadow-md",
+          "w-full bg-white rounded-2xl h-full p-8 shadow-md",
           showPreview ? "lg:max-w-2xl" : "max-w-2xl"
         )}>
-          <div className="text-2xl font-bold mb-6 text-gray-900">Let&apos;s Plan Your Baguio Adventure</div>
+          <div className="text-lg bg-white font-extrabold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Budget Range */}
             <div>
-              <Label htmlFor="budget" className="block font-bold mb-2 text-gray-700">Budget Range</Label>
+              <Label htmlFor="budget" className="block font-bold mb-2 text-gray-900">Budget Range</Label>
               <select
                 id="budget"
                 className={cn(
@@ -425,7 +428,7 @@ export default function ItineraryGenerator() {
             </div>
             {/* Number of Pax */}
             <div>
-              <Label className="block font-bold mb-2 text-gray-700">Number of Pax.</Label>
+              <Label className="block font-bold mb-2 text-gray-900">Number of Pax.</Label>
               <div className="grid grid-cols-4 gap-3 lg:mr-48">
                 {paxOptions.map(opt => (
                   <Button
@@ -445,7 +448,7 @@ export default function ItineraryGenerator() {
             </div>
             {/* Duration */}
             <div>
-              <Label className="block font-bold mb-2 text-gray-700">Duration</Label>
+              <Label className="block font-bold mb-2 text-gray-900">Duration</Label>
               <div className="grid grid-cols-4 gap-3 lg:mr-48">
                 {durationOptions.map(opt => (
                   <Button
@@ -465,7 +468,7 @@ export default function ItineraryGenerator() {
             </div>
             {/* Travel Dates */}
             <div>
-              <Label className="block font-bold mb-2 text-gray-700">Travel Dates</Label>
+              <Label className="block font-bold mb-2 text-gray-900">Travel Dates</Label>
               <div className="flex gap-3 lg:mr-48">
                 <Input
                   type="date"
@@ -541,12 +544,34 @@ export default function ItineraryGenerator() {
           </form>
         </div>
         {/* Right: Results Panel */}
-        {showPreview && (
+        {/* Conditional rendering for loading, error, or itinerary data */}
+        {isLoadingItinerary ? (
+          <div className="w-full lg:w-[370px] lg:ml-4 flex flex-col items-center justify-center bg-white/80 z-10 rounded-2xl shadow-md p-6 h-[90vh]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-lg font-semibold text-gray-700">Generating your itinerary...</p>
+            <p className="text-md font-semibold text-gray-700">Thinking mode...</p>
+            <p className="text-sm text-gray-500">This might take a moment. Please wait.</p>
+          </div>
+        ) : showToast && toastMessage.includes("Failed") && !generatedItinerary ? (
           <aside className={cn(
-            "w-full lg:w-[370px] lg:ml-4",
+            "w-full lg:w-[370px] lg:ml-4 h-full",
             showPreview ? "block" : "hidden"
           )}>
-            <div className="bg-white rounded-2xl shadow-md p-6 sticky top-8 mt-8 lg:mt-0 max-h-[100vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-md p-6 h-full overflow-y-auto flex flex-col items-center justify-center">
+              <svg className="w-16 h-16 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">Oops! Something went wrong.</h3>
+              <p className="text-gray-500 text-center">{toastMessage.replace(" Using sample data instead.","")}</p>
+              <p className="text-gray-500 text-center mt-1">Please try generating again.</p>
+            </div>
+          </aside>
+        ) : showPreview && generatedItinerary ? (
+          <aside className={cn(
+            "w-full lg:w-[370px] lg:ml-4 h-[90vh] overflow-y-auto", // Changed max-h to h-[80vh]
+            showPreview ? "block" : "hidden"
+          )}>
+            <div className="bg-white rounded-2xl shadow-md p-6"> 
               <div className="mb-2 text-sm text-gray-500 font-medium">{generatedItinerary?.title || sampleItinerary.title}</div>
               <div className="mb-4 text-xs text-gray-400">{generatedItinerary?.subtitle || sampleItinerary.subtitle}</div>
               
@@ -600,6 +625,19 @@ export default function ItineraryGenerator() {
               >
                 Save Itinerary
               </Button>
+            </div>
+          </aside>
+        ) : (
+          <aside className={cn(
+            "w-full lg:w-[370px] lg:ml-4 h-full",
+            !showPreview ? "block" : "hidden" /* Show when not previewing */
+          )}>
+            <div className="bg-white rounded-2xl shadow-md p-6 h-[90vh] overflow-y-auto flex flex-col items-center justify-center">
+                <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19V6.75M9 6.75C9 5.50736 10.0074 4.5 11.25 4.5H17.25C18.4926 4.5 19.5 5.50736 19.5 6.75V19.5C19.5 20.7426 18.4926 21.75 17.25 21.75H11.25C10.0074 21.75 9 20.7426 9 19.5M9 6.75V11.25M5.25 19V6.75C5.25 5.50736 4.24264 4.5 3 4.5M14.25 9.75H15.75M14.25 12.75H15.75M14.25 15.75H15.75" />
+                </svg>
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">Plan Your Perfect Trip</h3>
+                <p className="text-gray-500 text-center">Fill in the details on the left to generate your personalized Baguio itinerary.</p>
             </div>
           </aside>
         )}
