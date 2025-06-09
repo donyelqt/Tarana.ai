@@ -129,7 +129,7 @@ const SavedItineraryDetail = () => {
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
       <Sidebar />
-      <main className="md:pl-64 flex-1 p-6 md:p-8 pt-8">
+      <main className="md:pl-72 flex-1 p-8 md:p-8 pt-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="mb-6">
