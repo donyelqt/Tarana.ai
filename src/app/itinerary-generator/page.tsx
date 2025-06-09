@@ -404,7 +404,7 @@ export default function ItineraryGenerator() {
         {/* Left: Form */}
         <div className={cn(
           "w-full bg-white rounded-2xl h-full p-8 shadow-md",
-          showPreview ? "lg:max-w-2xl" : "max-w-2xl"
+          showPreview ? "lg:max-w-3xl" : "max-w-3xl"
         )}>
           <div className="text-lg bg-white font-extrabold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
           <form className="space-y-6" onSubmit={handleSubmit}>
@@ -414,7 +414,7 @@ export default function ItineraryGenerator() {
               <select
                 id="budget"
                 className={cn(
-                  "w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2",
+                  "w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2",
                   showPreview ? 'border-gray-300' : 'border-gray-300 focus:ring-blue-200'
                 )}
                 value={budget}
@@ -473,8 +473,12 @@ export default function ItineraryGenerator() {
                 <Input
                   type="date"
                   className={cn(
-                    "border rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2",
-                    showPreview ? 'border-gray-300' : 'border-gray-300 focus:ring-blue-200'
+                    "border rounded-xl px-4 py-2 w-full focus:outline-none focus:ring-2",
+                    showPreview
+                      ? 'border-gray-300'
+                      : dates.start
+                        ? 'border-blue-500 focus:ring-blue-400'
+                        : 'border-gray-300 focus:ring-blue-400 hover:border-blue-500'
                   )}
                   value={dates.start}
                   onChange={e => setDates({ ...dates, start: e.target.value })}
@@ -484,8 +488,12 @@ export default function ItineraryGenerator() {
                 <Input
                   type="date"
                   className={cn(
-                    "border rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2",
-                    showPreview ? 'border-gray-300' : 'border-gray-300 focus:ring-blue-200'
+                    "border rounded-xl px-4 py-2 w-full focus:outline-none focus:ring-2",
+                    showPreview
+                      ? 'border-gray-300'
+                      : dates.end
+                        ? 'border-blue-500 focus:ring-blue-400'
+                        : 'border-gray-300 focus:ring-blue-400 hover:border-blue-500'
                   )}
                   value={dates.end}
                   onChange={e => setDates({ ...dates, end: e.target.value })}
@@ -504,7 +512,7 @@ export default function ItineraryGenerator() {
                     key={label}
                     variant="outline"
                     className={cn(
-                      "flex items-center justify-center gap-2 py-2 font-medium transition",
+                      "flex items-center justify-center gap-2 py-3 font-medium transition",
                       selectedInterests.includes(label) ? 'bg-blue-500 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
                       showPreview ? 'cursor-not-allowed' : ''
                     )}
