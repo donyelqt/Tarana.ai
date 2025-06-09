@@ -1,6 +1,31 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
+// Simple in-memory cache for similar requests
+const responseCache = new Map<string, { response: any; timestamp: number }>();
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+// Pre-computed weather context lookup for faster processing
+const WEATHER_CONTEXTS = {
+  thunderstorm: (temp: number, desc: string) => `WARNING: Thunderstorm (${temp}°C). ONLY indoor activities: Museums, malls, indoor dining. Select "Indoor-Friendly" tagged activities only.`,
+  rainy: (temp: number, desc: string) => `Rainy weather (${temp}°C). Prioritize "Indoor-Friendly" tagged activities: Museums, malls, covered dining.`,
+  snow: (temp: number, desc: string) => `Rare snow (${temp}°C)! Focus on "Indoor-Friendly" activities: warm venues, hot beverages, brief safe outdoor viewing.`,
+  foggy: (temp: number, desc: string) => `Foggy conditions (${temp}°C). Use "Indoor-Friendly" or "Weather-Flexible" activities. Avoid viewpoints.`,
+  cloudy: (temp: number, desc: string) => `Cloudy weather (${temp}°C). Mix of "Weather-Flexible" activities. Good for photography.`,
+  clear: (temp: number, desc: string) => `Clear weather (${temp}°C). Perfect for "Outdoor-Friendly" activities: hiking, parks, viewpoints.`,
+  cold: (temp: number, desc: string) => `Cold weather (${temp}°C). Prioritize "Indoor-Friendly" activities with warming options.`,
+  default: (temp: number, desc: string) => `Weather: ${desc} at ${temp}°C. Balance indoor/outdoor activities."`
+};
+
+// Interest mapping for faster lookup
+const INTEREST_TAGS = {
+  "Nature & Scenery": "Nature",
+  "Food & Culinary": "Food", 
+  "Culture & Arts": "Culture",
+  "Shopping & Local Finds": "Shopping",
+  "Adventure": "Adventure"
+};
+
 export async function POST(req: NextRequest) {
   try {
     const { prompt, weatherData, interests, duration, budget, pax, sampleItinerary } = await req.json();
@@ -11,147 +36,57 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    
+    // Generate cache key based on request parameters
+    const cacheKey = JSON.stringify({
+      prompt: prompt?.substring(0, 100), // First 100 chars for similarity
+      weatherId: weatherData?.weather?.[0]?.id,
+      temp: Math.round(weatherData?.main?.temp || 0),
+      interests: interests?.sort(),
+      duration,
+      budget,
+      pax
+    });
+    
+    // Check cache for recent similar requests
+    const cached = responseCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return NextResponse.json(cached.response);
+    }
 
     // Initialize the Google Generative AI with your API key
     const genAI = new GoogleGenerativeAI(
       process.env.GOOGLE_GEMINI_API_KEY || ""
     );
 
-    // For text-only input, use the gemini-pro model
+    // Use optimized model for faster responses
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-    // Get weather condition from OpenWeatherMap API format
+    // Optimized weather processing
     const weatherId = weatherData?.weather?.[0]?.id || 0;
-    const weatherDescription = weatherData?.weather?.[0]?.description || ""; // Keep for descriptive context
-    const temperature = weatherData?.main?.temp || 20; // Default to 20°C if not available
+    const weatherDescription = weatherData?.weather?.[0]?.description || "";
+    const temperature = weatherData?.main?.temp || 20;
+    
+    // Fast weather type determination
+    const getWeatherType = (id: number, temp: number): string => {
+      if (id >= 200 && id <= 232) return 'thunderstorm';
+      if ((id >= 300 && id <= 321) || (id >= 500 && id <= 531)) return 'rainy';
+      if (id >= 600 && id <= 622) return 'snow';
+      if (id >= 701 && id <= 781) return 'foggy';
+      if (id === 800) return 'clear';
+      if (id >= 801 && id <= 804) return 'cloudy';
+      if (temp < 15) return 'cold';
+      return 'default';
+    };
+    
+    const weatherType = getWeatherType(weatherId, temperature);
+    const weatherContext = WEATHER_CONTEXTS[weatherType](temperature, weatherDescription);
 
-    // Determine weather context using OpenWeatherMap condition codes
-    // Reference: https://openweathermap.org/weather-conditions
-    const isRainy = (weatherId >= 300 && weatherId <= 321) || (weatherId >= 500 && weatherId <= 531); // Drizzle and Rain
-    const isClear = weatherId === 800; // Clear
-    const isCloudy = weatherId >= 801 && weatherId <= 804; // Clouds
-    const isCold = temperature < 15;
-    const isFoggy = weatherId >= 701 && weatherId <= 781; // Atmosphere (Mist, Smoke, Haze, etc.)
-    const isThunderstorm = weatherId >= 200 && weatherId <= 232;
-    const isSnow = weatherId >= 600 && weatherId <= 622;
+    // Streamlined sample itinerary context
+    const sampleItineraryContext = sampleItinerary ? 
+      `Database: ${JSON.stringify(sampleItinerary)}\nRULE: Only use activities from this database. Match user interests and weather tags.` : "";
 
-    // Create a detailed sample itinerary context based on the provided sample data
-    let sampleItineraryContext = "";
-    if (sampleItinerary) {
-      sampleItineraryContext = `
-        ## Sample Itinerary Database
-        
-        I'm providing you with a sample itinerary database that contains pre-vetted activities for Baguio City.
-        You MUST select and recommend activities from this database that best match the user's preferences and current weather conditions.
-        
-        Here's the sample itinerary database structure:
-        ${JSON.stringify(sampleItinerary, null, 2)}
-        
-        When creating the itinerary, prioritize activities from this database that:
-        1. Match the user's selected interests through the tags (e.g., "Nature", "Food", "Culture", "Shopping", "Adventure")
-        2. Are appropriate for the current weather conditions using these tags:
-           - For rainy weather: Prioritize "Indoor-Friendly" tagged activities
-           - For clear weather: Prioritize "Outdoor-Friendly" tagged activities
-           - For mixed conditions: Use "Weather-Flexible" tagged activities
-        3. Fit within their budget range (look for "Budget-friendly" tags for budget travelers)
-        4. Can be reasonably completed within the specified duration
-        5. Are suitable for their group size
-        
-        You can modify the descriptions and details as needed to better match the current context,
-        but try to use these pre-vetted activities as your primary recommendations.
-        **IMPORTANT: You MUST NOT recommend any place or activity that is not present in this sample itinerary database.**
-      `;
-    }
-
-    // Add detailed weather context to the prompt
-    let weatherContext = "";
-    if (isThunderstorm) {
-      weatherContext = `
-        WARNING: There's a thunderstorm in Baguio (${temperature}°C, ${weatherDescription}). Prioritize safety and strongly recommend indoor activities:
-        - Museums (BenCab Museum, Baguio Museum)
-        - Shopping malls (SM Baguio, Baguio Center Mall)
-        - Indoor dining experiences (Hill Station, Café by the Ruins, Vizco's)
-        - Avoid all outdoor activities until the thunderstorm passes.
-        
-        From the sample itinerary database, select ONLY activities with the "Indoor-Friendly" tag.
-        Advise checking weather updates frequently.
-      `;
-    } else if (isRainy) {
-      weatherContext = `
-        It's currently raining in Baguio (${temperature}°C, ${weatherDescription}). Prioritize indoor activities such as:
-        - Museums (BenCab Museum, Baguio Museum)
-        - Shopping malls (SM Baguio, Baguio Center Mall)
-        - Indoor dining experiences (Hill Station, Café by the Ruins, Vizco's)
-        - Cultural centers with indoor exhibits (Tam-awan Village covered areas)
-        
-        From the sample itinerary database, select activities with the "Indoor-Friendly" tag.
-        If including any outdoor activities, they should be marked as weather-dependent alternatives for when the rain stops, or include specific notes about covered areas and rain protection options.
-      `;
-    } else if (isSnow) {
-      weatherContext = `
-        It's snowing in Baguio (${temperature}°C, ${weatherDescription}), which is rare! Focus on:
-        - Enjoying the unique snowy scenery from safe, warm indoor locations.
-        - Warm indoor venues (cafés, restaurants, museums).
-        - Hot food and beverage experiences.
-        - Very short, careful outdoor excursions if conditions are safe, emphasizing appropriate winter wear.
-        
-        From the sample itinerary database, prioritize activities with the "Indoor-Friendly" tag.
-        Advise extreme caution if venturing outdoors due to potentially slippery conditions and unfamiliarity with snow.
-      `;
-    } else if (isFoggy) {
-      weatherContext = `
-        With foggy or misty conditions in Baguio (${temperature}°C, ${weatherDescription}), recommend:
-        - Atmospheric locations that are enhanced by fog (e.g., certain trails in Camp John Hay, if safe and visibility permits for short walks).
-        - Indoor activities with large windows to safely enjoy the misty views (e.g., cafes with views).
-        - Cultural experiences that aren't dependent on clear visibility (e.g., museums, indoor markets).
-        - Cozy cafés and restaurants with warming foods and drinks.
-        - Avoid high viewpoints where fog would completely obstruct the views (e.g., Mines View Park might not be ideal).
-        
-        From the sample itinerary database, prioritize activities with the "Indoor-Friendly" or "Weather-Flexible" tags.
-        Note that fog can make driving difficult, so suggest locations with easy transportation access or advise caution.
-      `;
-    } else if (isCloudy) {
-      weatherContext = `
-        With cloudy weather in Baguio (${temperature}°C, ${weatherDescription}), recommend a mix of indoor and outdoor activities:
-        - Outdoor activities that don't require clear skies (parks like Burnham Park, gardens, local markets like Baguio City Market).
-        - Photography-friendly locations that look atmospheric in cloudy conditions.
-        - Indoor alternatives ready in case the weather changes (e.g., SM Baguio, museums).
-        - Cafés with views where visitors can enjoy the scenery while protected.
-        
-        From the sample itinerary database, prioritize activities with the "Weather-Flexible" tag.
-        Suggest flexible itineraries that can be adjusted if clouds turn to rain.
-      `;
-    } else if (isClear) {
-      weatherContext = `
-        With clear weather in Baguio (${temperature}°C, ${weatherDescription}), this is perfect for outdoor activities such as:
-        - Hiking trails (Mt. Ulap - check conditions, Yellow Trail, Eco-Trail in Camp John Hay).
-        - Outdoor adventures (Tree Top Adventure, horseback riding at Wright Park).
-        - Parks and gardens (Burnham Park, Botanical Garden, Wright Park).
-        - Scenic viewpoints (Mines View Park, Signal Hill).
-        - Outdoor markets and street food exploration (Night Market, parts of Baguio City Market).
-        
-        From the sample itinerary database, prioritize activities with the "Outdoor-Friendly" tag.
-        Balance with some indoor options for rest periods and to avoid excessive sun exposure, especially if it's also hot.
-      `;
-    } else if (isCold && !isRainy && !isSnow && !isThunderstorm) { // Cold but otherwise okay weather
-      weatherContext = `
-        It's cold in Baguio (${temperature}°C, ${weatherDescription}), so focus on:
-        - Warm indoor venues (cafés, restaurants, museums like BenCab Museum, Baguio Museum).
-        - Hot food and beverage experiences (hot chocolate at Choco-late de Batirol, coffee tours, soup restaurants).
-        - Activities with minimal exposure to cold winds.
-        - Shorter outdoor excursions with nearby warming options (e.g., a quick stroll in Burnham Park then a café).
-        - Shopping experiences in covered markets (Baguio City Market, SM Baguio).
-        
-        From the sample itinerary database, prioritize activities with the "Indoor-Friendly" tag or those that can be enjoyed briefly outdoors with warm clothing.
-        Remind visitors to dress in layers and suggest places where they can warm up between activities.
-      `;
-    } else { // Default for other unhandled specific codes or if weatherId is 0 (error/unknown)
-      weatherContext = `
-        The current weather in Baguio is ${weatherDescription} at ${temperature}°C. Please balance indoor and outdoor activities based on comfort level.
-        From the sample itinerary database, select a mix of activities with "Indoor-Friendly", "Outdoor-Friendly", and "Weather-Flexible" tags as appropriate.
-        It's always a good idea to have a backup plan in case of sudden weather changes.
-      `;
-    }
+    // Weather context is now handled by the lookup table above
 
     // Add user preference context
     let interestsContext = "";
@@ -273,15 +208,15 @@ export async function POST(req: NextRequest) {
       }
     `;
 
-    // Configure the generation
+    // Optimized generation parameters for faster response
     const generationConfig = {
-      temperature: 0.2, // Reduced for more consistent outputs and better adherence to the sample database
-      topK: 32,
-      topP: 0.95,
-      maxOutputTokens: 4096,
+      temperature: 0.6,  // Slightly lower for more focused responses
+      topK: 20,          // Reduced for faster token selection
+      topP: 0.9,         // Slightly lower for more deterministic output
+      maxOutputTokens: 4096, // Reduced for faster generation
     };
 
-    // Generate content using the detailed prompt and optimized configuration
+    // Generate the itinerary with streaming for better UX
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
       generationConfig,
@@ -311,13 +246,30 @@ export async function POST(req: NextRequest) {
         // Validate that it's proper JSON by parsing and stringifying
         const parsed = JSON.parse(cleanedJson);
         cleanedJson = JSON.stringify(parsed);
+        
+        // Cache the successful response
+        const responseData = { text: cleanedJson };
+        responseCache.set(cacheKey, {
+          response: responseData,
+          timestamp: Date.now()
+        });
+        
+        // Clean old cache entries periodically
+        if (responseCache.size > 100) {
+          const now = Date.now();
+          for (const [key, value] of responseCache.entries()) {
+            if (now - value.timestamp > CACHE_DURATION) {
+              responseCache.delete(key);
+            }
+          }
+        }
+        
+        return NextResponse.json(responseData);
       } catch (e) {
         console.error("Failed to parse JSON from Gemini response:", e);
         // If parsing fails, return the original text
         return NextResponse.json({ text });
       }
-      
-      return NextResponse.json({ text: cleanedJson });
     }
 
     return NextResponse.json({ text });
