@@ -11,7 +11,7 @@ const WhyUseSection = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                     {/* Feature 1 */}
-                    <div className="flex flex-col items-start text-start bg-white shadow-[5px_5px_10px_theme(colors.sky.300/50%),_-5px_-5px_10px_theme(colors.white/70%)] rounded-2xl p-12">
+                    <div className="flex flex-col items-start text-start bg-white shadow-[5px_5px_10px_theme(colors.sky.300/50%),_-5px_-5px_10px_theme(colors.white/70%)] hover:shadow-[5px_5px_10px_rgb(0,0,255,0.5),_-5px_-5px_10px_rgb(255,255,255,0.7)] cursor-pointer rounded-2xl p-12">
                         <div className="text-blue-500 mb-6">
                             <Image src={personalized}
                                 alt="personalized"
@@ -28,7 +28,7 @@ const WhyUseSection = () => {
                     </div>
 
                     {/* Feature 2 */}
-                    <div className="flex flex-col items-start text-start bg-white shadow-[5px_5px_10px_theme(colors.sky.300/50%),_-5px_-5px_10px_theme(colors.white/70%)] rounded-2xl p-12">
+                    <div className="flex flex-col items-start text-start bg-white shadow-[5px_5px_10px_theme(colors.sky.300/50%),_-5px_-5px_10px_theme(colors.white/70%)] hover:shadow-[5px_5px_10px_rgb(0,0,255,0.5),_-5px_-5px_10px_rgb(255,255,255,0.7)] cursor-pointer rounded-2xl p-12">
                         <div className="text-blue-500 mb-11">
                             <Image src={traffic}
                                 alt="traffic"
@@ -45,7 +45,7 @@ const WhyUseSection = () => {
                     </div>
 
                     {/* Feature 3 */}
-                    <div className="flex flex-col items-start text-start bg-white shadow-[5px_5px_10px_theme(colors.sky.300/50%),_-5px_-5px_10px_theme(colors.white/70%)] rounded-2xl p-12">
+                    <div className="flex flex-col items-start text-start bg-white shadow-[5px_5px_10px_theme(colors.sky.300/50%),_-5px_-5px_10px_theme(colors.white/70%)] hover:shadow-[5px_5px_10px_rgb(0,0,255,0.5),_-5px_-5px_10px_rgb(255,255,255,0.7)] cursor-pointer rounded-2xl p-12">
                         <div className="text-blue-500 mb-6">
                             <Image src={local}
                                 alt="local"
