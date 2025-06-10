@@ -10,7 +10,7 @@ const HowItWorksSection = () => {
         <div className="relative">
           {/* S-shaped Dotted line connecting the steps - refined based on image */}
           <div className="hidden md:block absolute top-0 left-0 right-0 w-full h-full z-0 pointer-events-none">
-            <div className="relative w-full h-full flex items-center justify-center" style={{ top: 'calc(50% - 185px)' }}>
+            <div className="relative w-full h-full flex items-center justify-center" style={{ top: 'calc(47% - 185px)' }}>
               <svg width="1500px" height="100px" viewBox="0 0 800 100" preserveAspectRatio="xMidYMid meet" className="overflow-visible">
                 <path
                   d="M30,35 C150,-80 250,-80 400,35 S600,150 770,45"
@@ -30,7 +30,7 @@ const HowItWorksSection = () => {
                 <Image
                   src={set}
                   alt="Step 1: Set Your Trip Details"
-                  width={100}
+                  width={120}
                   height={100}
                   className="object-contain"
                 />
@@ -47,7 +47,7 @@ const HowItWorksSection = () => {
                 <Image
                   src={letai}
                   alt="Step 2: Let AI Handle the Planning"
-                  width={100}
+                  width={120}
                   height={100}
                   className="object-contain"
                 />
@@ -64,7 +64,7 @@ const HowItWorksSection = () => {
                 <Image
                   src={explore}
                   alt="Step 3: Explore Baguio Effortlessly"
-                  width={100}
+                  width={120}
                   height={100}
                   className="object-contain"
                 />
