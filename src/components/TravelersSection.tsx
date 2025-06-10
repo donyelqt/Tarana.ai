@@ -41,7 +41,7 @@ const TravelersSection = () => {
   return (
     <section className="py-16 px-4 bg-gradient-to-b from-blue-50/50 to-blue-50/70">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-5xl font-bold text-center mb-16 text-blue-500">Perfect for All Travelers</h2>
+        <h2 className="text-5xl font-bold text-center mb-16 bg-gradient-to-b from-blue-700 to-blue-500 bg-clip-text text-transparent">Perfect for All Travelers</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {travelers.map((traveler, index) => (

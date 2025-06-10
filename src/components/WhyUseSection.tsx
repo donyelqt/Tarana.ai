@@ -6,7 +6,7 @@ const WhyUseSection = () => {
         <section className="py-20 px-4">
             <div className="max-w-6xl mx-auto">
                 <h2 className="text-4xl md:text-5xl font-bold text-center mb-16">
-                    Why use <span className="text-blue-500">Tarana.ai</span>?
+                    Why use <span className="bg-gradient-to-b from-blue-700 to-blue-500 bg-clip-text text-transparent">Tarana.ai</span>?
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
