@@ -39,7 +39,7 @@ const TravelersSection = () => {
   ]);
 
   return (
-    <section className="py-16 px-4 bg-gradient-to-b from-blue-50/50 to-blue-50/70">
+    <section className="py-16 px-4 bg-white">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-5xl font-bold text-center mb-16 bg-gradient-to-b from-blue-700 to-blue-500 bg-clip-text text-transparent">Perfect for All Travelers</h2>
 
@@ -47,7 +47,7 @@ const TravelersSection = () => {
           {travelers.map((traveler, index) => (
             <div
               key={index}
-              className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              className="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-[5px_5px_10px_theme(colors.sky.300/50%),_-5px_-5px_10px_theme(colors.white/70%)] transition-shadow"
             >
               {/* Image container with exact same width as the card */}
               <div className="aspect-[4/3] relative w-full h-40">
