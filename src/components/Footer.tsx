@@ -9,7 +9,7 @@ const Footer = () => {
         <p className="text-lg mb-8">Tap below to start your smart travel experience.</p>
 
         <Link
-          href="#"
+          href="/auth/signup"
           className="inline-flex items-center justify-center bg-white text-blue-500 px-8 py-3 rounded-2xl text-lg font-medium hover:bg-gray-100 transition-colors"
         >
           Plan My Baguio Trip
