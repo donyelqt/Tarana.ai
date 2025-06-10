@@ -28,7 +28,7 @@ const HeroSection = () => {
                         {/* CTA Button */}
                         <div className="absolute bottom-0">
                             <Link
-                                href="#"
+                                href="/auth/signup"
                                 className="bg-gradient-to-b from-blue-700 to-blue-500 text-white px-8 py-3 rounded-2xl text-lg font-medium hover:bg-blue-700 transition-colors flex items-center"
                             >
                                 Plan My Baguio Trip
