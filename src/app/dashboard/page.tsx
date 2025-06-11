@@ -54,14 +54,14 @@ const Dashboard = () => {
   }
   
   return (
-    <div className="min-h-screen bg-[#f7f9fb]">
+    <div className="min-h-screen bg-white">
       {/* Sidebar */}
       <Sidebar />
       {/* Main Content - add left padding on desktop to accommodate fixed sidebar */}
       <main className="md:pl-64 flex-1 flex flex-col md:flex-row">
         {/* Center Content */}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
-          <div className="bg-blue-50 rounded-2xl p-6 flex items-center mb-8">
+          <div className="bg-blue-50 shadow-md rounded-2xl p-6 flex items-center mb-8">
             <Image src={sampleprofile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div className="flex-grow">
               <div className="text-xl font-bold text-gray-900">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="ml-1">👋</span></div>
@@ -69,12 +69,12 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-2xl shadow p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/itinerary-generator")}>
+            <div className="bg-white rounded-2xl shadow-md p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/itinerary-generator")}>
               <div className="text-3xl mb-2">+</div>
               <div className="font-semibold text-lg">Create New Itinerary</div>
               <div className="text-gray-500 text-sm mt-1">Create a personalized travel plan</div>
             </div>
-            <div className="bg-white rounded-2xl shadow p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/saved-trips")}>
+            <div className="bg-white rounded-2xl shadow-md p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/saved-trips")}>
               <div className="mb-2">
                 <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
               </div>
@@ -82,7 +82,7 @@ const Dashboard = () => {
               <div className="text-gray-500 text-sm mt-1">Access your planned Itineraries</div>
             </div>
           </div>
-          <div className="bg-white rounded-2xl p-6 mb-8">
+          <div className="bg-white shadow-md rounded-2xl p-6 mb-8">
             <div className="font-semibold text-lg mb-4">Current Itinerary</div>
             <div className="bg-blue-50 rounded-xl p-4 flex items-center">
               <span className="mr-3">
@@ -96,7 +96,7 @@ const Dashboard = () => {
           </div>
         </div>
         {/* Right Sidebar */}
-        <div className="w-full md:w-80 bg-white rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-full">
+        <div className="w-full md:w-80 bg-white shadow-md rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-full">
           <div className="mb-6">
             <div className="font-semibold text-lg mb-2">Baguio Weather</div>
             {loading ? (
