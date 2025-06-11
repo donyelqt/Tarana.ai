@@ -611,7 +611,7 @@ export default function ItineraryGenerator() {
                     <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold">{section.period}</span>
                   </div>
                   {section.activities.map((act, i) => (
-                    <div key={i} className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden border border-gray-100">
+                    <div key={i} className="bg-white rounded-xl shadow-md mb-4 overflow-hidden border border-gray-100">
                       <Image src={act.image} alt={act.title} width={400} height={128} className="w-full h-32 object-cover" />
                       <div className="p-4">
                         <div className="font-semibold text-gray-900 text-base mb-1">{act.title}</div>
