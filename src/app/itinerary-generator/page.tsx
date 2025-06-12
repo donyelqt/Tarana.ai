@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { saveItinerary } from "@/lib/savedItineraries"
 import { useRouter } from "next/navigation"
-import Toast from "@/components/ui/Toast"
+import { useToast } from "@/components/ui/use-toast"
 import { fetchWeatherFromAPI, WeatherData, ItineraryData } from "@/lib/utils"
 
 const budgetOptions = [
@@ -140,13 +140,12 @@ export default function ItineraryGenerator() {
   const [dates, setDates] = useState({ start: "", end: "" })
   const [selectedInterests, setSelectedInterests] = useState<string[]>([])
   const [showPreview, setShowPreview] = useState(false)
-  const [showToast, setShowToast] = useState(false)
-  const [toastMessage, setToastMessage] = useState("")
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isLoadingItinerary, setIsLoadingItinerary] = useState<boolean>(false);
   const [generatedItinerary, setGeneratedItinerary] = useState<ItineraryData | null>(null)
   const router = useRouter()
+  const { toast } = useToast()
   
   // Fetch weather data on component mount
   useEffect(() => {
@@ -179,8 +178,11 @@ export default function ItineraryGenerator() {
     try {
       // Validate form
       if (!budget || !pax || !duration || selectedInterests.length === 0) {
-        setToastMessage("Please fill in all fields")
-        setShowToast(true)
+        toast({
+          title: "Missing Information",
+          description: "Please fill in all fields",
+          variant: "destructive"
+        })
         setIsGenerating(false)
         return
       }
@@ -207,8 +209,11 @@ export default function ItineraryGenerator() {
 
       if (!response.ok) {
         console.error(`API responded with status ${response.status}`)
-        setToastMessage("Failed to connect to the itinerary generator. Using sample data instead.")
-        setShowToast(true)
+        toast({
+          title: "API Error",
+          description: "Failed to connect to the itinerary generator. Using sample data instead.",
+          variant: "destructive"
+        })
         setGeneratedItinerary(sampleItinerary)
         setShowPreview(true)
         setIsGenerating(false)
@@ -220,8 +225,11 @@ export default function ItineraryGenerator() {
 
       if (!responseText) {
         console.error("Empty response from API")
-        setToastMessage("Received empty response from the itinerary generator. Using sample data instead.")
-        setShowToast(true)
+        toast({
+          title: "API Error",
+          description: "Received empty response from the itinerary generator. Using sample data instead.",
+          variant: "destructive"
+        })
         setGeneratedItinerary(sampleItinerary)
         setShowPreview(true)
         setIsGenerating(false)
@@ -249,8 +257,11 @@ export default function ItineraryGenerator() {
           }
         } catch (extractError) {
           console.error("Extraction fallback also failed:", extractError)
-          setToastMessage("Failed to parse the generated itinerary. Using sample data instead.")
-          setShowToast(true)
+          toast({
+            title: "Parsing Error",
+            description: "Failed to parse the generated itinerary. Using sample data instead.",
+            variant: "destructive"
+          })
           // Fall back to sample data
           parsedData = sampleItinerary
         }
@@ -259,8 +270,11 @@ export default function ItineraryGenerator() {
       // Validate the structure of the parsed data
       if (!parsedData || !parsedData.items || !Array.isArray(parsedData.items)) {
         console.error("Invalid itinerary structure")
-        setToastMessage("The generated itinerary has an invalid structure. Using sample data instead.")
-        setShowToast(true)
+        toast({
+          title: "Structure Error",
+          description: "The generated itinerary has an invalid structure. Using sample data instead.",
+          variant: "destructive"
+        })
         // Fall back to sample data
         parsedData = sampleItinerary
       }
@@ -349,8 +363,11 @@ export default function ItineraryGenerator() {
       setShowPreview(true)
     } catch (error) {
       console.error("Error generating itinerary:", error)
-      setToastMessage("An unexpected error occurred. Using sample data instead.")
-      setShowToast(true)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Using sample data instead.",
+        variant: "destructive"
+      })
       setGeneratedItinerary(sampleItinerary)
       setShowPreview(true)
     } finally {
@@ -375,30 +392,30 @@ export default function ItineraryGenerator() {
           dates,
           selectedInterests,
         },
-        weatherData: weatherData ? {
-          temp: weatherData.main.temp,
-          condition: weatherData.weather[0].main,
-          description: weatherData.weather[0].description,
-          icon: weatherData.weather[0].icon
-        } : null,
+        weatherData: weatherData ? weatherData : undefined, // Corrected line
         itineraryData: generatedItinerary || sampleItinerary,
       }
       saveItinerary(itineraryToSave)
-      setToastMessage("Itinerary saved!")
-      setShowToast(true)
+      toast({
+        title: "Success",
+        description: "Itinerary saved!",
+        variant: "success"
+      })
       setTimeout(() => {
         router.push("/saved-trips")
       }, 1200)
     } catch (error) {
       console.error("Failed to save itinerary:", error)
-      setToastMessage("Failed to save itinerary. Please try again.")
-      setShowToast(true)
+      toast({
+        title: "Error",
+        description: "Failed to save itinerary. Please try again.",
+        variant: "destructive"
+      })
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb]">
-      <Toast message={toastMessage} show={showToast} onClose={() => setShowToast(false)} type="success" />
+    <div className="min-h-screen bg-white">
       <Sidebar />
       <main className="md:pl-64 flex-1 flex flex-col md:flex-row md:items-stretch justify-start gap-8 p-4 md:p-12 pt-16 md:pt-12">
         {/* Left: Form */}
@@ -560,20 +577,6 @@ export default function ItineraryGenerator() {
             <p className="text-md font-semibold text-gray-700">Thinking mode...</p>
             <p className="text-sm text-gray-500">This might take a moment. Please wait.</p>
           </div>
-        ) : showToast && toastMessage.includes("Failed") && !generatedItinerary ? (
-          <aside className={cn(
-            "w-full lg:w-[370px] lg:ml-4 h-full",
-            showPreview ? "block" : "hidden"
-          )}>
-            <div className="bg-white rounded-2xl shadow-md p-6 h-full overflow-y-auto flex flex-col items-center justify-center">
-              <svg className="w-16 h-16 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">Oops! Something went wrong.</h3>
-              <p className="text-gray-500 text-center">{toastMessage.replace(" Using sample data instead.","")}</p>
-              <p className="text-gray-500 text-center mt-1">Please try generating again.</p>
-            </div>
-          </aside>
         ) : showPreview && generatedItinerary ? (
           <aside className={cn(
             "w-full lg:w-[370px] lg:ml-4 h-[90vh] overflow-y-auto", // Changed max-h to h-[80vh]

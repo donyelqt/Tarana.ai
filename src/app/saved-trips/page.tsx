@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getSavedItineraries, SavedItinerary, deleteItinerary } from "@/lib/savedItineraries"
 import { useRouter } from "next/navigation"
-import Toast from "@/components/ui/Toast"
+import { useToast } from "@/components/ui/use-toast"
 
 
 
@@ -16,10 +16,9 @@ const SavedTrips = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [savedItineraries, setSavedItineraries] = useState<SavedItinerary[]>([])
   const [filteredItineraries, setFilteredItineraries] = useState<SavedItinerary[]>([])
-  const [showToast, setShowToast] = useState(false)
-  const [toastMessage, setToastMessage] = useState("")
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [itineraryToDelete, setItineraryToDelete] = useState<SavedItinerary | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     // Load saved itineraries from localStorage
@@ -54,11 +53,18 @@ const SavedTrips = () => {
       const updatedItineraries = savedItineraries.filter(itinerary => itinerary.id !== itineraryToDelete.id)
       setSavedItineraries(updatedItineraries)
       setFilteredItineraries(filteredItineraries.filter(itinerary => itinerary.id !== itineraryToDelete.id))
-      setToastMessage(`Itinerary #${itineraryToDelete.id} deleted successfully!`)
-      setShowToast(true)
+      toast({
+        title: "Success",
+        description: `Itinerary #${itineraryToDelete.id} deleted successfully!`,
+        variant: "success"
+      })
     } catch (error) {
       console.error('Error deleting itinerary:', error)
-      alert('Failed to delete itinerary. Please try again.')
+      toast({
+        title: "Error",
+        description: "Failed to delete itinerary. Please try again.",
+        variant: "destructive"
+      })
     }
     setShowDeleteModal(false)
     setItineraryToDelete(null)
@@ -71,7 +77,6 @@ const SavedTrips = () => {
 
   return (
     <div className=" mr-8 ml-8 min-h-screen bg-[#f7f9fb]">
-      <Toast message={toastMessage} show={showToast} onClose={() => setShowToast(false)} type="success" />
       <Sidebar />
       <main className="md:pl-64 flex-1 p-6 md:p-8 pt-16 md:pt-8">
         {/* Header */}

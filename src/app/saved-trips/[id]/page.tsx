@@ -4,9 +4,11 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Sidebar from "../../../components/Sidebar"
 import { Button } from "@/components/ui/button"
-import { getSavedItineraries, SavedItinerary, formatDateRange } from "@/lib/savedItineraries"
-import Image from "next/image"
+import { getSavedItineraries, SavedItinerary, formatDateRange, updateItinerary } from "@/lib/savedItineraries";
+import { fetchWeatherFromAPI, WeatherData } from "@/lib/utils"; // Added import
+import Image, { type StaticImageData } from "next/image"
 import PlaceDetail from "@/components/PlaceDetail"
+import { useToast } from "@/components/ui/use-toast"
 
 const interestIcons: Record<string, string> = {
   "Nature & Scenery": "🌿",
@@ -20,10 +22,12 @@ const SavedItineraryDetail = () => {
   const router = useRouter()
   const params = useParams()
   const { id } = params as { id: string }
-  const [itinerary, setItinerary] = useState<SavedItinerary | null>(null)
+  const [itinerary, setItinerary] = useState<SavedItinerary | null>(null);
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null); // Added weatherData state
   const [selectedActivity, setSelectedActivity] = useState<Record<string, unknown> | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
-
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     const all = getSavedItineraries()
@@ -41,6 +45,150 @@ const SavedItineraryDetail = () => {
     e.preventDefault()
     setSelectedActivity(activity)
     setShowDetailModal(true)
+  }
+
+  const handleRefreshItinerary = async () => {
+    if (!itinerary) return
+    
+    setIsRefreshing(true)
+    try {
+      // Fetch current weather data
+      const currentWeatherData = await fetchWeatherFromAPI(); // Corrected function call
+      
+      if (!currentWeatherData) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch current weather data. Please try again.",
+          variant: "destructive"
+        })
+        return
+      }
+      
+      // Check if weather has significantly changed
+      const hasWeatherChanged = checkWeatherChange(currentWeatherData, itinerary)
+      
+      if (!hasWeatherChanged) {
+        toast({
+          title: "No Update Needed",
+          description: "Weather conditions haven't changed significantly. Your itinerary is still optimal.",
+        })
+        return
+      }
+      
+      // Construct a prompt for Gemini API
+      const { formData } = itinerary
+      const prompt = `Update the ${formData.duration}-day itinerary for Baguio City, Philippines based on the current weather conditions.`
+      
+      // Call Gemini API with all user preferences and sample itinerary data
+      const response = await fetch("/api/gemini", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          weatherData: currentWeatherData,
+          interests: formData.selectedInterests,
+          duration: formData.duration,
+          budget: formData.budget,
+          pax: formData.pax,
+          sampleItinerary: itinerary.itineraryData // Use the existing itinerary as a base
+        }),
+      })
+      
+      if (!response.ok) {
+        throw new Error(`API responded with status ${response.status}`)
+      }
+      
+      const newItineraryData = await response.json();
+      
+      // Check if the API returned a valid itinerary structure.
+      // A simple check for now, could be more robust (e.g. checking for specific properties like 'title' or 'items')
+      if (!newItineraryData || typeof newItineraryData !== 'object' || !newItineraryData.items) {
+        console.error("Invalid or empty itinerary data from API:", newItineraryData);
+        throw new Error("Received invalid or empty itinerary data from API");
+      }
+      
+      // The newItineraryData is already the parsed JSON object.
+      // Assign to parsedData to maintain consistency with the subsequent code.
+      const parsedData = newItineraryData;
+      
+      // Update the itinerary with new data
+      const updatedItinerary = updateItinerary(id, {
+        itineraryData: parsedData,
+        weatherData: currentWeatherData as WeatherData // Ensure weatherData is correctly typed
+      })
+      
+      if (updatedItinerary) {
+        setItinerary(updatedItinerary)
+        toast({
+          title: "Itinerary Updated",
+          description: "Your itinerary has been refreshed with the latest weather data.",
+          variant: "success"
+        })
+      }
+    } catch (error) {
+      console.error("Error refreshing itinerary:", error)
+      toast({
+        title: "Error",
+        description: "Failed to refresh itinerary. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+  
+  // Helper function to check if weather has significantly changed
+  const checkWeatherChange = (currentWeather: WeatherData, savedItinerary: SavedItinerary): boolean => {
+    // If no previous weather data exists, or its main property is missing, consider it changed.
+    if (!savedItinerary.weatherData || !savedItinerary.weatherData.main) {
+      console.warn("Previous weather data is missing or incomplete (no main property). Assuming weather has changed.");
+      return true;
+    }
+    
+    const previousWeather = savedItinerary.weatherData;
+
+    // If current weather data is null or its main property is missing (should ideally be caught earlier, but good for safety here)
+    if (!currentWeather || !currentWeather.main) {
+      console.warn("Current weather data is null or incomplete (no main property). Assuming weather has changed for safety.");
+      return true; 
+    }
+    
+    // Check for significant temperature change (more than 5 degrees)
+    const tempDifference = Math.abs(currentWeather.main.temp - previousWeather.main.temp);
+    if (tempDifference > 5) return true;
+    
+    // Check for weather condition change (e.g., from clear to rainy)
+    // Ensure weather array and its first element exist for both previous and current weather data
+    if (!previousWeather.weather || previousWeather.weather.length === 0 || 
+        !currentWeather.weather || currentWeather.weather.length === 0 ||
+        !previousWeather.weather[0] || !currentWeather.weather[0] ||
+        !previousWeather.weather[0].main || !currentWeather.weather[0].main) {
+      console.warn("Weather condition data (weather array or main condition) is missing or incomplete. Assuming weather has changed.");
+      return true;
+    }
+
+    const previousCondition = previousWeather.weather[0].main.toLowerCase();
+    const currentCondition = currentWeather.weather[0].main.toLowerCase();
+    
+    // If the main weather condition has changed
+    if (previousCondition !== currentCondition) {
+      // Consider significant changes in weather type
+      const significantChanges = [
+        // From good to bad weather
+        (previousCondition === 'clear' && ['rain', 'thunderstorm', 'snow', 'drizzle'].includes(currentCondition)),
+        // From bad to good weather
+        (['rain', 'thunderstorm', 'snow', 'drizzle'].includes(previousCondition) && currentCondition === 'clear'),
+        // Any change involving extreme weather
+        ['thunderstorm', 'tornado', 'squall'].includes(previousCondition) || 
+        ['thunderstorm', 'tornado', 'squall'].includes(currentCondition)
+      ];
+      
+      return significantChanges.some(change => change === true);
+    }
+    
+    return false;
   }
 
   if (!itinerary) {
@@ -132,10 +280,32 @@ const SavedItineraryDetail = () => {
       <main className="md:pl-72 flex-1 p-8 md:p-8 pt-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
-          <div className="mb-6">
+          <div className="mb-6 flex justify-between items-center">
             <div className="bg-[#f5f7fa] max-w-full rounded-xl px-6 py-3 inline-block font-bold text-xl md:text-2xl text-gray-900 shadow-none border border-gray-200">
               {`Saved Itineraries > ${itinerary.title}`}
             </div>
+            <Button 
+              onClick={handleRefreshItinerary} 
+              disabled={isRefreshing}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            >
+              {isRefreshing ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh Itinerary
+                </>
+              )}
+            </Button>
           </div>
           {/* Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -194,7 +364,19 @@ const SavedItineraryDetail = () => {
                 <span className="text-gray-500 text-base font-medium">{formatDateRange(dates.start, dates.end).split("-")[dayIdx]?.trim() || ""}</span>
               </div>
               <div className="flex flex-col gap-6">
-                {period.activities.map((activity, idx) => (
+                {period.activities.map((activity, idx) => {
+                      let imageSrcToUse: string | null = null;
+                      if (activity.image) {
+                        if (typeof activity.image === 'string') {
+                          if (activity.image.trim() !== "") imageSrcToUse = activity.image;
+                        } else { // Assumed to be StaticImageData
+                          const staticImage = activity.image as StaticImageData;
+                          if (staticImage.src && typeof staticImage.src === 'string' && staticImage.src.trim() !== "") {
+                            imageSrcToUse = staticImage.src;
+                          }
+                        }
+                      }
+                      return (
                   <div key={idx} className="flex flex-col md:flex-row bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
                     {/* Time column for desktop */}
                     <div className="hidden md:flex flex-col justify-center items-center w-32 bg-blue-50 border-r border-gray-100">
@@ -202,7 +384,18 @@ const SavedItineraryDetail = () => {
                     </div>
                     {/* Image */}
                     <div className="relative w-full md:w-60 h-40 md:h-auto md:mt-8 md:mb-8 md:ml-8 flex-shrink-0">
-                      <Image src={activity.image as any} alt={(activity.title as string)} fill className="object-center rounded-2xl md:rounded-l-2xl" />
+                        {imageSrcToUse ? (
+                          <Image
+                            src={imageSrcToUse}
+                            alt={(activity.title as string) || 'Activity image'}
+                            fill
+                            className="object-center rounded-2xl md:rounded-l-2xl"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-2xl md:rounded-l-2xl">
+                            <span className="text-gray-500 text-sm">No image available</span>
+                          </div>
+                        )}
                     </div>
                     {/* Details */}
                     <div className="flex-1 p-6 flex flex-col gap-2">
@@ -242,7 +435,7 @@ const SavedItineraryDetail = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           ))}
