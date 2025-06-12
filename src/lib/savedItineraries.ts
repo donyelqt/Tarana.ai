@@ -20,6 +20,8 @@ export interface ItineraryData {
   items: ItineraryPeriod[];
 }
 
+import { WeatherData } from "../lib/utils"; // Added import
+
 export interface SavedItinerary {
   id: string;
   title: string;
@@ -35,6 +37,7 @@ export interface SavedItinerary {
     selectedInterests: string[];
   };
   itineraryData: ItineraryData;
+  weatherData?: WeatherData; // Added optional weatherData property
   createdAt: string;
 }
 
@@ -80,6 +83,36 @@ export const deleteItinerary = (id: string): void => {
   } catch (error) {
     console.error('Error deleting itinerary:', error);
     throw new Error('Failed to delete itinerary');
+  }
+};
+
+export const updateItinerary = (id: string, updatedData: Partial<SavedItinerary>): SavedItinerary | null => {
+  const existingItineraries = getSavedItineraries();
+  const itineraryIndex = existingItineraries.findIndex(itinerary => itinerary.id === id);
+  
+  if (itineraryIndex === -1) {
+    console.error(`Itinerary with ID ${id} not found`);
+    return null;
+  }
+  
+  // Create updated itinerary by merging existing with updates
+  const updatedItinerary = {
+    ...existingItineraries[itineraryIndex],
+    ...updatedData,
+    // Preserve the original ID and creation date
+    id: existingItineraries[itineraryIndex].id,
+    createdAt: existingItineraries[itineraryIndex].createdAt
+  };
+  
+  // Replace the old itinerary with the updated one
+  existingItineraries[itineraryIndex] = updatedItinerary;
+  
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(existingItineraries));
+    return updatedItinerary;
+  } catch (error) {
+    console.error('Error updating itinerary:', error);
+    throw new Error('Failed to update itinerary');
   }
 };
 
