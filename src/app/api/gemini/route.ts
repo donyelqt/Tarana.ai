@@ -5,6 +5,9 @@ import { NextRequest, NextResponse } from "next/server";
 const responseCache = new Map<string, { response: any; timestamp: number }>();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
+// Define a type for the keys of WEATHER_CONTEXTS
+type WeatherCondition = keyof typeof WEATHER_CONTEXTS;
+
 // Pre-computed weather context lookup for faster processing
 const WEATHER_CONTEXTS = {
   thunderstorm: (temp: number, desc: string) => `WARNING: Thunderstorm (${temp}°C). ONLY indoor activities: Museums, malls, indoor dining. Select "Indoor-Friendly" tagged activities only.`,
@@ -68,7 +71,7 @@ export async function POST(req: NextRequest) {
     const temperature = weatherData?.main?.temp || 20;
     
     // Fast weather type determination
-    const getWeatherType = (id: number, temp: number): string => {
+    const getWeatherType = (id: number, temp: number): WeatherCondition => {
       if (id >= 200 && id <= 232) return 'thunderstorm';
       if ((id >= 300 && id <= 321) || (id >= 500 && id <= 531)) return 'rainy';
       if (id >= 600 && id <= 622) return 'snow';
@@ -79,7 +82,7 @@ export async function POST(req: NextRequest) {
       return 'default';
     };
     
-    const weatherType = getWeatherType(weatherId, temperature);
+    const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
     const weatherContext = WEATHER_CONTEXTS[weatherType](temperature, weatherDescription);
 
     // Streamlined sample itinerary context
@@ -191,7 +194,7 @@ export async function POST(req: NextRequest) {
       Format the response as a JSON object with this structure:
       {
         "title": "Your X Day Itinerary",
-        "subtitle": "A personalized Baguio Experience",
+        "subtitle": "A personalized Baguio Experience weather for",
         "items": [
           {
             "period": "Morning (8AM-12NN)",
