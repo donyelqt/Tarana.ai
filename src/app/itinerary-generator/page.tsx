@@ -4,8 +4,9 @@ import Sidebar from "../../components/Sidebar"
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation, 
-  mtulap, nightmarket, tamawan, treetopcampjohnhay, viewspark, 
+  mtulap, nightmarket, tamawan, taranaai, treetopcampjohnhay, viewspark, 
   vizcossessionroad} from "../../../public"
+import globeIcon from '/public/globe.svg';
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -649,9 +650,7 @@ export default function ItineraryGenerator() {
             !showPreview ? "block" : "hidden" /* Show when not previewing */
           )}>
             <div className="bg-white rounded-2xl shadow-md p-6 h-[90vh] overflow-y-auto flex flex-col items-center justify-center">
-                <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19V6.75M9 6.75C9 5.50736 10.0074 4.5 11.25 4.5H17.25C18.4926 4.5 19.5 5.50736 19.5 6.75V19.5C19.5 20.7426 18.4926 21.75 17.25 21.75H11.25C10.0074 21.75 9 20.7426 9 19.5M9 6.75V11.25M5.25 19V6.75C5.25 5.50736 4.24264 4.5 3 4.5M14.25 9.75H15.75M14.25 12.75H15.75M14.25 15.75H15.75" />
-                </svg>
+                <Image src={taranaai} alt="Plan your trip icon" width={100} height={100} className="text-gray-300 mb-4" />
                 <h3 className="text-xl font-semibold text-gray-700 mb-2">Plan Your Perfect Trip</h3>
                 <p className="text-gray-500 text-center">Fill in the details on the left to generate your personalized Baguio itinerary.</p>
             </div>
