@@ -81,7 +81,7 @@ const SavedTrips = () => {
       <main className="md:pl-64 flex-1 p-6 md:p-8 pt-16 md:pt-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl bg-white p-3 rounded-lg md:text-3xl font-bold text-gray-900 mb-6">Saved Itineraries</h1>
+          <h1 className="text-2xl bg-white p-3 rounded-xl md:text-3xl font-bold border text-gray-900 mb-6">Saved Itineraries</h1>
           
           {/* Search Bar */}
           <div className="relative max-w-full bg-white rounded-lg">
