@@ -191,6 +191,60 @@ const SavedItineraryDetail = () => {
     return false;
   }
 
+  // Helper function to parse duration string (e.g., "1 Day", "2 Days") and calculate end date
+  const calculateAndFormatDateRange = (startDateString: string, durationString: string): string => {
+    if (!startDateString || !durationString) return 'Date not specified';
+  
+    const startDate = new Date(startDateString);
+    if (isNaN(startDate.getTime())) return 'Invalid start date';
+  
+    let durationDays = 0;
+    const durationMatch = durationString.match(/^(\d+)\s*Day/i);
+    if (durationMatch && durationMatch[1]) {
+      durationDays = parseInt(durationMatch[1], 10);
+    } else if (durationString.toLowerCase().includes('day')) { // Fallback for less specific formats like "4-5 Days"
+      // For ranges like "4-5 Days", we'll take the smaller number for simplicity or decide on a convention.
+      // Here, let's assume it implies the trip *spans* that many days, so a "1 Day" trip starting June 13 ends June 13 for display purposes of the *day itself*,
+      // but the user wants to see June 13 - June 14 for a 1-day trip. So, we add durationDays - 1 to get the end date of the period.
+      // If it's "1 Day", we add 0 to get the end date as the same day for the *period*, but the display range should be start to start + 1.
+      // Let's adjust to match the user's example: "June 13 - June 14, 2025" for a 1-day trip.
+      // This means if duration is X days, the end date of the range is start_date + (X) days.
+      // So for "1 Day", end date is start_date + 1 day.
+      // For "2 Days", end date is start_date + 2 days.
+      // The original request was: "if the user input 1 day and the date today is june 13, 2025 it should be the reflecting in the saved itineraries is june 13 - june 14, 2025"
+      // This means the *end* of the range is `startDate` + `durationDays`.
+      // However, a typical interpretation of a "1-day trip" on June 13 means it *ends* on June 13.
+      // The example "June 13 - June 14" for a 1-day trip implies the *range displayed* includes the start of the next day.
+      // Let's stick to the user's explicit example: end date for display = startDate + (parsedDurationDays).
+      // If duration is "1 Day", parsedDurationDays = 1. endDate = startDate + 1 day.
+      const firstNumMatch = durationString.match(/^(\d+)/);
+      if (firstNumMatch && firstNumMatch[1]) {
+        durationDays = parseInt(firstNumMatch[1], 10);
+      }
+    }
+  
+    if (durationDays <= 0) {
+      // If duration is 0 or invalid, just show the start date
+      return startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+  
+    // According to the user's example: for a 1-day trip starting June 13, display "June 13 - June 14"
+    // This means the end date of the *displayed range* is startDate + durationDays.
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + durationDays);
+  
+    const options: Intl.DateTimeFormatOptions = { 
+      month: 'long', 
+      day: 'numeric', 
+      year: 'numeric' 
+    };
+  
+    // If the calculated end date is the same as the start date (e.g. if duration was 0, though we handle above)
+    // or if duration is 1 day, and we want to show Start - Start+1
+    // The user wants "June 13 - June 14" for a 1-day trip. So, start and end will be different.
+    return `${startDate.toLocaleDateString('en-US', options)} - ${endDate.toLocaleDateString('en-US', options)}`;
+  };
+
   if (!itinerary) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
@@ -281,7 +335,7 @@ const SavedItineraryDetail = () => {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="mb-6 flex justify-between items-center">
-            <div className="bg-[#f5f7fa] max-w-full rounded-xl px-6 py-3 inline-block font-bold text-xl md:text-2xl text-gray-900 shadow-none border border-gray-200">
+            <div className="bg-white w-[60vw] rounded-xl px-6 py-3 inline-block font-bold text-xl md:text-2xl text-gray-900 shadow-none border border-gray-200">
               {`Saved Itineraries > ${itinerary.title}`}
             </div>
             <Button 
@@ -380,7 +434,7 @@ const SavedItineraryDetail = () => {
                   <div key={idx} className="flex flex-col md:flex-row bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
                     {/* Time column for desktop */}
                     <div className="hidden md:flex flex-col justify-center items-center w-32 bg-blue-50 border-r border-gray-100">
-                      <span className="text-blue-700 font-semibold text-base">{activity.time}</span>
+                    <span className="text-blue-700 text-lg p-8 items-center justify-center font-semibold"><span className="text-sm font-thin text-gray-400 flex items-center justify-center">Est.</span>{activity.time}</span>
                     </div>
                     {/* Image */}
                     <div className="relative w-full md:w-60 h-40 md:h-auto md:mt-8 md:mb-8 md:ml-8 flex-shrink-0">
