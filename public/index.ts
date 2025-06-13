@@ -23,9 +23,11 @@ import viewspark from "./images/viewspark.png"
 import caferuins from "./images/caferuins.png"
 import nightmarket from "./images/nightmarket.png"
 import vizcossessionroad from "./images/vizcossessionroad.png"
+import taranaai from "./images/taranaai.png"
 
 export { baguio_panorama, how_it_works, letai, 
     set, explore, local, 
     personalized, traffic, solo_travel, family, couples, barkadas, 
     sampleprofile, goodtaste, burnham, dashboard, bencab, mtulap, 
-    hillstation, tamawan, treetopcampjohnhay, viewspark, caferuins, nightmarket, vizcossessionroad }
+    hillstation, tamawan, treetopcampjohnhay, viewspark, caferuins, 
+    nightmarket, vizcossessionroad, taranaai }
