@@ -23,6 +23,7 @@ export interface WeatherData {
   sys: {
     country: string
   }
+  dt: number;
 }
 
 // Baguio City coordinates
@@ -101,7 +102,8 @@ export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, 
       name: 'Baguio',
       sys: {
         country: 'PH'
-      }
+      },
+      dt: Math.floor(Date.now() / 1000) // Add current timestamp
     };
   }
 }

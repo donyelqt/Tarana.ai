@@ -62,7 +62,7 @@ export default function ItineraryPreview({
 
         {/* Weather information */}
         {weatherData && (
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-center">
+          <div className="mb-4 p-3 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center">
             <div className="flex-shrink-0 mr-2">
               <Image
                 src={`https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png`}
@@ -72,11 +72,11 @@ export default function ItineraryPreview({
               />
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-700">Current Weather in Baguio</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-sm font-medium text-white">Current Weather in Baguio</div>
+              <div className="text-xs text-gray-100">
                 {weatherData.weather[0].main}, {Math.round(weatherData.main.temp)}°C
               </div>
-              <div className="text-xs text-gray-400 italic mt-1">
+              <div className="text-xs text-gray-200 italic mt-1">
                 Itinerary adapted to current weather conditions
               </div>
             </div>
