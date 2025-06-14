@@ -12,6 +12,8 @@ When deploying to production (Vercel), make sure to set up the following environ
 - `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret
 - `OPENWEATHER_API_KEY`: Your OpenWeather API key (server-side only, not exposed to client)
 - `GOOGLE_GEMINI_API_KEY`: Your Google Gemini API key (server-side only, not exposed to client)
+- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL (client-side accessible)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase project anon key (client-side accessible)
 
 ### Setting Up Environment Variables on Vercel
 
