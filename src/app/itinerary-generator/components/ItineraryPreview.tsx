@@ -62,7 +62,7 @@ export default function ItineraryPreview({
 
         {/* Weather information */}
         {weatherData && (
-          <div className="mb-4 p-3 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center">
+          <div className="mb-4 p-3 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center">
             <div className="flex-shrink-0 mr-2">
               <Image
                 src={`https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png`}
