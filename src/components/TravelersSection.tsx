@@ -7,7 +7,7 @@ import { barkadas, couples, family, solo_travel } from "../../public";
 interface TravelerType {
   title: string;
   description: string;
-  image: StaticImageData;
+  image: StaticImageData | string;
 }
 
 const TravelersSection = () => {
