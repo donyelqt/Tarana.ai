@@ -3,7 +3,7 @@ import Link from "next/link"
 const Footer = () => {
   return (
     <section className="p-6">
-      <div className="max-w-7xl mx-auto text-center px-4 bg-gradient-to-b from-blue-700 to-blue-500 text-white py-20 rounded-3xl my-8">
+      <div className="max-w-7xl mx-auto text-center px-4 bg-gradient-to-b from-blue-700 to-blue-500 text-white py-20 rounded-7xl mt-8">
         <h2 className="text-4xl md:text-5xl font-bold mb-4">Ready to Plan Less and Enjoy More?</h2>
         <p className="text-lg mb-2">Get your personalized Baguio itinerary in under a minute.</p>
         <p className="text-lg mb-8">Tap below to start your smart travel experience.</p>
