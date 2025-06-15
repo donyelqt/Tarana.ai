@@ -272,6 +272,20 @@ const SavedItineraryDetail = () => {
     )
   }
 
+  // Guard: If formData is missing, show an error message
+  if (!itinerary.formData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
+        <Sidebar />
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">Itinerary Data Error</h2>
+          <p className="mb-4 text-gray-500">This itinerary is missing form data and cannot be displayed.</p>
+          <Button onClick={() => router.push("/saved-trips")}>Back to Saved Trips</Button>
+        </div>
+      </div>
+    )
+  }
+
   const { formData, itineraryData } = itinerary
   const { selectedInterests, pax, dates, budget } = formData
 

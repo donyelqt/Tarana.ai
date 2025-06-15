@@ -74,10 +74,8 @@ export const getSavedItineraries = async (): Promise<SavedItinerary[]> => {
     // Ensure data matches SavedItinerary structure, especially for JSON fields
     return data.map(item => ({
       ...item,
-      // Supabase stores JSON as objects, ensure they are correctly typed if needed
-      // For example, if formData or itineraryData are strings in DB, parse them:
-      // formData: typeof item.form_data === 'string' ? JSON.parse(item.form_data) : item.form_data,
-      // itineraryData: typeof item.itinerary_data === 'string' ? JSON.parse(item.itinerary_data) : item.itinerary_data,
+      formData: typeof item.form_data === 'string' ? JSON.parse(item.form_data) : item.form_data,
+      itineraryData: typeof item.itinerary_data === 'string' ? JSON.parse(item.itinerary_data) : item.itinerary_data,
     })) as SavedItinerary[];
   } catch (error) {
     console.error('Error loading saved itineraries:', error);
