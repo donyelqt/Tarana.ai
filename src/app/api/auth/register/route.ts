@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { addUser } from '@/lib/auth';
+import { createUserInSupabase } from '@/lib/auth'; // Updated import
 
 // This is a simple demo implementation with in-memory storage
 // In a real application, you would also:
@@ -49,7 +49,8 @@ export async function POST(request: Request) {
 
     try {
       // Add the user to our in-memory storage with password hashing
-      await addUser(sanitizedFullName, sanitizedEmail, password);
+      // await addUser(sanitizedFullName, sanitizedEmail, password);
+      await createUserInSupabase(sanitizedFullName, sanitizedEmail, password); // Use Supabase function
 
       // Return success response (without exposing sensitive data)
       return NextResponse.json(
@@ -58,13 +59,21 @@ export async function POST(request: Request) {
       );
     } catch (userError: unknown) {
       // Handle specific user creation errors
-      if (userError instanceof Error && userError.message === 'User with this email already exists') {
+      if (userError instanceof Error) {
+        if (userError.message === 'User with this email already exists') {
+          return NextResponse.json(
+            { error: userError.message },
+            { status: 409 } // Conflict status code
+          );
+        }
+        // For other errors thrown by createUserInSupabase (e.g., 'Failed to create user')
         return NextResponse.json(
-          { error: userError.message },
-          { status: 409 } // Conflict status code
+          { error: userError.message }, 
+          { status: 400 } // Bad Request or a more appropriate status
         );
       }
-      throw userError; // Re-throw for the outer catch block
+      // If it's not an Error instance, re-throw for the outer catch block to handle as 500
+      throw userError; 
     }
   } catch (error) {
     console.error('Registration error:', error);

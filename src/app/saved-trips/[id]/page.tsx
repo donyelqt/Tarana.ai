@@ -30,10 +30,16 @@ const SavedItineraryDetail = () => {
   const { toast } = useToast()
 
   useEffect(() => {
-    const all = getSavedItineraries()
-    const found = all.find((i) => i.id === id)
-    setItinerary(found || null)
-  }, [id])
+    const fetchItinerary = async () => {
+      const all = await getSavedItineraries();
+      // Ensure 'all' is an array before calling find
+      const found = Array.isArray(all) ? all.find((i: SavedItinerary) => i.id === id) : null;
+      setItinerary(found || null);
+    };
+    if (id) {
+      fetchItinerary();
+    }
+  }, [id]);
 
   const handleViewOnMap = (activity: any, e: React.MouseEvent) => {
     e.preventDefault()
@@ -114,18 +120,26 @@ const SavedItineraryDetail = () => {
       const parsedData = newItineraryData;
       
       // Update the itinerary with new data
-      const updatedItinerary = updateItinerary(id, {
+      const updatedItineraryResult = await updateItinerary(id, {
         itineraryData: parsedData,
         weatherData: currentWeatherData as WeatherData // Ensure weatherData is correctly typed
-      })
+      });
       
-      if (updatedItinerary) {
-        setItinerary(updatedItinerary)
+      // updateItinerary now returns the updated itinerary or null
+      if (updatedItineraryResult) {
+        setItinerary(updatedItineraryResult);
         toast({
           title: "Itinerary Updated",
           description: "Your itinerary has been refreshed with the latest weather data.",
           variant: "success"
-        })
+        });
+      } else {
+        // Handle case where updateItinerary might return null (e.g., if not found or error)
+        toast({
+          title: "Error",
+          description: "Failed to update the itinerary in the database.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error("Error refreshing itinerary:", error)

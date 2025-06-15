@@ -22,10 +22,20 @@ const SavedTrips = () => {
 
   useEffect(() => {
     // Load saved itineraries from localStorage
-    const loadedItineraries = getSavedItineraries()
-    setSavedItineraries(loadedItineraries)
-    setFilteredItineraries(loadedItineraries)
-  }, [])
+    const fetchItineraries = async () => {
+      const loadedItineraries = await getSavedItineraries();
+      // Ensure loadedItineraries is an array
+      if (Array.isArray(loadedItineraries)) {
+        setSavedItineraries(loadedItineraries);
+        setFilteredItineraries(loadedItineraries);
+      } else {
+        // Handle cases where getSavedItineraries might not return an array (e.g. error or empty)
+        setSavedItineraries([]);
+        setFilteredItineraries([]);
+      }
+    };
+    fetchItineraries();
+  }, []);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
