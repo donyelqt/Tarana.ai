@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { AnimatePresence, motion } from "framer-motion"
 
 // Component that uses useSearchParams
 function RegisteredMessage() {
@@ -85,7 +86,19 @@ const SignIn = () => {
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back to Tarana.ai</h2>
                         <p className="text-sm text-gray-600 mb-6">Please Sign in to Continue</p>
                         <div className="flex justify-center mb-6">
-                            <button type="button" className="px-8 py-2 rounded-full bg-[#0066FF] text-white font-medium shadow-md focus:outline-none">Login</button>
+                            <AnimatePresence mode="wait">
+                                <motion.button
+                                    key="login-active"
+                                    type="button"
+                                    className="px-8 py-2 rounded-full bg-[#0066FF] text-white font-medium shadow-md focus:outline-none"
+                                    initial={{ opacity: 0, x: 40 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -40 }}
+                                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                                >
+                                    Login
+                                </motion.button>
+                            </AnimatePresence>
                             <Link href="/auth/signup" className="px-8 py-2 rounded-full bg-blue-50 text-[#0066FF] font-medium ml-2 hover:bg-blue-100 transition">Register</Link>
                         </div>
                     </div>
