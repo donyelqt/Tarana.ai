@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { AnimatePresence, motion } from "framer-motion"
 
 // Component that uses useRouter
 function SignUpForm() {
@@ -183,7 +184,19 @@ const SignUp = () => {
                         <p className="text-sm text-gray-600 mb-6">Please Sign up to Continue</p>
                         <div className="flex justify-center mb-6">
                             <Link href="/auth/signin" className="px-8 py-2 rounded-full bg-blue-50 text-[#0066FF] font-medium hover:bg-blue-100 transition">Login</Link>
-                            <Button type="button" className="px-8 py-2 rounded-full bg-[#0066FF] text-white font-medium shadow-md focus:outline-none ml-2">Register</Button>
+                            <AnimatePresence mode="wait">
+                                <motion.button
+                                    key="register-active"
+                                    type="button"
+                                    className="px-8 py-2 rounded-full bg-[#0066FF] text-white font-medium shadow-md focus:outline-none ml-2"
+                                    initial={{ opacity: 0, x: 40 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -40 }}
+                                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                                >
+                                    Register
+                                </motion.button>
+                            </AnimatePresence>
                         </div>
                     </div>
                     {/* Wrap the component that uses useRouter in Suspense */}
