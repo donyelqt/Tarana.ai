@@ -11,7 +11,7 @@ import { createUserInSupabase } from '@/lib/auth'; // Updated import
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 // Password validation - at least 8 chars, with at least one number and one letter
-const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/;
+const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
 
 export async function POST(request: Request) {
   try {
