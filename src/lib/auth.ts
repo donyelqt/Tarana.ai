@@ -179,6 +179,7 @@ export const authOptions: NextAuthOptions = {
                 full_name: user.name || user.email?.split('@')[0] || "New User",
                 email: user.email.toLowerCase(),
                 image: user.image,
+                hashed_password: "GOOGLE_OAUTH_USER" // Dummy value to satisfy NOT NULL constraint
               });
 
             if (insertError) {
