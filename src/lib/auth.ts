@@ -11,6 +11,7 @@ interface SupabaseUser {
   email: string;
   hashed_password?: string; // Ensure this matches your table column name
   full_name?: string; // Ensure this matches your table column name
+  image?: string; // Added for the new image field
   // Add other fields as necessary, e.g., created_at, updated_at
 }
 
@@ -82,6 +83,14 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
+          scope: "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email"
+        }
+      },
     }),
     CredentialsProvider({
       name: "credentials",
@@ -118,6 +127,7 @@ export const authOptions: NextAuthOptions = {
             id: user.id,
             name: user.full_name || user.email, // Use full_name if available, otherwise fallback to email
             email: user.email,
+            image: user.image,
           };
         } catch (error) {
           console.error('Authentication error:', error);
@@ -135,15 +145,65 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && user.email) {
+        try {
+          const { data: dbUser, error: fetchError } = await supabaseAdmin
+            .from('users')
+            .select('id, image')
+            .eq('email', user.email.toLowerCase())
+            .single();
+
+          if (fetchError && fetchError.code !== 'PGRST116') {
+            console.error("Error fetching user during sign-in:", fetchError);
+            return false; // Prevent sign-in if there's a DB error
+          }
+
+          if (dbUser) {
+            // User exists, update image if it's missing or different
+            if (dbUser.image !== user.image && user.image) {
+              const { error: updateError } = await supabaseAdmin
+                .from('users')
+                .update({ image: user.image })
+                .eq('id', dbUser.id);
+              if (updateError) {
+                console.error("Error updating user image:", updateError);
+                // Decide if this should prevent sign-in
+              }
+            }
+          } else {
+            // New user via Google, create a record in the users table
+            const { error: insertError } = await supabaseAdmin
+              .from('users')
+              .insert({
+                full_name: user.name || user.email?.split('@')[0] || "New User",
+                email: user.email.toLowerCase(),
+                image: user.image,
+              });
+
+            if (insertError) {
+              console.error("Error creating user during Google sign-in:", insertError);
+              return false;
+            }
+          }
+        } catch (e) {
+          console.error("Error in signIn callback:", e);
+          return false;
+        }
       }
-      return token;
+      return true;
+    },
+    async jwt({ token, user, account }) {
+      if (account && user) {
+        token.id = user.id
+        token.picture = user.image
+      }
+      return token
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.image = token.picture as string;
       }
       return session;
     },

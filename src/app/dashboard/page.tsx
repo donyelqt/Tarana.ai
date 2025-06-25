@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { sampleprofile } from "../../../public"
+import sampleprofile from "../../../public/images/sampleprofile.png"
 import Sidebar from "../../components/Sidebar"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -62,10 +62,11 @@ const Dashboard = () => {
         {/* Center Content */}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
           <div className="bg-blue-50 shadow-md rounded-2xl p-6 flex items-center mb-8">
-            <Image src={sampleprofile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
+            <Image src={session?.user?.image || sampleprofile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div className="flex-grow">
               <div className="text-xl font-bold text-gray-900">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="ml-1">👋</span></div>
               <div className="text-gray-500 text-sm">Ready to plan your next adventure?</div>
+              <div className="text-gray-500 text-sm">{session?.user?.email}</div>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
