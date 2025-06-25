@@ -1,0 +1,23 @@
+'use client';
+
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import AboutIntro from "@/components/about/AboutIntro";
+import AboutMission from "@/components/about/AboutMission";
+import AboutHowItWorks from "@/components/about/AboutHowItWorks";
+import AboutTeam from "@/components/about/AboutTeam";
+
+export default function AboutPage() {
+  return (
+    <div className="font-sans bg-white min-h-screen">
+      <Navbar />
+      <main>
+        <AboutIntro onJoinWaitlistClick={() => {}} />
+        <AboutMission />
+        <AboutHowItWorks />
+        <AboutTeam />
+      </main>
+      <Footer />
+    </div>
+  );
+} 

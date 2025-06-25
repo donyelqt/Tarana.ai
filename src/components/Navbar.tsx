@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 const Navbar = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const pathname = usePathname();
     
     // Close menu when resizing to desktop view
     useEffect(() => {
@@ -28,15 +30,9 @@ const Navbar = () => {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center justify-center space-x-10 ml-16">
-                <Link href="#" className="text-gray-900 hover:text-blue-500">
-                    Home
-                </Link>
-                <Link href="#" className="text-gray-900 hover:text-blue-500">
-                    About
-                </Link>
-                <Link href="#" className="text-gray-900 hover:text-blue-500">
-                    Contact
-                </Link>
+                <Link href="/" className={`${pathname === "/" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>Home</Link>
+                <Link href="/about" className={`${pathname === "/about" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>About</Link>
+                <Link href="#" className={`${pathname === "/contact" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>Contact</Link>
             </div>
 
             <div className="hidden md:flex items-center space-x-4">
@@ -65,15 +61,9 @@ const Navbar = () => {
                 className={`absolute top-16 left-0 right-0 bg-white shadow-md p-6 md:hidden z-50 transition-all duration-300 ease-in-out ${isMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
             >
                 <div className="flex flex-col space-y-5 max-w-7xl mx-auto">
-                    <Link href="#" className="text-gray-900 hover:text-blue-500 font-medium py-2 border-b border-gray-100">
-                        Home
-                    </Link>
-                    <Link href="#" className="text-gray-900 hover:text-blue-500 font-medium py-2 border-b border-gray-100">
-                        About
-                    </Link>
-                    <Link href="#" className="text-gray-900 hover:text-blue-500 font-medium py-2 border-b border-gray-100">
-                        Contact
-                    </Link>
+                    <Link href="/" className={`font-medium py-2 border-b border-gray-100 ${pathname === "/" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>Home</Link>
+                    <Link href="/about" className={`font-medium py-2 border-b border-gray-100 ${pathname === "/about" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>About</Link>
+                    <Link href="#" className={`font-medium py-2 border-b border-gray-100 ${pathname === "/contact" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>Contact</Link>
                     <div className="flex flex-col space-y-3 pt-2">
                         <Link href="/auth/signin" className="text-gray-900 hover:text-blue-500 font-medium py-2">
                             Sign In
