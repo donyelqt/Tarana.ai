@@ -195,11 +195,24 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user, account }) {
+      // Patch: Ensure token.id is set for Google users
       if (account && user) {
-        token.id = user.id
-        token.picture = user.image
+        if (account.provider === "google") {
+          // Fetch user from Supabase to get the id
+          const { data: dbUser } = await supabaseAdmin
+            .from('users')
+            .select('id')
+            .eq('email', user.email?.toLowerCase())
+            .single();
+          if (dbUser && dbUser.id) {
+            token.id = dbUser.id;
+          }
+        } else {
+          token.id = user.id;
+        }
+        token.picture = user.image;
       }
-      return token
+      return token;
     },
     async session({ session, token }) {
       if (session.user) {
