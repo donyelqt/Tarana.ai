@@ -66,7 +66,7 @@ const Dashboard = () => {
             <div className="flex-grow">
               <div className="text-xl font-bold text-gray-900">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="ml-1">👋</span></div>
               <div className="text-gray-500 text-sm">Ready to plan your next adventure?</div>
-              <div className="text-gray-500 text-sm">{session?.user?.email}</div>
+              {/*<div className="text-gray-500 text-sm">{session?.user?.email}</div>*/}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
