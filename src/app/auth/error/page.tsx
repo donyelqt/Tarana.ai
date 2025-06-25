@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { Suspense } from "react"
 
 const errorMessages: { [key: string]: string } = {
   AccessDenied:
@@ -13,7 +14,7 @@ const errorMessages: { [key: string]: string } = {
   Default: "Sorry, we were unable to sign you in. Please try again.",
 }
 
-const AuthErrorPage = () => {
+const AuthErrorPageContent = () => {
   const searchParams = useSearchParams()
   const error = searchParams.get("error") || "Default"
   const errorMessage =
@@ -37,4 +38,12 @@ const AuthErrorPage = () => {
   )
 }
 
-export default AuthErrorPage 
+const AuthErrorPage = () => {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <AuthErrorPageContent />
+    </Suspense>
+  )
+}
+
+export default AuthErrorPage
