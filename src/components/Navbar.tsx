@@ -72,7 +72,7 @@ const Navbar = () => {
                         </Link>
                         <Link
                             href="/auth/signup"
-                            className="bg-blue-500 text-white px-4 py-3 rounded-xl hover:bg-blue-600 transition-colors text-center font-medium"
+                            className="bg-gradient-to-b from-blue-700 to-blue-500 text-white px-4 py-3 rounded-xl hover:bg-blue-600 transition-colors text-center font-medium"
                         >
                             Get Started
                         </Link>
