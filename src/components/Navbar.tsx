@@ -39,9 +39,11 @@ const Navbar = () => {
                 <Link href="/auth/signin" className="bg-gray-100 text-gray-900 px-4 py-2 rounded-xl hover:text-blue-500">
                     Sign In
                 </Link>
-                <Link href="/auth/signup" className="bg-gradient-to-b from-blue-700 to-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-600 transition-colors">
-                    Get Started
-                </Link>
+                <div className="group">
+                  <Link href="/auth/signup" className="bg-gradient-to-b from-blue-700 to-blue-500 text-white px-4 py-2 rounded-xl transition-colors duration-200 group-hover:from-blue-800 group-hover:to-blue-600">
+                      Get Started
+                  </Link>
+                </div>
             </div>
 
             {/* Mobile menu button */}
