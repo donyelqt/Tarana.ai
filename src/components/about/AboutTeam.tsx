@@ -31,7 +31,7 @@ const teamMembers = [
     linkedin: '#',
   },
   {
-    name: 'Leandro Garcia',
+    name: 'Leandro Gepila',
     title: 'Chief Product Officer',
     image: '/images/Leandro.png',
     description:
