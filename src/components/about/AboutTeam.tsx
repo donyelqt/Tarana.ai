@@ -54,7 +54,7 @@ function TeamCard({ member }: { member: typeof teamMembers[0] }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
-      className="relative rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-end h-[500px] bg-gray-100 group cursor-pointer transition-all duration-300"
+      className="relative rounded-4xl overflow-hidden shadow-2xl flex flex-col items-center justify-end h-[500px] bg-gray-100 group cursor-pointer transition-all duration-300"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
