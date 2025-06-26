@@ -40,7 +40,7 @@ const teamMembers = [
     linkedin: '#',
   },
   {
-    name: 'Jasper Dela Cruz',
+    name: 'Jasper Gubatan',
     title: 'Chief Architect',
     image: '/images/Jasper.png',
     description:
