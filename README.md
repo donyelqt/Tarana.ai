@@ -16,12 +16,41 @@
 ---
 
 ## 🛠️ Tech Stack
-- **Framework**: Next.js (App Router, TypeScript)
-- **Styling**: Tailwind CSS, PostCSS
-- **Backend**: Supabase (database, authentication, storage)
-- **AI**: Google Gemini API
-- **Authentication**: NextAuth.js (Google OAuth, credentials)
-- **Other**: Framer Motion, React Icons, ESLint, Vercel
+
+#### Frameworks & Core Libraries
+-   **[Next.js](https://nextjs.org/)**: The React framework for building full-stack web applications.
+-   **[React](https://reactjs.org/)**: A JavaScript library for building user interfaces.
+-   **[Node.js](https://nodejs.org/)**: The runtime environment for the backend.
+
+#### Backend & Database
+-   **[Supabase](https://supabase.com/)**: Used for the PostgreSQL database, authentication, and storage.
+    -   `@supabase/supabase-js`: The official JavaScript client for Supabase.
+-   **[NextAuth.js](https://next-auth.js.org/)**: Handles user authentication (Google OAuth & Credentials).
+-   **[bcryptjs](https://www.npmjs.com/package/bcryptjs)**: For hashing user passwords.
+
+#### AI & APIs
+-   **[Google Gemini API](https://ai.google.dev/)**: The AI model used for generating itineraries.
+    -   `@google/generative-ai`: The official client library.
+-   **[OpenWeatherMap API](https://openweathermap.org/api)**: Used to fetch real-time weather data.
+
+#### UI & Styling
+-   **[Tailwind CSS](https://tailwindcss.com/)**: A utility-first CSS framework for styling.
+    -   `autoprefixer`: Parses CSS and adds vendor prefixes.
+    -   `postcss`: A tool for transforming CSS with JavaScript.
+    -   `tailwind-merge`: A utility for merging Tailwind classes without style conflicts.
+    -   `tailwindcss-animate`: A Tailwind CSS plugin for animations.
+-   **[Framer Motion](https://www.framer.com/motion/)**: A library for creating animations.
+-   **[clsx](https://github.com/lukeed/clsx)** & **[class-variance-authority](https://cva.style/)**: For constructing conditional and variant-based class names.
+-   **Icons**:
+    -   `lucide-react`: A library of simply designed icons.
+    -   `@heroicons/react`: Icons from the Heroicons library.
+    -   `react-icons`: A comprehensive icon library.
+
+#### Development & Tooling
+-   **[TypeScript](https://www.typescriptlang.org/)**: A typed superset of JavaScript.
+-   **[ESLint](https://eslint.org/)**: For identifying and fixing problems in the code.
+-   **[Vercel](https://vercel.com/)**: The platform for deployment and hosting.
+-   **[Supabase CLI](https://supabase.com/docs/guides/cli)**: For managing local Supabase development and migrations.
 
 ---
 
