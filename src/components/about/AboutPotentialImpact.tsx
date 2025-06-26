@@ -53,11 +53,14 @@ export default function AboutPotentialImpact() {
         />
       </div>
       <div className="text-center text-neutral-600 text-base mb-8">Our Potential Impact</div>
-      <div className="w-full max-w-5xl flex flex-row justify-between items-stretch divide-x divide-gray-300">
+      <div className="w-full max-w-5xl flex flex-col md:flex-row justify-between items-stretch divide-y md:divide-y-0 md:divide-x divide-gray-300">
         {impactStats.map((stat, idx) => (
-          <div key={idx} className="flex-1 flex flex-col items-center px-4">
-            <div className="text-blue-600 text-5xl font-bold mb-2">{stat.value}</div>
-            <div className="text-gray-700 text-base leading-tight text-center">
+          <div
+            key={idx}
+            className="flex-1 flex flex-col items-center px-2 py-6 md:px-4 md:py-0 first:pt-0 last:pb-0 md:first:pl-0 md:last:pr-0"
+          >
+            <div className="text-blue-600 text-4xl md:text-5xl font-bold mb-2">{stat.value}</div>
+            <div className="text-gray-700 text-base md:text-base leading-tight text-center">
               {stat.description}
             </div>
           </div>
