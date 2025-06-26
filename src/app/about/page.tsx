@@ -1,12 +1,10 @@
 'use client';
 
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import AboutIntro from "@/components/about/AboutIntro";
-import AboutMission from "@/components/about/AboutMission";
-import AboutHowItWorks from "@/components/about/AboutHowItWorks";
 import AboutTeam from "@/components/about/AboutTeam";
 import AboutSmartTravel from "@/components/about/AboutSmartTravel";
+import AboutPotentialImpact from "@/components/about/AboutPotentialImpact";
 
 export default function AboutPage() {
   return (
@@ -15,11 +13,9 @@ export default function AboutPage() {
       <main>
         <AboutIntro onJoinWaitlistClick={() => {}} />
         <AboutSmartTravel />
-        <AboutMission />
-        <AboutHowItWorks />
+        <AboutPotentialImpact />
         <AboutTeam />
       </main>
-      <Footer />
     </div>
   );
 } 
