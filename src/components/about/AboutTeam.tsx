@@ -63,7 +63,10 @@ function TeamCard({ member }: { member: typeof teamMembers[0] }) {
           src={member.image}
           alt={member.name}
           fill
-          style={{ objectFit: 'contain', objectPosition: member.name === 'Leandro Garcia' ? 'bottom' : 'center' }}
+          style={{
+            objectFit: member.name === 'Leandro Gepila' ? 'contain' : 'contain',
+            objectPosition: member.name === 'Leandro Gepila' ? 'bottom' : 'center',
+          }}
           quality={100}
           className="w-full h-full rounded-2xl transition-all duration-300"
           priority
