@@ -57,7 +57,7 @@ const SignIn = () => {
                 console.error('Authentication error:', result.error)
             } else {
                 // Redirect to dashboard on success
-                window.location.href = '/dashboard'
+                window.location.href = '/dashboard?signedin=true'
             }
         } catch (error) {
             setError('An unexpected error occurred')
@@ -186,7 +186,7 @@ const SignIn = () => {
                         <Button
                             variant="outline"
                             className="w-full bg-white"
-                            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                            onClick={() => signIn("google", { callbackUrl: "/dashboard?signedin=true" })}
                         >
                             <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><g><path fill="#4285F4" d="M24 9.5c3.54 0 6.46 1.22 8.47 3.23l6.32-6.32C34.91 2.69 29.89 0 24 0 14.82 0 6.73 5.82 2.69 14.09l7.75 6.02C12.13 13.62 17.57 9.5 24 9.5z"/><path fill="#34A853" d="M46.1 24.55c0-1.64-.15-3.21-.43-4.73H24v9.01h12.41c-.54 2.9-2.18 5.36-4.64 7.01l7.17 5.57C43.93 37.19 46.1 31.38 46.1 24.55z"/><path fill="#FBBC05" d="M10.44 28.11a14.5 14.5 0 010-8.22l-7.75-6.02A23.97 23.97 0 000 24c0 3.77.9 7.34 2.69 10.23l7.75-6.12z"/><path fill="#EA4335" d="M24 48c6.49 0 11.94-2.15 15.92-5.86l-7.17-5.57c-2.01 1.35-4.59 2.16-8.75 2.16-6.43 0-11.87-4.12-13.56-9.61l-7.75 6.12C6.73 42.18 14.82 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></g></svg>
                             Google

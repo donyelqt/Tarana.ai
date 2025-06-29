@@ -95,7 +95,7 @@ export default function ItineraryForm({
       "w-full bg-white rounded-2xl h-full p-8 shadow-md",
       showPreview ? "lg:max-w-3xl" : "max-w-3xl"
     )}>
-      <div className="text-lg bg-white font-extrabold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
+      <div className="text-xl bg-white font-bold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
       <form className="space-y-6" onSubmit={handleSubmit}>
         {/* Budget Range */}
         <div>
@@ -220,7 +220,7 @@ export default function ItineraryForm({
             type="submit"
             className={cn(
               "w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition",
-              showPreview ? 'bg-blue-500 text-white shadow-lg' : 'bg-blue-500 hover:bg-blue-600 text-white',
+              showPreview ? 'bg-blue-700 text-white shadow-lg' : 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 hover:to-purple-500 text-white',
               (showPreview || isGenerating) ? 'cursor-not-allowed' : ''
             )}
             disabled={showPreview || isGenerating}

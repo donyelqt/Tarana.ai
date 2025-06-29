@@ -4,6 +4,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
+import { Bookmark, Settings, Settings2 } from 'lucide-react'
+import Image from "next/image"
+import taranaai2 from "../../public/images/taranaai2.png"
 
 const Sidebar = () => {
   const pathname = usePathname()
@@ -39,7 +42,7 @@ const Sidebar = () => {
       <aside className={`w-64 ${pathname === "/itinerary-generator" ? "bg-[#f7f9fb]" : "bg-white"} border-r border-gray-200 flex flex-col justify-between py-8 px-6 fixed inset-y-0 left-0 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40`}>
         <div>
           <div className="text-2xl font-bold mb-12">
-            Tarana.<span className="text-blue-500">ai</span>
+            <Image src={taranaai2} alt="Logo" width={120} height={120} />
           </div>
           <nav className="space-y-2">
             <Link href="/dashboard" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/dashboard" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
@@ -56,13 +59,13 @@ const Sidebar = () => {
             </Link>
             <Link href="/saved-trips" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/saved-trips" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
               <span className="mr-3">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                <Bookmark size={20} />
               </span>
               Saved Trips
             </Link>
-            <Link href="#" className="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-blue-50 transition">
+            <Link href="#" className="flex items-center px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-blue-50 transition">
               <span className="mr-3">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                <Settings size={20} />
               </span>
               Settings
             </Link>
