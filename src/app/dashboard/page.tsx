@@ -3,27 +3,33 @@
 import Image from "next/image"
 import sampleprofile from "../../../public/images/sampleprofile.png"
 import Sidebar from "../../components/Sidebar"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { BAGUIO_COORDINATES, WeatherData, fetchWeatherFromAPI, getWeatherIconUrl } from "@/lib/utils"
 import { Bookmark, Plus, MapPin } from "lucide-react"
 
-const Dashboard = () => {
+const DashboardContent = () => {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: session, status } = useSession()
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showSplash, setShowSplash] = useState(true)
+  const [showSplash, setShowSplash] = useState(false)
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false)
-    }, 4000) // Keep splash screen for at least 4 seconds
+    if (searchParams.get('signedin') === 'true') {
+      setShowSplash(true)
+      const timer = setTimeout(() => {
+        setShowSplash(false)
+        // Clean up the URL
+        router.replace('/dashboard', { scroll: false })
+      }, 4000) // Keep splash screen for 4 seconds
 
-    return () => clearTimeout(timer)
-  }, [])
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams, router])
 
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -195,6 +201,14 @@ const Dashboard = () => {
         </div>
       </main>
     </div>
+  )
+}
+
+const Dashboard = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DashboardContent />
+    </Suspense>
   )
 }
 
