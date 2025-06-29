@@ -96,12 +96,29 @@ module.exports = {
             opacity: "0",
           },
         },
+        "reveal-and-pulse": {
+          "0%": {
+            opacity: "0",
+            transform: "translateY(10px) scale(0.95)"
+          },
+          "37.5%": {
+            opacity: "1",
+            transform: "translateY(0px) scale(1.05)"
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateY(0px) scale(0.95)"
+          }
+        }
   		},
   		animation: {
   			"accordion-down": "accordion-down 0.2s ease-out",
   			"accordion-up": "accordion-up 0.2s ease-out",
   			"fade-in": "fade-in 1.5s ease-in-out forwards",
         "pulse-ring": "pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite",
+        "pulse-ring-delayed": "pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite 0.5s",
+        "pulse-ring-delayed-more": "pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite 1s",
+        "reveal-and-pulse": "reveal-and-pulse 4s ease-in-out infinite"
   		},
   	}
   },

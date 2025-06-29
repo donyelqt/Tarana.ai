@@ -56,8 +56,10 @@ const Dashboard = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
         <div className="relative flex items-center justify-center">
-          {/* Pulsing ring */}
+          {/* Pulsing rings */}
           <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring"></div>
+          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring-delayed"></div>
+          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring-delayed-more"></div>
           
           {/* Logo */}
           <Image 
@@ -65,7 +67,7 @@ const Dashboard = () => {
             alt="Loading..." 
             width={200} 
             height={200} 
-            className="animate-fade-in"
+            className="animate-reveal-and-pulse"
             priority 
           />
         </div>
