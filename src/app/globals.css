@@ -37,9 +37,97 @@ body {
 
 @font-face {
   font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-Extralight.woff2') format('woff2');
+  font-weight: 200;
+  font-style: normal;
+  font-display: auto;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-ExtralightItalic.woff2') format('woff2');
+  font-weight: 200;
+  font-style: italic;
+  font-display: auto;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: auto;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-LightItalic.woff2') format('woff2');
+  font-weight: 300;
+  font-style: italic;
+  font-display: auto;
+}
+
+@font-face {
+  font-family: 'General Sans';
   src: url('/fonts/GeneralSans-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
+  font-display: auto;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: auto;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: auto;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-MediumItalic.woff2') format('woff2');
+  font-weight: 500;
+  font-style: italic;
+  font-display: auto;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-Semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: auto;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-SemiboldItalic.woff2') format('woff2');
+  font-weight: 600;
+  font-style: italic;
+  font-display: auto;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: auto;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-BoldItalic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
   font-display: auto;
 }
 

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { BAGUIO_COORDINATES, WeatherData, fetchWeatherFromAPI, getWeatherIconUrl } from "@/lib/utils"
+import { Bookmark, Plus, MapPin } from "lucide-react"
 
 const Dashboard = () => {
   const router = useRouter()
@@ -14,6 +15,15 @@ const Dashboard = () => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showSplash, setShowSplash] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false)
+    }, 4000) // Keep splash screen for at least 4 seconds
+
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -41,13 +51,23 @@ const Dashboard = () => {
     getWeather()
   }, [status, router])
 
-  // Show loading state while checking authentication
-  if (status === 'loading') {
+  // Show loading state while checking authentication or if splash screen is active
+  if (status === 'loading' || showSplash) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
-        <div className="text-center">
-          <div className="text-2xl font-semibold mb-2">Loading...</div>
-          <p className="text-gray-500">Please wait while we load your dashboard</p>
+        <div className="relative flex items-center justify-center">
+          {/* Pulsing ring */}
+          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring"></div>
+          
+          {/* Logo */}
+          <Image 
+            src="/images/taranaai2.png" 
+            alt="Loading..." 
+            width={200} 
+            height={200} 
+            className="animate-fade-in"
+            priority 
+          />
         </div>
       </div>
     )
@@ -61,23 +81,23 @@ const Dashboard = () => {
       <main className="md:pl-64 flex-1 flex flex-col md:flex-row">
         {/* Center Content */}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
-          <div className="bg-blue-50 shadow-md rounded-2xl p-6 flex items-center mb-8">
+          <div className="bg-gradient-to-br from-blue-300 to-blue-600 shadow-md rounded-2xl p-6 flex items-center mb-8">
             <Image src={session?.user?.image || sampleprofile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div className="flex-grow">
-              <div className="text-xl font-bold text-gray-900">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="ml-1">👋</span></div>
-              <div className="text-gray-500 text-sm">Ready to plan your next adventure?</div>
+              <div className="text-xl font-bold text-white">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="ml-1">👋</span></div>
+              <div className="text-gray-200 text-sm">Ready to plan your next adventure?</div>
               {/*<div className="text-gray-500 text-sm">{session?.user?.email}</div>*/}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-white rounded-2xl shadow-md p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/itinerary-generator")}>
-              <div className="text-3xl mb-2">+</div>
+              <Plus size={28} className="mb-2" />
               <div className="font-semibold text-lg">Create New Itinerary</div>
               <div className="text-gray-500 text-sm mt-1">Create a personalized travel plan</div>
             </div>
             <div className="bg-white rounded-2xl shadow-md p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/saved-trips")}>
               <div className="mb-2">
-                <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                <Bookmark size={28} />
               </div>
               <div className="font-semibold text-lg">View Saved Trips</div>
               <div className="text-gray-500 text-sm mt-1">Access your planned Itineraries</div>
@@ -86,9 +106,7 @@ const Dashboard = () => {
           <div className="bg-white shadow-md rounded-2xl p-6 mb-8">
             <div className="font-semibold text-lg mb-4">Current Itinerary</div>
             <div className="bg-blue-50 rounded-xl p-4 flex items-center">
-              <span className="mr-3">
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 12.414a4 4 0 10-1.414 1.414l4.243 4.243a1 1 0 001.414-1.414z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-              </span>
+              <MapPin size={24} className="mr-3 flex-shrink-0 text-blue-500 fill-white" />
               <div>
                 <div className="font-medium text-gray-900">1 Day Itinerary <span className="text-xs text-gray-400 ml-2">#BC402</span></div>
                 <div className="text-xs text-gray-500">April 26 - 27, 2025 | 7:30AM - 8:00PM</div>
