@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
+import { Bookmark, Settings, Settings2 } from 'lucide-react'
 
 const Sidebar = () => {
   const pathname = usePathname()
@@ -56,13 +57,13 @@ const Sidebar = () => {
             </Link>
             <Link href="/saved-trips" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/saved-trips" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
               <span className="mr-3">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                <Bookmark size={20} />
               </span>
               Saved Trips
             </Link>
             <Link href="#" className="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-blue-50 transition">
               <span className="mr-3">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                <Settings size={20} />
               </span>
               Settings
             </Link>
