@@ -5,6 +5,7 @@ import AboutIntro from "@/components/about/AboutIntro";
 import AboutTeam from "@/components/about/AboutTeam";
 import AboutSmartTravel from "@/components/about/AboutSmartTravel";
 import AboutPotentialImpact from "@/components/about/AboutPotentialImpact";
+import Footer from "@/components/Footer";
 
 export default function AboutPage() {
   return (
@@ -15,6 +16,7 @@ export default function AboutPage() {
         <AboutSmartTravel />
         <AboutPotentialImpact />
         <AboutTeam />
+        <Footer />
       </main>
     </div>
   );
