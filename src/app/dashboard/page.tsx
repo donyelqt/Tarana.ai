@@ -98,20 +98,20 @@ const DashboardContent = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-2xl shadow-md p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/itinerary-generator")}>
-              <Plus size={28} className="mb-2" />
+            <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/itinerary-generator")}>
+              <Plus size={28} className="mb-2 text-blue-500" />
               <div className="font-semibold text-lg">Create New Itinerary</div>
               <div className="text-gray-500 text-sm mt-1">Create a personalized travel plan</div>
             </div>
-            <div className="bg-white rounded-2xl shadow-md p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/saved-trips")}>
+            <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/saved-trips")}>
               <div className="mb-2">
-                <Bookmark size={28} />
+                <Bookmark size={28} className="text-blue-500 fill-blue-500" />
               </div>
               <div className="font-semibold text-lg">View Saved Trips</div>
               <div className="text-gray-500 text-sm mt-1">Access your planned Itineraries</div>
             </div>
           </div>
-          <div className="bg-white shadow-md rounded-2xl p-6 mb-8">
+          <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 mb-8">
             <div className="font-semibold text-lg mb-4">Current Itinerary</div>
             <div className="bg-blue-50 rounded-xl p-4 flex items-center">
               <MapPin size={24} className="mr-3 flex-shrink-0 text-blue-500 fill-white" />
@@ -123,7 +123,7 @@ const DashboardContent = () => {
           </div>
         </div>
         {/* Right Sidebar */}
-        <div className="w-full md:w-80 bg-white shadow-md rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-full">
+        <div className="w-full md:w-80 border-2 border-gray-200 bg-white rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-full">
           <div className="mb-6">
             <div className="font-semibold text-lg mb-2">Baguio Weather</div>
             {loading ? (
