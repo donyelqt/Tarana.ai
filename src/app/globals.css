@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .calendar-responsive {
+    --cell-size: 1.5rem;
+  }
+  @screen sm {
+    .calendar-responsive {
+      --cell-size: 1.75rem;
+    }
+  }
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 255, 255, 255;
@@ -27,6 +38,11 @@
   --ring: 221.2 83.2% 53.3%;
 
   --radius: 0.5rem;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 47.4% 11.2%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47.4% 11.2%;
 }
 
 body {

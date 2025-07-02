@@ -28,7 +28,7 @@ export default function ItineraryGenerator() {
   const [budget, setBudget] = useState(budgetOptions[0]);
   const [pax, setPax] = useState("");
   const [duration, setDuration] = useState("");
-  const [dates, setDates] = useState({ start: "", end: "" });
+  const [dates, setDates] = useState<{ start: Date | undefined; end: Date | undefined }>({ start: undefined, end: undefined });
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]); // Still needed for handleSubmit
   const [showPreview, setShowPreview] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
@@ -71,7 +71,9 @@ export default function ItineraryGenerator() {
     setBudget(formData.budget);
     setPax(formData.pax);
     setDuration(formData.duration);
-    setDates(formData.dates);
+    if (formData.dates.start && formData.dates.end) {
+      setDates({ start: new Date(formData.dates.start), end: new Date(formData.dates.end) });
+    }
     setSelectedInterests(formData.selectedInterests); // Ensure this is updated if handleInterest is moved
     setFormSnapshot(formData); // Save the complete form data snapshot
 
@@ -241,12 +243,18 @@ export default function ItineraryGenerator() {
     try {
       const itineraryToSave = {
         title: formSnapshot.duration ? `Your ${formSnapshot.duration} Itinerary` : "Your Itinerary",
-        date: formSnapshot.dates.start && formSnapshot.dates.end ? `${formSnapshot.dates.start} - ${formSnapshot.dates.end}` : "Date not specified",
+        date: formSnapshot.dates.start && formSnapshot.dates.end ? `${new Date(formSnapshot.dates.start).toLocaleDateString()} - ${new Date(formSnapshot.dates.end).toLocaleDateString()}` : "Date not specified",
         budget: formSnapshot.budget,
         image: (generatedItinerary || sampleItinerary)?.items[0]?.activities[0]?.image || burnham, // Default image if none found
         tags: formSnapshot.selectedInterests.length > 0 ? formSnapshot.selectedInterests : ((generatedItinerary || sampleItinerary)?.items.flatMap(i => i.activities.flatMap(a => a.tags || [])) || []),
-        formData: formSnapshot,
-        weatherData: weatherData ? weatherData : undefined,
+        formData: {
+          ...formSnapshot,
+          dates: {
+            start: formSnapshot.dates.start ? new Date(formSnapshot.dates.start).toISOString() : "",
+            end: formSnapshot.dates.end ? new Date(formSnapshot.dates.end).toISOString() : "",
+          },
+        },
+        weatherData: weatherData || undefined,
         itineraryData: generatedItinerary || sampleItinerary,
       };
       saveItinerary(itineraryToSave);

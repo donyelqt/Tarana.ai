@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { budgetOptions, paxOptions, durationOptions, interests, ItineraryData, sampleItinerary } from "./itineraryData";
 import { useToast } from "@/components/ui/use-toast";
 import { WeatherData, fetchWeatherFromAPI } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface ItineraryFormProps {
   showPreview: boolean;
@@ -21,8 +22,8 @@ interface ItineraryFormProps {
   setPax: React.Dispatch<React.SetStateAction<string>>;
   duration: string;
   setDuration: React.Dispatch<React.SetStateAction<string>>;
-  dates: { start: string; end: string };
-  setDates: React.Dispatch<React.SetStateAction<{ start: string; end: string }>>;
+  dates: { start: Date | undefined; end: Date | undefined };
+  setDates: React.Dispatch<React.SetStateAction<{ start: Date | undefined; end: Date | undefined }>>;
   selectedInterests: string[];
   setSelectedInterests: React.Dispatch<React.SetStateAction<string[]>>;
   handleInterest: (interest: string) => void;
@@ -36,7 +37,7 @@ export interface FormData {
   budget: string;
   pax: string;
   duration: string;
-  dates: { start: string; end: string };
+  dates: { start: Date | undefined; end: Date | undefined };
   selectedInterests: string[];
 }
 
@@ -99,7 +100,7 @@ export default function ItineraryForm({
       <form className="space-y-6" onSubmit={handleSubmit}>
         {/* Budget Range */}
         <div>
-          <Label htmlFor="budget" className="block font-bold mb-2 text-gray-900">Budget Range</Label>
+          <Label htmlFor="budget" className="block font-medium mb-2 text-gray-900">Budget Range</Label>
           <select
             id="budget"
             className={cn(
@@ -117,7 +118,7 @@ export default function ItineraryForm({
         </div>
         {/* Number of Pax */}
         <div>
-          <Label className="block font-bold mb-2 text-gray-900">Number of Pax.</Label>
+          <Label className="block font-medium mb-2 text-gray-900">Number of Pax.</Label>
           <div className="grid grid-cols-4 gap-3 lg:mr-48">
             {paxOptions.map(opt => (
               <Button
@@ -126,7 +127,7 @@ export default function ItineraryForm({
                 variant="outline"
                 className={cn(
                   "py-2 font-medium transition",
-                  pax === opt ? 'bg-blue-500 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
+                  pax === opt ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
                   showPreview ? 'cursor-not-allowed' : ''
                 )}
                 onClick={() => !showPreview && setPax(opt)}
@@ -137,7 +138,7 @@ export default function ItineraryForm({
         </div>
         {/* Duration */}
         <div>
-          <Label className="block font-bold mb-2 text-gray-900">Duration</Label>
+          <Label className="block font-medium mb-2 text-gray-900">Duration</Label>
           <div className="grid grid-cols-4 gap-3 lg:mr-48">
             {durationOptions.map(opt => (
               <Button
@@ -146,7 +147,7 @@ export default function ItineraryForm({
                 variant="outline"
                 className={cn(
                   "py-2 font-medium transition",
-                  duration === opt ? 'bg-blue-500 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
+                  duration === opt ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
                   showPreview ? 'cursor-not-allowed' : ''
                 )}
                 onClick={() => !showPreview && setDuration(opt)}
@@ -157,43 +158,25 @@ export default function ItineraryForm({
         </div>
         {/* Travel Dates */}
         <div>
-          <Label className="block font-bold mb-2 text-gray-900">Travel Dates</Label>
+          <Label className="block font-medium mb-2 text-gray-900">Travel Dates</Label>
           <div className="flex gap-3 lg:mr-48">
-            <Input
-              type="date"
-              className={cn(
-                "border rounded-xl px-4 py-2 w-full focus:outline-none focus:ring-2",
-                showPreview
-                  ? 'border-gray-300'
-                  : dates.start
-                    ? 'border-blue-500 focus:ring-blue-400'
-                    : 'border-gray-300 focus:ring-blue-400 hover:border-blue-500'
-              )}
-              value={dates.start}
-              onChange={e => setDates({ ...dates, start: e.target.value })}
+            <DatePicker
+              date={dates.start}
+              setDate={(date) => setDates({ ...dates, start: date })}
               disabled={showPreview}
-              placeholder="mm/dd/yyyy"
+              placeholder="Start date"
             />
-            <Input
-              type="date"
-              className={cn(
-                "border rounded-xl px-4 py-2 w-full focus:outline-none focus:ring-2",
-                showPreview
-                  ? 'border-gray-300'
-                  : dates.end
-                    ? 'border-blue-500 focus:ring-blue-400'
-                    : 'border-gray-300 focus:ring-blue-400 hover:border-blue-500'
-              )}
-              value={dates.end}
-              onChange={e => setDates({ ...dates, end: e.target.value })}
+            <DatePicker
+              date={dates.end}
+              setDate={(date) => setDates({ ...dates, end: date })}
               disabled={showPreview}
-              placeholder="mm/dd/yyyy"
+              placeholder="End date"
             />
           </div>
         </div>
         {/* Travel Interests */}
         <div>
-          <Label className="block font-bold mb-2 text-gray-700">Travel Interests</Label>
+          <Label className="block font-medium mb-2 text-gray-700">Travel Interests</Label>
           <div className="grid grid-cols-2 gap-3">
             {propInterests.map(({ label, icon }) => (
               <Button
@@ -202,7 +185,7 @@ export default function ItineraryForm({
                 variant="outline"
                 className={cn(
                   "flex items-center justify-center gap-2 py-3 font-medium transition",
-                  selectedInterests.includes(label) ? 'bg-blue-500 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
+                  selectedInterests.includes(label) ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
                   showPreview ? 'cursor-not-allowed' : ''
                 )}
                 onClick={() => !showPreview && handleInterest(label)}
