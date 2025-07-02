@@ -152,7 +152,7 @@ const SavedTrips = () => {
                 </div>
                 
                 {/* Tags */}
-                <div className="mb-4">
+                <div className="mb-4 bg-white border-2 rounded-xl px-4 py-2 w-fit">
                   <div className="flex flex-wrap gap-2">
                     {itinerary.tags.map((tag, index) => (
                       <span key={index} className="inline-flex items-center">
