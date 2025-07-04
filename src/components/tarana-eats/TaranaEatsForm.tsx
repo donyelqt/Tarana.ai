@@ -72,7 +72,7 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
     <form onSubmit={handleSubmit} className="bg-white p-6">
       <h2 className="text-2xl font-bold mb-2">Hungry? Let Tarana Find the Perfect Spot for You.</h2>
       <p className="text-gray-500 mb-6">Tell us your meal budget and how many you are dining with. We will recommend the best local cafés/restaurants.</p>
-      <div className="mb-4">
+      <div className="mb-8">
         <label className="block text-sm font-medium mb-1">Enter your Budget</label>
         <Input
           type="text"
