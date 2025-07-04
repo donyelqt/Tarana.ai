@@ -16,7 +16,7 @@ export const budgetOptions = [
   "₱10,000+/day"
 ];
 
-export const paxOptions = ["1", "2", "3-6", "6+"];
+export const paxOptions = ["1", "2", "3-5", "6+"];
 export const durationOptions = ["1 Day", "2 Days", "3 Days", "4-5 Days"];
 export const interests = [
   { label: "Random", icon: "\uD83D\uDD0D" },
