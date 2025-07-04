@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { Leaf, Vegan, BadgeCheck } from "lucide-react";
 
 interface TaranaEatsFormProps {
   onGenerate: (results: any) => void;
@@ -22,6 +22,12 @@ const paxOptions = [
   { label: "2", value: 2 },
   { label: "3-5", value: 4 },
   { label: "6+", value: 6 },
+];
+
+const dietaryOptions = [
+  { label: "Vegetarian", icon: <Leaf className="w-4 h-4" /> },
+  { label: "Halal", icon: <BadgeCheck className="w-4 h-4" /> },
+  { label: "Vegan", icon: <Vegan className="w-4 h-4" /> },
 ];
 
 export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
@@ -70,8 +76,8 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6">
-      <h2 className="text-2xl font-bold mb-2">Hungry? Let Tarana Find the Perfect Spot for You.</h2>
-      <p className="text-gray-500 mb-6">Tell us your meal budget and how many you are dining with. We will recommend the best local cafés/restaurants.</p>
+      <h2 className="text-2xl font-bold mb-2">Where to Eat? We Got You.</h2>
+      <p className="text-gray-500 mb-6">Enter your budget and group size. We’ll show you cafés and meals that fit.</p>
       <div className="mb-8">
         <label className="block text-sm font-medium mb-1">Enter your Budget</label>
         <Input
@@ -102,10 +108,18 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
       <div className="mb-8">
         <label className="block text-sm font-medium mb-1">Dietary Restrictions (Optional)</label>
         <div className="flex gap-2 lg:mr-48">
-          {[{ label: 'Vegetarian', icon: 'V' }, { label: 'Halal', icon: 'H' }, { label: 'Vegan', icon: 'V' }].map(opt => (
-            <Button key={opt.label} type="button" variant={restrictions.includes(opt.label) ? "default" : "outline"} onClick={() => handleRestriction(opt.label)}
-            className={cn('flex items-center justify-center gap-1 py-3 w-full font-medium transition')}>
-              <span className="mr-2">{opt.icon}</span>{opt.label}
+          {dietaryOptions.map((opt) => (
+            <Button
+              key={opt.label}
+              type="button"
+              variant={restrictions.includes(opt.label) ? "default" : "outline"}
+              onClick={() => handleRestriction(opt.label)}
+              className={cn(
+                "flex items-center justify-center gap-1 py-3 w-full font-medium transition"
+              )}
+            >
+              <span className="mr-2">{opt.icon}</span>
+              {opt.label}
             </Button>
           ))}
         </div>
