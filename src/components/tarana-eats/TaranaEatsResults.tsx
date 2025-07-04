@@ -37,8 +37,8 @@ export default function TaranaEatsResults({ results, onBack }: TaranaEatsResults
       {/* Sidebar */}
       <div className="w-full md:w-80 flex-shrink-0">
         <div className="bg-white rounded-2xl shadow border p-6 mb-4">
-          <h3 className="font-semibold text-lg mb-2">Save your itinerary</h3>
-          <Button className="w-full">Save Itinerary</Button>
+          <h3 className="font-semibold text-lg mb-2">Save your Meals</h3>
+          <Button className="w-full">Save Meals</Button>
         </div>
       </div>
     </div>
