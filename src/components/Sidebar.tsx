@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
-import { Bookmark, Settings, Settings2 } from 'lucide-react'
+import { Bookmark, Settings, Settings2, Coffee, Donut } from 'lucide-react'
 import Image from "next/image"
 import taranaai2 from "../../public/images/taranaai2.png"
 
@@ -59,7 +59,7 @@ const Sidebar = () => {
             </Link>
             <Link href="/tarana-eats" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/tarana-eats" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
               <span className="mr-3">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                <Donut size={20} />
               </span>
               Tarana Eats
             </Link>
