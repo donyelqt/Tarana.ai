@@ -42,7 +42,7 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
           <Button className="w-full mt-4">Save Itinerary</Button>
         </div>
       ) : (
-        <div className="text-center rounded-lg flex flex-col items-center shadow-lg justify-center h-[90vh]">
+        <div className="text-center rounded-lg flex flex-col items-center justify-center h-[90vh]">
           <Image src={taranaai} alt="logo" width={100} height={100} className="mb-4 text-gray-300" />
           <h3 className="text-lg font-semibold text-gray-700 mb-2">Find Your Next Meal</h3>
           <p className="text-gray-500">Your food matches will appear here.</p>
