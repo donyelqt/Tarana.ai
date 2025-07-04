@@ -77,7 +77,7 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6">
       <h2 className="text-2xl font-bold mb-2">Where to Eat? We Got You.</h2>
-      <p className="text-gray-500 mb-6">Enter your budget and group size. We’ll show you cafés and meals that fit.</p>
+      <p className="text-gray-500 mb-6">Enter your budget and group size. We'll show you cafés and meals that fit.</p>
       <div className="mb-8">
         <label className="block text-sm font-medium mb-1">Enter your Budget</label>
         <Input
@@ -92,8 +92,20 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
         <label className="block text-sm font-medium mb-1">Number of Pax.</label>
         <div className="flex gap-2 lg:mr-48">
           {paxOptions.map(opt => (
-            <Button key={opt.label} type="button" variant={pax === opt.value ? "default" : "outline"} onClick={() => setPax(opt.value)} 
-            className={cn('flex items-center justify-center gap-1 py-3 w-full font-medium transition')}>{opt.label}</Button>
+            <Button
+              key={opt.label}
+              type="button"
+              variant="outline"
+              onClick={() => setPax(opt.value)}
+              className={cn(
+                'flex items-center justify-center gap-1 py-3 w-full font-medium transition',
+                pax === opt.value
+                  ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500'
+                  : 'bg-white border-gray-300 text-gray-700'
+              )}
+            >
+              {opt.label}
+            </Button>
           ))}
         </div>
       </div>
@@ -112,10 +124,13 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
             <Button
               key={opt.label}
               type="button"
-              variant={restrictions.includes(opt.label) ? "default" : "outline"}
+              variant="outline"
               onClick={() => handleRestriction(opt.label)}
               className={cn(
-                "flex items-center justify-center gap-1 py-3 w-full font-medium transition"
+                "flex items-center justify-center gap-1 py-3 w-full font-medium transition",
+                restrictions.includes(opt.label)
+                  ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500'
+                  : 'bg-white border-gray-300 text-gray-700'
               )}
             >
               <span className="mr-2">{opt.icon}</span>
@@ -128,11 +143,24 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
         <label className="block text-sm font-medium mb-1">Meal Type</label>
         <div className="grid grid-cols-2 gap-2">
           {['Breakfast', 'Dinner', 'Lunch', 'Snack'].map(opt => (
-            <Button key={opt} type="button" variant={mealType.includes(opt) ? "default" : "outline"} onClick={() => handleMealType(opt)} className={cn('flex items-center justify-center gap-2 py-3 font-medium transition')}>{opt}</Button>
+            <Button
+              key={opt}
+              type="button"
+              variant="outline"
+              onClick={() => handleMealType(opt)}
+              className={cn(
+                'flex items-center justify-center gap-2 py-3 font-medium transition',
+                mealType.includes(opt)
+                  ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500'
+                  : 'bg-white border-gray-300 text-gray-700'
+              )}
+            >
+              {opt}
+            </Button>
           ))}
         </div>
       </div>
-      <Button type="submit" className="w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition">
+      <Button type="submit" className="w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 hover:to-purple-500 text-white">
         View Meal Suggestions <span className="ml-2">→</span>
       </Button>
     </form>
