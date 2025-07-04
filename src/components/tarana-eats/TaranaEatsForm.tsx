@@ -82,7 +82,7 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
         <label className="block text-sm font-medium mb-1">Enter your Budget</label>
         <Input
           type="text"
-          placeholder="e.g., around 500 pesos, cheap, or a specific amount"
+          placeholder="Enter your Budget Range"
           value={budget}
           onChange={(e) => setBudget(e.target.value)}
           className="w-full"
