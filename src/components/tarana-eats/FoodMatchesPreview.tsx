@@ -39,7 +39,7 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
               </div>
             </div>
           ))}
-          <Button className="w-full mt-4">Save Itinerary</Button>
+          <Button className="w-full mt-4">Save Meals</Button>
         </div>
       ) : (
         <div className="text-center rounded-lg flex flex-col items-center justify-center h-[90vh]">
