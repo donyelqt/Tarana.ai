@@ -105,7 +105,7 @@ const SignIn = () => {
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         <div className="space-y-4">
                             <div>
-                                <Label htmlFor="email" className="block text-sm font-bold text-black">Email</Label>
+                                <Label htmlFor="email" className="block text-sm font-medium text-black">Email</Label>
                                 <Input
                                     id="email"
                                     name="email"
@@ -119,7 +119,7 @@ const SignIn = () => {
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="password" className="block text-sm font-bold text-black">Password</Label>
+                                    <Label htmlFor="password" className="block text-sm font-medium text-black">Password</Label>
                                 <div className="relative">
                                     <Input
                                         id="password"
