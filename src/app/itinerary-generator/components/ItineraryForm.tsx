@@ -27,7 +27,7 @@ interface ItineraryFormProps {
   selectedInterests: string[];
   setSelectedInterests: React.Dispatch<React.SetStateAction<string[]>>;
   handleInterest: (interest: string) => void;
-  interests: { label: string; icon: string }[];
+  interests: { label: string; icon: React.ReactNode }[];
   budgetOptions: string[];
   paxOptions: string[];
   durationOptions: string[];
