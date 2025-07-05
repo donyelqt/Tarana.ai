@@ -2,6 +2,8 @@ import { baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation,
   mtulap, nightmarket, tamawan, taranaai, treetopcampjohnhay, viewspark, 
   vizcossessionroad} from "../../../../public";
 import { StaticImageData } from "next/image";
+import { Dices, Mountain, Utensils, Palette, ShoppingBag, Compass } from 'lucide-react';
+import React from "react";
 
 export {
   baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation,
@@ -19,12 +21,12 @@ export const budgetOptions = [
 export const paxOptions = ["1", "2", "3-5", "6+"];
 export const durationOptions = ["1 Day", "2 Days", "3 Days", "4-5 Days"];
 export const interests = [
-  { label: "Random", icon: "\uD83D\uDD0D" },
-  { label: "Nature & Scenery", icon: "\uD83C\uDF3F" },
-  { label: "Food & Culinary", icon: "\uD83C\uDF74" },
-  { label: "Culture & Arts", icon: "\uD83C\uDFA8" },
-  { label: "Shopping & Local Finds", icon: "\uD83D\uDED2" },
-  { label: "Adventure", icon: "\u2699\uFE0F" }
+  { label: "Random", icon: React.createElement(Dices, { "aria-label": "Random interest", size: 16 }) },
+  { label: "Nature & Scenery", icon: React.createElement(Mountain, { "aria-label": "Nature & Scenery interest", size: 16 }) },
+  { label: "Food & Culinary", icon: React.createElement(Utensils, { "aria-label": "Food & Culinary interest", size: 16 }) },
+  { label: "Culture & Arts", icon: React.createElement(Palette, { "aria-label": "Culture & Arts interest", size: 16 }) },
+  { label: "Shopping & Local Finds", icon: React.createElement(ShoppingBag, { "aria-label": "Shopping & Local Finds interest", size: 16 }) },
+  { label: "Adventure", icon: React.createElement(Compass, { "aria-label": "Adventure interest", size: 16 }) }
 ];
 
 export interface Activity {
