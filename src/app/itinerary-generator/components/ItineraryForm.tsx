@@ -92,12 +92,11 @@ export default function ItineraryForm({
   };
 
   return (
-    <div className={cn(
-      "w-full bg-white rounded-2xl h-full p-8 shadow-md",
-      showPreview ? "lg:max-w-3xl" : "max-w-3xl"
-    )}>
-      <div className="text-xl bg-white font-bold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
-      <form className="space-y-6" onSubmit={handleSubmit}>
+    <div className="w-full bg-gray-100">
+    <div className="w-full rounded-tl-7xl bg-white shadow-lg p-6">
+      <div className="text-xl font-bold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
+      <hr className="my-6 w-full border-gray-200" />
+      <form className="space-y-8" onSubmit={handleSubmit}>
         {/* Budget Range */}
         <div>
           <Label htmlFor="budget" className="block font-medium mb-2 text-gray-900">Budget Range</Label>
@@ -126,7 +125,7 @@ export default function ItineraryForm({
                 key={opt}
                 variant="outline"
                 className={cn(
-                  "py-2 font-medium transition",
+                  "py-3 font-medium transition",
                   pax === opt ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
                   showPreview ? 'cursor-not-allowed' : ''
                 )}
@@ -146,7 +145,7 @@ export default function ItineraryForm({
                 key={opt}
                 variant="outline"
                 className={cn(
-                  "py-2 font-medium transition",
+                  "py-3 font-medium transition",
                   duration === opt ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
                   showPreview ? 'cursor-not-allowed' : ''
                 )}
@@ -222,6 +221,7 @@ export default function ItineraryForm({
           </Button>
         </div>
       </form>
+    </div>
     </div>
   );
 }
