@@ -85,7 +85,7 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
           placeholder="Enter your Budget Range"
           value={budget}
           onChange={(e) => setBudget(e.target.value)}
-          className="w-full"
+          className="w-full rounded-xl"
         />
       </div>
       <div className="mb-8">
@@ -111,7 +111,7 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
       </div>
       <div className="mb-8">
         <label className="block text-sm font-medium mb-1">Enter your Cuisine Preference</label>
-        <select value={cuisine} onChange={e => setCuisine(e.target.value)} className="w-full border rounded px-3 py-2">
+        <select value={cuisine} onChange={e => setCuisine(e.target.value)} className="w-full border rounded-xl px-3 py-2">
           {cuisineOptions.map(opt => (
             <option key={opt} value={opt}>{opt}</option>
           ))}
