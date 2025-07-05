@@ -25,7 +25,7 @@ export default function ItineraryPreview({
 }: ItineraryPreviewProps) {
   if (isLoadingItinerary) {
     return (
-      <div className="w-full lg:w-[370px] lg:ml-4 flex flex-col items-center justify-center bg-white/80 z-10 rounded-2xl shadow-md p-6 h-[90vh]">
+      <div className="w-full h-full flex flex-col items-center justify-center bg-white/80 z-10 rounded-2xl shadow-md p-6">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
         <p className="text-lg font-semibold text-gray-700">Generating your itinerary...</p>
         <p className="text-md font-semibold text-gray-700">Thinking mode...</p>
@@ -37,10 +37,10 @@ export default function ItineraryPreview({
   if (!showPreview || !generatedItinerary) {
     return (
       <aside className={cn(
-        "w-full lg:w-[370px] lg:ml-4 h-full",
+        "w-full h-full",
         !showPreview ? "block" : "hidden"
       )}>
-        <div className="bg-white rounded-2xl shadow-md p-6 h-[90vh] overflow-y-auto flex flex-col items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-md p-6 h-full flex flex-col items-center justify-center">
           <Image src={taranaaiLogo} alt="Plan your trip icon" width={100} height={100} className="text-gray-300 mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">Plan Your Perfect Trip</h3>
           <p className="text-gray-500 text-center">Fill in the details on the left to generate your personalized Baguio itinerary.</p>
@@ -53,10 +53,10 @@ export default function ItineraryPreview({
 
   return (
     <aside className={cn(
-      "w-full lg:w-[370px] lg:ml-4 h-[90vh] overflow-y-auto",
+      "w-full h-full",
       showPreview ? "block" : "hidden"
     )}>
-      <div className="bg-white rounded-2xl shadow-md p-6">
+      <div className="bg-white rounded-2xl shadow-md p-4">
         <div className="mb-2 text-sm text-gray-900 font-bold">{displayItinerary.title}</div>
         <div className="mb-4 text-xs text-gray-700">{displayItinerary.subtitle}</div>
 
@@ -96,7 +96,7 @@ export default function ItineraryPreview({
               }
               return (
                 <div key={i} className="bg-white rounded-xl shadow-md mb-4 overflow-hidden border border-gray-100">
-                  <Image src={imageSrc} alt={act.title} width={400} height={128} className="w-full h-32 object-cover" />
+                  <Image src={imageSrc} alt={act.title} width={300} height={200} className="w-full h-[200px] object-cover" />
                   <div className="p-4">
                     <div className="font-semibold text-gray-900 text-base mb-1">{act.title}</div>
                     <div className="text-xs text-gray-500 mb-2">{act.time}</div>

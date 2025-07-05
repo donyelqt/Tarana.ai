@@ -277,39 +277,43 @@ export default function ItineraryGenerator() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="bg-white">
       <Sidebar />
-      <main className="md:pl-64 flex-1 flex flex-col md:flex-row md:items-stretch justify-start gap-8 p-4 md:p-12 pt-16 md:pt-12">
-        <ItineraryForm
-          showPreview={showPreview}
-          isGenerating={isGenerating}
-          isLoadingItinerary={isLoadingItinerary}
-          onSubmitItinerary={handleGenerateItinerary}
-          weatherData={weatherData}
-          budget={budget} 
-          setBudget={setBudget}
-          pax={pax}
-          setPax={setPax}
-          duration={duration}
-          setDuration={setDuration}
-          dates={dates}
-          setDates={setDates}
-          selectedInterests={selectedInterests}
-          setSelectedInterests={setSelectedInterests}
-          handleInterest={handleInterest}
-          budgetOptions={budgetOptions}
-          paxOptions={paxOptions}
-          durationOptions={durationOptions}
-          interests={interests}
-        />
-        <ItineraryPreview
-          showPreview={showPreview}
-          isLoadingItinerary={isLoadingItinerary}
-          generatedItinerary={generatedItinerary}
-          weatherData={weatherData}
-          onSave={handleSaveItinerary}
-          taranaaiLogo={taranaai} // Pass taranaai logo
-        />
+      <main className="md:h-screen md:overflow-hidden md:pl-64 flex flex-col md:flex-row">
+        <div className="flex-1 md:overflow-y-auto">
+          <ItineraryForm
+            showPreview={showPreview}
+            isGenerating={isGenerating}
+            isLoadingItinerary={isLoadingItinerary}
+            onSubmitItinerary={handleGenerateItinerary}
+            weatherData={weatherData}
+            budget={budget}
+            setBudget={setBudget}
+            pax={pax}
+            setPax={setPax}
+            duration={duration}
+            setDuration={setDuration}
+            dates={dates}
+            setDates={setDates}
+            selectedInterests={selectedInterests}
+            setSelectedInterests={setSelectedInterests}
+            handleInterest={handleInterest}
+            interests={interests}
+            budgetOptions={budgetOptions}
+            paxOptions={paxOptions}
+            durationOptions={durationOptions}
+          />
+        </div>
+        <div className="w-full md:w-[450px] border-l md:overflow-y-auto">
+          <ItineraryPreview
+            showPreview={showPreview}
+            isLoadingItinerary={isLoadingItinerary}
+            generatedItinerary={generatedItinerary}
+            weatherData={weatherData}
+            onSave={handleSaveItinerary}
+            taranaaiLogo={taranaai} // Pass taranaai logo
+          />
+        </div>
       </main>
     </div>
   );
