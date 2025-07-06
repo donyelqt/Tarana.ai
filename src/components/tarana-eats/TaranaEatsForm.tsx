@@ -9,12 +9,14 @@ interface TaranaEatsFormProps {
 }
 
 const cuisineOptions = [
-  "Filipino Food",
-  "Japanese Food",
-  "Korean Food",
-  "Chinese Food",
-  "Western Food",
-  "Other",
+  "Filipino",
+  "Ilocano/Cordilleran",
+  "Korean",
+  "Chinese",
+  "Japanese",
+  "Thai",
+  "Middle Eastern",
+  "Show All",
 ];
 
 const paxOptions = [
