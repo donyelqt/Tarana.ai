@@ -94,7 +94,7 @@ export default function ItineraryForm({
   return (
     <div className="w-full bg-gray-100">
     <div className="w-full rounded-tl-7xl bg-white p-6">
-      <div className="text-xl font-bold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
+      <div className="text-2xl font-bold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
       {/* <hr className="my-6 w-full border-gray-200" /> */}
       <form className="space-y-8" onSubmit={handleSubmit}>
         {/* Budget Range */}
