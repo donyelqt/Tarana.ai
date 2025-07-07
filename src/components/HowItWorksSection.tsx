@@ -3,7 +3,7 @@ import { explore, letai, set } from '../../public';
 
 const HowItWorksSection = () => {
   return (
-    <section className="bg-gradient-to-b from-blue-700 lg:h-full to-blue-500 text-white py-40">
+    <section className="bg-gradient-to-b from-blue-700 lg:h-full to-blue-500 text-white py-16">
       <div className="max-w-7xl mx-auto px-4">
         <h2 className="text-4xl md:text-5xl font-medium text-center mb-16 font-sans">How it Works</h2>
 
