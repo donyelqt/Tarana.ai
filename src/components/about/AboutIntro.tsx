@@ -1,12 +1,14 @@
 import React from 'react';
 import Image from 'next/image';
 import { taranaai } from '../../../public';
+import { useRouter } from 'next/navigation';
 
 type AboutSectionProps = {
   onJoinWaitlistClick: () => void;
 };
 
 const AboutIntro = ({ onJoinWaitlistClick }: AboutSectionProps) => {
+  const router = useRouter();
   return (
     <section className="py-20">
       <div className="container mx-auto px-4">
@@ -23,10 +25,10 @@ const AboutIntro = ({ onJoinWaitlistClick }: AboutSectionProps) => {
             </p>
             <div className="flex">
               <button
-                onClick={onJoinWaitlistClick}
+                onClick={() => router.push('/auth/signup')}
                 className="bg-gradient-to-b from-blue-700 to-blue-500 text-white font-medium py-3 px-6 rounded-2xl mr-4 hover:to-blue-600 transition-colors"
               >
-                Join the Waitlist
+                Get Started
               </button>
               <button className="bg-white text-blue-500 font-medium py-3 px-6 rounded-2xl border border-blue-500 hover:bg-blue-50 transition-colors">
                 Learn More
