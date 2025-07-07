@@ -12,7 +12,7 @@ const AboutIntro = ({ onJoinWaitlistClick }: AboutSectionProps) => {
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row items-center">
           <div className="md:w-1/2 md:pr-12">
-            <h2 className="text-5xl font-bold mb-4">
+            <h2 className="text-5xl font-medium mb-4">
               About <span className="bg-gradient-to-b from-blue-700 to-blue-500 text-transparent bg-clip-text">Tarana.ai</span>
             </h2>
             <p className="text-gray-600 mb-6">

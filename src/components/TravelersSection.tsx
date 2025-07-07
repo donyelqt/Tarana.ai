@@ -41,7 +41,7 @@ const TravelersSection = () => {
   return (
     <section className="py-16 px-4 bg-white">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-5xl font-bold text-center mb-16 bg-gradient-to-b from-blue-700 to-blue-500 bg-clip-text text-transparent">Perfect for All Travelers</h2>
+        <h2 className="text-5xl font-medium text-center mb-16 bg-gradient-to-b from-blue-700 to-blue-500 bg-clip-text text-transparent">Perfect for All Travelers</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {travelers.map((traveler, index) => (
@@ -62,7 +62,7 @@ const TravelersSection = () => {
 
               {/* Title and description */}
               <div className="p-6 text-center h-44">
-                <h3 className="text-2xl font-bold mb-3">{traveler.title}</h3>
+                <h3 className="text-2xl font-medium mb-3">{traveler.title}</h3>
                 <p className="text-gray-600 text-sm leading-relaxed">{traveler.description}</p>
               </div>
             </div>

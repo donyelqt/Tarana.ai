@@ -5,7 +5,7 @@ const HowItWorksSection = () => {
   return (
     <section className="bg-gradient-to-b from-blue-700 lg:h-full to-blue-500 text-white py-40">
       <div className="max-w-7xl mx-auto px-4">
-        <h2 className="text-4xl md:text-5xl font-bold text-center mb-16 font-sans">How it Works</h2>
+        <h2 className="text-4xl md:text-5xl font-medium text-center mb-16 font-sans">How it Works</h2>
 
         <div className="relative">
           {/* S-shaped Dotted line connecting the steps - refined based on image */}
@@ -35,7 +35,7 @@ const HowItWorksSection = () => {
                   className="object-contain"
                 />
               </div>
-              <h3 className="text-xl font-bold mt-10 mb-3 font-sans">Set Your Trip Details</h3>
+              <h3 className="text-xl font-medium mt-10 mb-3 font-sans">Set Your Trip Details</h3>
               <p className="text-blue-100 font-sans">
                 Input your budget, number of people, stay duration, and what you love.
               </p>
@@ -52,7 +52,7 @@ const HowItWorksSection = () => {
                   className="object-contain"
                 />
               </div>
-              <h3 className="text-xl font-bold mt-10 mb-3 font-sans">Let AI Handle the Planning</h3>
+              <h3 className="text-xl font-medium mt-10 mb-3 font-sans">Let AI Handle the Planning</h3>
               <p className="text-blue-100 font-sans">
                 We instantly create a day-by-day itinerary optimized for your style and the citys real-time conditions.
               </p>
@@ -69,7 +69,7 @@ const HowItWorksSection = () => {
                   className="object-contain"
                 />
               </div>
-              <h3 className="text-xl font-bold mt-10 mb-3 font-sans">Explore Baguio Effortlessly</h3>
+              <h3 className="text-xl font-medium mt-10 mb-3 font-sans">Explore Baguio Effortlessly</h3>
               <p className="text-blue-100 font-sans">
                 Get a beautiful, ready-to-go plan — from places to eat to shortcuts around traffic. All on one screen.
               </p>
