@@ -59,7 +59,7 @@ export default function AboutPotentialImpact() {
             key={idx}
             className="flex-1 flex flex-col items-center px-2 py-6 md:px-4 md:py-0 first:pt-0 last:pb-0 md:first:pl-0 md:last:pr-0"
           >
-            <div className="text-blue-600 text-4xl md:text-5xl font-bold mb-2">{stat.value}</div>
+            <div className="text-blue-600 text-4xl md:text-5xl font-medium mb-2">{stat.value}</div>
             <div className="text-gray-700 text-base md:text-base leading-tight text-center">
               {stat.description}
             </div>

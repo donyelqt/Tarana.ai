@@ -13,7 +13,7 @@ const HeroSection = () => {
                     {/* Hero content container */}
                     <div className="relative z-10 px-8 pt-16 pb-20 md:px-16 md:pt-16 md:pb-24 flex flex-col items-center">
                         {/* Heading */}
-                        <h1 className="text-4xl md:text-6xl font-extrabold text-center mb-6 max-w-4xl">
+                        <h1 className="text-4xl md:text-6xl font-bold text-center mb-6 max-w-4xl">
 
                             Plan Your Perfect <span className="bg-gradient-to-b from-blue-700 to-blue-500 bg-clip-text text-transparent">Baguio Trip</span>
                             <br />

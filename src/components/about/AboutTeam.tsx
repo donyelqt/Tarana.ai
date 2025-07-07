@@ -128,7 +128,7 @@ export default function AboutTeam() {
     <section className="w-full flex flex-col items-center justify-center py-16 px-4 bg-white">
       <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row md:items-start md:justify-between">
         <div className="mb-8 md:mb-0">
-          <h2 className="text-4xl md:text-5xl font-semibold mb-4 text-left">
+          <h2 className="text-4xl md:text-5xl font-medium mb-4 text-left">
             Meet the <span className="text-blue-600">Team</span>
           </h2>
         </div>
