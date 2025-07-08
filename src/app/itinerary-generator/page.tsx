@@ -132,27 +132,15 @@ export default function ItineraryGenerator() {
 
       let parsedData;
       try {
-        parsedData = typeof responseText === 'string' ? JSON.parse(responseText) : responseText;
+        parsedData = JSON.parse(responseText);
       } catch (e) {
         console.error("Failed to parse JSON from response:", e);
-        try {
-          const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) ||
-                          responseText.match(/```([\s\S]*?)```/) ||
-                          responseText.match(/{[\s\S]*?}/);
-          if (jsonMatch) {
-            parsedData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-          } else {
-            throw new Error("No JSON found in response");
-          }
-        } catch (extractError) {
-          console.error("Extraction fallback also failed:", extractError);
-          toast({
-            title: "Parsing Error",
-            description: "Failed to parse the generated itinerary. Using sample data instead.",
-            variant: "destructive",
-          });
-          parsedData = sampleItinerary;
-        }
+        toast({
+          title: "Parsing Error",
+          description: "Failed to parse the generated itinerary. Using sample data instead.",
+          variant: "destructive",
+        });
+        parsedData = sampleItinerary;
       }
 
       if (!parsedData || !parsedData.items || !Array.isArray(parsedData.items)) {

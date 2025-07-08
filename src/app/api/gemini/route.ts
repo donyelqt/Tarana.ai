@@ -33,6 +33,16 @@ export async function POST(req: NextRequest) {
   try {
     const { prompt, weatherData, interests, duration, budget, pax, sampleItinerary } = await req.json();
 
+    // Log the incoming request body for debugging
+    console.log("Gemini API request body:", { prompt, weatherData, interests, duration, budget, pax, sampleItinerary });
+
+    // Check and log API key presence
+    const apiKey = process.env.GOOGLE_GEMINI_API_KEY || "";
+    if (!apiKey) {
+      console.error("GOOGLE_GEMINI_API_KEY is missing!");
+      return NextResponse.json({ text: "", error: "GOOGLE_GEMINI_API_KEY is missing on the server." }, { status: 500 });
+    }
+
     if (!prompt) {
       return NextResponse.json(
         { error: "Prompt is required" },
@@ -58,12 +68,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Initialize the Google Generative AI with your API key
-    const genAI = new GoogleGenerativeAI(
-      process.env.GOOGLE_GEMINI_API_KEY || ""
-    );
-
+    const genAI = new GoogleGenerativeAI(apiKey);
+    console.log("Gemini SDK initialized:", !!genAI);
     // Use optimized model for faster responses
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    console.log("Gemini model object:", !!model);
 
     // Optimized weather processing
     const weatherId = weatherData?.weather?.[0]?.id || 0;
@@ -213,103 +222,95 @@ export async function POST(req: NextRequest) {
 
     // Optimized generation parameters for faster response
     const generationConfig = {
+      responseMimeType: "application/json",
       temperature: 0.6,  // Slightly lower for more focused responses
       topK: 20,          // Reduced for faster token selection
       topP: 0.9,         // Slightly lower for more deterministic output
-      maxOutputTokens: 4096, // Reduced for faster generation
+      maxOutputTokens: 2048, // Reduced for faster generation
     };
 
-    // Generate the itinerary with streaming for better UX and retry on failure
-    const MAX_RETRIES = 3;
-    let result;
+    // Generate the itinerary with streaming for better UX
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
+      generationConfig,
+    });
 
-    for (let i = 0; i < MAX_RETRIES; i++) {
-      try {
-        result = await model.generateContent({
-          contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
-          generationConfig,
-        });
-        // If successful, break out of the loop
-        if (result) {
-          break;
-        }
-      } catch (error: any) {
-        console.error(`Gemini API call failed on attempt ${i + 1}`, error.message);
-        // If it's a service unavailable error and not the last retry
-        if (error.status === 503 && i < MAX_RETRIES - 1) {
-          const delay = Math.pow(2, i) * 1000; // Exponential backoff
-          console.log(`Service unavailable, retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        } else {
-          // For other errors or on the last attempt, re-throw to be caught by the outer try-catch
-          throw error;
-        }
-      }
-    }
-
-    if (!result) {
-      console.error("Failed to generate content from Gemini after multiple retries.");
-      return NextResponse.json(
-        { error: "AI service is currently unavailable. Please try again later." },
-        { status: 503 }
-      );
-    }
+    // Log the result object for debugging
+    console.log("Gemini result object:", result);
+    // Log the full response object for debugging
+    console.log("Gemini full response object:", result.response);
 
     const response = result.response;
     const text = response.text();
     
-    // Try to extract JSON from the response
-    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || 
-                  text.match(/```([\s\S]*?)```/) ||
-                  text.match(/{[\s\S]*?}/);
-                  
-    let cleanedJson = "";
+    // Log the raw Gemini response for debugging
+    console.log("Gemini raw response text:", text);
     
-    if (jsonMatch) {
-      // Extract the JSON content
-      const jsonContent = jsonMatch[1] || jsonMatch[0];
-      
-      // Remove any comments (both // and /* */ style) from the JSON
-      cleanedJson = jsonContent
-        .replace(/\/\/.*$/gm, '') // Remove single line comments
-        .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
-        .trim();
-        
-      try {
-        // Validate that it's proper JSON by parsing and stringifying
-        const parsed = JSON.parse(cleanedJson);
-        cleanedJson = JSON.stringify(parsed);
-        
-        // Cache the successful response
-        const responseData = { text: cleanedJson };
-        responseCache.set(cacheKey, {
-          response: responseData,
-          timestamp: Date.now()
-        });
-        
-        // Clean old cache entries periodically
-        if (responseCache.size > 100) {
-          const now = Date.now();
-          for (const [key, value] of responseCache.entries()) {
-            if (now - value.timestamp > CACHE_DURATION) {
-              responseCache.delete(key);
-            }
-          }
-        }
-        
-        return NextResponse.json(responseData);
-      } catch (e) {
-        console.error("Failed to parse JSON from Gemini response:", e);
-        // If parsing fails, return the original text
-        return NextResponse.json({ text });
+    // If text is empty, return the full response object for debugging
+    let finalText = text;
+    if (!finalText) {
+      // Try to manually extract text from candidates[0].content.parts
+      const candidate = response.candidates?.[0];
+      const parts = candidate?.content?.parts;
+      if (Array.isArray(parts)) {
+        finalText = parts.map(p => p.text || '').join('');
+        console.log("Manually extracted Gemini text:", finalText);
+      }
+      if (!finalText) {
+        return NextResponse.json({ text: "", error: "Gemini response.text() and manual extraction are empty", fullResponse: response });
       }
     }
+    
+    // Try to extract and clean JSON from the response
+    let cleanedJson = finalText;
 
-    return NextResponse.json({ text });
+    // Use a more robust regex to extract from markdown code blocks
+    const codeBlockMatch = cleanedJson.match(/```(?:json)?\n?([\s\S]*?)\n?```/i);
+    if (codeBlockMatch) {
+      cleanedJson = codeBlockMatch[1];
+    }
+
+    // Further cleaning: remove comments and trailing commas
+    cleanedJson = cleanedJson
+      .replace(/\/\/.*$/gm, '')       // Remove single line comments
+      .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
+      .replace(/,\s*([\]}])/g, '$1')   // Remove trailing commas
+      .trim();
+
+    // Log the cleaned JSON before parsing
+    console.log("Cleaned JSON to parse:", cleanedJson);
+
+    try {
+      // Validate that it's proper JSON by parsing
+      const parsed = JSON.parse(cleanedJson);
+      const responseData = { text: JSON.stringify(parsed) };
+
+      // Cache the successful response
+      responseCache.set(cacheKey, {
+        response: responseData,
+        timestamp: Date.now()
+      });
+
+      // Clean old cache entries periodically
+      if (responseCache.size > 100) {
+        const now = Date.now();
+        for (const [key, value] of responseCache.entries()) {
+          if (now - value.timestamp > CACHE_DURATION) {
+            responseCache.delete(key);
+          }
+        }
+      }
+
+      return NextResponse.json(responseData);
+    } catch (e) {
+      console.error("Failed to parse JSON from Gemini response:", e, cleanedJson);
+      // If parsing fails, return an empty text field to trigger frontend error handling
+      return NextResponse.json({ text: "", error: "Failed to parse JSON from Gemini response.", raw: finalText });
+    }
   } catch (error) {
     console.error("Error calling Gemini API:", error);
     return NextResponse.json(
-      { error: "Failed to generate content" },
+      { text: "", error: "Failed to generate content" },
       { status: 500 }
     );
   }
