@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Use optimized model for faster responses
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     // Optimized weather processing
     const weatherId = weatherData?.weather?.[0]?.id || 0;
@@ -219,41 +219,11 @@ export async function POST(req: NextRequest) {
       maxOutputTokens: 4096, // Reduced for faster generation
     };
 
-    // Generate the itinerary with streaming for better UX and retry on failure
-    const MAX_RETRIES = 3;
-    let result;
-
-    for (let i = 0; i < MAX_RETRIES; i++) {
-      try {
-        result = await model.generateContent({
-          contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
-          generationConfig,
-        });
-        // If successful, break out of the loop
-        if (result) {
-          break;
-        }
-      } catch (error: any) {
-        console.error(`Gemini API call failed on attempt ${i + 1}`, error.message);
-        // If it's a service unavailable error and not the last retry
-        if (error.status === 503 && i < MAX_RETRIES - 1) {
-          const delay = Math.pow(2, i) * 1000; // Exponential backoff
-          console.log(`Service unavailable, retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        } else {
-          // For other errors or on the last attempt, re-throw to be caught by the outer try-catch
-          throw error;
-        }
-      }
-    }
-
-    if (!result) {
-      console.error("Failed to generate content from Gemini after multiple retries.");
-      return NextResponse.json(
-        { error: "AI service is currently unavailable. Please try again later." },
-        { status: 503 }
-      );
-    }
+    // Generate the itinerary with streaming for better UX
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
+      generationConfig,
+    });
 
     const response = result.response;
     const text = response.text();
