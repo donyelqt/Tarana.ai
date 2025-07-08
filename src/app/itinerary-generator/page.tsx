@@ -19,6 +19,7 @@ import {
   durationOptions, 
   interests 
 } from "./components/itineraryData"; // ItineraryData from here is used for generatedItinerary
+import usePuter from "../../hooks/usePuter";
 
 export default function ItineraryGenerator() {
   // State for form inputs will be managed within ItineraryForm, 
@@ -37,6 +38,8 @@ export default function ItineraryGenerator() {
   const [generatedItinerary, setGeneratedItinerary] = useState<ItineraryData | null>(null); // Uses ItineraryData from itineraryData.ts
   const router = useRouter();
   const { toast } = useToast();
+  // Load the free key-less Gemini client
+  const puter = usePuter();
 
   useEffect(() => {
     const getWeather = async () => {
@@ -83,27 +86,10 @@ export default function ItineraryGenerator() {
     try {
       const prompt = `Create a personalized ${formData.duration}-day itinerary for Baguio City, Philippines based on the user preferences and current weather conditions.`;
 
-      const response = await fetch("/api/gemini", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt,
-          weatherData,
-          interests: formData.selectedInterests,
-          duration: formData.duration,
-          budget: formData.budget,
-          pax: formData.pax,
-          sampleItinerary, // Pass the sample itinerary data to the API
-        }),
-      });
-
-      if (!response.ok) {
-        console.error(`API responded with status ${response.status}`);
+      if (!puter) {
         toast({
-          title: "API Error",
-          description: "Failed to connect to the itinerary generator. Using sample data instead.",
+          title: "AI Initializing",
+          description: "The AI engine is still loading. Please wait a moment and try again.",
           variant: "destructive",
         });
         setGeneratedItinerary(sampleItinerary);
@@ -113,8 +99,32 @@ export default function ItineraryGenerator() {
         return;
       }
 
-      const data = await response.json();
-      const responseText = data.text;
+      const detailedPrompt = `
+${prompt}
+
+Database: ${JSON.stringify(sampleItinerary)}
+
+Weather: ${weatherData?.weather?.[0]?.description || "clear sky"} at ${weatherData?.main?.temp || 20}°C
+Interests: ${formData.selectedInterests.length > 0 ? formData.selectedInterests.join(", ") : "Random"}
+Duration: ${formData.duration} days
+Budget: ${formData.budget}
+Group: ${formData.pax}
+
+Generate a detailed Baguio City itinerary.
+
+Rules:
+1. Be concise.
+2. Strictly use the provided database. Do not invent activities.
+3. Match activities to user interests and weather.
+4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards).
+5. Output a JSON object with this structure: { "title": "...", "subtitle": "...", "items": [{"period": "...", "activities": [{"title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
+      `;
+
+      const puterResponse = await puter.ai.chat(detailedPrompt, {
+        model: "google/gemini-2.0-flash-lite-001",
+      });
+
+      const responseText = puterResponse?.message?.content ?? "";
 
       if (!responseText) {
         console.error("Empty response from API");
@@ -132,7 +142,9 @@ export default function ItineraryGenerator() {
 
       let parsedData;
       try {
-        parsedData = JSON.parse(responseText);
+        // Remove markdown code fences (e.g., ```json ... ```) if present before parsing
+        const cleanedResponse = responseText.replace(/```(?:json)?\s*([\s\S]*?)\s*```/i, "$1").trim();
+        parsedData = JSON.parse(cleanedResponse);
       } catch (e) {
         console.error("Failed to parse JSON from response:", e);
         toast({

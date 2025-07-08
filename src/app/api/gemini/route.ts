@@ -1,6 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
+// Global initialization for Gemini model to avoid re-creating the client on every request.
+const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+const geminiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }) : null;
+
 // Simple in-memory cache for similar requests
 const responseCache = new Map<string, { response: any; timestamp: number }>();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
@@ -19,6 +24,18 @@ const WEATHER_CONTEXTS = {
   cold: (temp: number, desc: string) => `Cold weather (${temp}°C). Prioritize "Indoor-Friendly" activities with warming options.`,
   default: (temp: number, desc: string) => `Weather: ${desc} at ${temp}°C. Balance indoor/outdoor activities."`
 };
+
+// Mapping of weather types to acceptable activity tags – used to pre-filter the sample DB sent to Gemini
+const WEATHER_TAG_FILTERS = {
+  thunderstorm: ["Indoor-Friendly"],
+  rainy: ["Indoor-Friendly"],
+  snow: ["Indoor-Friendly"],
+  foggy: ["Indoor-Friendly", "Weather-Flexible"],
+  cloudy: ["Outdoor-Friendly", "Weather-Flexible"],
+  clear: ["Outdoor-Friendly"],
+  cold: ["Indoor-Friendly"],
+  default: []
+} as const;
 
 // Interest mapping for faster lookup
 const INTEREST_TAGS = {
@@ -75,12 +92,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(cached.response);
     }
 
-    // Initialize the Google Generative AI with your API key
-    const genAI = new GoogleGenerativeAI(apiKey);
-    console.log("Gemini SDK initialized:", !!genAI);
-    // Use optimized model for faster responses
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    console.log("Gemini model object:", !!model);
+    // Re-use the globally initialised model (created once per lambda / server instance)
+    const model = geminiModel;
+    if (!model) {
+      console.error("Gemini model is not initialized – missing API key?");
+      return NextResponse.json({ text: "", error: "Gemini model not available." }, { status: 500 });
+    }
 
     // Optimized weather processing
     const weatherId = weatherData?.weather?.[0]?.id || 0;
@@ -102,9 +119,34 @@ export async function POST(req: NextRequest) {
     const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
     const weatherContext = WEATHER_CONTEXTS[weatherType](temperature, weatherDescription);
 
-    // Streamlined sample itinerary context
-    const sampleItineraryContext = sampleItinerary ? 
-      `Database: ${JSON.stringify(sampleItinerary)}\nRULE: Only use activities from this database. Match user interests and weather tags.` : "";
+    // ------------------
+    // Prefilter sample itinerary to reduce prompt size and latency
+    // ------------------
+    let filteredSampleItinerary = sampleItinerary;
+    if (sampleItinerary && typeof sampleItinerary === "object") {
+      const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
+      const interestSet = new Set(
+        interests && Array.isArray(interests) && !interests.includes("Random") ? interests : []
+      );
+      filteredSampleItinerary = {
+        ...sampleItinerary,
+        items: sampleItinerary.items.map((section: any) => ({
+          ...section,
+          activities: section.activities.filter((act: any) => {
+            const interestMatch =
+              interestSet.size === 0 || act.tags.some((t: string) => interestSet.has(t));
+            const weatherMatch =
+              allowedWeatherTags.length === 0 || act.tags.some((t: string) => allowedWeatherTags.includes(t));
+            return interestMatch && weatherMatch;
+          }),
+        })),
+      };
+    }
+
+    // Streamlined sample itinerary context – send the filtered DB only
+    const sampleItineraryContext = filteredSampleItinerary
+      ? `Database: ${JSON.stringify(filteredSampleItinerary)}\nRULE: Only use activities from this database. Match user interests and weather tags.`
+      : "";
 
     // Weather context is now handled by the lookup table above
 
