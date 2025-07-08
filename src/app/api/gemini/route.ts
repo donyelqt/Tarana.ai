@@ -29,6 +29,14 @@ const INTEREST_TAGS = {
   "Adventure": "Adventure"
 };
 
+const INTEREST_DETAILS = {
+  "Nature & Scenery": "- Nature & Scenery: Burnham Park, Mines View Park, Wright Park, Camp John Hay, Botanical Garden",
+  "Food & Culinary": "- Food & Culinary: Good Taste Restaurant, Café by the Ruins, Hill Station, Vizco's, Baguio Craft Brewery",
+  "Culture & Arts": "- Culture & Arts: BenCab Museum, Tam-awan Village, Baguio Museum, Ili-Likha Artist Village",
+  "Shopping & Local Finds": "- Shopping & Local Finds: Night Market on Harrison Road, Baguio City Market, Session Road shops, Baguio Craft Market",
+  "Adventure": "- Adventure: Tree Top Adventure, Yellow Trail hiking, Mt. Ulap, Mines View Park horseback riding"
+};
+
 export async function POST(req: NextRequest) {
   try {
     const { prompt, weatherData, interests, duration, budget, pax, sampleItinerary } = await req.json();
@@ -106,22 +114,7 @@ export async function POST(req: NextRequest) {
       interestsContext = `
         The visitor has expressed specific interest in: ${interests.join(", ")}.
         From the sample itinerary database, prioritize activities that have tags matching these interests:
-        ${interests.map((interest: string) => {
-          switch(interest) {
-            case "Nature & Scenery":
-              return "- Nature & Scenery: Burnham Park, Mines View Park, Wright Park, Camp John Hay, Botanical Garden";
-            case "Food & Culinary":
-              return "- Food & Culinary: Good Taste Restaurant, Café by the Ruins, Hill Station, Vizco's, Baguio Craft Brewery";
-            case "Culture & Arts":
-              return "- Culture & Arts: BenCab Museum, Tam-awan Village, Baguio Museum, Ili-Likha Artist Village";
-            case "Shopping & Local Finds":
-              return "- Shopping & Local Finds: Night Market on Harrison Road, Baguio City Market, Session Road shops, Baguio Craft Market";
-            case "Adventure":
-              return "- Adventure: Tree Top Adventure, Yellow Trail hiking, Mt. Ulap, Mines View Park horseback riding";
-            default:
-              return `- ${interest}: Select appropriate activities from the sample database`;
-          }
-        }).join("\n")}
+        ${interests.map((interest: string) => INTEREST_DETAILS[interest as keyof typeof INTEREST_DETAILS] || `- ${interest}: Select appropriate activities from the sample database`).join("\n")}
         
         Ensure these activities are also appropriate for the current weather conditions.
       `;
@@ -223,7 +216,7 @@ export async function POST(req: NextRequest) {
     // Optimized generation parameters for faster response
     const generationConfig = {
       responseMimeType: "application/json",
-      temperature: 0.6,  // Slightly lower for more focused responses
+      temperature: 0.5,  // Slightly lower for more focused responses
       topK: 20,          // Reduced for faster token selection
       topP: 0.9,         // Slightly lower for more deterministic output
       maxOutputTokens: 2048, // Reduced for faster generation
