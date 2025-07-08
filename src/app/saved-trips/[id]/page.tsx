@@ -9,6 +9,7 @@ import { fetchWeatherFromAPI, WeatherData } from "@/lib/utils"; // Added import
 import Image, { type StaticImageData } from "next/image"
 import PlaceDetail from "@/components/PlaceDetail"
 import { useToast } from "@/components/ui/use-toast"
+import usePuter from "../../../hooks/usePuter";
 
 const interestIcons: Record<string, string> = {
   "Nature & Scenery": "🌿",
@@ -28,6 +29,8 @@ const SavedItineraryDetail = () => {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
+  // Load the Puter SDK once
+  const puter = usePuter();
 
   useEffect(() => {
     const fetchItinerary = async () => {
@@ -85,28 +88,53 @@ const SavedItineraryDetail = () => {
       const { formData } = itinerary
       const prompt = `Update the ${formData.duration}-day itinerary for Baguio City, Philippines based on the current weather conditions.`
       
-      // Call Gemini API with all user preferences and sample itinerary data
-      const response = await fetch("/api/gemini", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt,
-          weatherData: currentWeatherData,
-          interests: formData.selectedInterests,
-          duration: formData.duration,
-          budget: formData.budget,
-          pax: formData.pax,
-          sampleItinerary: itinerary.itineraryData // Use the existing itinerary as a base
-        }),
-      })
-      
-      if (!response.ok) {
-        throw new Error(`API responded with status ${response.status}`)
+      if (!puter) {
+        toast({
+          title: "AI Initializing",
+          description: "The AI engine is still loading. Please wait a moment.",
+          variant: "destructive"
+        });
+        setIsRefreshing(false);
+        return;
       }
-      
-      const newItineraryData = await response.json();
+
+      const detailedPrompt = `
+${prompt}
+
+Database: ${JSON.stringify(itinerary.itineraryData)}
+
+Weather: ${currentWeatherData.weather?.[0]?.description || "clear sky"} at ${currentWeatherData.main?.temp}°C
+Interests: ${formData.selectedInterests.join(", ")}
+Duration: ${formData.duration} days
+Budget: ${formData.budget}
+Group: ${formData.pax}
+
+Update the itinerary strictly using activities from the database to match the new weather.
+
+Rules:
+1. Only use activities from the provided database.
+2. Output a JSON object with keys: title, subtitle, items (period + activities array).
+      `;
+
+      const aiResp = await puter.ai.chat(detailedPrompt, {
+        model: "google/gemini-2.0-flash-lite-001",
+      });
+
+      const rawText = aiResp?.message?.content ?? "";
+
+      if (!rawText) {
+        throw new Error("Empty AI response");
+      }
+
+      let newItineraryData;
+      try {
+        // Remove markdown fences if present
+        const cleaned = rawText.replace(/```(?:json)?\n?([\s\S]*?)\n?```/i, "$1");
+        newItineraryData = JSON.parse(cleaned);
+      } catch (e) {
+        console.error("Failed to parse AI response:", e);
+        throw new Error("Failed to parse AI response");
+      }
       
       // Check if the API returned a valid itinerary structure.
       // A simple check for now, could be more robust (e.g. checking for specific properties like 'title' or 'items')
