@@ -87,11 +87,7 @@ export default function ItineraryGenerator() {
       const prompt = `Create a personalized ${formData.duration}-day itinerary for Baguio City, Philippines based on the user preferences and current weather conditions.`;
 
       if (!puter) {
-        toast({
-          title: "AI Initializing",
-          description: "The AI engine is still loading. Please wait a moment and try again.",
-          variant: "destructive",
-        });
+        // Skip showing a toast to avoid UX-disrupting popup while the AI engine initializes.
         setGeneratedItinerary(sampleItinerary);
         setShowPreview(true);
         setIsGenerating(false);
