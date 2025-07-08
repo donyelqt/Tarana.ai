@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Use optimized model for faster responses
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Optimized weather processing
     const weatherId = weatherData?.weather?.[0]?.id || 0;
