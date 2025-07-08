@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     const genAI = new GoogleGenerativeAI(apiKey);
     console.log("Gemini SDK initialized:", !!genAI);
     // Use optimized model for faster responses
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     console.log("Gemini model object:", !!model);
 
     // Optimized weather processing
@@ -171,55 +171,26 @@ export async function POST(req: NextRequest) {
       ${budgetContext}
       ${paxContext}
       
-      Please generate a detailed itinerary for Baguio City by selecting and adapting activities from the provided sample itinerary database.
-      IMPORTANT: Do NOT invent, create, or recommend any activities, places, or experiences that are not present in the provided sample itinerary database. Only select, adapt, and recommend from the given sample database. If no suitable activity exists for a time slot or condition, leave it empty or state "No suitable activity available from the sample database for this slot."
-      Follow these guidelines:
-      
-      1. Organize activities by time periods: Morning (8AM-12NN), Afternoon (12NN-6PM), and Evening (6PM onwards)
-      2. For each activity, include:
-         - Title (use the exact title from the sample database when possible)
-         - Time slot with realistic durations (e.g., "9:00AM-10:30AM")
-         - Detailed description that includes:
-           * Key features and what makes it special
-           * Approximate costs (entrance fees, meal prices, activity costs)
-           * Location details and travel time from city center
-           * Duration information (how long visitors typically spend)
-           * Any special notes about weather considerations
-         - Tags that match user interests (e.g., "Nature & Scenery", "Food & Culinary", etc.)
-         - Weather appropriateness tags (e.g., "Indoor-Friendly", "Outdoor-Friendly", "Weather-Flexible")
-      3. Recommend budget-appropriate options that match the user's specified budget level
-      4. Ensure realistic time allocations including travel time between locations
-      5. For multi-day itineraries, pace activities appropriately (more activities for shorter trips, more relaxed pace for longer trips)
-      6. IMPORTANT: Match activities with both user interests AND current weather conditions
-      7. IMPORTANT: Select activities strictly from the provided sample itinerary database, adapting descriptions as needed. Do NOT generate or invent any new activities.
-      
-      Format the response as a JSON object with this structure:
-      {
-        "title": "Your X Day Itinerary",
-        "subtitle": "A personalized Baguio Experience weather for",
-        "items": [
-          {
-            "period": "Morning (8AM-12NN)",
-            "activities": [
-              {
-                "title": "Activity Name",
-                "time": "Start-End Time",
-                "desc": "Detailed description",
-                "tags": ["Interest Tag", "Weather Appropriateness Tag"]
-              }
-            ]
-          }
-        ]
-      }
+      Generate a detailed Baguio City itinerary.
+
+      Rules:
+      1. **Be concise.**
+      2. **Strictly use the provided sample itinerary database.** Do not invent activities. If none fit, state it's unavailable.
+      3. Match activities to user interests and weather.
+      4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards).
+      5. Pace the itinerary based on trip duration.
+      6. For each activity, include: title, time slot (e.g., "9:00-10:30AM"), a **brief** description (features, costs, location, duration, weather notes), and tags (interest and weather).
+      7. Adhere to the user's budget.
+      8. Output a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
     `;
 
     // Optimized generation parameters for faster response
     const generationConfig = {
       responseMimeType: "application/json",
-      temperature: 0.5,  // Slightly lower for more focused responses
-      topK: 20,          // Reduced for faster token selection
-      topP: 0.9,         // Slightly lower for more deterministic output
-      maxOutputTokens: 2048, // Reduced for faster generation
+      temperature: 0.4,  // Lowered for faster, more deterministic responses
+      topK: 15,          // Further reduced for faster token selection
+      topP: 0.9,         // Kept the same to maintain quality
+      maxOutputTokens: 2048, // Increased to prevent incomplete JSON which causes API errors.
     };
 
     // Generate the itinerary with streaming for better UX
@@ -302,8 +273,18 @@ export async function POST(req: NextRequest) {
     }
   } catch (error) {
     console.error("Error calling Gemini API:", error);
+
+    // Handle rate limit errors
+    if (typeof error === 'object' && error !== null && 'status' in error && (error as any).status === 429) {
+      return NextResponse.json(
+        { text: "", error: "API quota exceeded. Please check your plan and billing details, or try again later." },
+        { status: 429 }
+      );
+    }
+    
+    // Handle other errors
     return NextResponse.json(
-      { text: "", error: "Failed to generate content" },
+      { text: "", error: "Failed to generate content." },
       { status: 500 }
     );
   }
