@@ -10,6 +10,7 @@ import Image, { type StaticImageData } from "next/image"
 import PlaceDetail from "@/components/PlaceDetail"
 import { useToast } from "@/components/ui/use-toast"
 import usePuter from "../../../hooks/usePuter";
+import { puterConfig } from "../../../config/puter";
 
 const interestIcons: Record<string, string> = {
   "Nature & Scenery": "🌿",
@@ -117,7 +118,7 @@ Rules:
       `;
 
       const aiResp = await puter.ai.chat(detailedPrompt, {
-        model: "google/gemini-2.0-flash-lite-001",
+        ...puterConfig.ai,
       });
 
       const rawText = aiResp?.message?.content ?? "";

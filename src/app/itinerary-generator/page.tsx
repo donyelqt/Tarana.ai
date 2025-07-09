@@ -20,6 +20,7 @@ import {
   interests 
 } from "./components/itineraryData"; // ItineraryData from here is used for generatedItinerary
 import usePuter from "../../hooks/usePuter";
+import { puterConfig } from "../../config/puter";
 
 export default function ItineraryGenerator() {
   // State for form inputs will be managed within ItineraryForm, 
@@ -117,7 +118,7 @@ Rules:
       `;
 
       const puterResponse = await puter.ai.chat(detailedPrompt, {
-        model: "google/gemini-2.0-flash-lite-001",
+        ...puterConfig.ai,
       });
 
       const responseText = puterResponse?.message?.content ?? "";
