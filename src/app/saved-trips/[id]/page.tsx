@@ -25,6 +25,7 @@ const SavedItineraryDetail = () => {
   const params = useParams()
   const { id } = params as { id: string }
   const [itinerary, setItinerary] = useState<SavedItinerary | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_weatherData, setWeatherData] = useState<WeatherData | null>(null); // Prefixed to silence unused var lint
   const [selectedActivity, setSelectedActivity] = useState<Record<string, unknown> | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -216,6 +217,7 @@ const SavedItineraryDetail = () => {
   }
 
   // Helper function to parse duration string (e.g., "1 Day", "2 Days") and calculate end date
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _calculateAndFormatDateRange = (startDateString: string, durationString: string): string => {
     if (!startDateString || !durationString) return 'Date not specified';
   

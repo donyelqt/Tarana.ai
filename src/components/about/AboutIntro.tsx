@@ -7,7 +7,7 @@ type AboutSectionProps = {
   onJoinWaitlistClick: () => void;
 };
 
-const AboutIntro = ({ onJoinWaitlistClick: _onJoinWaitlistClick }: AboutSectionProps) => {
+const AboutIntro = ({ onJoinWaitlistClick }: AboutSectionProps) => {
   const router = useRouter();
   return (
     <section className="py-20">
@@ -30,7 +30,10 @@ const AboutIntro = ({ onJoinWaitlistClick: _onJoinWaitlistClick }: AboutSectionP
               >
                 Get Started
               </button>
-              <button className="bg-white text-blue-500 font-medium py-3 px-6 rounded-2xl border border-blue-500 hover:bg-blue-50 transition-colors">
+              <button
+                onClick={onJoinWaitlistClick}
+                className="bg-white text-blue-500 font-medium py-3 px-6 rounded-2xl border border-blue-500 hover:bg-blue-50 transition-colors"
+              >
                 Learn More
               </button>
             </div>

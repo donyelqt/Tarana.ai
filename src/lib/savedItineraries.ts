@@ -205,15 +205,6 @@ export const updateItinerary = async (id: string, updatedData: Partial<Omit<Save
   }
 };
 
-const _generateItineraryId = (): string => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 5; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-};
-
 export const formatDateRange = (startDate: string, endDate: string): string => {
   if (!startDate || !endDate) return 'Date not specified';
   

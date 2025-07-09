@@ -41,9 +41,7 @@ export interface FormData {
 export default function ItineraryForm({
   showPreview,
   isGenerating,
-  isLoadingItinerary: _isLoadingItinerary,
   onSubmitItinerary,
-  weatherData: _weatherData,
   budget,
   setBudget,
   pax,
@@ -53,7 +51,6 @@ export default function ItineraryForm({
   dates,
   setDates,
   selectedInterests,
-  setSelectedInterests: _setSelectedInterests,
   handleInterest,
   interests: propInterests, // Renaming to avoid conflict with imported 'interests'
   budgetOptions,
