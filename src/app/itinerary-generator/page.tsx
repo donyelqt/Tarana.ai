@@ -17,7 +17,7 @@ import {
   paxOptions, 
   durationOptions, 
   interests 
-} from "./components/itineraryData"; // ItineraryData from here is used for generatedItinerary
+} from "./components/itineraryData";
 // import usePuter from "../../hooks/usePuter";
 // import { puterConfig } from "../../config/puter";
 
