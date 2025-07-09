@@ -452,10 +452,9 @@ const SavedItineraryDetail = () => {
           {itineraryData.items.map((period, dayIdx) => (
             <div key={dayIdx} className="mb-10">
               <div className="mb-4 flex items-center gap-3">
-                <div className="bg-white rounded-full px-6 py-2 font-semibold text-gray-900 text-base border border-gray-200 shadow-none">
-                  Day {dayIdx + 1}
+                <div className="bg-white rounded-xl px-6 py-2 font-semibold text-gray-900 text-base border border-gray-200 shadow-sm">
+                  Day {dayIdx + 1}&nbsp;<span className="text-gray-500 text-base font-medium"> {formatDateRange(dates.start, dates.end).split("-")[dayIdx]?.trim() || ""}</span>
                 </div>
-                <span className="text-gray-500 text-base font-medium">{formatDateRange(dates.start, dates.end).split("-")[dayIdx]?.trim() || ""}</span>
               </div>
               <div className="flex flex-col gap-6">
                 {period.activities.map((activity, idx) => {
