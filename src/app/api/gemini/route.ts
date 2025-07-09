@@ -241,7 +241,7 @@ export async function POST(req: NextRequest) {
 
       Rules:
       1. **Be concise.**
-      2. **Strictly use the provided sample itinerary database.** Do NOT invent, suggest, or mention any activity, place, or experience that is not present in the provided database. If no suitable activity exists for a time slot, output an activity with the title "No available activity" and a description stating that nothing is available for that slot.
+      2. **Strictly use the provided sample itinerary database.** Do NOT invent, suggest, or mention any activity, place, or experience that is not present in the provided database. If no suitable activity exists for a time slot, omit that time slot entirely and do not output any placeholder.
       3. Match activities to user interests and weather.
       4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards).
       5. Pace the itinerary based on trip duration.
@@ -341,6 +341,19 @@ export async function POST(req: NextRequest) {
     try {
       // Validate that it's proper JSON by parsing
       const parsed = JSON.parse(cleanedJson);
+
+      // Remove placeholder activities titled "No available activity" and drop periods with no remaining activities
+      if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).items)) {
+        (parsed as any).items = (parsed as any).items
+          .map((period: any) => {
+            const filteredActivities = Array.isArray(period.activities)
+              ? period.activities.filter((act: any) => act.title && act.title.toLowerCase() !== "no available activity")
+              : [];
+            return { ...period, activities: filteredActivities };
+          })
+          .filter((period: any) => period.activities.length > 0);
+      }
+
       const responseData = { text: JSON.stringify(parsed) };
 
       // Cache the successful response
@@ -361,8 +374,33 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(responseData);
     } catch (e) {
+      // Parsing failed – attempt to salvage JSON between first '{' and last '}'
+      try {
+        const firstBrace = cleanedJson.indexOf('{');
+        const lastBrace = cleanedJson.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          const potentialJson = cleanedJson.slice(firstBrace, lastBrace + 1);
+          const parsed = JSON.parse(potentialJson);
+
+          if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).items)) {
+            (parsed as any).items = (parsed as any).items
+              .map((period: any) => {
+                const filteredActivities = Array.isArray(period.activities)
+                  ? period.activities.filter((act: any) => act.title && act.title.toLowerCase() !== "no available activity")
+                  : [];
+                return { ...period, activities: filteredActivities };
+              })
+              .filter((period: any) => period.activities.length > 0);
+          }
+
+          const responseData = { text: JSON.stringify(parsed) };
+          responseCache.set(cacheKey, { response: responseData, timestamp: Date.now() });
+          return NextResponse.json(responseData);
+        }
+      } catch (inner) {
+        // fallthrough to final error handling
+      }
       console.error("Failed to parse JSON from Gemini response:", e, cleanedJson);
-      // If parsing fails, return an empty text field to trigger frontend error handling
       return NextResponse.json({ text: "", error: "Failed to parse JSON from Gemini response.", raw: finalText });
     }
   } catch (error) {
