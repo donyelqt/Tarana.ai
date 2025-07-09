@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ItineraryData, sampleItinerary } from "./itineraryData"; // Removed taranaai_icon import
+import { ItineraryData, sampleItinerary } from "./itineraryData";
 import { WeatherData } from "@/lib/utils";
 
 interface ItineraryPreviewProps {

@@ -47,11 +47,11 @@ const WEATHER_TAG_FILTERS = {
 
 // Interest mapping for faster lookup
 const INTEREST_DETAILS = {
-  "Nature & Scenery": "- Nature & Scenery: Burnham Park, Mines View Park, Wright Park, Camp John Hay, Botanical Garden",
-  "Food & Culinary": "- Food & Culinary: Good Taste Restaurant, Café by the Ruins, Hill Station, Vizco's, Baguio Craft Brewery",
-  "Culture & Arts": "- Culture & Arts: BenCab Museum, Tam-awan Village, Baguio Museum, Ili-Likha Artist Village",
-  "Shopping & Local Finds": "- Shopping & Local Finds: Night Market on Harrison Road, Baguio City Market, Session Road shops, Baguio Craft Market",
-  "Adventure": "- Adventure: Tree Top Adventure, Yellow Trail hiking, Mt. Ulap, Mines View Park horseback riding"
+  "Nature & Scenery": "- Nature & Scenery: Burnham Park, Mines View Park, Wright Park, Camp John Hay, Botanical Garden, Mirador Heritage & Eco Park, Valley of Colors, Mt. Kalugong, Mt. Yangbew, Great Wall of Baguio, Camp John Hay Yellow Trail, Lions Head",
+  "Food & Culinary": "- Food & Culinary: Good Taste Restaurant, Café by the Ruins, Hill Station, Vizco's, Baguio Craft Brewery, Oh My Gulay, Choco-late de Batirol, Ili-Likha Food Hub, Canto Bogchi Joint, Arca's Yard, Amare La Cucina, Le Chef at The Manor, Lemon and Olives, Grumpy Joe, Luisa's Cafe, Agara Ramen, 50's Diner, Balajadia Kitchenette, Wagner Cafe, Pizza Volante",
+  "Culture & Arts": "- Culture & Arts: BenCab Museum, Tam-awan Village, Baguio Museum, Ili-Likha Artist Village, Baguio Cathedral, The Mansion, Diplomat Hotel, Philippine Military Academy, Igorot Stone Kingdom, Laperal White House, Mt. Cloud Bookshop, Mirador Heritage & Eco Park, Oh My Gulay",
+  "Shopping & Local Finds": "- Shopping & Local Finds: Night Market on Harrison Road, Baguio Public Market, Session Road shops, SM City Baguio, Good Shepherd Convent, Easter Weaving Room, Baguio Craft Market, Ili-Likha Food Hub",
+  "Adventure": "- Adventure: Tree Top Adventure, Mt. Ulap Eco-Trail, Mines View Park horseback riding, Wright Park horseback riding, Camp John Hay Yellow Trail, Great Wall of Baguio, Mt. Kalugong, Mt. Yangbew, Camp John Hay, Valley of Colors"
 };
 
 export async function POST(req: NextRequest) {
@@ -119,6 +119,30 @@ export async function POST(req: NextRequest) {
     const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
     const weatherContext = WEATHER_CONTEXTS[weatherType](temperature, weatherDescription);
 
+    // Normalize UI inputs to internal categories for consistent prompt building
+    const durationDays = (() => {
+      if (!duration) return null;
+      const match = duration.toString().match(/\d+/); // extract first number
+      return match ? parseInt(match[0], 10) : null;
+    })();
+
+    const budgetCategory = (() => {
+      if (!budget) return null;
+      if (budget === "less than ₱3,000/day" || budget === "₱3,000 - ₱5,000/day") return "Budget";
+      if (budget === "₱5,000 - ₱10,000/day") return "Mid-range";
+      if (budget === "₱10,000+/day") return "Luxury";
+      return budget; // fallback to the raw value
+    })();
+
+    const paxCategory = (() => {
+      if (!pax) return null;
+      if (pax === "1") return "Solo";
+      if (pax === "2") return "Couple";
+      if (pax === "3-5") return "Family";
+      if (pax === "6+") return "Group";
+      return pax; // fallback to the raw value
+    })();
+
     // ------------------
     // Prefilter sample itinerary to reduce prompt size and latency
     // ------------------
@@ -169,36 +193,36 @@ export async function POST(req: NextRequest) {
 
     // Add duration context
     let durationContext = "";
-    if (duration) {
+    if (durationDays) {
       durationContext = `
-        This is a ${duration}-day trip, so pace the itinerary accordingly:
-        ${duration === "1" ? "Focus on must-see highlights and efficient time management. Select 2-3 activities per time period (morning, afternoon, evening) from the sample database." : ""}
-        ${duration === "2" ? "Balance major attractions with some deeper local experiences. Select 2-3 activities per time period per day from the sample database." : ""}
-        ${duration === "3" ? "Include major attractions and allow time to explore local neighborhoods. Select 2 activities per time period per day from the sample database, allowing for more relaxed pacing." : ""}
-        ${duration >= "4" ? "Include major attractions, local experiences, and some day trips to nearby areas. Select 1-2 activities per time period per day from the sample database, allowing for a very relaxed pace." : ""}
+        This is a ${durationDays}-day trip, so pace the itinerary accordingly:
+        ${durationDays === 1 ? "Focus on must-see highlights and efficient time management. Select 2-3 activities per time period (morning, afternoon, evening) from the sample database." : ""}
+        ${durationDays === 2 ? "Balance major attractions with some deeper local experiences. Select 2-3 activities per time period per day from the sample database." : ""}
+        ${durationDays === 3 ? "Include major attractions and allow time to explore local neighborhoods. Select 2 activities per time period per day from the sample database, allowing for more relaxed pacing." : ""}
+        ${durationDays >= 4 ? "Include major attractions, local experiences, and some day trips to nearby areas. Select 1-2 activities per time period per day from the sample database, allowing for a very relaxed pace." : ""}
       `;
     }
 
     // Add budget context
     let budgetContext = "";
-    if (budget) {
+    if (budgetCategory) {
       budgetContext = `
         The visitor's budget preference is ${budget}, so recommend:
-        ${budget === "Budget" ? "From the sample itinerary database, prioritize activities with the 'Budget-friendly' tag. Focus on affordable dining, free/low-cost attractions, public transportation, and budget accommodations." : ""}
-        ${budget === "Mid-range" ? "From the sample itinerary database, select a mix of budget and premium activities. Include moderate restaurants, standard attraction fees, occasional taxis, and mid-range accommodations." : ""}
-        ${budget === "Luxury" ? "From the sample itinerary database, include premium experiences where available. Recommend fine dining options, premium experiences, private transportation, and luxury accommodations." : ""}
+        ${budgetCategory === "Budget" ? "From the sample itinerary database, prioritize activities with the 'Budget-friendly' tag. Focus on affordable dining, free/low-cost attractions, public transportation, and budget accommodations." : ""}
+        ${budgetCategory === "Mid-range" ? "From the sample itinerary database, select a mix of budget and premium activities. Include moderate restaurants, standard attraction fees, occasional taxis, and mid-range accommodations." : ""}
+        ${budgetCategory === "Luxury" ? "From the sample itinerary database, include premium experiences where available. Recommend fine dining options, premium experiences, private transportation, and luxury accommodations." : ""}
       `;
     }
 
     // Add group size context
     let paxContext = "";
-    if (pax) {
+    if (paxCategory) {
       paxContext = `
         The group size is ${pax}, so consider:
-        ${pax === "Solo" ? "From the sample itinerary database, select activities that are enjoyable for solo travelers. Include solo-friendly activities, social opportunities, and safety considerations." : ""}
-        ${pax === "Couple" ? "From the sample itinerary database, prioritize activities suitable for couples. Include romantic settings, couple-friendly activities, and intimate dining options." : ""}
-        ${pax === "Family" ? "From the sample itinerary database, prioritize activities with the 'Family-friendly' tag if available. Include family-friendly activities, child-appropriate options, and group dining venues." : ""}
-        ${pax === "Group" ? "From the sample itinerary database, select activities that can accommodate larger parties. Include group-friendly venues, activities that accommodate larger parties, and group dining options." : ""}
+        ${paxCategory === "Solo" ? "From the sample itinerary database, select activities that are enjoyable for solo travelers. Include solo-friendly activities, social opportunities, and safety considerations." : ""}
+        ${paxCategory === "Couple" ? "From the sample itinerary database, prioritize activities suitable for couples. Include romantic settings, couple-friendly activities, and intimate dining options." : ""}
+        ${paxCategory === "Family" ? "From the sample itinerary database, prioritize activities with the 'Family-friendly' tag if available. Include family-friendly activities, child-appropriate options, and group dining venues." : ""}
+        ${paxCategory === "Group" ? "From the sample itinerary database, select activities that can accommodate larger parties. Include group-friendly venues, activities that accommodate larger parties, and group dining options." : ""}
       `;
     }
 
@@ -217,7 +241,7 @@ export async function POST(req: NextRequest) {
 
       Rules:
       1. **Be concise.**
-      2. **Strictly use the provided sample itinerary database.** Do not invent activities. If none fit, state it's unavailable.
+      2. **Strictly use the provided sample itinerary database.** Do NOT invent, suggest, or mention any activity, place, or experience that is not present in the provided database. If no suitable activity exists for a time slot, output an activity with the title "No available activity" and a description stating that nothing is available for that slot.
       3. Match activities to user interests and weather.
       4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards).
       5. Pace the itinerary based on trip duration.
@@ -235,11 +259,39 @@ export async function POST(req: NextRequest) {
       maxOutputTokens: 2048, // Increased to prevent incomplete JSON which causes API errors.
     };
 
-    // Generate the itinerary with streaming for better UX
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
-      generationConfig,
-    });
+    // Generate the itinerary with retry logic to gracefully handle temporary overloads (e.g., 503 Service Unavailable) or rate limits (429).
+    const MAX_RETRIES = 3;
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    let result: any = null;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        result = await model.generateContent({
+          contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
+          generationConfig,
+        });
+        break; // Success – exit retry loop.
+      } catch (err: any) {
+        const status = err?.status || err?.response?.status;
+        // Retry only for transient errors
+        if (attempt < MAX_RETRIES && (status === 503 || status === 429)) {
+          const delay = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+          console.warn(`Gemini transient error (status ${status}). Retry ${attempt} of ${MAX_RETRIES} after ${delay}ms`);
+          await sleep(delay);
+          continue;
+        }
+        // If not retryable or retries exhausted, rethrow to be handled by outer catch.
+        throw err;
+      }
+    }
+
+    // If result is still null here, all retries failed.
+    if (!result) {
+      return NextResponse.json(
+        { text: "", error: "Failed to generate content after multiple retries due to service unavailability." },
+        { status: 503 }
+      );
+    }
 
     // Log the result object for debugging
     console.log("Gemini result object:", result);
@@ -321,6 +373,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { text: "", error: "API quota exceeded. Please check your plan and billing details, or try again later." },
         { status: 429 }
+      );
+    } else if (typeof error === 'object' && error !== null && 'status' in error && (error as any).status === 503) {
+      return NextResponse.json(
+        { text: "", error: "The Gemini model is currently overloaded. Please try again shortly." },
+        { status: 503 }
       );
     }
     

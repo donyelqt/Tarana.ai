@@ -54,7 +54,7 @@ export const sampleItinerary: ItineraryData = {
   subtitle: "A personalized Baguio Experience",
   items: [
     {
-      period: "Morning (8AM-12NN)",
+      period: "Anytime",
       activities: [
         {
           image: goodtaste,
@@ -87,7 +87,7 @@ export const sampleItinerary: ItineraryData = {
       ]
     },
     {
-      period: "Afternoon (12NN-6PM)",
+      period: "Anytime",
       activities: [
         {
           image: hillstation,
@@ -120,7 +120,7 @@ export const sampleItinerary: ItineraryData = {
       ]
     },
     {
-      period: "Evening (6PM onwards)",
+      period: "Anytime",
       activities: [
         {
           image: caferuins,
@@ -144,6 +144,288 @@ export const sampleItinerary: ItineraryData = {
           tags: ["Food & Culinary", "Desserts", "Local Favorite", "Indoor-Friendly", "Budget-friendly", "Family-friendly"]
         }
       ]
+    },
+    {
+      period: "Anytime",
+      activities: [
+        {
+          image: taranaai,
+          title: "Baguio Cathedral",
+          time: "6:00 AM – 6:00 PM",
+          desc: "Neo-Gothic cathedral with twin spires; offers panoramic city views.",
+          tags: ["Culture & Arts", "Nature & Scenery", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Botanical Garden",
+          time: "6:00 AM – 6:00 PM",
+          desc: "Lush garden showcasing native plants and cultural sculptures.",
+          tags: ["Nature & Scenery", "Shopping & Local Finds", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "The Mansion",
+          time: "8:00 AM – 5:00 PM",
+          desc: "Official summer residence of the Philippine President; features a grand gate and manicured lawns.",
+          tags: ["Culture & Arts", "Nature & Scenery", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Wright Park",
+          time: "6:00 AM – 6:00 PM",
+          desc: "Tree-lined park with a reflecting pool; known for horseback riding.",
+          tags: ["Nature & Scenery", "Adventure", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Camp John Hay",
+          time: "8:00 AM – 5:00 PM",
+          desc: "Former U.S. military base turned into a leisure complex with hotels, golf course, and trails.",
+          tags: ["Adventure", "Nature & Scenery", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "SM City Baguio",
+          time: "10:00 AM – 9:00 PM",
+          desc: "Open-air mall with various retail stores, restaurants, and entertainment options.",
+          tags: ["Shopping & Local Finds", "Food & Culinary", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Baguio Public Market",
+          time: "5:00 AM – 7:00 PM",
+          desc: "Traditional market selling fresh produce, local delicacies, and handicrafts.",
+          tags: ["Shopping & Local Finds", "Food & Culinary", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Good Shepherd Convent",
+          time: "8:00 AM – 5:00 PM",
+          desc: "Known for its homemade ube jam and other local treats made by nuns.",
+          tags: ["Shopping & Local Finds", "Food & Culinary", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Mirador Heritage and Eco Park",
+          time: "6:00 AM – 6:00 PM",
+          desc: "Eco-park with trails, bamboo groves, and a peace memorial; offers city views.",
+          tags: ["Nature & Scenery", "Culture & Arts", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Diplomat Hotel",
+          time: "6:00 AM – 6:00 PM",
+          desc: "Historic, abandoned hotel known for its architecture and ghost stories.",
+          tags: ["Culture & Arts", "Nature & Scenery", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Lions Head",
+          time: "24 Hours",
+          desc: "Iconic lion sculpture along Kennon Road; popular photo stop.",
+          tags: ["Nature & Scenery", "Culture & Arts", "Outdoor-Friendly", "Clear Weather Only", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Ili-Likha Artists Village",
+          time: "10:00 AM – 8:00 PM",
+          desc: "Creative space featuring art installations, eco-friendly architecture, and local eateries.",
+          tags: ["Culture & Arts", "Shopping & Local Finds", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Philippine Military Academy",
+          time: "8:00 AM – 5:00 PM",
+          desc: "Premier military school with a museum and ceremonial grounds open to visitors.",
+          tags: ["Culture & Arts", "Nature & Scenery", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Great Wall of Baguio",
+          time: "6:00 AM – 6:00 PM",
+          desc: "Staircase resembling the Great Wall; offers panoramic views of the city mountains.",
+          tags: ["Adventure", "Nature & Scenery", "Outdoor-Friendly", "Clear Weather Only", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Camp John Hay Yellow Trail",
+          time: "8:00 AM – 6:00 PM",
+          desc: "A scenic, easy trail in Camp John Hay, offering a refreshing walk among pine trees.",
+          tags: ["Adventure", "Nature & Scenery", "Outdoor-Friendly", "Clear Weather Only", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Valley of Colors",
+          time: "Anytime",
+          desc: "A vibrant hillside community in La Trinidad near Baguio, where brightly colored houses form a striking mural.",
+          tags: ["Culture & Arts", "Nature & Scenery", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Easter Weaving Room",
+          time: "8:00 AM – 5:00 PM",
+          desc: "A historic center preserving Cordillera weaving, where visitors can watch artisans create handcrafted textiles.",
+          tags: ["Culture & Arts", "Shopping & Local Finds", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Mt. Kalugong",
+          time: "6:00 AM – 6:00 PM",
+          desc: "Scenic limestone mountain in La Trinidad with stunning valley views and unique rock formations.",
+          tags: ["Nature & Scenery", "Adventure", "Outdoor-Friendly", "Clear Weather Only", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Mt. Yangbew",
+          time: "6:00 AM – 6:00 PM",
+          desc: "Mountain peak offering panoramic views of La Trinidad and surrounding mountains.",
+          tags: ["Nature & Scenery", "Adventure", "Outdoor-Friendly", "Clear Weather Only", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Igorot Stone Kingdom",
+          time: "6:00 AM – 6:00 PM",
+          desc: "Man-made park showcasing stone structures inspired by Igorot culture and mythology.",
+          tags: ["Culture & Arts", "Adventure", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Laperal White House",
+          time: "11:00 AM – 3:00 PM",
+          desc: "An elegant colonial-era mansion with a white facade and rich local folklore.",
+          tags: ["Culture & Arts", "Adventure", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Mt. Cloud Bookshop",
+          time: "10:30 AM – 6:30 PM",
+          desc: "A cozy independent bookstore featuring Philippine literature, local history, and Cordillera culture.",
+          tags: ["Culture & Arts", "Nature & Scenery", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Oh My Gulay",
+          time: "11:00 AM – 9:00 PM",
+          desc: "Artist-run vegetarian restaurant with mountain views and bohemian setting.",
+          tags: ["Food & Culinary", "Culture & Arts", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Choco-late de Batirol",
+          time: "8:00 AM – 8:00 PM",
+          desc: "Rustic garden café famous for traditional tsokolate and native delicacies.",
+          tags: ["Food & Culinary", "Breakfast", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Ili-Likha Food Hub",
+          time: "10:00 AM – 9:00 PM",
+          desc: "Eco-artist village with diverse food stalls and cultural ambiance.",
+          tags: ["Food & Culinary", "Culture & Arts", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Canto Bogchi Joint",
+          time: "10:00 AM – 10:00 PM",
+          desc: "Chill diner popular for affordable ribs and casual vibe.",
+          tags: ["Food & Culinary", "Dinner", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Arca's Yard",
+          time: "10:00 AM – 8:00 PM",
+          desc: "Home-gallery café with Cordilleran books, heritage food, and hillside views.",
+          tags: ["Food & Culinary", "Snack", "Indoor-Friendly", "Weather-Flexible", "Mid-range Budget"]
+        },
+        {
+          image: taranaai,
+          title: "Amare La Cucina",
+          time: "11:00 AM – 9:00 PM",
+          desc: "Authentic brick-oven pizza and pasta in a cozy Italian-inspired space.",
+          tags: ["Food & Culinary", "Dinner", "Indoor-Friendly", "Weather-Flexible", "Mid-range Budget"]
+        },
+        {
+          image: taranaai,
+          title: "Le Chef at The Manor",
+          time: "6:00 AM – 10:00 PM",
+          desc: "Elegant dining with world-class ambiance, perfect for special occasions.",
+          tags: ["Food & Culinary", "High-end", "Indoor-Friendly", "Weather-Flexible", "High-end Budget"]
+        },
+        {
+          image: taranaai,
+          title: "Lemon and Olives",
+          time: "11:00 AM – 9:00 PM",
+          desc: "Greek-Mediterranean restaurant with stunning views and authentic flavors.",
+          tags: ["Food & Culinary", "Dinner", "Indoor-Friendly", "Weather-Flexible", "Mid-range Budget"]
+        },
+        {
+          image: taranaai,
+          title: "Grumpy Joe",
+          time: "10:00 AM – 9:00 PM",
+          desc: "Family-friendly restaurant known for comfort food, pizza, and pasta.",
+          tags: ["Food & Culinary", "Lunch", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Baguio Craft Brewery",
+          time: "4:00 PM – 12:00 MN",
+          desc: "Local brewery offering craft beer and pulutan with rooftop city views.",
+          tags: ["Food & Culinary", "Dinner", "Indoor-Friendly", "Weather-Flexible", "Mid-range Budget"]
+        },
+        {
+          image: taranaai,
+          title: "Luisa's Cafe",
+          time: "6:30 AM – 9:00 PM",
+          desc: "Classic Filipino-Chinese eatery serving affordable meals, popular among locals and artists.",
+          tags: ["Food & Culinary", "Breakfast", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Agara Ramen",
+          time: "11:00 AM – 9:00 PM",
+          desc: "Cozy ramen bar serving rich and flavorful bowls in Japanese ambiance.",
+          tags: ["Food & Culinary", "Dinner", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "50's Diner",
+          time: "7:00 AM – 10:00 PM",
+          desc: "Nostalgic American-style diner with retro vibes and huge portions.",
+          tags: ["Food & Culinary", "Lunch", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Balajadia Kitchenette",
+          time: "6:00 AM – 9:00 PM",
+          desc: "Simple eatery serving local carinderia-style Filipino dishes.",
+          tags: ["Food & Culinary", "Lunch", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Wagner Cafe",
+          time: "7:00 AM – 7:00 PM",
+          desc: "Serene garden café perfect for brunch and healthy eats.",
+          tags: ["Food & Culinary", "Breakfast", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        },
+        {
+          image: taranaai,
+          title: "Pizza Volante",
+          time: "24 Hours",
+          desc: "Go-to pizza and pasta spot for night owls and late diners.",
+          tags: ["Food & Culinary", "Dinner", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
+        }
+      ]
+    }
+  ]
+};
+
+export const sampleItineraryCombined: ItineraryData = {
+  title: sampleItinerary.title,
+  subtitle: sampleItinerary.subtitle,
+  items: [
+    {
+      period: "Anytime",
+      activities: sampleItinerary.items.flatMap(section => section.activities)
     }
   ]
 };
