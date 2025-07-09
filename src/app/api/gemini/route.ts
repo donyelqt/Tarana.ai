@@ -15,14 +15,22 @@ type WeatherCondition = keyof typeof WEATHER_CONTEXTS;
 
 // Pre-computed weather context lookup for faster processing
 const WEATHER_CONTEXTS = {
-  thunderstorm: (temp: number, desc: string) => `WARNING: Thunderstorm (${temp}°C). ONLY indoor activities: Museums, malls, indoor dining. Select "Indoor-Friendly" tagged activities only.`,
-  rainy: (temp: number, desc: string) => `Rainy weather (${temp}°C). Prioritize "Indoor-Friendly" tagged activities: Museums, malls, covered dining.`,
-  snow: (temp: number, desc: string) => `Rare snow (${temp}°C)! Focus on "Indoor-Friendly" activities: warm venues, hot beverages, brief safe outdoor viewing.`,
-  foggy: (temp: number, desc: string) => `Foggy conditions (${temp}°C). Use "Indoor-Friendly" or "Weather-Flexible" activities. Avoid viewpoints.`,
-  cloudy: (temp: number, desc: string) => `Cloudy weather (${temp}°C). Mix of "Weather-Flexible" activities. Good for photography.`,
-  clear: (temp: number, desc: string) => `Clear weather (${temp}°C). Perfect for "Outdoor-Friendly" activities: hiking, parks, viewpoints.`,
-  cold: (temp: number, desc: string) => `Cold weather (${temp}°C). Prioritize "Indoor-Friendly" activities with warming options.`,
-  default: (temp: number, desc: string) => `Weather: ${desc} at ${temp}°C. Balance indoor/outdoor activities."`
+  thunderstorm: (temp: number, desc: string) =>
+    `WARNING: ${desc} (${temp}°C). ONLY indoor activities: Museums, malls, indoor dining. Select "Indoor-Friendly" tagged activities only.`,
+  rainy: (temp: number, desc: string) =>
+    `${desc} (${temp}°C). Prioritize "Indoor-Friendly" tagged activities: Museums, malls, covered dining.`,
+  snow: (temp: number, desc: string) =>
+    `${desc} (${temp}°C)! Focus on "Indoor-Friendly" activities: warm venues, hot beverages, brief safe outdoor viewing.`,
+  foggy: (temp: number, desc: string) =>
+    `${desc} (${temp}°C). Use "Indoor-Friendly" or "Weather-Flexible" activities. Avoid viewpoints.`,
+  cloudy: (temp: number, desc: string) =>
+    `${desc} (${temp}°C). Mix of "Weather-Flexible" activities. Good for photography.`,
+  clear: (temp: number, desc: string) =>
+    `${desc} (${temp}°C). Perfect for "Outdoor-Friendly" activities: hiking, parks, viewpoints.`,
+  cold: (temp: number, desc: string) =>
+    `${desc} (${temp}°C). Prioritize "Indoor-Friendly" activities with warming options.`,
+  default: (temp: number, desc: string) =>
+    `Weather: ${desc} at ${temp}°C. Balance indoor/outdoor activities.`,
 };
 
 // Mapping of weather types to acceptable activity tags – used to pre-filter the sample DB sent to Gemini
@@ -38,14 +46,6 @@ const WEATHER_TAG_FILTERS = {
 } as const;
 
 // Interest mapping for faster lookup
-const INTEREST_TAGS = {
-  "Nature & Scenery": "Nature",
-  "Food & Culinary": "Food", 
-  "Culture & Arts": "Culture",
-  "Shopping & Local Finds": "Shopping",
-  "Adventure": "Adventure"
-};
-
 const INTEREST_DETAILS = {
   "Nature & Scenery": "- Nature & Scenery: Burnham Park, Mines View Park, Wright Park, Camp John Hay, Botanical Garden",
   "Food & Culinary": "- Food & Culinary: Good Taste Restaurant, Café by the Ruins, Hill Station, Vizco's, Baguio Craft Brewery",

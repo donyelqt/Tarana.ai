@@ -1,13 +1,10 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { budgetOptions, paxOptions, durationOptions, interests, ItineraryData, sampleItinerary } from "./itineraryData";
 import { useToast } from "@/components/ui/use-toast";
-import { WeatherData, fetchWeatherFromAPI } from "@/lib/utils";
+import { WeatherData } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 
 interface ItineraryFormProps {
@@ -44,9 +41,7 @@ export interface FormData {
 export default function ItineraryForm({
   showPreview,
   isGenerating,
-  isLoadingItinerary,
   onSubmitItinerary,
-  weatherData,
   budget,
   setBudget,
   pax,
@@ -56,9 +51,11 @@ export default function ItineraryForm({
   dates,
   setDates,
   selectedInterests,
-  setSelectedInterests,
   handleInterest,
-  interests: propInterests // Renaming to avoid conflict with imported 'interests'
+  interests: propInterests, // Renaming to avoid conflict with imported 'interests'
+  budgetOptions,
+  paxOptions,
+  durationOptions
 }: ItineraryFormProps) {
   const { toast } = useToast();
 

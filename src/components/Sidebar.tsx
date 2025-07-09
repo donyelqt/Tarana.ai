@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
-import { Bookmark, Settings, Settings2, Coffee, Donut } from 'lucide-react'
+import { Bookmark, Settings, Donut } from 'lucide-react'
 import Image from "next/image"
 import taranaai2 from "../../public/images/taranaai2.png"
 

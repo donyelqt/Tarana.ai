@@ -16,7 +16,7 @@ const AboutSmartTravel = () => {
           {/* Right: Supporting Paragraph */}
           <div className="md:w-1/2 flex md:justify-end">
             <p className="max-w-md text-gray-600 text-lg md:text-base mt-2 md:mt-0 md:text-left">
-              We're here to make every city more livable and sustainable—by guiding travelers smarter, easing overcrowding, and uplifting local communities through data-driven, personalized journeys.
+              We&apos;re here to make every city more livable and sustainable—by guiding travelers smarter, easing overcrowding, and uplifting local communities through data-driven, personalized journeys.
             </p>
           </div>
         </div>

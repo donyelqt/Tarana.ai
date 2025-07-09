@@ -9,8 +9,8 @@ import { fetchWeatherFromAPI, WeatherData } from "@/lib/utils"; // Added import
 import Image, { type StaticImageData } from "next/image"
 import PlaceDetail from "@/components/PlaceDetail"
 import { useToast } from "@/components/ui/use-toast"
-import usePuter from "../../../hooks/usePuter";
-import { puterConfig } from "../../../config/puter";
+// import usePuter from "../../../hooks/usePuter";
+// import { puterConfig } from "../../../config/puter";
 
 const interestIcons: Record<string, string> = {
   "Nature & Scenery": "🌿",
@@ -25,13 +25,14 @@ const SavedItineraryDetail = () => {
   const params = useParams()
   const { id } = params as { id: string }
   const [itinerary, setItinerary] = useState<SavedItinerary | null>(null);
-  const [weatherData, setWeatherData] = useState<WeatherData | null>(null); // Added weatherData state
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_weatherData, setWeatherData] = useState<WeatherData | null>(null); // Prefixed to silence unused var lint
   const [selectedActivity, setSelectedActivity] = useState<Record<string, unknown> | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { toast } = useToast()
   // Load the Puter SDK once
-  const puter = usePuter();
+  // const puter = usePuter(); // removed – using backend Gemini API instead
 
   useEffect(() => {
     const fetchItinerary = async () => {
@@ -89,52 +90,33 @@ const SavedItineraryDetail = () => {
       const { formData } = itinerary
       const prompt = `Update the ${formData.duration}-day itinerary for Baguio City, Philippines based on the current weather conditions.`
       
-      if (!puter) {
-        toast({
-          title: "AI Initializing",
-          description: "The AI engine is still loading. Please wait a moment.",
-          variant: "destructive"
-        });
-        setIsRefreshing(false);
-        return;
-      }
-
-      const detailedPrompt = `
-${prompt}
-
-Database: ${JSON.stringify(itinerary.itineraryData)}
-
-Weather: ${currentWeatherData.weather?.[0]?.description || "clear sky"} at ${currentWeatherData.main?.temp}°C
-Interests: ${formData.selectedInterests.join(", ")}
-Duration: ${formData.duration} days
-Budget: ${formData.budget}
-Group: ${formData.pax}
-
-Update the itinerary strictly using activities from the database to match the new weather.
-
-Rules:
-1. Only use activities from the provided database.
-2. Output a JSON object with keys: title, subtitle, items (period + activities array).
-      `;
-
-      const aiResp = await puter.ai.chat(detailedPrompt, {
-        ...puterConfig.ai,
+      // Call Gemini API through backend route
+      const response = await fetch("/api/gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          weatherData: currentWeatherData,
+          interests: formData.selectedInterests.length > 0 ? formData.selectedInterests : ["Random"],
+          duration: formData.duration,
+          budget: formData.budget,
+          pax: formData.pax,
+          sampleItinerary: itinerary.itineraryData,
+        }),
       });
 
-      const rawText = aiResp?.message?.content ?? "";
+      const { text, error } = await response.json();
 
-      if (!rawText) {
-        throw new Error("Empty AI response");
+      if (error || !text) {
+        throw new Error(error || "Empty response from Gemini API");
       }
 
       let newItineraryData;
       try {
-        // Remove markdown fences if present
-        const cleaned = rawText.replace(/```(?:json)?\n?([\s\S]*?)\n?```/i, "$1");
-        newItineraryData = JSON.parse(cleaned);
+        newItineraryData = JSON.parse(text);
       } catch (e) {
-        console.error("Failed to parse AI response:", e);
-        throw new Error("Failed to parse AI response");
+        console.error("Failed to parse Gemini API response:", e);
+        throw new Error("Failed to parse JSON from Gemini API");
       }
       
       // Check if the API returned a valid itinerary structure.
@@ -235,7 +217,8 @@ Rules:
   }
 
   // Helper function to parse duration string (e.g., "1 Day", "2 Days") and calculate end date
-  const calculateAndFormatDateRange = (startDateString: string, durationString: string): string => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _calculateAndFormatDateRange = (startDateString: string, durationString: string): string => {
     if (!startDateString || !durationString) return 'Date not specified';
   
     const startDate = new Date(startDateString);
