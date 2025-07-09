@@ -2,7 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
-import { supabase } from "./supabaseClient"; // Import Supabase client
+// Removed unused direct supabase client import
 import { supabaseAdmin } from './supabaseAdmin'; // Or initialize directly here
 
 // Interface for user data from Supabase (align with your 'users' table structure)

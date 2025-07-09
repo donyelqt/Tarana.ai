@@ -7,7 +7,7 @@ type AboutSectionProps = {
   onJoinWaitlistClick: () => void;
 };
 
-const AboutIntro = ({ onJoinWaitlistClick }: AboutSectionProps) => {
+const AboutIntro = ({ onJoinWaitlistClick: _onJoinWaitlistClick }: AboutSectionProps) => {
   const router = useRouter();
   return (
     <section className="py-20">

@@ -2,10 +2,9 @@
 
 import Sidebar from "../../components/Sidebar";
 import { useState, useEffect } from "react";
-import Image from "next/image"; // Keep Image import for taranaai logo and potentially ItineraryPreview
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
-import { fetchWeatherFromAPI, WeatherData, ItineraryData as UtilItineraryData } from "@/lib/utils"; // Renamed to avoid conflict
+import { fetchWeatherFromAPI, WeatherData } from "@/lib/utils";
 import { saveItinerary } from "@/lib/savedItineraries";
 import ItineraryForm, { FormData as ItineraryFormData } from "./components/ItineraryForm";
 import ItineraryPreview from "./components/ItineraryPreview";
@@ -19,8 +18,8 @@ import {
   durationOptions, 
   interests 
 } from "./components/itineraryData"; // ItineraryData from here is used for generatedItinerary
-import usePuter from "../../hooks/usePuter";
-import { puterConfig } from "../../config/puter";
+// import usePuter from "../../hooks/usePuter";
+// import { puterConfig } from "../../config/puter";
 
 export default function ItineraryGenerator() {
   // State for form inputs will be managed within ItineraryForm, 
@@ -40,7 +39,7 @@ export default function ItineraryGenerator() {
   const router = useRouter();
   const { toast } = useToast();
   // Load the free key-less Gemini client
-  const puter = usePuter();
+  // const puter = usePuter(); // removed – using backend Gemini API instead
 
   useEffect(() => {
     const getWeather = async () => {
@@ -87,69 +86,34 @@ export default function ItineraryGenerator() {
     try {
       const prompt = `Create a personalized ${formData.duration}-day itinerary for Baguio City, Philippines based on the user preferences and current weather conditions.`;
 
-      if (!puter) {
-        // Skip showing a toast to avoid UX-disrupting popup while the AI engine initializes.
-        setGeneratedItinerary(sampleItinerary);
-        setShowPreview(true);
-        setIsGenerating(false);
-        setIsLoadingItinerary(false);
-        return;
-      }
-
-      const detailedPrompt = `
-${prompt}
-
-Database: ${JSON.stringify(sampleItinerary)}
-
-Weather: ${weatherData?.weather?.[0]?.description || "clear sky"} at ${weatherData?.main?.temp || 20}°C
-Interests: ${formData.selectedInterests.length > 0 ? formData.selectedInterests.join(", ") : "Random"}
-Duration: ${formData.duration} days
-Budget: ${formData.budget}
-Group: ${formData.pax}
-
-Generate a detailed Baguio City itinerary.
-
-Rules:
-1. Be concise.
-2. Strictly use the provided database. Do not invent activities.
-3. Match activities to user interests and weather.
-4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards).
-5. Output a JSON object with this structure: { "title": "...", "subtitle": "...", "items": [{"period": "...", "activities": [{"title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
-      `;
-
-      const puterResponse = await puter.ai.chat(detailedPrompt, {
-        ...puterConfig.ai,
+      // Call Gemini API via backend route
+      const response = await fetch("/api/gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          weatherData,
+          interests: formData.selectedInterests.length > 0 ? formData.selectedInterests : ["Random"],
+          duration: formData.duration,
+          budget: formData.budget,
+          pax: formData.pax,
+          sampleItinerary,
+        }),
       });
 
-      const responseText = puterResponse?.message?.content ?? "";
+      const { text, error } = await response.json();
 
-      if (!responseText) {
-        console.error("Empty response from API");
-        toast({
-          title: "API Error",
-          description: "Received empty response from the itinerary generator. Using sample data instead.",
-          variant: "destructive",
-        });
-        setGeneratedItinerary(sampleItinerary);
-        setShowPreview(true);
-        setIsGenerating(false);
-        setIsLoadingItinerary(false);
-        return;
+      if (error || !text) {
+        console.error("Gemini API Error:", error || "No text returned");
+        throw new Error(error || "Gemini API returned an empty response");
       }
 
       let parsedData;
       try {
-        // Remove markdown code fences (e.g., ```json ... ```) if present before parsing
-        const cleanedResponse = responseText.replace(/```(?:json)?\s*([\s\S]*?)\s*```/i, "$1").trim();
-        parsedData = JSON.parse(cleanedResponse);
+        parsedData = JSON.parse(text);
       } catch (e) {
-        console.error("Failed to parse JSON from response:", e);
-        toast({
-          title: "Parsing Error",
-          description: "Failed to parse the generated itinerary. Using sample data instead.",
-          variant: "destructive",
-        });
-        parsedData = sampleItinerary;
+        console.error("Failed to parse JSON from Gemini API:", e);
+        throw new Error("Failed to parse JSON from Gemini API");
       }
 
       if (!parsedData || !parsedData.items || !Array.isArray(parsedData.items)) {

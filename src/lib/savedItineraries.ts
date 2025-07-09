@@ -205,7 +205,7 @@ export const updateItinerary = async (id: string, updatedData: Partial<Omit<Save
   }
 };
 
-const generateItineraryId = (): string => {
+const _generateItineraryId = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
   for (let i = 0; i < 5; i++) {
