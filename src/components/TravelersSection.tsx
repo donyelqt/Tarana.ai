@@ -56,6 +56,7 @@ const TravelersSection = () => {
                   alt={traveler.title}
                   fill
                   className="object-cover w-full h-full"
+                  style={traveler.title === "Families" ? { objectPosition: "center calc(50% + 48px)" } : undefined}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                 />
               </div>
