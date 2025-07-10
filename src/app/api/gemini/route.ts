@@ -253,8 +253,8 @@ export async function POST(req: NextRequest) {
     // Optimized generation parameters for faster response
     const generationConfig = {
       responseMimeType: "application/json",
-      temperature: 0.4,  // Lowered for faster, more deterministic responses
-      topK: 15,          // Further reduced for faster token selection
+      temperature: 0,  // Lowered for faster, more deterministic responses
+      topK: 1,          // Further reduced for faster token selection
       topP: 0.9,         // Kept the same to maintain quality
       maxOutputTokens: 8192 // Increased to prevent incomplete JSON which causes API errors.
     };
