@@ -1,5 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
+import { searchSimilarActivities } from "@/lib/vectorSearch";
+// Import the canonical sample itinerary so we can look up images by title as a fallback
+import { sampleItineraryCombined } from "@/app/itinerary-generator/components/itineraryData";
 
 // Global initialization for Gemini model to avoid re-creating the client on every request.
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
@@ -57,6 +60,10 @@ const INTEREST_DETAILS = {
 export async function POST(req: NextRequest) {
   try {
     const { prompt, weatherData, interests, duration, budget, pax, sampleItinerary } = await req.json();
+
+    // We now always build the itinerary from the vector database (pgvector).
+    // Any sampleItinerary sent by the client is ignored except for logging purposes.
+    let effectiveSampleItinerary: any = null;
 
     // Log the incoming request body for debugging
     console.log("Gemini API request body:", { prompt, weatherData, interests, duration, budget, pax, sampleItinerary });
@@ -146,15 +153,14 @@ export async function POST(req: NextRequest) {
     // ------------------
     // Prefilter sample itinerary to reduce prompt size and latency
     // ------------------
-    let filteredSampleItinerary = sampleItinerary;
-    if (sampleItinerary && typeof sampleItinerary === "object") {
+    if (effectiveSampleItinerary && typeof effectiveSampleItinerary === "object") {
       const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
       const interestSet = new Set(
         interests && Array.isArray(interests) && !interests.includes("Random") ? interests : []
       );
-      filteredSampleItinerary = {
-        ...sampleItinerary,
-        items: sampleItinerary.items.map((section: any) => ({
+      effectiveSampleItinerary = {
+        ...effectiveSampleItinerary,
+        items: effectiveSampleItinerary.items.map((section: any) => ({
           ...section,
           activities: section.activities.filter((act: any) => {
             const interestMatch =
@@ -167,9 +173,52 @@ export async function POST(req: NextRequest) {
       };
     }
 
+    // Always build the activity database from vector similarity search.
+    if (typeof prompt === "string" && prompt.length > 0) {
+      try {
+        const similar = await searchSimilarActivities(prompt, 40); // fetch top 40 matches for richer pool
+
+        // Apply weather + interest filters before constructing the itinerary object
+        const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
+        const interestSet = new Set(
+          interests && Array.isArray(interests) && !interests.includes("Random") ? interests : []
+        );
+
+        const filteredSimilar = (similar || []).filter((s) => {
+          const tags = s.metadata?.tags || [];
+          const interestMatch = interestSet.size === 0 || tags.some((t: string) => interestSet.has(t));
+          const weatherMatch = allowedWeatherTags.length === 0 || tags.some((t: string) => allowedWeatherTags.includes(t));
+          return interestMatch && weatherMatch;
+        });
+
+        if (filteredSimilar.length > 0) {
+          effectiveSampleItinerary = {
+            title: "Vector Suggestions",
+            subtitle: "Activities matched from vector search",
+            items: [
+              {
+                period: "Anytime",
+                activities: filteredSimilar.map((s) => ({
+                  image: s.metadata?.image || "",
+                  title: s.metadata?.title || s.activity_id,
+                  time: s.metadata?.time || "",
+                  desc: s.metadata?.desc || "",
+                  tags: s.metadata?.tags || [],
+                })),
+              },
+            ],
+          } as any;
+        }
+      } catch (vecErr) {
+        console.warn("Vector search failed", vecErr);
+      }
+    }
+
+    // Use effectiveSampleItinerary downstream
+
     // Streamlined sample itinerary context – send the filtered DB only
-    const sampleItineraryContext = filteredSampleItinerary
-      ? `Database: ${JSON.stringify(filteredSampleItinerary)}\nRULE: Only use activities from this database. Match user interests and weather tags.`
+    const sampleItineraryContext = effectiveSampleItinerary
+      ? `Database: ${JSON.stringify(effectiveSampleItinerary)}\nRULE: Only use activities from this database. Match user interests and weather tags.`
       : "";
 
     // Weather context is now handled by the lookup table above
@@ -245,9 +294,9 @@ export async function POST(req: NextRequest) {
       3. Match activities to user interests and weather.
       4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards).
       5. Pace the itinerary based on trip duration.
-      6. For each activity, include: title, time slot (e.g., "9:00-10:30AM"), a **brief** description (features, costs, location, duration, weather notes), and tags (interest and weather).
+      6. For each activity, include: **image** (exact image URL from the database), **title**, **time** slot (e.g., "9:00-10:30AM"), a **brief** description (features, costs, location, duration, weather notes), and **tags** (interest and weather).
       7. Adhere to the user's budget.
-      8. Output a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
+      8. Output a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"image": "...", "title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
     `;
 
     // Optimized generation parameters for faster response
@@ -342,16 +391,35 @@ export async function POST(req: NextRequest) {
       // Validate that it's proper JSON by parsing
       const parsed = JSON.parse(cleanedJson);
 
-      // Remove placeholder activities titled "No available activity" and drop periods with no remaining activities
+      // Remove placeholder activities titled "No available activity", drop empty periods,
+      // and back-fill any missing image URLs using the canonical sampleItineraryCombined.
       if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).items)) {
+        // Build a quick lookup table: title -> image from sampleItineraryCombined
+        const titleToImage: Record<string, string> = {};
+        for (const sec of sampleItineraryCombined.items) {
+          for (const act of sec.activities) {
+            const img = typeof act.image === "string" ? act.image : (act.image as any)?.src || "";
+            if (act.title && img) {
+              titleToImage[act.title] = img;
+            }
+          }
+        }
+
         (parsed as any).items = (parsed as any).items
           .map((period: any) => {
-            const filteredActivities = Array.isArray(period.activities)
-              ? period.activities.filter((act: any) => act.title && act.title.toLowerCase() !== "no available activity")
+            const cleanedActs = Array.isArray(period.activities)
+              ? period.activities
+                  .filter((act: any) => act.title && act.title.toLowerCase() !== "no available activity")
+                  .map((act: any) => {
+                    if ((!act.image || act.image === "") && titleToImage[act.title]) {
+                      act.image = titleToImage[act.title];
+                    }
+                    return act;
+                  })
               : [];
-            return { ...period, activities: filteredActivities };
+            return { ...period, activities: cleanedActs };
           })
-          .filter((period: any) => period.activities.length > 0);
+          .filter((period: any) => Array.isArray(period.activities) && period.activities.length > 0);
       }
 
       const responseData = { text: JSON.stringify(parsed) };
@@ -397,7 +465,7 @@ export async function POST(req: NextRequest) {
           responseCache.set(cacheKey, { response: responseData, timestamp: Date.now() });
           return NextResponse.json(responseData);
         }
-      } catch (inner) {
+      } catch {
         // fallthrough to final error handling
       }
       console.error("Failed to parse JSON from Gemini response:", e, cleanedJson);
