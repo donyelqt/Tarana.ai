@@ -131,7 +131,8 @@ export default function ItineraryGenerator() {
         items: parsedData.items.map((section: any) => ({
           ...section,
           activities: section.activities.map((activity: any) => {
-            let matchingImage = burnham; // Default image
+            // Use the image provided by the backend if present; otherwise attempt to find a match in the local sample DB.
+            let matchingImage: any = activity.image || burnham;
             let bestMatchScore = 0;
             for (const sampleSection of sampleItinerary.items) {
               for (const sampleActivity of sampleSection.activities) {
@@ -156,11 +157,7 @@ export default function ItineraryGenerator() {
                 }
                 if (currentScore > bestMatchScore) {
                   bestMatchScore = currentScore;
-                  if (typeof sampleActivity.image !== "string") {
-  matchingImage = sampleActivity.image;
-} else {
-  matchingImage = burnham; // fallback to default image if string
-}
+                  matchingImage = sampleActivity.image || matchingImage;
                 }
               }
             }

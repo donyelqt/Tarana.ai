@@ -18,13 +18,14 @@
 ## 🛠️ Tech Stack
 
 #### Frameworks & Core Libraries
--   **[Next.js](https://nextjs.org/)**: The React framework for building full-stack web applications.
--   **[React](https://reactjs.org/)**: A JavaScript library for building user interfaces.
+-   **[Next.js](https://nextjs.org/)** (v15, App Router): Full-stack React framework for modern hybrid apps.
+-   **[React 19](https://react.dev/)**: UI library powering both client and server components.
 -   **[Node.js](https://nodejs.org/)**: The runtime environment for the backend.
 
 #### Backend & Database
--   **[Supabase](https://supabase.com/)**: Used for the PostgreSQL database, authentication, and storage.
+-   **[Supabase](https://supabase.com/)**: Managed PostgreSQL with built-in authentication & storage.
     -   `@supabase/supabase-js`: The official JavaScript client for Supabase.
+    -   `pgvector`: Postgres extension enabling vector similarity search for semantic retrieval.
 -   **[NextAuth.js](https://next-auth.js.org/)**: Handles user authentication (Google OAuth & Credentials).
 -   **[bcryptjs](https://www.npmjs.com/package/bcryptjs)**: For hashing user passwords.
 
@@ -34,11 +35,12 @@
 -   **[OpenWeatherMap API](https://openweathermap.org/api)**: Used to fetch real-time weather data.
 
 #### UI & Styling
--   **[Tailwind CSS](https://tailwindcss.com/)**: A utility-first CSS framework for styling.
+-   **[Tailwind CSS](https://tailwindcss.com/)**: Utility-first styling framework.
     -   `autoprefixer`: Parses CSS and adds vendor prefixes.
     -   `postcss`: A tool for transforming CSS with JavaScript.
     -   `tailwind-merge`: A utility for merging Tailwind classes without style conflicts.
     -   `tailwindcss-animate`: A Tailwind CSS plugin for animations.
+-   **Radix UI + shadcn/ui**: Accessible headless components with custom styling.
 -   **[Framer Motion](https://www.framer.com/motion/)**: A library for creating animations.
 -   **[clsx](https://github.com/lukeed/clsx)** & **[class-variance-authority](https://cva.style/)**: For constructing conditional and variant-based class names.
 -   **Icons**:
@@ -46,11 +48,61 @@
     -   `@heroicons/react`: Icons from the Heroicons library.
     -   `react-icons`: A comprehensive icon library.
 
+#### Utilities & Helper Libraries
+- **date-fns**: Lightweight modern date utility library used for formatting and calculations.
+- **react-day-picker**: Accessible calendar component for date-range selection in forms.
+- **jsonrepair**: Small helper to fix malformed JSON returned by LLMs before parsing.
+
 #### Development & Tooling
 -   **[TypeScript](https://www.typescriptlang.org/)**: A typed superset of JavaScript.
--   **[ESLint](https://eslint.org/)**: For identifying and fixing problems in the code.
--   **[Vercel](https://vercel.com/)**: The platform for deployment and hosting.
--   **[Supabase CLI](https://supabase.com/docs/guides/cli)**: For managing local Supabase development and migrations.
+-   **[ESLint](https://eslint.org/)**: Linting & code-style enforcement.
+-   **Jest + ts-jest**: Unit / integration testing for TypeScript.
+-   **tsx**: Run TypeScript scripts without pre-compilation (e.g., `npm run index-embeddings`).
+-   **dotenv**: Loads environment variables from `.env.*` files.
+-   **Vercel**: Serverless deployment & hosting.
+-   **Supabase CLI**: Manage local Supabase dev & migrations.
+
+---
+
+## 🏗️ Architecture Overview
+
+1. **Client (Next.js App Router)**  
+   • React 19 components rendered on the edge or client.  
+   • Tailwind CSS + Radix UI/shadcn for styling and headless components.  
+   • Auth context provided by **NextAuth.js** via `components/providers/SessionProvider.tsx`.  
+
+2. **API Routes (Next.js)**  
+   • `/api/gemini` – Generates itineraries.  
+   • `/api/weather` – Weather proxy.  
+   • `/api/auth/*` – Credential / OAuth flow.  
+   • `/api/reindex` – Secure endpoint that triggers embedding (vector-DB) re-indexing.  
+
+3. **Embedding & Vector Storage**  
+   • Script `scripts/indexSampleItinerary.ts` calls `upsertActivityEmbedding` → Gemini embedding → Supabase `activities` table with a `vector` column (`pgvector`).  
+   • Runtime similarity search is handled by `src/lib/vectorSearch.ts` which wraps Supabase RPC queries.  
+
+4. **Database (Supabase / Postgres)**  
+   • Schema and migrations live in `supabase/migrations/*` (RLS, pgvector, extra columns).  
+   • Row-level security enabled; service role used by backend scripts.  
+
+5. **Authentication**  
+   • NextAuth.js sessions persisted via Supabase.  
+   • Passwords hashed with `bcryptjs`.  
+
+6. **Deployment**  
+   • Front/Back deployed on Vercel.  
+   • Database managed by Supabase.  
+
+Sequence diagram (high-level):
+```
+User → Next.js Page → calls /api/gemini
+              │
+              ├─ fetch real-time weather (/api/weather)
+              ├─ vectorSearch (Supabase pgvector)
+              └─ Gemini API (Google Generative AI)
+                        │
+                    JSON itinerary → Page renders
+```
 
 ---
 
@@ -187,3 +239,60 @@ This project is **not open source**. All rights reserved by Doniele Arys Antonio
 ---
 
 For questions or licensing inquiries, contact: [daa6681@students.uc-bcf.edu.ph]
+
+## Vector Search & Retrieval-Augmented Generation
+
+This project uses **Supabase Postgres + pgvector** to provide semantic retrieval for Gemini prompts.
+
+### Prerequisites
+
+1. Environment variables
+
+```
+GOOGLE_GEMINI_API_KEY=your_google_key
+NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key   # server-side only
+REINDEX_SECRET=some-long-random-string            # protects /api/reindex
+```
+
+2. Enable pgvector & create schema
+
+```
+supabase db push            # or run SQL in supabase/migrations/20240730000000_add_itinerary_embeddings_pgvector.sql
+```
+
+### Index existing activities
+
+```bash
+npm run index-embeddings     # generates embeddings for sample itinerary and upserts to Supabase
+```
+
+Or deploy and call the secured endpoint:
+
+```bash
+curl -X POST https://<deployment>/api/reindex \
+     -H "X-ADMIN-TOKEN: $REINDEX_SECRET"
+```
+
+### Running similarity search locally
+
+```ts
+import { searchSimilarActivities } from "@/lib/vectorSearch";
+const results = await searchSimilarActivities("budget-friendly food", 10);
+```
+
+### Adding or updating activities
+
+1. Edit the seed file at `src/app/itinerary-generator/components/itineraryData.ts` (or create new JSON files under `scripts/data/`).
+2. Run `npm run index-embeddings` again. The script will:
+   - Generate embeddings for each activity using Gemini.
+   - Upsert each row into Supabase’s `activities` table (existing `activity_id`s are updated; new ones are inserted).
+3. Confirm the changes in Supabase (dashboard or SQL query).
+
+The application now reads exclusively from the vector database; the seed file remains a version-controlled source of truth for local development and CI.
+
+### Tests
+
+```
+npm test   # runs Jest + ts-jest unit tests for embeddings and vector search
+```

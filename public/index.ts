@@ -1,34 +1,27 @@
-import baguio_panorama from "./images/baguio_panorama.png"
-import how_it_works from "./images/how_it_works.png"
-import letai from "./images/letai.png"
-import set from "./images/set.png"
-import explore from "./images/explore.png"
-import personalized from "./images/personalized.png"
-import local from "./images/local.png"
-import traffic from "./images/traffic.png"
-import solo_travel from "./images/solo_travel.jpg"
-import family from "./images/family.jpg"
-import couples from "./images/couples.jpg"
-import barkadas from "./images/barkadas.jpg"
-import sampleprofile from "./images/sampleprofile.png"
-import goodtaste from "./images/goodtaste.png"
-import burnham from "./images/burnham.png"
-import dashboard from "./images/dashboard.png"
-import bencab from "./images/bencab.png"
-import mtulap from "./images/mtulap.png"
-import hillstation from "./images/hillstation.png"
-import tamawan from "./images/tamawan.png"
-import treetopcampjohnhay from "./images/treetopcampjohnhay.png"
-import viewspark from "./images/viewspark.png"
-import caferuins from "./images/caferuins.png"
-import nightmarket from "./images/nightmarket.png"
-import vizcossessionroad from "./images/vizcossessionroad.png"
-import taranaai from "./images/taranaai.png"
-import taranaai2 from "./images/taranaai2.png"  
-
-export { baguio_panorama, how_it_works, letai, 
-    set, explore, local, 
-    personalized, traffic, solo_travel, family, couples, barkadas, 
-    sampleprofile, goodtaste, burnham, dashboard, bencab, mtulap, 
-    hillstation, tamawan, treetopcampjohnhay, viewspark, caferuins, 
-    nightmarket, vizcossessionroad, taranaai, taranaai2 }
+export const baguio_panorama = "/images/baguio_panorama.png";
+export const how_it_works = "/images/how_it_works.png";
+export const letai = "/images/letai.png";
+export const set = "/images/set.png";
+export const explore = "/images/explore.png";
+export const personalized = "/images/personalized.png";
+export const local = "/images/local.png";
+export const traffic = "/images/traffic.png";
+export const solo_travel = "/images/solo_travel.jpg";
+export const family = "/images/family.jpg";
+export const couples = "/images/couples.jpg";
+export const barkadas = "/images/barkadas.jpg";
+export const sampleprofile = "/images/sampleprofile.png";
+export const goodtaste = "/images/goodtaste.png";
+export const burnham = "/images/burnham.png";
+export const dashboard = "/images/dashboard.png";
+export const bencab = "/images/bencab.png";
+export const mtulap = "/images/mtulap.png";
+export const hillstation = "/images/hillstation.png";
+export const tamawan = "/images/tamawan.png";
+export const treetopcampjohnhay = "/images/treetopcampjohnhay.png";
+export const viewspark = "/images/viewspark.png";
+export const caferuins = "/images/caferuins.png";
+export const nightmarket = "/images/nightmarket.png";
+export const vizcossessionroad = "/images/vizcossessionroad.png";
+export const taranaai = "/images/taranaai.png";
+export const taranaai2 = "/images/taranaai2.png";
