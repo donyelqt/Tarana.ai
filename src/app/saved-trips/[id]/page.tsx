@@ -4,7 +4,13 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Sidebar from "../../../components/Sidebar"
 import { Button } from "@/components/ui/button"
-import { getSavedItineraries, SavedItinerary, formatDateRange, updateItinerary } from "@/lib/savedItineraries";
+import {
+  getSavedItineraries,
+  SavedItinerary,
+  formatDateRange,
+  updateItinerary,
+  ItineraryPeriod,
+} from "@/lib/savedItineraries";
 import { fetchWeatherFromAPI, WeatherData } from "@/lib/utils"; // Added import
 import Image, { type StaticImageData } from "next/image"
 import PlaceDetail from "@/components/PlaceDetail"
@@ -368,6 +374,25 @@ const SavedItineraryDetail = () => {
     }
   }
 
+  // Group itinerary periods into days. A new day starts with "Morning".
+  const days: ItineraryPeriod[][] = []
+  if (itineraryData && itineraryData.items) {
+    let currentDay: ItineraryPeriod[] = []
+    for (const period of itineraryData.items) {
+      if (
+        period.period?.toLowerCase().includes("morning") &&
+        currentDay.length > 0
+      ) {
+        days.push(currentDay)
+        currentDay = []
+      }
+      currentDay.push(period)
+    }
+    if (currentDay.length > 0) {
+      days.push(currentDay)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
       <Sidebar />
@@ -449,86 +474,147 @@ const SavedItineraryDetail = () => {
             </div>
           </div>
           {/* Day-by-day breakdown */}
-          {itineraryData.items.map((period, dayIdx) => (
+          {days.map((day, dayIdx) => (
             <div key={dayIdx} className="mb-10">
               <div className="mb-4 flex items-center gap-3">
                 <div className="bg-white rounded-xl px-6 py-2 font-semibold text-gray-900 text-base border border-gray-200 shadow-sm">
-                  Day {dayIdx + 1}&nbsp;<span className="text-gray-500 text-base font-medium"> {formatDateRange(dates.start, dates.end).split("-")[dayIdx]?.trim() || ""}</span>
+                  Day {dayIdx + 1}&nbsp;
+                  <span className="text-gray-500 text-base font-medium">
+                    {" "}
+                    {formatDateRange(dates.start, dates.end)
+                      .split("-")
+                      [dayIdx]?.trim() || ""}
+                  </span>
                 </div>
               </div>
               <div className="flex flex-col gap-6">
-                {period.activities.map((activity, idx) => {
-                      let imageSrcToUse: string | null = null;
-                      if (activity.image) {
-                        if (typeof activity.image === 'string') {
-                          if (activity.image.trim() !== "") imageSrcToUse = activity.image;
-                        } else { // Assumed to be StaticImageData
-                          const staticImage = activity.image as StaticImageData;
-                          if (staticImage.src && typeof staticImage.src === 'string' && staticImage.src.trim() !== "") {
-                            imageSrcToUse = staticImage.src;
-                          }
+                {day
+                  .flatMap(period => period.activities)
+                  .map((activity, idx) => {
+                    let imageSrcToUse: string | null = null
+                    if (activity.image) {
+                      if (typeof activity.image === "string") {
+                        if (activity.image.trim() !== "")
+                          imageSrcToUse = activity.image
+                      } else {
+                        // Assumed to be StaticImageData
+                        const staticImage = activity.image as StaticImageData
+                        if (
+                          staticImage.src &&
+                          typeof staticImage.src === "string" &&
+                          staticImage.src.trim() !== ""
+                        ) {
+                          imageSrcToUse = staticImage.src
                         }
                       }
-                      return (
-                  <div key={idx} className="flex flex-col md:flex-row bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-                    {/* Time column for desktop */}
-                    <div className="hidden md:flex flex-col justify-center items-center w-32 bg-blue-50 border-r border-gray-100">
-                    <span className="text-blue-700 text-lg p-8 items-center justify-center font-semibold"><span className="text-sm font-thin text-gray-400 flex items-center justify-center">Est.</span>{activity.time}</span>
-                    </div>
-                    {/* Image */}
-                    <div className="relative w-full md:w-60 h-40 md:h-auto md:mt-8 md:mb-8 md:ml-8 flex-shrink-0">
-                        {imageSrcToUse ? (
-                          <Image
-                            src={imageSrcToUse}
-                            alt={(activity.title as string) || 'Activity image'}
-                            fill
-                            className="object-center rounded-2xl md:rounded-l-2xl"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-2xl md:rounded-l-2xl">
-                            <span className="text-gray-500 text-sm">No image available</span>
-                          </div>
-                        )}
-                    </div>
-                    {/* Details */}
-                    <div className="flex-1 p-6 flex flex-col gap-2">
-                      {/* Time for mobile */}
-                      <div className="flex md:hidden mb-1">
-                        <span className="text-blue-700 font-semibold text-sm">{activity.time as string}</span>
-                      </div>
-                      <div className="flex flex-col md:flex-row md:items-center md:gap-4 mb-1">
-                        <span className="font-bold text-lg text-gray-900 md:ml-0 ml-1">{activity.title as string}</span>
-                      </div>
-                      <div className="text-gray-700 text-sm mb-2">{activity.desc as string}</div>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {((activity.tags as string[]) || []).map((tag, i) => (
-                          <span key={i} className="flex items-center gap-1 bg-gray-100 px-3 py-1 rounded-full text-xs text-gray-600">
-                            <span>{interestIcons[tag] || ""}</span>
-                            {tag}
+                    }
+                    return (
+                      <div
+                        key={idx}
+                        className="flex flex-col md:flex-row bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100"
+                      >
+                        {/* Time column for desktop */}
+                        <div className="hidden md:flex flex-col justify-center items-center w-40 bg-blue-50 border-r border-gray-100">
+                          <span className="text-blue-700 text-lg p-8 items-center justify-center font-semibold">
+                            {activity.time}
                           </span>
-                        ))}
+                        </div>
+                        {/* Image */}
+                        <div className="relative w-full md:w-60 h-40 md:h-auto md:mt-8 md:mb-8 md:ml-8 flex-shrink-0">
+                          {imageSrcToUse ? (
+                            <Image
+                              src={imageSrcToUse}
+                              alt={
+                                (activity.title as string) || "Activity image"
+                              }
+                              fill
+                              className="object-center rounded-2xl md:rounded-l-2xl"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-2xl md:rounded-l-2xl">
+                              <span className="text-gray-500 text-sm">
+                                No image available
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        {/* Details */}
+                        <div className="flex-1 p-6 flex flex-col gap-2">
+                          {/* Time for mobile */}
+                          <div className="flex md:hidden mb-1">
+                            <span className="text-blue-700 font-semibold text-sm">
+                              {activity.time as string}
+                            </span>
+                          </div>
+                          <div className="flex flex-col md:flex-row md:items-center md:gap-4 mb-1">
+                            <span className="font-bold text-lg text-gray-900 md:ml-0 ml-1">
+                              {activity.title as string}
+                            </span>
+                          </div>
+                          <div className="text-gray-700 text-sm mb-2">
+                            {activity.desc as string}
+                          </div>
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {((activity.tags as string[]) || []).map(
+                              (tag, i) => (
+                                <span
+                                  key={i}
+                                  className="flex items-center gap-1 bg-gray-100 px-3 py-1 rounded-full text-xs text-gray-600"
+                                >
+                                  <span>{interestIcons[tag] || ""}</span>
+                                  {tag}
+                                </span>
+                              ),
+                            )}
+                          </div>
+                          <div className="flex items-center justify-end mt-auto gap-6">
+                            <a
+                              href="#"
+                              className="flex items-center gap-1 text-yellow-500 text-sm font-medium hover:underline"
+                              onClick={e => handleViewReviews(activity, e)}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                                className="w-4 h-4"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z" />
+                              </svg>
+                              Reviews
+                            </a>
+                            <a
+                              href="#"
+                              className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:underline"
+                              onClick={e => handleViewOnMap(activity, e)}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                className="w-4 h-4"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                              </svg>
+                              View on Map
+                            </a>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-end mt-auto gap-6">
-                        <a 
-                          href="#" 
-                          className="flex items-center gap-1 text-yellow-500 text-sm font-medium hover:underline"
-                          onClick={(e) => handleViewReviews(activity, e)}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" className="w-4 h-4"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z"/></svg>
-                          Reviews
-                        </a>
-                        <a 
-                          href="#" 
-                          className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:underline"
-                          onClick={(e) => handleViewOnMap(activity, e)}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                          View on Map
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                )})}
+                    )
+                  })}
               </div>
             </div>
           ))}
