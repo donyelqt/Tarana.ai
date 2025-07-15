@@ -65,7 +65,7 @@ const Sidebar = () => {
               Tarana Eats
             </Link>
             {/* SAVED PLANS section */}
-            <div className="px-4 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Saved Plans</div>
+            <div className="px-4 pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Saved Plans</div>
             <Link href="/saved-trips" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/saved-trips" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
               <span className="mr-3">
                 <MapPinCheck size={20} />
