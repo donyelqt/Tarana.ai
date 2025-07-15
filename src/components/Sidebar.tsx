@@ -70,7 +70,7 @@ const Sidebar = () => {
               <span className="mr-3">
                 <MapPinCheck size={20} />
               </span>
-              Itinerary
+              Itineraries
             </Link>
             <Link href="/saved-meals" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/saved-meals" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
               <span className="mr-3">
