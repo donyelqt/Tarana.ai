@@ -4,9 +4,10 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
-import { Bookmark, Settings, Donut } from 'lucide-react'
+import { Bookmark, Settings, Donut, Utensils, MapPinCheck } from 'lucide-react'
 import Image from "next/image"
 import taranaai2 from "../../public/images/taranaai2.png"
+import { MapIcon } from "@heroicons/react/24/solid"
 
 const Sidebar = () => {
   const pathname = usePathname()
@@ -39,7 +40,7 @@ const Sidebar = () => {
       </button>
 
       {/* Sidebar - hidden on mobile unless toggled */}
-      <aside className={`w-64 ${pathname === "/itinerary-generator" ? "bg-[#f7f9fb]" : "bg-white"} border-r border-gray-200 flex flex-col justify-between py-8 px-6 fixed inset-y-0 left-0 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40`}>
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col justify-between p-6`}>
         <div>
           <div className="text-2xl font-bold mb-12">
             <Image src={taranaai2} alt="Logo" width={120} height={120} />
@@ -63,18 +64,28 @@ const Sidebar = () => {
               </span>
               Tarana Eats
             </Link>
+            {/* SAVED PLANS section */}
+            <div className="px-4 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Saved Plans</div>
             <Link href="/saved-trips" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/saved-trips" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
               <span className="mr-3">
-                <Bookmark size={20} />
+                <MapPinCheck size={20} />
               </span>
-              Saved Trips
+              Itinerary
             </Link>
-            <Link href="#" className="flex items-center px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-blue-50 transition">
+            <Link href="/saved-meals" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/saved-meals" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
               <span className="mr-3">
-                <Settings size={20} />
+                <Utensils size={20} />
               </span>
-              Settings
+              Meals
             </Link>
+            <div className="pt-4">
+              <Link href="#" className="flex items-center px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-blue-50 transition">
+                <span className="mr-3">
+                  <Settings size={20} />
+                </span>
+                Settings
+              </Link>
+            </div>
           </nav>
         </div>
         <button 
