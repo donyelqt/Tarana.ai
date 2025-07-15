@@ -152,13 +152,16 @@ const SavedTrips = () => {
                 </div>
                 
                 {/* Tags */}
-                <div className="mb-4 bg-white border-2 rounded-xl px-4 py-2 w-fit">
+                <div className="mb-4">
                   <div className="flex flex-wrap gap-2">
                     {itinerary.tags.map((tag, index) => (
-                      <span key={index} className="inline-flex items-center">
+                      <span
+                        key={index}
+                        className="inline-flex items-center rounded-lg border-2 bg-white px-2 py-2"
+                      >
                         <span className="mr-1">
-                          {tag === "Food & Culinary" && "🍽️"}
-                          {tag === "Nature & Scenery" && "🌿"}
+                          {/*{tag === "Food & Culinary" && "🍽️"}
+                          {tag === "Nature & Scenery" && "🌿"}*/}
                         </span>
                         <span className="text-xs text-gray-600">{tag}</span>
                       </span>
