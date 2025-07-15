@@ -3,24 +3,12 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { PlusIcon, CheckIcon } from "@heroicons/react/24/solid";
 import { cn } from "@/lib/utils";
-
-interface ResultMatch {
-  name: string;
-  meals: number;
-  price: number;
-  image: string;
-}
-
-interface MenuItem {
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-}
+import { ResultMatch, MenuItem } from "@/types/tarana-eats";
 
 interface MenuPopupProps {
   match: ResultMatch;
   onClose: () => void;
+  onSave: (selectedItems: MenuItem[]) => void;
 }
 
 // Static sample menu data; replace with real data as needed
@@ -61,7 +49,7 @@ const MENU_DATA: Record<string, MenuItem[]> = {
   ],
 };
 
-export default function MenuPopup({ match, onClose }: MenuPopupProps) {
+export default function MenuPopup({ match, onClose, onSave }: MenuPopupProps) {
   const menuItems = MENU_DATA[match.name] ?? [];
   const [selected, setSelected] = useState<MenuItem[]>([]);
 
@@ -71,6 +59,11 @@ export default function MenuPopup({ match, onClose }: MenuPopupProps) {
         ? prev.filter((i) => i.name !== item.name)
         : [...prev, item]
     );
+  };
+
+  const handleSave = () => {
+    onSave(selected);
+    onClose();
   };
 
   const total = selected.reduce((sum, item) => sum + item.price, 0);
@@ -177,6 +170,7 @@ export default function MenuPopup({ match, onClose }: MenuPopupProps) {
             </Button>
             <Button
               disabled={selected.length === 0 || isOverBudget}
+              onClick={handleSave}
               className="flex-1 bg-gradient-to-r from-[#0066FF] to-[#0052cc] text-white disabled:opacity-50"
             >
               Save Selection
