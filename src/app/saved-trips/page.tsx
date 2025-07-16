@@ -21,7 +21,7 @@ const SavedTrips = () => {
   const { toast } = useToast()
 
   useEffect(() => {
-    // Load saved itineraries from localStorage
+    // Load saved itineraries from supabase
     const fetchItineraries = async () => {
       const loadedItineraries = await getSavedItineraries();
       // Ensure loadedItineraries is an array
