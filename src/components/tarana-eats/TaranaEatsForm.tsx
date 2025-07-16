@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Leaf, Vegan, BadgeCheck } from "lucide-react";
+import { Leaf, Vegan, BadgeCheck, Coffee, Soup, Moon, Cookie } from "lucide-react";
 
 interface TaranaEatsFormProps {
   onGenerate: (results: any) => void;
@@ -30,6 +30,13 @@ const dietaryOptions = [
   { label: "Vegetarian", icon: <Leaf className="w-4 h-4" /> },
   { label: "Halal", icon: <BadgeCheck className="w-4 h-4" /> },
   { label: "Vegan", icon: <Vegan className="w-4 h-4" /> },
+];
+
+const mealTypeOptions = [
+  { label: "Breakfast", icon: <Coffee className="w-4 h-4" /> },
+  { label: "Lunch", icon: <Soup className="w-4 h-4" /> },
+  { label: "Dinner", icon: <Moon className="w-4 h-4" /> },
+  { label: "Snack", icon: <Cookie className="w-4 h-4" /> },
 ];
 
 export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
@@ -144,20 +151,21 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
       <div className="mb-8">
         <label className="block text-sm font-medium mb-1">Meal Type</label>
         <div className="grid grid-cols-2 gap-2">
-          {['Breakfast', 'Dinner', 'Lunch', 'Snack'].map(opt => (
+          {mealTypeOptions.map((opt) => (
             <Button
-              key={opt}
+              key={opt.label}
               type="button"
               variant="outline"
-              onClick={() => handleMealType(opt)}
+              onClick={() => handleMealType(opt.label)}
               className={cn(
                 'flex items-center justify-center gap-2 py-3 font-medium transition',
-                mealType.includes(opt)
+                mealType.includes(opt.label)
                   ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500'
                   : 'bg-white border-gray-300 text-gray-700'
               )}
             >
-              {opt}
+              {opt.icon}
+              {opt.label}
             </Button>
           ))}
         </div>
