@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { upsertActivityEmbedding } from "@/lib/vectorSearch";
-import { sampleItinerary } from "@/app/itinerary-generator/components/itineraryData";
+import { sampleItinerary } from "@/app/itinerary-generator/data/itineraryData";
 
 // Simple auth via header X-ADMIN-TOKEN that must match env.REINDEX_SECRET
 const ADMIN_TOKEN = process.env.REINDEX_SECRET || "";
