@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Search } from "lucide-react";
 import { savedMeals as initialSavedMeals, SavedMeal } from "./data";
-import MealCard from "@/components/saved-meals/MealCard";
+import MealCard from "./components/MealCard";
 
 const SavedMealsPage = () => {
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>(initialSavedMeals);
