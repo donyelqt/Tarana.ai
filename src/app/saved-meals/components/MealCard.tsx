@@ -1,4 +1,4 @@
-
+import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { SavedMeal } from "@/app/saved-meals/data";
@@ -55,9 +55,11 @@ const MealCard = ({ meal }: MealCardProps) => {
           <span>{meal.location}</span>
         </div>
 
-        <Button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
-          View Full Menu
-        </Button>
+        <Link href={`/saved-meals/${meal.id}`} passHref>
+          <Button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+            View Full Menu
+          </Button>
+        </Link>
       </div>
     </div>
   );
