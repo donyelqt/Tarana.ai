@@ -97,11 +97,17 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
               {results.matches.map((match, idx) => {
                 const selection = savedSelections[match.name];
                 const total = selection?.reduce((sum, item) => sum + item.price, 0);
+                const hasValidImage = match.image && match.image !== "";
+                const placeholderImage = "/images/placeholders/hero-placeholder.svg";
 
                 return (
                   <div key={idx} className="rounded-xl shadow border p-4">
                     <div className="relative w-full h-32 rounded-lg mb-4 overflow-hidden">
-                      <Image src={match.image} alt={match.name} fill style={{ objectFit: "cover" }} />
+                      {hasValidImage ? (
+                        <Image src={match.image} alt={match.name} fill style={{ objectFit: "cover" }} />
+                      ) : (
+                        <Image src={placeholderImage} alt={match.name} fill style={{ objectFit: "cover" }} />
+                      )}
                     </div>
                     <div className="font-semibold text-lg">{match.name}</div>
                     <div className="text-gray-500 text-sm">{match.meals} meals under ₱{match.price}</div>
