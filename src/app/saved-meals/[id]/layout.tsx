@@ -16,12 +16,15 @@ const mealDetailsData = {
   }
 };
 
-type Props = {
-  params: { id: string };
-  searchParams: { [key: string]: string | string[] | undefined };
+type Params = {
+  id: string;
 };
 
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+export async function generateMetadata({ 
+  params 
+}: { 
+  params: Params;
+}): Promise<Metadata> {
   // Read route params
   const id = params.id;
 
