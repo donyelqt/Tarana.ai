@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 import { searchSimilarActivities } from "@/lib/vectorSearch";
 // Import the canonical sample itinerary so we can look up images by title as a fallback
-import { sampleItineraryCombined } from "@/app/itinerary-generator/components/itineraryData";
+import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
 
 // Global initialization for Gemini model to avoid re-creating the client on every request.
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";

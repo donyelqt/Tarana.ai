@@ -3,17 +3,9 @@
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ItineraryData, sampleItinerary } from "./itineraryData";
-import { WeatherData } from "@/lib/utils";
-
-interface ItineraryPreviewProps {
-  showPreview: boolean;
-  isLoadingItinerary: boolean;
-  generatedItinerary: ItineraryData | null;
-  weatherData: WeatherData | null;
-  onSave: () => void;
-  taranaaiLogo: import("next/image").StaticImageData | string;
-}
+import { ItineraryPreviewProps } from "../types";
+import { sampleItinerary } from "../data/itineraryData";
+import { getWeatherIconUrl, getWeatherDescription } from "../utils/weatherUtils";
 
 export default function ItineraryPreview({
   showPreview,
@@ -65,7 +57,7 @@ export default function ItineraryPreview({
           <div className="mb-4 p-3 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center">
             <div className="flex-shrink-0 mr-2">
               <Image
-                src={`https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png`}
+                src={getWeatherIconUrl(weatherData)}
                 alt={weatherData.weather[0].description}
                 width={40}
                 height={40}
@@ -74,7 +66,7 @@ export default function ItineraryPreview({
             <div>
               <div className="text-sm font-medium text-white">Current Weather in Baguio</div>
               <div className="text-xs text-gray-100">
-                {weatherData.weather[0].main}, {Math.round(weatherData.main.temp)}°C
+                {getWeatherDescription(weatherData)}
               </div>
               <div className="text-xs text-gray-200 italic mt-1">
                 Itinerary adapted to current weather conditions

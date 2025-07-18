@@ -4,43 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
-import { WeatherData } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
-
-interface ItineraryFormProps {
-  showPreview: boolean;
-  isGenerating: boolean;
-  isLoadingItinerary: boolean;
-  onSubmitItinerary: (formData: FormData) => void;
-  weatherData: WeatherData | null;
-  budget: string;
-  setBudget: React.Dispatch<React.SetStateAction<string>>;
-  pax: string;
-  setPax: React.Dispatch<React.SetStateAction<string>>;
-  duration: string;
-  setDuration: React.Dispatch<React.SetStateAction<string>>;
-  dates: { start: Date | undefined; end: Date | undefined };
-  setDates: React.Dispatch<React.SetStateAction<{ start: Date | undefined; end: Date | undefined }>>;
-  selectedInterests: string[];
-  setSelectedInterests: React.Dispatch<React.SetStateAction<string[]>>;
-  handleInterest: (interest: string) => void;
-  interests: { label: string; icon: React.ReactNode }[];
-  budgetOptions: string[];
-  paxOptions: string[];
-  durationOptions: string[];
-}
-
-export interface FormData {
-  budget: string;
-  pax: string;
-  duration: string;
-  dates: { start: Date | undefined; end: Date | undefined };
-  selectedInterests: string[];
-}
+import { ItineraryFormProps, FormData } from "../types";
 
 export default function ItineraryForm({
   showPreview,
   isGenerating,
+  isLoadingItinerary,
   onSubmitItinerary,
   budget,
   setBudget,
@@ -52,7 +22,7 @@ export default function ItineraryForm({
   setDates,
   selectedInterests,
   handleInterest,
-  interests: propInterests, // Renaming to avoid conflict with imported 'interests'
+  interests: propInterests,
   budgetOptions,
   paxOptions,
   durationOptions
@@ -75,7 +45,11 @@ export default function ItineraryForm({
       const endDate = new Date(dates.end);
       const diffTime = endDate.getTime() - startDate.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      const durationNum = parseInt(duration);
+      
+      // Extract the number from duration string like "2 Days"
+      const durationMatch = duration.match(/\d+/);
+      const durationNum = durationMatch ? parseInt(durationMatch[0], 10) : NaN;
+      
       if (!isNaN(durationNum) && diffDays !== durationNum) {
         toast({
           title: "Invalid Travel Dates",
@@ -85,14 +59,22 @@ export default function ItineraryForm({
         return;
       }
     }
-    onSubmitItinerary({ budget, pax, duration, dates, selectedInterests });
+    
+    const formData: FormData = {
+      budget,
+      pax,
+      duration,
+      dates,
+      selectedInterests
+    };
+    
+    onSubmitItinerary(formData);
   };
 
   return (
     <div className="w-full bg-gray-100">
     <div className="w-full rounded-tl-7xl bg-white p-6">
       <div className="text-2xl font-bold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
-      {/* <hr className="my-6 w-full border-gray-200" /> */}
       <form className="space-y-8" onSubmit={handleSubmit}>
         {/* Budget Range */}
         <div>
