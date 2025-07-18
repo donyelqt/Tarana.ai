@@ -8,7 +8,7 @@ import Sidebar from '@/components/Sidebar';
 import { useParams, useRouter } from 'next/navigation';
 import { savedMeals } from '../data';
 import Link from 'next/link';
-import { FullMenu } from '@/app/tarana-eats/data/combinedFoodData';
+import { FullMenu } from '@/app/tarana-eats/data/taranaEatsData';
 
 // Static data for fallback
 const mealDetailsData = {
