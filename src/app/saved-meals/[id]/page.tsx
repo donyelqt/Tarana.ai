@@ -9,6 +9,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { savedMeals } from '../data';
 import Link from 'next/link';
 
+// Static data for fallback
 const mealDetailsData = {
   '1': {
     name: 'Cafe Ysap',
@@ -110,29 +111,74 @@ const SavedMealPage = () => {
   
   useEffect(() => {
     // Get the meal ID from the URL query parameter
-    const searchParams = new URLSearchParams(window.location.search);
-    const mealParam = searchParams.get('meal');
-    if (mealParam) {
-      setSelectedMealId(mealParam);
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const mealParam = searchParams.get('meal');
+      if (mealParam) {
+        setSelectedMealId(mealParam);
+      }
+      
+      // First, try to get meal details from localStorage
+      let details;
+      try {
+        if (typeof window !== 'undefined') {
+          const storedMealDetails = localStorage.getItem('mealDetailsData');
+          if (storedMealDetails) {
+            const parsedMealDetails = JSON.parse(storedMealDetails);
+            details = parsedMealDetails[mealId];
+          }
+        }
+      } catch (error) {
+        console.error("Error loading meal details from localStorage:", error);
+      }
+      
+      // If not found in localStorage, try the static data
+      if (!details) {
+        details = mealDetailsData[mealId as keyof typeof mealDetailsData];
+      }
+      
+      if (!details) {
+        // Redirect to saved meals page if the meal ID doesn't exist
+        router.push('/saved-meals');
+        return;
+      }
+      
+      setMealDetails(details);
+      setLoading(false);
+      
+      if (details && details.menuItems && details.menuItems.length > 0) {
+        setActiveMenu(details.menuItems[0].type);
+      }
+      
+      document.title = `Tarana.ai | ${details?.name || 'Meal'}`;
     }
-    
-    const details = mealDetailsData[mealId as keyof typeof mealDetailsData];
-    
-    if (!details) {
-      // Redirect to saved meals page if the meal ID doesn't exist
-      router.push('/saved-meals');
-      return;
-    }
-    
-    setMealDetails(details);
-    setLoading(false);
-    
-    if (details && details.menuItems.length > 0) {
-      setActiveMenu(details.menuItems[0].type);
-    }
-    
-    document.title = `Tarana.ai | ${details?.name || 'Meal'}`;
   }, [mealId, router]);
+
+  const handleDeleteMeal = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        // Delete from localStorage
+        const storedMeals = localStorage.getItem('savedMeals');
+        if (storedMeals) {
+          const parsedStoredMeals = JSON.parse(storedMeals);
+          const updatedMeals = parsedStoredMeals.filter((meal: any) => meal.id !== mealId);
+          localStorage.setItem('savedMeals', JSON.stringify(updatedMeals));
+        }
+        
+        const storedMealDetails = localStorage.getItem('mealDetailsData');
+        if (storedMealDetails) {
+          const parsedMealDetails = JSON.parse(storedMealDetails);
+          delete parsedMealDetails[mealId];
+          localStorage.setItem('mealDetailsData', JSON.stringify(parsedMealDetails));
+        }
+      }
+      
+      // Redirect back to saved meals page
+      router.push('/saved-meals');
+    } catch (error) {
+      console.error("Error deleting meal:", error);
+    }
+  };
 
   if (loading || !mealDetails) {
     return (
@@ -145,7 +191,7 @@ const SavedMealPage = () => {
     );
   }
 
-  const filteredMenuItems = mealDetails.menuItems.filter((item: any) => item.type === activeMenu);
+  const filteredMenuItems = mealDetails.menuItems?.filter((item: any) => item.type === activeMenu) || [];
 
   return (
     <div className="min-h-screen bg-[#f7f9fb] flex">
@@ -159,10 +205,20 @@ const SavedMealPage = () => {
           <div className="xl:col-span-2 flex flex-col gap-6">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-6">
               <div className="w-24 h-24 rounded-full bg-[#7d5a44] flex-shrink-0 flex items-center justify-center text-white text-center font-bold text-lg leading-tight">
-                Cafe<br/>Ysap
+                {mealDetails.name.substring(0, 2)}
               </div>
               <div className="flex-1">
-                <h1 className="text-3xl font-bold text-gray-900">{mealDetails.name}</h1>
+                <div className="flex justify-between">
+                  <h1 className="text-3xl font-bold text-gray-900">{mealDetails.name}</h1>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-10 w-10 border-gray-300 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={handleDeleteMeal}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </Button>
+                </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-500 mt-2">
                   <span className="flex items-center gap-1.5"><MapPin size={16} />{mealDetails.location}</span>
                   <span className="flex items-center gap-1.5"><Clock size={16} />{mealDetails.hours}</span>
@@ -177,14 +233,14 @@ const SavedMealPage = () => {
             </div>
           </div>
           <div className="w-full h-64 xl:h-auto rounded-2xl overflow-hidden relative">
-            <Image src={mealDetails.image} alt="Cafe Ysap" fill className="object-cover" />
+            <Image src={mealDetails.image} alt={mealDetails.name} fill className="object-cover" />
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Saved Meals</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {mealDetails.savedMeals.map((savedMeal: any) => {
+            {mealDetails.savedMeals && mealDetails.savedMeals.map((savedMeal: any) => {
               const isSelected = selectedMealId === savedMeal.id;
               return (
                 <div 
@@ -208,12 +264,12 @@ const SavedMealPage = () => {
                     </div>
                   </div>
                   <div className="space-y-1 text-gray-500">
-                    {savedMeal.items.map((item: any, idx: number) => (
-                      <p key={idx}>{item.name} - ₱{item.price} x {item.quantity}</p>
+                    {savedMeal.items && savedMeal.items.map((item: any, idx: number) => (
+                      <p key={idx}>{item.name} - ₱{item.price} x {item.quantity || 1}</p>
                     ))}
                   </div>
                   <div className="flex justify-between items-center mt-4">
-                    <p className="text-lg font-bold">Total: ₱{savedMeal.totalPrice.toFixed(2)}</p>
+                    <p className="text-lg font-bold">Total: ₱{savedMeal.totalPrice ? savedMeal.totalPrice.toFixed(2) : '0.00'}</p>
                     <p className="text-gray-500">Good for {savedMeal.goodFor}pax</p>
                   </div>
                   <div className="flex items-center gap-3 mt-4">
@@ -228,7 +284,12 @@ const SavedMealPage = () => {
                         {isSelected ? 'Selected Meal' : 'View Meal Card'}
                       </Button>
                     </Link>
-                    <Button variant="outline" size="icon" className="h-12 w-12 border-gray-300 rounded-lg">
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-12 w-12 border-gray-300 rounded-lg"
+                      onClick={handleDeleteMeal}
+                    >
                       <Trash2 className="w-5 h-5 text-gray-500" />
                     </Button>
                   </div>
@@ -238,52 +299,56 @@ const SavedMealPage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl py-4 px-6 shadow-sm border border-gray-100">
-          <div className="flex justify-between items-center flex-wrap gap-4">
-            <h2 className="text-2xl font-bold text-gray-900">Full Menu</h2>
-            <div className="flex items-center gap-4 flex-wrap">
-              {mealTypes.map((type) => (
-                <Button
-                  key={type}
-                  variant={activeMenu === type ? "default" : "outline"}
-                  onClick={() => setActiveMenu(type)}
-                  className={`rounded-lg px-6 py-2 text-base font-medium transition-all duration-200 ${
-                    activeMenu === type 
-                    ? 'bg-blue-600 text-white border-blue-600' 
-                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100 hover:text-gray-700'
-                  }`}
-                >
-                  {type}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-        
-        <div className="mt-6 rounded-2xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredMenuItems.map((item: any, idx: number) => (
-              <div key={idx} className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
-                <div className="relative w-full h-56">
-                  <Image src={item.image} alt={item.name} fill className="object-cover" />
-                </div>
-                <div className="p-4 flex flex-col flex-1">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-bold text-gray-900">{item.name}</h3>
-                    <div className="flex items-center gap-1.5 text-gray-500 text-sm">
-                      <MealIcon type={item.type} className="w-4 h-4" />{item.type}
-                    </div>
-                  </div>
-                  <p className="text-2xl font-bold text-blue-600 mb-2">₱{item.price}</p>
-                  <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-4">
-                    <User size={14} />Good for {item.goodFor}
-                  </div>
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 h-auto rounded-lg mt-auto">Save to My Meals</Button>
+        {filteredMenuItems.length > 0 && (
+          <>
+            <div className="bg-white rounded-2xl py-4 px-6 shadow-sm border border-gray-100">
+              <div className="flex justify-between items-center flex-wrap gap-4">
+                <h2 className="text-2xl font-bold text-gray-900">Full Menu</h2>
+                <div className="flex items-center gap-4 flex-wrap">
+                  {mealTypes.map((type) => (
+                    <Button
+                      key={type}
+                      variant={activeMenu === type ? "default" : "outline"}
+                      onClick={() => setActiveMenu(type)}
+                      className={`rounded-lg px-6 py-2 text-base font-medium transition-all duration-200 ${
+                        activeMenu === type 
+                        ? 'bg-blue-600 text-white border-blue-600' 
+                        : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100 hover:text-gray-700'
+                      }`}
+                    >
+                      {type}
+                    </Button>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+            
+            <div className="mt-6 rounded-2xl">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredMenuItems.map((item: any, idx: number) => (
+                  <div key={idx} className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
+                    <div className="relative w-full h-56">
+                      <Image src={item.image} alt={item.name} fill className="object-cover" />
+                    </div>
+                    <div className="p-4 flex flex-col flex-1">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-bold text-gray-900">{item.name}</h3>
+                        <div className="flex items-center gap-1.5 text-gray-500 text-sm">
+                          <MealIcon type={item.type} className="w-4 h-4" />{item.type}
+                        </div>
+                      </div>
+                      <p className="text-2xl font-bold text-blue-600 mb-2">₱{item.price}</p>
+                      <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-4">
+                        <User size={14} />Good for {item.goodFor}
+                      </div>
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 h-auto rounded-lg mt-auto">Save to My Meals</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </main>
     </div>
   );

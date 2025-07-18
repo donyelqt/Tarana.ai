@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,22 +15,76 @@ import {
 import { Plus, Search } from "lucide-react";
 import { savedMeals as initialSavedMeals, SavedMeal } from "./data";
 import MealCard from "./components/MealCard";
+import { useRouter } from "next/navigation";
 
 const SavedMealsPage = () => {
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>(initialSavedMeals);
   const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+
+  useEffect(() => {
+    // Load saved meals from localStorage when the component mounts
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      try {
+        const storedMeals = localStorage.getItem('savedMeals');
+        if (storedMeals) {
+          const parsedStoredMeals: SavedMeal[] = JSON.parse(storedMeals);
+          // Combine with initial static data
+          setSavedMeals([...initialSavedMeals, ...parsedStoredMeals]);
+        }
+      } catch (error) {
+        console.error("Error loading saved meals:", error);
+      }
+    }
+  }, []);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     if (query.trim() === "") {
-      setSavedMeals(initialSavedMeals);
+      // Get stored meals again to ensure we have the latest
+      try {
+        if (typeof window !== 'undefined') {
+          const storedMeals = localStorage.getItem('savedMeals');
+          if (storedMeals) {
+            const parsedStoredMeals: SavedMeal[] = JSON.parse(storedMeals);
+            setSavedMeals([...initialSavedMeals, ...parsedStoredMeals]);
+          } else {
+            setSavedMeals(initialSavedMeals);
+          }
+        } else {
+          setSavedMeals(initialSavedMeals);
+        }
+      } catch (error) {
+        console.error("Error loading saved meals:", error);
+        setSavedMeals(initialSavedMeals);
+      }
     } else {
-      const filtered = initialSavedMeals.filter(
+      // Get all meals including stored ones
+      let allMeals = [...initialSavedMeals];
+      try {
+        if (typeof window !== 'undefined') {
+          const storedMeals = localStorage.getItem('savedMeals');
+          if (storedMeals) {
+            const parsedStoredMeals: SavedMeal[] = JSON.parse(storedMeals);
+            allMeals = [...allMeals, ...parsedStoredMeals];
+          }
+        }
+      } catch (error) {
+        console.error("Error loading saved meals for search:", error);
+      }
+
+      // Filter based on search query
+      const filtered = allMeals.filter(
         (meal) =>
           meal.cafeName.toLowerCase().includes(query.toLowerCase())
       );
       setSavedMeals(filtered);
     }
+  };
+
+  const handleGenerateMeals = () => {
+    router.push("/tarana-eats");
   };
 
   return (
@@ -46,7 +100,10 @@ const SavedMealsPage = () => {
                 All your saved meal recommendations in one place.
               </p>
             </div>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center"
+              onClick={handleGenerateMeals}
+            >
               <Plus size={20} className="mr-2" />
               Generate
             </Button>
