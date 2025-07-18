@@ -64,7 +64,6 @@ export default function TaranaEatsPage() {
           
           return true;
         })
-        .slice(0, 5) // Limit to 5 results
         .map(restaurant => ({
           name: restaurant.name,
           meals: formValues.pax || 2,

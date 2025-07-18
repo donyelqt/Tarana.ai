@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       ]
     }
     
-    Only include restaurants from the available data. Return exactly 3 best matches.
+    Only include restaurants from the available data. Return only the best matches (between 1-3 restaurants) - do not duplicate restaurants to reach exactly 3 recommendations.
     `;
 
     try {
@@ -224,15 +224,12 @@ function createFallbackRecommendations(foodData: any, prompt: string): { matches
     }
   }
   
-  // If we filtered too much, use the original list
-  if (filteredRestaurants.length < 3) {
-    filteredRestaurants = foodData.restaurants;
+  // If we have no matches after filtering, use the original list
+  if (filteredRestaurants.length === 0) {
+    filteredRestaurants = foodData.restaurants.slice(0, 3);
   }
   
-  // Limit to 3 restaurants
-  filteredRestaurants = filteredRestaurants.slice(0, 3);
-  
-  // Create enhanced result matches
+  // Create enhanced result matches - don't force exactly 3 matches
   const matches: EnhancedResultMatch[] = filteredRestaurants.map(restaurant => ({
     name: restaurant.name,
     meals: 2,  // Default value
