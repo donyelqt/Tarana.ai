@@ -3,19 +3,19 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Clock, Trash2, Utensils, Coffee, Croissant, Pizza } from 'lucide-react';
+import { Clock, Trash2, Coffee, MapPin, User, Utensils, Croissant } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { savedMeals } from '../data';
+import Link from 'next/link';
 
-// Extended data for individual meal pages
 const mealDetailsData = {
   '1': {
     name: 'Cafe Ysap',
     location: 'Loakan, Baguio City',
     hours: '9AM - 6PM',
     priceRange: '₱150-₱900',
-    about: 'A cozy café tucked in the heart of Baguio, Café Ysap serves home-cooked Filipino meals made with fresh, local ingredients. Known for its warm ambience and hearty silog plites, it\'s the perfect stop for comfort food and mountain air.',
+    about: `A cozy café tucked in the heart of Baguio, Café Ysap serves home-cooked Filipino meals made with fresh, local ingredients. Known for its warm ambience and hearty silog plates, it's the perfect stop for comfort food and mountain air.`,
     image: '/images/caferuins.png',
     savedMeals: [
       {
@@ -31,45 +31,43 @@ const mealDetailsData = {
       }
     ],
     menuItems: [
-      { name: 'Tapsilog', type: 'Breakfast', price: 150, image: '/images/bencab.png' },
-      { name: 'Longsilog', type: 'Breakfast', price: 150, image: '/images/burnham.png' },
-      { name: 'Tocilog', type: 'Breakfast', price: 150, image: '/images/caferuins.png' },
+      { name: 'Tapsilog', type: 'Breakfast', price: 150, image: '/images/bencab.png', goodFor: 1 },
+      { name: 'Longsilog', type: 'Breakfast', price: 150, image: '/images/burnham.png', goodFor: 1 },
+      { name: 'Tocilog', type: 'Breakfast', price: 150, image: '/images/caferuins.png', goodFor: 1 },
     ]
   },
   '2': {
     name: 'Golden Wok Cafe',
     location: 'Upper QM, near Lourdes Grotto, Baguio City',
-    hours: '10AM - 9PM',
-    priceRange: '₱180-₱1200',
-    about: 'Golden Wok Cafe offers authentic Chinese cuisine with a Filipino twist. Their specialties include dim sum, noodle soups, and stir-fried dishes that blend traditional recipes with local flavors.',
+    hours: '11AM - 10PM',
+    priceRange: '₱180-₱700',
+    about: `Golden Wok Cafe offers authentic Chinese cuisine with a Filipino twist. Known for its generous portions and affordable prices, this local favorite features classic stir-fry dishes, noodles, and dimsum in a casual dining atmosphere.`,
     image: '/images/goodtaste.png',
     savedMeals: [
       {
         id: 'meal2',
-        name: 'Family Dinner Set',
+        name: 'Special Dinner Set',
         type: 'Dinner',
         items: [
-          { name: 'Sweet and Sour Pork', price: 280, quantity: 1 },
-          { name: 'Yang Chow Fried Rice', price: 220, quantity: 1 },
-          { name: 'Beef with Broccoli', price: 320, quantity: 1 },
-          { name: 'Iced Tea', price: 50, quantity: 4 }
+          { name: 'Sweet and Sour Pork', price: 220, quantity: 1 },
+          { name: 'Yang Chow Fried Rice', price: 180, quantity: 1 }
         ],
-        totalPrice: 1020,
-        goodFor: 4
+        totalPrice: 400,
+        goodFor: 2
       }
     ],
     menuItems: [
-      { name: 'Sweet and Sour Pork', type: 'Dinner', price: 280, image: '/images/goodtaste.png' },
-      { name: 'Yang Chow Fried Rice', type: 'Dinner', price: 220, image: '/images/hillstation.png' },
-      { name: 'Beef with Broccoli', type: 'Dinner', price: 320, image: '/images/goodtaste.png' },
+      { name: 'Sweet and Sour Pork', type: 'Dinner', price: 220, image: '/images/hillstation.png', goodFor: 2 },
+      { name: 'Yang Chow Fried Rice', type: 'Dinner', price: 180, image: '/images/goodtaste.png', goodFor: 2 },
+      { name: 'Beef with Broccoli', type: 'Dinner', price: 250, image: '/images/viewspark.png', goodFor: 2 },
     ]
   },
   '3': {
     name: 'Sakura Sip & Snack',
     location: 'Military Cut-off Road, Baguio City',
-    hours: '8AM - 8PM',
-    priceRange: '₱100-₱500',
-    about: 'Sakura Sip & Snack is a charming Japanese-inspired café offering a variety of teas, coffees, and light snacks. Their matcha desserts and milk tea selections are popular among locals and tourists alike.',
+    hours: '10AM - 8PM',
+    priceRange: '₱80-₱350',
+    about: `Sakura Sip & Snack is a charming Japanese-inspired cafe offering a variety of light meals, pastries, and specialty drinks. Known for their matcha selections and aesthetic ambiance, it's perfect for afternoon tea or a quick snack while exploring Baguio.`,
     image: '/images/letai.png',
     savedMeals: [
       {
@@ -77,211 +75,216 @@ const mealDetailsData = {
         name: 'Afternoon Tea Set',
         type: 'Snack',
         items: [
-          { name: 'Matcha Cake', price: 120, quantity: 2 },
-          { name: 'Brown Sugar Milk Tea', price: 130, quantity: 2 }
+          { name: 'Matcha Latte', price: 120, quantity: 1 },
+          { name: 'Cheese Tart', price: 80, quantity: 1 }
         ],
-        totalPrice: 500,
-        goodFor: 2
+        totalPrice: 200,
+        goodFor: 1
       }
     ],
     menuItems: [
-      { name: 'Matcha Cake', type: 'Snack', price: 120, image: '/images/letai.png' },
-      { name: 'Brown Sugar Milk Tea', type: 'Snack', price: 130, image: '/images/tamawan.png' },
-      { name: 'Strawberry Cheesecake', type: 'Snack', price: 150, image: '/images/letai.png' },
+      { name: 'Matcha Latte', type: 'Drinks', price: 120, image: '/images/letai.png', goodFor: 1 },
+      { name: 'Cheese Tart', type: 'Snacks', price: 80, image: '/images/tamawan.png', goodFor: 1 },
+      { name: 'Fruit Parfait', type: 'Snacks', price: 150, image: '/images/nightmarket.png', goodFor: 1 },
     ]
   }
 };
 
 const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'];
 
-const MealIcon = ({ type }: { type: string }) => {
-    switch (type) {
-        case 'Breakfast':
-            return <Coffee className="w-4 h-4 mr-2" />;
-        case 'Dinner':
-            return <Utensils className="w-4 h-4 mr-2" />;
-        case 'Snacks':
-        case 'Snack':
-            return <Croissant className="w-4 h-4 mr-2" />;
-        default:
-            return <Pizza className="w-4 h-4 mr-2" />;
-    }
-}
+const MealIcon = ({ type, className }: { type: string, className?: string }) => {
+  if (type === 'Breakfast') return <Coffee className={className || 'w-4 h-4 mr-2'} />;
+  if (type === 'Dinner') return <Utensils className={className || 'w-4 h-4 mr-2'} />;
+  if (type === 'Snack' || type === 'Snacks') return <Croissant className={className || 'w-4 h-4 mr-2'} />;
+  return null;
+};
 
 const SavedMealPage = () => {
   const params = useParams();
+  const router = useRouter();
   const mealId = params.id as string;
   const [mealDetails, setMealDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
+  const [activeMenu, setActiveMenu] = useState('Breakfast');
+  const [selectedMealId, setSelectedMealId] = useState<string | null>(null);
+  
   useEffect(() => {
-    // Simulate fetching data
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // In a real app, this would be an API call
-        const details = mealDetailsData[mealId as keyof typeof mealDetailsData];
-        
-        if (details) {
-          setMealDetails(details);
-          // Update document title programmatically
-          document.title = `Tarana.ai | ${details.name}`;
-        } else {
-          console.error('Meal details not found');
-        }
-      } catch (error) {
-        console.error('Error fetching meal details:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Get the meal ID from the URL query parameter
+    const searchParams = new URLSearchParams(window.location.search);
+    const mealParam = searchParams.get('meal');
+    if (mealParam) {
+      setSelectedMealId(mealParam);
+    }
+    
+    const details = mealDetailsData[mealId as keyof typeof mealDetailsData];
+    
+    if (!details) {
+      // Redirect to saved meals page if the meal ID doesn't exist
+      router.push('/saved-meals');
+      return;
+    }
+    
+    setMealDetails(details);
+    setLoading(false);
+    
+    if (details && details.menuItems.length > 0) {
+      setActiveMenu(details.menuItems[0].type);
+    }
+    
+    document.title = `Tarana.ai | ${details?.name || 'Meal'}`;
+  }, [mealId, router]);
 
-    fetchData();
-  }, [mealId]);
-
-  if (loading) {
+  if (loading || !mealDetails) {
     return (
-      <div className="flex flex-col md:flex-row bg-gray-50/50 min-h-screen">
+      <div className="min-h-screen bg-[#f7f9fb] flex">
         <Sidebar />
-        <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden md:ml-64">
-          <div className="flex justify-center items-center h-screen">
-            <p className="text-lg">Loading meal details...</p>
-          </div>
-        </div>
+        <main className="flex-1 md:pl-72 p-8 flex items-center justify-center">
+          <p className="text-lg text-gray-500">Loading meal details...</p>
+        </main>
       </div>
     );
   }
 
-  if (!mealDetails) {
-    return (
-      <div className="flex flex-col md:flex-row bg-gray-50/50 min-h-screen">
-        <Sidebar />
-        <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden md:ml-64">
-          <div className="flex justify-center items-center h-screen">
-            <p className="text-lg">Meal not found</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const filteredMenuItems = mealDetails.menuItems.filter((item: any) => item.type === activeMenu);
 
   return (
-    <div className="flex flex-col md:flex-row bg-gray-50/50 min-h-screen">
+    <div className="min-h-screen bg-[#f7f9fb] flex">
       <Sidebar />
-      <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden md:ml-64">
-        <header className="flex items-center justify-between mt-14 md:mt-0">
-            <div>
-                <p className="text-sm text-gray-500">Saved Plans &gt; Meals &gt; {mealDetails.name}</p>
-            </div>
-        </header>
-        <div className="mt-6 md:mt-8">
-          <div className="flex flex-col lg:flex-row items-start bg-white p-4 sm:p-6 rounded-2xl shadow-sm">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-amber-800 flex items-center justify-center mr-4 sm:mr-6 shrink-0">
-                <span className="text-white font-bold text-xl md:text-2xl">{mealDetails.name.split(' ').map((word: string) => word[0]).join('')}</span>
-            </div>
-            <div className='flex-1 mt-4 lg:mt-0'>
-              <h1 className="text-2xl sm:text-3xl font-bold">{mealDetails.name}</h1>
-              <p className="text-gray-500 mt-1">{mealDetails.location}</p>
-              <div className="flex items-center text-sm text-gray-500 mt-2">
-                <Clock size={16} className="mr-2" />
-                <span>{mealDetails.hours}</span>
-                <span className="mx-2">|</span>
-                <span>{mealDetails.priceRange}</span>
+      <main className="flex-1 md:pl-72 p-8">
+        <div className="text-sm text-gray-500 mb-4">
+          <Link href="/saved-meals" className="hover:text-blue-600">Saved Plans</Link> &gt; <Link href="/saved-meals" className="hover:text-blue-600">Meals</Link> &gt; {mealDetails.name}
+        </div>
+        
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+          <div className="xl:col-span-2 flex flex-col gap-6">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-6">
+              <div className="w-24 h-24 rounded-full bg-[#7d5a44] flex-shrink-0 flex items-center justify-center text-white text-center font-bold text-lg leading-tight">
+                Cafe<br/>Ysap
               </div>
-              <div className="mt-4">
-                <h2 className="font-semibold">About</h2>
-                <p className="text-gray-600 text-sm mt-1">
-                  {mealDetails.about}
-                </p>
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold text-gray-900">{mealDetails.name}</h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-500 mt-2">
+                  <span className="flex items-center gap-1.5"><MapPin size={16} />{mealDetails.location}</span>
+                  <span className="flex items-center gap-1.5"><Clock size={16} />{mealDetails.hours}</span>
+                </div>
+                <p className="text-gray-500 mt-1 font-medium">{mealDetails.priceRange}</p>
               </div>
             </div>
-            <div className="w-full lg:w-2/5 h-40 sm:h-48 md:h-56 relative rounded-2xl overflow-hidden mt-4 lg:mt-0 lg:ml-6">
-                <Image
-                    src={mealDetails.image}
-                    alt={`${mealDetails.name} Interior`}
-                    layout='fill'
-                    objectFit='cover'
-                />
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-800 mb-2">About</h2>
+              <p className="text-gray-600 text-base leading-relaxed">{mealDetails.about}</p>
             </div>
+          </div>
+          <div className="w-full h-64 xl:h-auto rounded-2xl overflow-hidden relative">
+            <Image src={mealDetails.image} alt="Cafe Ysap" fill className="object-cover" />
           </div>
         </div>
 
-        {mealDetails.savedMeals && mealDetails.savedMeals.length > 0 && (
-          <div className="mt-6 md:mt-8">
-            <h2 className="text-xl sm:text-2xl font-bold mb-4">Your Saved Meals</h2>
-            {mealDetails.savedMeals.map((savedMeal: any) => (
-              <div key={savedMeal.id} className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm mb-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                  <div>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Saved Meals</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {mealDetails.savedMeals.map((savedMeal: any) => {
+              const isSelected = selectedMealId === savedMeal.id;
+              return (
+                <div 
+                  key={savedMeal.id} 
+                  className={`bg-white rounded-xl p-6 border w-full ${
+                    isSelected 
+                      ? 'border-blue-500 ring-2 ring-blue-200' 
+                      : 'border-gray-200'
+                  }`}
+                >
+                  {isSelected && (
+                    <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full mb-3 inline-block">
+                      Selected Meal
+                    </div>
+                  )}
+                  <div className="flex justify-between items-start mb-3">
                     <h3 className="text-lg font-bold">{savedMeal.name}</h3>
-                    {savedMeal.items.map((item: any, index: number) => (
-                      <p key={index} className="text-sm text-gray-500 mt-1">
-                        {item.name} - ₱{item.price} x {item.quantity}
-                      </p>
-                    ))}
-                  </div>
-                  <div className="flex items-center mt-2 sm:mt-0">
-                    <MealIcon type={savedMeal.type} />
-                    <span className="text-gray-600 font-medium">{savedMeal.type}</span>
-                  </div>
-                </div>
-                <div className="border-t my-4"></div>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                  <p className="text-xl font-bold">Total: ₱{savedMeal.totalPrice.toFixed(2)}</p>
-                  <p className="text-sm text-gray-500 mt-1 sm:mt-0">Good for {savedMeal.goodFor}pax</p>
-                </div>
-                <div className="flex items-center mt-4">
-                  <Button className="bg-blue-600 text-white flex-1 mr-2">View Meal Card</Button>
-                  <Button variant="outline" size="icon" className="rounded-full">
-                    <Trash2 className="w-5 h-5 text-gray-500" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-6 md:mt-8">
-          <h2 className="text-xl sm:text-2xl font-bold mb-4">Full Menu</h2>
-          <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2">
-            {mealTypes.map((type) => (
-              <Button
-                key={type}
-                variant={type === mealDetails.savedMeals[0]?.type ? 'default' : 'outline'}
-                className={`${type === mealDetails.savedMeals[0]?.type ? "bg-blue-600 text-white" : "bg-white"} rounded-full px-4 sm:px-6 text-sm whitespace-nowrap`}
-              >
-                {type}
-              </Button>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {mealDetails.menuItems.map((item: any, index: number) => (
-              <div key={index} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div className='relative h-40 sm:h-48'>
-                    <Image
-                    src={item.image}
-                    alt={item.name}
-                    layout='fill'
-                    objectFit='cover'
-                    />
-                </div>
-                <div className="p-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-bold">{item.name}</h3>
-                    <div className="flex items-center text-sm text-gray-500">
-                        <MealIcon type={item.type}/>
-                        <span>{item.type}</span>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <MealIcon type={savedMeal.type} className="w-5 h-5" />
+                      <span className="font-medium">{savedMeal.type}</span>
                     </div>
                   </div>
-                  <p className="text-lg font-semibold text-blue-600 mt-2">₱{item.price}</p>
-                  <p className="text-sm text-gray-500 mt-1">Good for 1</p>
-                  <Button className="w-full mt-4 bg-blue-600 text-white rounded-full">Save to My Meals</Button>
+                  <div className="space-y-1 text-gray-500">
+                    {savedMeal.items.map((item: any, idx: number) => (
+                      <p key={idx}>{item.name} - ₱{item.price} x {item.quantity}</p>
+                    ))}
+                  </div>
+                  <div className="flex justify-between items-center mt-4">
+                    <p className="text-lg font-bold">Total: ₱{savedMeal.totalPrice.toFixed(2)}</p>
+                    <p className="text-gray-500">Good for {savedMeal.goodFor}pax</p>
+                  </div>
+                  <div className="flex items-center gap-3 mt-4">
+                    <Link href={`/saved-meals/${mealId}?meal=${savedMeal.id}`} passHref>
+                      <Button 
+                        className={`flex-1 py-3 h-auto rounded-lg ${
+                          isSelected 
+                            ? 'bg-green-600 hover:bg-green-700 text-white font-semibold'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white font-semibold'
+                        }`}
+                      >
+                        {isSelected ? 'Selected Meal' : 'View Meal Card'}
+                      </Button>
+                    </Link>
+                    <Button variant="outline" size="icon" className="h-12 w-12 border-gray-300 rounded-lg">
+                      <Trash2 className="w-5 h-5 text-gray-500" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl py-4 px-6 shadow-sm border border-gray-100">
+          <div className="flex justify-between items-center flex-wrap gap-4">
+            <h2 className="text-2xl font-bold text-gray-900">Full Menu</h2>
+            <div className="flex items-center gap-4 flex-wrap">
+              {mealTypes.map((type) => (
+                <Button
+                  key={type}
+                  variant={activeMenu === type ? "default" : "outline"}
+                  onClick={() => setActiveMenu(type)}
+                  className={`rounded-lg px-6 py-2 text-base font-medium transition-all duration-200 ${
+                    activeMenu === type 
+                    ? 'bg-blue-600 text-white border-blue-600' 
+                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100 hover:text-gray-700'
+                  }`}
+                >
+                  {type}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-6 rounded-2xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredMenuItems.map((item: any, idx: number) => (
+              <div key={idx} className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
+                <div className="relative w-full h-56">
+                  <Image src={item.image} alt={item.name} fill className="object-cover" />
+                </div>
+                <div className="p-4 flex flex-col flex-1">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-bold text-gray-900">{item.name}</h3>
+                    <div className="flex items-center gap-1.5 text-gray-500 text-sm">
+                      <MealIcon type={item.type} className="w-4 h-4" />{item.type}
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600 mb-2">₱{item.price}</p>
+                  <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-4">
+                    <User size={14} />Good for {item.goodFor}
+                  </div>
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 h-auto rounded-lg mt-auto">Save to My Meals</Button>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
