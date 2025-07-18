@@ -4,6 +4,7 @@ import { MenuItem, ResultMatch } from '@/types/tarana-eats';
 import { SavedMeal } from '@/app/saved-meals/data';
 import { FullMenu } from '../data/taranaEatsData';
 import { ExtendedResultMatch } from './useTaranaEatsAI';
+import { useToast } from '@/components/ui/use-toast';
 // Import uuid in a way that's compatible with Next.js
 import { v4 as uuidv4 } from 'uuid';
 
@@ -14,6 +15,7 @@ export const useTaranaEatsService = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Generate a unique ID for a new saved meal - using a workaround for client-side only code
   const generateMealId = () => {
@@ -31,6 +33,15 @@ export const useTaranaEatsService = () => {
     mealType: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack' = 'Dinner'
   ) => {
     try {
+      if (typeof window === 'undefined') {
+        toast({
+          title: "Error",
+          description: "Cannot save meals on server side",
+          variant: "destructive",
+        });
+        return null;
+      }
+      
       setLoading(true);
       setError(null);
       
@@ -113,6 +124,13 @@ export const useTaranaEatsService = () => {
       setError('Failed to save meal');
       setLoading(false);
       console.error('Error saving meal:', err);
+      
+      toast({
+        title: "Error",
+        description: "Failed to save meal. Please try again.",
+        variant: "destructive",
+      });
+      
       return null;
     }
   };

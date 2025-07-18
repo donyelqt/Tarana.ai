@@ -10,6 +10,7 @@ import {
   mealTypeOptions 
 } from "../data/formOptions";
 import { useTaranaEatsAI } from "../hooks/useTaranaEatsAI";
+import { useToast } from "@/components/ui/use-toast";
 
 interface TaranaEatsFormProps {
   onGenerate: (results: any) => void;
@@ -26,6 +27,7 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false }: Tarana
   });
   
   const { generateRecommendations, loading: aiLoading, error: aiError } = useTaranaEatsAI();
+  const { toast } = useToast();
 
   const updateFormValue = <K extends keyof TaranaEatsFormValues>(
     key: K, 
@@ -48,6 +50,16 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false }: Tarana
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate form inputs
+    if (!formValues.budget || !formValues.pax) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide your budget and number of people",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       // Call the AI-powered recommendations service
@@ -58,12 +70,24 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false }: Tarana
         onGenerate({ matches: recommendations });
       } else if (aiError) {
         console.error("AI recommendation error:", aiError);
-        // If AI failed, pass the form values directly to be handled by the fallback logic
+        // If AI failed, show error toast and use fallback
+        toast({
+          title: "Using Sample Data",
+          description: "We couldn't generate AI recommendations. Using sample data instead.",
+          variant: "destructive",
+        });
+        // Pass the form values directly to be handled by the fallback logic
         onGenerate(formValues);
       }
     } catch (err) {
       console.error("Failed to generate recommendations:", err);
-      // If an exception occurs, pass the form values to fallback logic
+      // If an exception occurs, show error toast and use fallback
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Using sample data instead.",
+        variant: "destructive",
+      });
+      // Pass the form values to fallback logic
       onGenerate(formValues);
     }
   };
@@ -173,12 +197,6 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false }: Tarana
         {aiLoading || isLoading ? "Finding AI-Powered Meal Suggestions..." : "View AI-Powered Meal Suggestions"} 
         {!aiLoading && !isLoading && <span className="ml-2">→</span>}
       </Button>
-      
-      {aiError && (
-        <p className="mt-2 text-red-500 text-sm">
-          Error generating AI recommendations. Using default recommendations instead.
-        </p>
-      )}
     </form>
   );
 } 

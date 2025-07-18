@@ -5,6 +5,7 @@ import MenuPopup from './MenuPopup';
 import { MenuItem, ResultMatch } from '@/types/tarana-eats';
 import { useTaranaEatsService } from '@/app/tarana-eats/hooks/useTaranaEatsService';
 import { useToast } from '@/components/ui/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface FoodMatchesPreviewProps {
   results: { matches: ResultMatch[] } | null;
@@ -13,8 +14,9 @@ interface FoodMatchesPreviewProps {
 export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps) {
   const [activeMatch, setActiveMatch] = useState<ResultMatch | null>(null);
   const [savedSelections, setSavedSelections] = useState<Record<string, MenuItem[]>>({});
-  const { saveToMeals, navigateToSavedMeal, loading } = useTaranaEatsService();
+  const { saveToMeals, loading } = useTaranaEatsService();
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleSaveSelection = (restaurantName: string, items: MenuItem[]) => {
     setSavedSelections(prev => ({ ...prev, [restaurantName]: items }));
@@ -30,50 +32,60 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
     const selectionEntries = Object.entries(savedSelections);
     if (selectionEntries.length === 0) {
       toast({
-        title: "No meals selected",
+        title: "Missing Information",
         description: "Please select at least one meal before saving",
         variant: "destructive"
       });
       return;
     }
 
-    // Get the first selection (in a real app, might want to handle multiple differently)
-    const [restaurantName, menuItems] = selectionEntries[0];
-    const restaurantMatch = results?.matches.find(match => match.name === restaurantName);
+    // Track how many meals were saved
+    let savedMealsCount = 0;
+    let failedSavesCount = 0;
     
-    if (!restaurantMatch || menuItems.length === 0) {
+    // Save each selected restaurant's meals
+    selectionEntries.forEach(([restaurantName, menuItems]) => {
+      const restaurantMatch = results?.matches.find(match => match.name === restaurantName);
+      
+      if (!restaurantMatch || menuItems.length === 0) {
+        failedSavesCount++;
+        return;
+      }
+      
+      // Determine meal type based on time of day (or could be selected by user)
+      const hour = new Date().getHours();
+      let mealType: 'Breakfast' | 'Dinner' | 'Snack';
+      
+      if (hour < 11) mealType = 'Breakfast';
+      else if (hour < 16) mealType = 'Dinner';
+      else mealType = 'Dinner';
+      
+      // Save the meal
+      const savedMealId = saveToMeals(restaurantMatch, menuItems, mealType);
+      
+      if (savedMealId) {
+        savedMealsCount++;
+      } else {
+        failedSavesCount++;
+      }
+    });
+    
+    // Show appropriate notification based on results
+    if (savedMealsCount > 0) {
       toast({
-        title: "Error",
-        description: "Failed to find restaurant information",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Determine meal type based on time of day (or could be selected by user)
-    const hour = new Date().getHours();
-    let mealType: 'Breakfast' | 'Dinner' | 'Snack';
-    
-    if (hour < 11) mealType = 'Breakfast';
-    else if (hour < 16) mealType = 'Dinner';
-    else mealType = 'Dinner';
-    
-    // Save the meal
-    const savedMealId = saveToMeals(restaurantMatch, menuItems, mealType);
-    
-    if (savedMealId) {
-      toast({
-        title: "Success!",
-        description: "Your meal has been saved",
-        variant: "default"
+        title: "Success",
+        description: `${savedMealsCount} meal${savedMealsCount > 1 ? 's' : ''} saved!`,
+        variant: "success"
       });
       
-      // Navigate to the saved meal
-      navigateToSavedMeal(savedMealId);
+      // Navigate to the main saved meals page after a short delay
+      setTimeout(() => {
+        router.push("/saved-meals");
+      }, 1200);
     } else {
       toast({
         title: "Error",
-        description: "Failed to save your meal",
+        description: "Failed to save meals. Please try again.",
         variant: "destructive"
       });
     }
