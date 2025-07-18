@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ResultMatch, MenuItem } from "@/types/tarana-eats";
 import { MENU_DATA } from "../data/menuData";
 import { getMenuByRestaurantName } from "../data/taranaEatsData";
+import { useToast } from "@/components/ui/use-toast";
 
 interface MenuPopupProps {
   match: ResultMatch;
@@ -19,6 +20,7 @@ export default function MenuPopup({
   onSave 
 }: MenuPopupProps) {
   const [selectedItems, setSelectedItems] = useState<MenuItem[]>([]);
+  const { toast } = useToast();
   
   // Get menu items from fullMenu if available, otherwise from MENU_DATA
   const getMenuItems = (): MenuItem[] => {
@@ -43,14 +45,26 @@ export default function MenuPopup({
   const menuItems = getMenuItems();
   
   const toggleItem = (item: MenuItem) => {
-    setSelectedItems(prev => {
-      const exists = prev.some(i => i.name === item.name);
-      if (exists) {
-        return prev.filter(i => i.name !== item.name);
-      } else {
-        return [...prev, item];
-      }
-    });
+    const isItemSelected = selectedItems.some(i => i.name === item.name);
+    
+    // First update the state
+    if (isItemSelected) {
+      setSelectedItems(prev => prev.filter(i => i.name !== item.name));
+      // Then show notification after state update
+      toast({
+        title: "Item Removed",
+        description: `${item.name} removed from your selection`,
+        variant: "destructive",
+      });
+    } else {
+      setSelectedItems(prev => [...prev, item]);
+      // Then show notification after state update
+      toast({
+        title: "Item Added",
+        description: `${item.name} added to your selection`,
+        variant: "success",
+      });
+    }
   };
   
   const getTotalPrice = () => {
@@ -63,7 +77,30 @@ export default function MenuPopup({
   const isOverBudget = remaining < 0;
 
   const handleSave = () => {
+    if (selectedItems.length === 0) {
+      toast({
+        title: "Missing Selection",
+        description: "Please select at least one menu item",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (isOverBudget) {
+      toast({
+        title: "Over Budget",
+        description: `Your selection exceeds your budget by ₱${Math.abs(remaining)}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     onSave(selectedItems);
+    toast({
+      title: "Selection Saved",
+      description: `${selectedItems.length} items selected for ${match.name}`,
+      variant: "success",
+    });
     onClose();
   };
 
@@ -165,7 +202,6 @@ export default function MenuPopup({
               Cancel
             </Button>
             <Button
-              disabled={selectedItems.length === 0 || isOverBudget}
               onClick={handleSave}
               className="flex-1 bg-gradient-to-r from-[#0066FF] to-[#0052cc] text-white disabled:opacity-50"
             >

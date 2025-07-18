@@ -9,6 +9,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { savedMeals } from '../data';
 import Link from 'next/link';
 import { FullMenu } from '@/app/tarana-eats/data/taranaEatsData';
+import { useToast } from '@/components/ui/use-toast';
 
 // Static data for fallback
 const mealDetailsData = {
@@ -146,6 +147,7 @@ const SavedMealPage = () => {
   const [loading, setLoading] = useState(true);
   const [activeMenu, setActiveMenu] = useState('Breakfast');
   const [selectedMealId, setSelectedMealId] = useState<string | null>(null);
+  const { toast } = useToast();
   
   useEffect(() => {
     // Get the meal ID from the URL query parameter
@@ -211,10 +213,23 @@ const SavedMealPage = () => {
         }
       }
       
-      // Redirect back to saved meals page
-      router.push('/saved-meals');
+      toast({
+        title: "Success",
+        description: "Meal deleted successfully!",
+        variant: "success",
+      });
+      
+      // Redirect back to saved meals page after a short delay
+      setTimeout(() => {
+        router.push('/saved-meals');
+      }, 1200);
     } catch (error) {
       console.error("Error deleting meal:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete meal. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
