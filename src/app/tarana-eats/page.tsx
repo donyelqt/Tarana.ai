@@ -18,7 +18,13 @@ export default function TaranaEatsPage() {
       
       // Check if we have AI-generated results already
       if (data.matches) {
-        setResults(data);
+        // Ensure all matches have valid images
+        const validatedMatches = data.matches.map((match: any) => ({
+          ...match,
+          image: match.image && match.image !== "" ? match.image : "/images/placeholders/hero-placeholder.svg"
+        }));
+        
+        setResults({ matches: validatedMatches });
         setLoading(false);
         return;
       }
@@ -63,7 +69,7 @@ export default function TaranaEatsPage() {
           name: restaurant.name,
           meals: formValues.pax || 2,
           price: restaurant.priceRange.max,
-          image: restaurant.image,
+          image: restaurant.image && restaurant.image !== "" ? restaurant.image : "/images/placeholders/hero-placeholder.svg",
           fullMenu: restaurant.fullMenu,
           reason: `This restaurant offers ${restaurant.cuisine.join(', ')} cuisine and is popular for ${restaurant.popularFor.join(', ')}.`
         }));

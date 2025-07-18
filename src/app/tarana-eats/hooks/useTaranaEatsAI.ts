@@ -63,6 +63,8 @@ export const useTaranaEatsAI = () => {
    */
   const transformGeminiResponse = (response: any, preferences: TaranaEatsFormValues): ExtendedResultMatch[] => {
     try {
+      const placeholderImage = "/images/placeholders/hero-placeholder.svg";
+      
       // If we already have properly structured data, use it directly and enhance with full menu data
       if (response.matches && Array.isArray(response.matches)) {
         return response.matches.map((match: { name: string; [key: string]: any }) => {
@@ -71,10 +73,16 @@ export const useTaranaEatsAI = () => {
           if (restaurant) {
             return {
               ...match,
-              fullMenu: restaurant.fullMenu
+              fullMenu: restaurant.fullMenu,
+              image: (match.image && match.image !== "") ? match.image : 
+                     (restaurant.image && restaurant.image !== "") ? restaurant.image : 
+                     placeholderImage
             };
           }
-          return match;
+          return {
+            ...match,
+            image: (match.image && match.image !== "") ? match.image : placeholderImage
+          };
         });
       }
       
@@ -115,7 +123,7 @@ export const useTaranaEatsAI = () => {
           name: restaurant.name,
           meals: preferences.pax || 2,
           price: restaurant.priceRange.max,
-          image: restaurant.image,
+          image: (restaurant.image && restaurant.image !== "") ? restaurant.image : placeholderImage,
           fullMenu: restaurant.fullMenu,
           reason: `This restaurant offers ${restaurant.cuisine.join(', ')} cuisine and is popular for ${restaurant.popularFor.join(', ')}.`
         }));
