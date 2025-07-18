@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { taranaai } from '../../../public';
 import MenuPopup from './MenuPopup';
 import { MenuItem, ResultMatch } from '@/types/tarana-eats';
 import { useTaranaEatsService } from '@/app/tarana-eats/hooks/useTaranaEatsService';
@@ -100,18 +99,25 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
                 const total = selection?.reduce((sum, item) => sum + item.price, 0);
 
                 return (
-                  <div key={idx} className=" rounded-xl shadow border p-4">
+                  <div key={idx} className="rounded-xl shadow border p-4">
                     <div className="relative w-full h-32 rounded-lg mb-4 overflow-hidden">
                       <Image src={match.image} alt={match.name} fill style={{ objectFit: "cover" }} />
                     </div>
                     <div className="font-semibold text-lg">{match.name}</div>
                     <div className="text-gray-500 text-sm">{match.meals} meals under ₱{match.price}</div>
                     
+                    {/* AI Recommendation Reason */}
+                    {match.reason && (
+                      <div className="mt-2 px-2 py-1 bg-blue-50 rounded text-sm text-blue-800 border border-blue-100">
+                        <p className="italic">"{match.reason}"</p>
+                      </div>
+                    )}
+                    
                     {selection && (
                       <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                         <div className="flex justify-between items-center">
                           <h4 className="font-semibold text-sm">Your Selection</h4>
-                          <p className="font-bold text-sm">Total: ₱{total}</p>
+                          <p className="font-bold text-sm">Total: ₱{total || 0}</p>
                         </div>
                         <ul className="list-disc pl-5 mt-2 text-sm text-gray-600">
                           {selection.map(item => <li key={item.name}>{item.name} - ₱{item.price}</li>)}
@@ -143,7 +149,11 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
           </>
         ) : (
           <div className="text-center rounded-lg flex flex-col items-center justify-center h-[90vh]">
-            <Image src={taranaai} alt="logo" width={100} height={100} className="mb-4 text-gray-300" />
+            <div className="mb-4 text-gray-300">
+              <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+              </svg>
+            </div>
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Find Your Next Meal</h3>
             <p className="text-gray-500">Your food matches will appear here.</p>
           </div>
@@ -151,4 +161,4 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
       </div>
     </>
   );
-}
+} 
