@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Clock, Trash2, Coffee, MapPin, User, Utensils, Croissant } from 'lucide-react';
+import { Clock, Trash2, Coffee, MapPin, User, Utensils, Croissant, Wine } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { useParams, useRouter } from 'next/navigation';
 import { savedMeals } from '../data';
 import Link from 'next/link';
+import { FullMenu } from '@/app/tarana-eats/data/combinedFoodData';
 
 // Static data for fallback
 const mealDetailsData = {
@@ -35,7 +36,18 @@ const mealDetailsData = {
       { name: 'Tapsilog', type: 'Breakfast', price: 150, image: '/images/bencab.png', goodFor: 1 },
       { name: 'Longsilog', type: 'Breakfast', price: 150, image: '/images/burnham.png', goodFor: 1 },
       { name: 'Tocilog', type: 'Breakfast', price: 150, image: '/images/caferuins.png', goodFor: 1 },
-    ]
+    ],
+    // Add fullMenu support without changing UI
+    fullMenu: {
+      Breakfast: [
+        { name: 'Tapsilog', description: 'Beef tapa with garlic rice and egg', price: 150, image: '/images/bencab.png' },
+        { name: 'Longsilog', description: 'Longanisa with garlic rice and egg', price: 150, image: '/images/burnham.png' },
+      ],
+      Lunch: [],
+      Dinner: [],
+      Snacks: [],
+      Drinks: []
+    }
   },
   '2': {
     name: 'Golden Wok Cafe',
@@ -61,7 +73,18 @@ const mealDetailsData = {
       { name: 'Sweet and Sour Pork', type: 'Dinner', price: 220, image: '/images/hillstation.png', goodFor: 2 },
       { name: 'Yang Chow Fried Rice', type: 'Dinner', price: 180, image: '/images/goodtaste.png', goodFor: 2 },
       { name: 'Beef with Broccoli', type: 'Dinner', price: 250, image: '/images/viewspark.png', goodFor: 2 },
-    ]
+    ],
+    // Add fullMenu support without changing UI
+    fullMenu: {
+      Breakfast: [],
+      Lunch: [],
+      Dinner: [
+        { name: 'Sweet and Sour Pork', description: 'Crispy pork with sweet and sour sauce', price: 220, image: '/images/hillstation.png' },
+        { name: 'Yang Chow Fried Rice', description: 'Classic fried rice with vegetables and meat', price: 180, image: '/images/goodtaste.png' },
+      ],
+      Snacks: [],
+      Drinks: []
+    }
   },
   '3': {
     name: 'Sakura Sip & Snack',
@@ -87,7 +110,20 @@ const mealDetailsData = {
       { name: 'Matcha Latte', type: 'Drinks', price: 120, image: '/images/letai.png', goodFor: 1 },
       { name: 'Cheese Tart', type: 'Snacks', price: 80, image: '/images/tamawan.png', goodFor: 1 },
       { name: 'Fruit Parfait', type: 'Snacks', price: 150, image: '/images/nightmarket.png', goodFor: 1 },
-    ]
+    ],
+    // Add fullMenu support without changing UI
+    fullMenu: {
+      Breakfast: [],
+      Lunch: [],
+      Dinner: [],
+      Snacks: [
+        { name: 'Cheese Tart', description: 'Freshly baked tart with creamy cheese filling', price: 80, image: '/images/tamawan.png' },
+        { name: 'Fruit Parfait', description: 'Layered yogurt with fresh fruits and granola', price: 150, image: '/images/nightmarket.png' },
+      ],
+      Drinks: [
+        { name: 'Matcha Latte', description: 'Premium matcha with steamed milk', price: 120, image: '/images/letai.png' },
+      ]
+    }
   }
 };
 
@@ -95,8 +131,10 @@ const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'];
 
 const MealIcon = ({ type, className }: { type: string, className?: string }) => {
   if (type === 'Breakfast') return <Coffee className={className || 'w-4 h-4 mr-2'} />;
+  if (type === 'Lunch') return <Utensils className={className || 'w-4 h-4 mr-2'} />;
   if (type === 'Dinner') return <Utensils className={className || 'w-4 h-4 mr-2'} />;
   if (type === 'Snack' || type === 'Snacks') return <Croissant className={className || 'w-4 h-4 mr-2'} />;
+  if (type === 'Drinks') return <Wine className={className || 'w-4 h-4 mr-2'} />;
   return null;
 };
 
@@ -191,7 +229,16 @@ const SavedMealPage = () => {
     );
   }
 
-  const filteredMenuItems = mealDetails.menuItems?.filter((item: any) => item.type === activeMenu) || [];
+  // Get menu items for display - can use either menuItems or fullMenu if available
+  const getFilteredMenuItems = () => {
+    if (mealDetails.fullMenu && mealDetails.fullMenu[activeMenu] && mealDetails.fullMenu[activeMenu].length > 0) {
+      return mealDetails.fullMenu[activeMenu];
+    } else {
+      return mealDetails.menuItems?.filter((item: any) => item.type === activeMenu) || [];
+    }
+  };
+
+  const filteredMenuItems = getFilteredMenuItems();
 
   return (
     <div className="min-h-screen bg-[#f7f9fb] flex">
@@ -230,6 +277,14 @@ const SavedMealPage = () => {
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold text-gray-800 mb-2">About</h2>
               <p className="text-gray-600 text-base leading-relaxed">{mealDetails.about}</p>
+              
+              {/* Display AI recommendation reason if available */}
+              {mealDetails.reason && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <h3 className="text-md font-semibold text-blue-700 mb-1">AI Recommendation</h3>
+                  <p className="text-gray-700 italic">"{mealDetails.reason}"</p>
+                </div>
+              )}
             </div>
           </div>
           <div className="w-full h-64 xl:h-auto rounded-2xl overflow-hidden relative">
@@ -299,56 +354,72 @@ const SavedMealPage = () => {
           </div>
         </div>
 
-        {filteredMenuItems.length > 0 && (
-          <>
-            <div className="bg-white rounded-2xl py-4 px-6 shadow-sm border border-gray-100">
-              <div className="flex justify-between items-center flex-wrap gap-4">
-                <h2 className="text-2xl font-bold text-gray-900">Full Menu</h2>
-                <div className="flex items-center gap-4 flex-wrap">
-                  {mealTypes.map((type) => (
-                    <Button
-                      key={type}
-                      variant={activeMenu === type ? "default" : "outline"}
-                      onClick={() => setActiveMenu(type)}
-                      className={`rounded-lg px-6 py-2 text-base font-medium transition-all duration-200 ${
-                        activeMenu === type 
-                        ? 'bg-blue-600 text-white border-blue-600' 
-                        : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100 hover:text-gray-700'
-                      }`}
-                    >
-                      {type}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+        {/* Full Menu Section - Always displayed */}
+        <div className="bg-white rounded-2xl py-4 px-6 shadow-sm border border-gray-100">
+          <div className="flex justify-between items-center flex-wrap gap-4">
+            <h2 className="text-2xl font-bold text-gray-900">Full Menu</h2>
+            <div className="flex items-center gap-4 flex-wrap">
+              {mealTypes.map((type) => (
+                <Button 
+                  key={type}
+                  variant={activeMenu === type ? "default" : "outline"}
+                  onClick={() => setActiveMenu(type)}
+                  className={`rounded-lg px-6 py-2 text-base font-medium transition-all duration-200 ${
+                    activeMenu === type 
+                    ? 'bg-blue-600 text-white border-blue-600' 
+                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100 hover:text-gray-700'
+                  }`}
+                >
+                  <MealIcon type={type} className="w-4 h-4 mr-2" />
+                  {type}
+                </Button>
+              ))}
             </div>
-            
-            <div className="mt-6 rounded-2xl">
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredMenuItems.map((item: any, idx: number) => (
-                  <div key={idx} className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
-                    <div className="relative w-full h-56">
-                      <Image src={item.image} alt={item.name} fill className="object-cover" />
-                    </div>
-                    <div className="p-4 flex flex-col flex-1">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-lg font-bold text-gray-900">{item.name}</h3>
-                        <div className="flex items-center gap-1.5 text-gray-500 text-sm">
-                          <MealIcon type={item.type} className="w-4 h-4" />{item.type}
-                        </div>
-                      </div>
-                      <p className="text-2xl font-bold text-blue-600 mb-2">₱{item.price}</p>
-                      <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-4">
-                        <User size={14} />Good for {item.goodFor}
-                      </div>
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 h-auto rounded-lg mt-auto">Save to My Meals</Button>
-                    </div>
+          </div>
+        </div>
+        
+        <div className="mt-6 rounded-2xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredMenuItems.length > 0 ? (
+              filteredMenuItems.map((item: any, idx: number) => (
+                <div key={idx} className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
+                  <div className="relative w-full h-56">
+                    <Image 
+                      src={item.image} 
+                      alt={item.name} 
+                      fill 
+                      className="object-cover" 
+                    />
                   </div>
-                ))}
+                  <div className="p-4 flex flex-col flex-1">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-lg font-bold text-gray-900">{item.name}</h3>
+                      <div className="flex items-center gap-1.5 text-gray-500 text-sm">
+                        <MealIcon type={item.type || activeMenu} className="w-4 h-4" />
+                        {item.type || activeMenu}
+                      </div>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-600 mb-2">₱{item.price}</p>
+                    {item.description && (
+                      <p className="text-gray-600 text-sm mb-4">{item.description}</p>
+                    )}
+                    <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-4">
+                      <User size={14} />Good for {item.goodFor || '1'}
+                    </div>
+                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 h-auto rounded-lg mt-auto">
+                      Save to My Meals
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full py-10 text-center text-gray-500">
+                <p>No menu items available for {activeMenu}.</p>
+                <p className="mt-2">Try selecting a different category.</p>
               </div>
-            </div>
-          </>
-        )}
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );

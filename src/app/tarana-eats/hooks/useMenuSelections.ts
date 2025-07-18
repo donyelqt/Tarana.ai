@@ -1,52 +1,47 @@
-import { useState } from 'react';
-import { MenuItem } from '@/types/tarana-eats';
+import { useState, useEffect } from 'react';
+import { MenuItem, ResultMatch } from '@/types/tarana-eats';
+import { getMenuByRestaurantName } from '../data/taranaEatsData';
 
-export const useMenuSelections = () => {
-  const [savedSelections, setSavedSelections] = useState<Record<string, MenuItem[]>>({});
+export const useMenuSelections = (match: ResultMatch) => {
   const [selectedItems, setSelectedItems] = useState<MenuItem[]>([]);
-  const [activeRestaurant, setActiveRestaurant] = useState<string | null>(null);
 
-  const selectRestaurant = (restaurantName: string) => {
-    setActiveRestaurant(restaurantName);
-    // Initialize selected items with any previously saved selections
-    setSelectedItems(savedSelections[restaurantName] || []);
-  };
-
-  const closeMenu = () => {
-    setActiveRestaurant(null);
+  // Reset selections when restaurant changes
+  useEffect(() => {
     setSelectedItems([]);
+  }, [match.name]);
+
+  const toggleItem = (item: MenuItem) => {
+    setSelectedItems(prev => {
+      const exists = prev.some(i => i.name === item.name);
+      if (exists) {
+        return prev.filter(i => i.name !== item.name);
+      } else {
+        return [...prev, item];
+      }
+    });
   };
 
-  const toggleMenuItem = (item: MenuItem) => {
-    setSelectedItems((prev) =>
-      prev.find((i) => i.name === item.name)
-        ? prev.filter((i) => i.name !== item.name)
-        : [...prev, item]
-    );
+  const getTotalPrice = () => {
+    return selectedItems.reduce((sum, item) => sum + item.price, 0);
   };
 
-  const saveSelection = () => {
-    if (activeRestaurant) {
-      setSavedSelections(prev => ({ 
-        ...prev, 
-        [activeRestaurant]: [...selectedItems] 
-      }));
-      closeMenu();
+  const getMenuItems = (match: ResultMatch): MenuItem[] => {
+    if (match.fullMenu) {
+      // Flatten all menu categories into a single array
+      return Object.values(match.fullMenu)
+        .flat()
+        .filter(item => item); // Remove any undefined items
     }
-  };
-
-  const calculateTotal = (items: MenuItem[]): number => {
-    return items.reduce((sum, item) => sum + item.price, 0);
+    
+    // Fallback: get menu by restaurant name from data store
+    const fullMenu = getMenuByRestaurantName(match.name);
+    return Object.values(fullMenu).flat().filter(item => item);
   };
 
   return {
-    savedSelections,
     selectedItems,
-    activeRestaurant,
-    selectRestaurant,
-    closeMenu,
-    toggleMenuItem,
-    saveSelection,
-    calculateTotal,
+    toggleItem,
+    getTotalPrice,
+    getMenuItems
   };
 }; 

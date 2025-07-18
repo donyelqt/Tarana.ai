@@ -9,6 +9,7 @@ import {
   dietaryOptions, 
   mealTypeOptions 
 } from "../data/formOptions";
+import { useTaranaEatsAI } from "../hooks/useTaranaEatsAI";
 
 interface TaranaEatsFormProps {
   onGenerate: (results: any) => void;
@@ -23,6 +24,8 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false }: Tarana
     restrictions: [],
     mealType: [],
   });
+  
+  const { generateRecommendations, loading: aiLoading, error: aiError } = useTaranaEatsAI();
 
   const updateFormValue = <K extends keyof TaranaEatsFormValues>(
     key: K, 
@@ -45,7 +48,24 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false }: Tarana
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onGenerate(formValues);
+    
+    try {
+      // Call the AI-powered recommendations service
+      const recommendations = await generateRecommendations(formValues);
+      
+      // Pass the AI-generated recommendations to the parent component
+      if (recommendations) {
+        onGenerate({ matches: recommendations });
+      } else if (aiError) {
+        console.error("AI recommendation error:", aiError);
+        // If AI failed, pass the form values directly to be handled by the fallback logic
+        onGenerate(formValues);
+      }
+    } catch (err) {
+      console.error("Failed to generate recommendations:", err);
+      // If an exception occurs, pass the form values to fallback logic
+      onGenerate(formValues);
+    }
   };
 
   return (
@@ -147,12 +167,18 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false }: Tarana
       
       <Button 
         type="submit" 
-        disabled={isLoading}
+        disabled={isLoading || aiLoading}
         className="w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 hover:to-purple-500 text-white"
       >
-        {isLoading ? "Finding Meals..." : "View Meal Suggestions"} 
-        {!isLoading && <span className="ml-2">→</span>}
+        {aiLoading || isLoading ? "Finding AI-Powered Meal Suggestions..." : "View AI-Powered Meal Suggestions"} 
+        {!aiLoading && !isLoading && <span className="ml-2">→</span>}
       </Button>
+      
+      {aiError && (
+        <p className="mt-2 text-red-500 text-sm">
+          Error generating AI recommendations. Using default recommendations instead.
+        </p>
+      )}
     </form>
   );
 } 

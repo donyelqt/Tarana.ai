@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MenuItem, ResultMatch } from '@/types/tarana-eats';
 import { SavedMeal } from '@/app/saved-meals/data';
+import { FullMenu } from '../data/taranaEatsData';
+import { ExtendedResultMatch } from './useTaranaEatsAI';
 // Import uuid in a way that's compatible with Next.js
 import { v4 as uuidv4 } from 'uuid';
 
@@ -24,9 +26,9 @@ export const useTaranaEatsService = () => {
 
   // Save the selected menu items to the saved meals
   const saveToMeals = (
-    restaurant: ResultMatch, 
+    restaurant: ResultMatch | ExtendedResultMatch, 
     selectedItems: MenuItem[], 
-    mealType: 'Breakfast' | 'Dinner' | 'Snack' = 'Dinner'
+    mealType: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack' = 'Dinner'
   ) => {
     try {
       setLoading(true);
@@ -59,6 +61,9 @@ export const useTaranaEatsService = () => {
       // Also save the detailed meal data for the meal detail page
       const mealDetailsData = JSON.parse(localStorage.getItem('mealDetailsData') || '{}');
       
+      // Get the full menu from the restaurant if available
+      const fullMenu = (restaurant as ExtendedResultMatch).fullMenu;
+      
       mealDetailsData[newMealId] = {
         name: restaurant.name,
         location: "Baguio City", // Default location
@@ -86,7 +91,16 @@ export const useTaranaEatsService = () => {
           price: item.price,
           image: item.image,
           goodFor: 1
-        }))
+        })),
+        // Add full menu information
+        fullMenu: fullMenu || {
+          Breakfast: [],
+          Lunch: [],
+          Dinner: [],
+          Snacks: [],
+          Drinks: []
+        },
+        reason: (restaurant as ExtendedResultMatch).reason || "Recommended based on your preferences"
       };
       
       localStorage.setItem('mealDetailsData', JSON.stringify(mealDetailsData));

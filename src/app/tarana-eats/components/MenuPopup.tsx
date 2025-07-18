@@ -1,32 +1,71 @@
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { PlusIcon, CheckIcon } from "@heroicons/react/24/solid";
 import { cn } from "@/lib/utils";
 import { ResultMatch, MenuItem } from "@/types/tarana-eats";
 import { MENU_DATA } from "../data/menuData";
+import { getMenuByRestaurantName } from "../data/taranaEatsData";
 
 interface MenuPopupProps {
   match: ResultMatch;
-  selectedItems: MenuItem[];
   onClose: () => void;
-  onToggleItem: (item: MenuItem) => void;
-  onSave: () => void;
+  onSave: (selectedItems: MenuItem[]) => void;
 }
 
 export default function MenuPopup({ 
   match, 
-  selectedItems, 
   onClose, 
-  onToggleItem, 
   onSave 
 }: MenuPopupProps) {
-  const menuItems = MENU_DATA[match.name] ?? [];
+  const [selectedItems, setSelectedItems] = useState<MenuItem[]>([]);
   
-  const total = selectedItems.reduce((sum, item) => sum + item.price, 0);
+  // Get menu items from fullMenu if available, otherwise from MENU_DATA
+  const getMenuItems = (): MenuItem[] => {
+    if (match.fullMenu) {
+      // Flatten all menu categories into a single array
+      return Object.values(match.fullMenu)
+        .flat()
+        .filter(Boolean);
+    }
+    
+    // Try to get from MENU_DATA
+    const menuItems = MENU_DATA[match.name];
+    if (menuItems && menuItems.length > 0) {
+      return menuItems;
+    }
+    
+    // Fallback: get menu by restaurant name
+    const fullMenu = getMenuByRestaurantName(match.name);
+    return Object.values(fullMenu).flat().filter(Boolean);
+  };
+  
+  const menuItems = getMenuItems();
+  
+  const toggleItem = (item: MenuItem) => {
+    setSelectedItems(prev => {
+      const exists = prev.some(i => i.name === item.name);
+      if (exists) {
+        return prev.filter(i => i.name !== item.name);
+      } else {
+        return [...prev, item];
+      }
+    });
+  };
+  
+  const getTotalPrice = () => {
+    return selectedItems.reduce((sum, item) => sum + item.price, 0);
+  };
+  
+  const total = getTotalPrice();
   const budgetPerPerson = match.price * match.meals;
   const remaining = budgetPerPerson - total;
   const isOverBudget = remaining < 0;
+
+  const handleSave = () => {
+    onSave(selectedItems);
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -54,16 +93,16 @@ export default function MenuPopup({
 
           {/* Menu List */}
           <div className="space-y-3">
-            {menuItems.map((item) => {
-              const isSelected = !!selectedItems.find((i) => i.name === item.name);
+            {menuItems.map((item, index) => {
+              const isSelected = selectedItems.some(i => i.name === item.name);
               return (
                 <div
-                  key={item.name}
+                  key={`${item.name}-${index}`}
                   className="flex items-center gap-4 rounded-xl border p-3 shadow-sm"
                 >
                   <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg">
                     <Image
-                      src={item.image}
+                      src={item.image || match.image}
                       alt={item.name}
                       fill
                       sizes="80px"
@@ -76,7 +115,7 @@ export default function MenuPopup({
                     <div className="mt-1 text-sm font-medium">₱{item.price}</div>
                   </div>
                   <Button
-                    onClick={() => onToggleItem(item)}
+                    onClick={() => toggleItem(item)}
                     className={cn(
                       "flex items-center justify-center gap-1 rounded-lg px-4 py-2 text-sm font-medium w-24",
                       isSelected
@@ -127,7 +166,7 @@ export default function MenuPopup({
             </Button>
             <Button
               disabled={selectedItems.length === 0 || isOverBudget}
-              onClick={onSave}
+              onClick={handleSave}
               className="flex-1 bg-gradient-to-r from-[#0066FF] to-[#0052cc] text-white disabled:opacity-50"
             >
               Save Selection

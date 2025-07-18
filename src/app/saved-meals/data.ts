@@ -1,7 +1,7 @@
 export interface SavedMeal {
   id: string;
   cafeName: string;
-  mealType: 'Breakfast' | 'Dinner' | 'Snack';
+  mealType: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
   price: number;
   goodFor: number;
   location: string;
