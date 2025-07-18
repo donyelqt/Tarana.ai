@@ -23,10 +23,10 @@ type Params = {
 export async function generateMetadata({ 
   params 
 }: { 
-  params: Params;
+  params: Promise<Params>;
 }): Promise<Metadata> {
   // Read route params
-  const id = params.id;
+  const { id } = await params;
 
   // Fetch data
   const mealDetails = mealDetailsData[id as keyof typeof mealDetailsData];
