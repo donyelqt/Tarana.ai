@@ -4,11 +4,11 @@ import Sidebar from "@/components/Sidebar";
 import TaranaEatsForm from "./components/TaranaEatsForm";
 import FoodMatchesPreview from "./components/FoodMatchesPreview";
 import { useToast } from "@/components/ui/use-toast";
-import { TaranaEatsFormValues } from "@/types/tarana-eats";
+import { TaranaEatsFormValues, FoodMatchesData } from "@/types/tarana-eats";
 import { combinedFoodData } from "./data/taranaEatsData";
 
 export default function TaranaEatsPage() {
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState<FoodMatchesData | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
