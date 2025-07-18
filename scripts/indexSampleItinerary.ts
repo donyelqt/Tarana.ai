@@ -12,7 +12,7 @@ loadEnv({ path: ".env.local", override: true });
 */
 
 import { upsertActivityEmbedding } from "../src/lib/vectorSearch";
-import { sampleItinerary } from "../src/app/itinerary-generator/components/itineraryData";
+import { sampleItinerary } from "../src/app/itinerary-generator/data/itineraryData";
 
 async function main() {
   const activities = sampleItinerary.items.flatMap((section) => section.activities);
