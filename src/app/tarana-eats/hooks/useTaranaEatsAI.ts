@@ -118,7 +118,6 @@ export const useTaranaEatsAI = () => {
           
           return true;
         })
-        .slice(0, 5) // Limit to 5 results
         .map(restaurant => ({
           name: restaurant.name,
           meals: preferences.pax || 2,
