@@ -112,7 +112,7 @@ const DashboardContent = () => {
           <Popover>
               <PopoverTrigger asChild>
                 <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
-                  <Plus size={28} className="mb-2 text-blue-500" />
+                  <Plus size={28} className="mb-2 text-blue-500 animate-icon-interactive" />
                   <div className="font-semibold text-lg">Create New Plan</div>
                   <div className="text-gray-500 text-sm mt-1">AI-powered trip and food planning</div>
                 </div>
@@ -154,7 +154,7 @@ const DashboardContent = () => {
             <Popover>
               <PopoverTrigger asChild>
                 <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
-                  <div className="mb-2">
+                  <div className="mb-2 animate-icon-interactive">
                     <Bookmark size={28} className="text-blue-500 fill-blue-500" />
                   </div>
                   <div className="font-semibold text-lg">View Saved Plans</div>
