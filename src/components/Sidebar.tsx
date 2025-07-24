@@ -9,6 +9,30 @@ import { Settings, Donut, Utensils, MapPinCheck } from 'lucide-react'
 import Image from "next/image"
 import taranaai2 from "../../public/images/taranaai2.png"
 
+const smokeParticleVariants: Variants = {
+  initial: {
+    opacity: 0,
+    scale: 0.5,
+    y: 20,
+    x: 0,
+    rotate: 0,
+  },
+  animate: (i: number) => ({
+    opacity: [0, 0.6, 0.4, 0],
+    scale: [0.5, 1.8, 2.2],
+    y: -140,
+    x: (Math.random() - 0.5) * 320,
+    rotate: (Math.random() - 0.5) * 270,
+    transition: {
+      delay: i * 0.1,
+      duration: Math.random() * 2 + 2.5,
+      ease: 'easeOut',
+      repeat: Infinity,
+      repeatDelay: 2,
+    },
+  }),
+};
+
 const Sidebar = () => {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -95,8 +119,6 @@ const Sidebar = () => {
         aria-label="Toggle sidebar"
         aria-expanded={isMobileMenuOpen}
       >
-        <span className={`block w-5 h-0.5 bg-gray-900 transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'transform rotate-45 translate-y-1' : 'mb-1'}`}></span>
-        <span className={`block w-5 h-0.5 bg-gray-900 transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'opacity-0' : 'mb-1'}`}></span>
         <span className={`block w-5 h-0.5 bg-gray-900 transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'transform -rotate-45 -translate-y-1' : ''}`}></span>
       </button>
 
@@ -122,19 +144,19 @@ const Sidebar = () => {
               }}
             />
             <Link href="/dashboard" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/dashboard" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
-              <span className="mr-3">
+              <span className="mr-3 animate-icon-interactive">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7m-9 2v8m4-8v8m5 0a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2h14z" /></svg>
               </span>
               Dashboard
             </Link>
             <Link href="/itinerary-generator" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/itinerary-generator" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
-              <span className="mr-3">
+              <span className="mr-3 animate-icon-interactive">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a4 4 0 014-4h4m0 0V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h5" /></svg>
               </span>
               Itinerary Generator
             </Link>
             <Link href="/tarana-eats" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/tarana-eats" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
-              <span className="mr-3">
+              <span className="mr-3 animate-icon-interactive">
                 <Donut size={20} />
               </span>
               Tarana Eats
@@ -142,20 +164,20 @@ const Sidebar = () => {
             {/* SAVED PLANS section */}
             <div className="px-4 pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Saved Plans</div>
             <Link href="/saved-trips" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/saved-trips" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
-              <span className="mr-3">
+              <span className="mr-3 animate-icon-interactive">
                 <MapPinCheck size={20} />
               </span>
               Itineraries
             </Link>
             <Link href="/saved-meals" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/saved-meals" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
-              <span className="mr-3">
+              <span className="mr-3 animate-icon-interactive">
                 <Utensils size={20} />
               </span>
               Meals
             </Link>
             <div className="pt-4">
               <Link href="#" className="flex items-center px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-blue-50 transition">
-                <span className="mr-3">
+                <span className="mr-3 animate-icon-interactive">
                   <Settings size={20} />
                 </span>
                 Settings
@@ -163,15 +185,35 @@ const Sidebar = () => {
             </div>
           </nav>
         </div>
-        <button 
-          onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-          className="flex items-center text-gray-400 hover:text-blue-500 transition"
-        >
-          <span className="mr-2">
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" /></svg>
-          </span>
-          Log out
-        </button>
+        <div className="relative">
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
+            <div className="relative w-0 h-0">
+              {Array.from({ length: 40 }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute bottom-0 w-12 h-12"
+                  style={{
+                    background:
+                      'radial-gradient(circle, hsla(196, 92%, 86%, 0.4) 0%, hsla(196, 92%, 86%, 0) 70%)',
+                  }}
+                  variants={smokeParticleVariants}
+                  initial="initial"
+                  animate="animate"
+                  custom={i}
+                />
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+            className="flex items-center text-gray-400 hover:text-blue-500 transition"
+          >
+            <span className="mr-2">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" /></svg>
+            </span>
+            Log out
+          </button>
+        </div>
       </aside>
 
       {/* Overlay for mobile when sidebar is open */}
