@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { BAGUIO_COORDINATES, WeatherData, fetchWeatherFromAPI, getWeatherIconUrl } from "@/lib/utils"
-import { Bookmark, Plus, MapPin, Car, Utensils } from "lucide-react"
+import { Bookmark, Plus, MapPin, Car, Utensils, Wand2 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 
@@ -100,11 +100,48 @@ const DashboardContent = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition" onClick={() => router.push("/itinerary-generator")}>
-              <Plus size={28} className="mb-2 text-blue-500" />
-              <div className="font-semibold text-lg">Create New Itinerary</div>
-              <div className="text-gray-500 text-sm mt-1">Create a personalized travel plan</div>
-            </div>
+          <Popover>
+              <PopoverTrigger asChild>
+                <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
+                  <Plus size={28} className="mb-2 text-blue-500" />
+                  <div className="font-semibold text-lg">Create New Plan</div>
+                  <div className="text-gray-500 text-sm mt-1">AI-powered trip and food planning</div>
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2">
+                <div className="grid gap-2">
+                  <div className="px-2 pt-1 text-lg font-semibold">What to create?</div>
+                  <div
+                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50"
+                    onClick={() => router.push("/itinerary-generator")}
+                  >
+                    <div className="flex items-center">
+                      <Wand2 className="mr-3 h-5 w-5 text-blue-500" />
+                      <div>
+                        <div className="font-medium">New Itinerary</div>
+                        <div className="text-xs text-gray-500">
+                          Generate a personalized travel plan.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50"
+                    onClick={() => router.push("/tarana-eats")}
+                  >
+                    <div className="flex items-center">
+                      <Utensils className="mr-3 h-5 w-5 text-green-500" />
+                      <div>
+                        <div className="font-medium">Food Recommendations</div>
+                        <div className="text-xs text-gray-500">
+                          Discover your next favorite meal.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Popover>
               <PopoverTrigger asChild>
                 <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
