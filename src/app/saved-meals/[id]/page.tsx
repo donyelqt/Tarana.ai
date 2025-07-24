@@ -10,6 +10,7 @@ import { savedMeals } from '../data';
 import Link from 'next/link';
 import { FullMenu } from '@/app/tarana-eats/data/taranaEatsData';
 import { useToast } from '@/components/ui/use-toast';
+import MealCardPopup from '../components/MealCardPopup';
 
 // Static data for fallback
 const mealDetailsData = {
@@ -26,8 +27,8 @@ const mealDetailsData = {
         name: 'Custom Meal 1',
         type: 'Breakfast',
         items: [
-          { name: 'Tapsilog', price: 150, quantity: 2 },
-          { name: 'Brewed Coffee', price: 60, quantity: 2 }
+          { name: 'Tapsilog', price: 150, quantity: 2, image: '/images/bencab.png' },
+          { name: 'Brewed Coffee', price: 60, quantity: 2, image: '/images/burnham.png' }
         ],
         totalPrice: 420,
         goodFor: 2
@@ -63,8 +64,8 @@ const mealDetailsData = {
         name: 'Special Dinner Set',
         type: 'Dinner',
         items: [
-          { name: 'Sweet and Sour Pork', price: 220, quantity: 1 },
-          { name: 'Yang Chow Fried Rice', price: 180, quantity: 1 }
+          { name: 'Sweet and Sour Pork', price: 220, quantity: 1, image: '/images/hillstation.png' },
+          { name: 'Yang Chow Fried Rice', price: 180, quantity: 1, image: '/images/goodtaste.png' }
         ],
         totalPrice: 400,
         goodFor: 2
@@ -100,8 +101,8 @@ const mealDetailsData = {
         name: 'Afternoon Tea Set',
         type: 'Snack',
         items: [
-          { name: 'Matcha Latte', price: 120, quantity: 1 },
-          { name: 'Cheese Tart', price: 80, quantity: 1 }
+          { name: 'Matcha Latte', price: 120, quantity: 1, image: '/images/letai.png' },
+          { name: 'Cheese Tart', price: 80, quantity: 1, image: '/images/tamawan.png' }
         ],
         totalPrice: 200,
         goodFor: 1
@@ -147,6 +148,8 @@ const SavedMealPage = () => {
   const [loading, setLoading] = useState(true);
   const [activeMenu, setActiveMenu] = useState('Breakfast');
   const [selectedMealId, setSelectedMealId] = useState<string | null>(null);
+  const [isPopupVisible, setIsPopupVisible] = useState(false);
+  const [selectedMealForPopup, setSelectedMealForPopup] = useState<any>(null);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -193,6 +196,25 @@ const SavedMealPage = () => {
       document.title = `Tarana.ai | ${details?.name || 'Meal'}`;
     }
   }, [mealId, router]);
+
+  const handleShowMealCard = (savedMeal: any) => {
+    setSelectedMealForPopup(savedMeal);
+    setIsPopupVisible(true);
+  };
+
+  const handleClosePopup = () => {
+    setIsPopupVisible(false);
+    setSelectedMealForPopup(null);
+  };
+
+  const handleMarkAsUsed = () => {
+    toast({
+      title: "Success",
+      description: "Meal card marked as used!",
+      variant: "success",
+    });
+    handleClosePopup();
+  };
 
   const handleDeleteMeal = () => {
     try {
@@ -343,8 +365,9 @@ const SavedMealPage = () => {
                     <p className="text-gray-500">Good for {savedMeal.goodFor}pax</p>
                   </div>
                   <div className="flex items-center gap-3 mt-4">
-                    <Link href={`/saved-meals/${mealId}?meal=${savedMeal.id}`} passHref>
+                    
                       <Button 
+                        onClick={() => handleShowMealCard(savedMeal)}
                         className={`flex-1 py-3 h-auto rounded-lg ${
                           isSelected 
                             ? 'bg-green-600 hover:bg-green-700 text-white font-semibold'
@@ -353,7 +376,7 @@ const SavedMealPage = () => {
                       >
                         {isSelected ? 'Selected Meal' : 'View Meal Card'}
                       </Button>
-                    </Link>
+                    
                     <Button 
                       variant="outline" 
                       size="icon" 
@@ -436,6 +459,15 @@ const SavedMealPage = () => {
           </div>
         </div>
       </main>
+      {isPopupVisible && selectedMealForPopup && mealDetails && (
+        <MealCardPopup
+          restaurantName={mealDetails.name}
+          restaurantLocation={mealDetails.location}
+          items={selectedMealForPopup.items}
+          onClose={handleClosePopup}
+          onMarkAsUsed={handleMarkAsUsed}
+        />
+      )}
     </div>
   );
 };
