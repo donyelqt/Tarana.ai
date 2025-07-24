@@ -238,6 +238,17 @@ body {
   display: inline-block;
 }
 
+@keyframes icon-vibrate-and-pulse {
+  0%, 50%, 100% { transform: translate(0, 0) scale(1); }
+  5%, 15%, 30%, 40% { transform: translate(1px, 0) scale(1); }
+  10%, 20%, 35%, 45% { transform: translate(-1px, 0) scale(1); }
+  25% { transform: translate(0, 0) scale(1.15); }
+}
+
+.animate-icon-interactive {
+  animation: icon-vibrate-and-pulse 3s ease-in-out infinite;
+}
+
 @layer base {
   * {
     @apply border-border;
