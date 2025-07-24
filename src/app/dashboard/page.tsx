@@ -103,7 +103,7 @@ const DashboardContent = () => {
           <div className={`bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 transition-all duration-300 ease-in-out hover:animate-none hover:-translate-y-2 hover:shadow-3xl hover:shadow-blue-500 ${isWelcomeCardAnimated ? 'animate-none -translate-y-2 shadow-3xl shadow-blue-500' : 'animate-natural-shimmer'}`}>
             <Image src={session?.user?.image || sampleprofile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div className="flex-grow">
-              <div className="text-xl font-bold text-white">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="ml-1">👋</span></div>
+              <div className="text-xl font-bold text-white">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="wave ml-1 text-3xl">👋</span></div>
               <div className="text-gray-200 text-sm">Ready to plan your next adventure?</div>
               {/*<div className="text-gray-500 text-sm">{session?.user?.email}</div>*/}
             </div>
