@@ -219,6 +219,25 @@ body {
   animation: blob-shape 8s ease-in-out infinite;
 }
 
+@keyframes wave-hand {
+  0% { transform: rotate(0.0deg) scale(1) }
+  10% { transform: rotate(14.0deg) scale(1.1) }
+  20% { transform: rotate(-8.0deg) scale(0.9) }
+  30% { transform: rotate(14.0deg) scale(1.2) }
+  40% { transform: rotate(-4.0deg) scale(0.9) }
+  50% { transform: rotate(10.0deg) scale(1.1) }
+  60% { transform: rotate(0.0deg) scale(1) }
+  100% { transform: rotate(0.0deg) scale(1) }
+}
+
+.wave {
+  animation-name: wave-hand;
+  animation-duration: 2.5s;
+  animation-iteration-count: infinite;
+  transform-origin: 70% 70%;
+  display: inline-block;
+}
+
 @layer base {
   * {
     @apply border-border;
