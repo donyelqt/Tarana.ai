@@ -2,16 +2,22 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { signOut } from "next-auth/react"
-import { Bookmark, Settings, Donut, Utensils, MapPinCheck } from 'lucide-react'
+import { motion, Variants } from "framer-motion"
+import { Settings, Donut, Utensils, MapPinCheck } from 'lucide-react'
 import Image from "next/image"
 import taranaai2 from "../../public/images/taranaai2.png"
-import { MapIcon } from "@heroicons/react/24/solid"
 
 const Sidebar = () => {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const navRef = useRef<HTMLElement>(null)
+  const [activeTop, setActiveTop] = useState(0)
+  const [isActive, setIsActive] = useState(false)
+  const prevActiveTopRef = useRef(0)
+  const [isMovingUp, setIsMovingUp] = useState(false)
+  const [isFloating, setIsFloating] = useState(false)
 
   // Close menu when resizing to desktop view
   useEffect(() => {
@@ -24,6 +30,61 @@ const Sidebar = () => {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [isMobileMenuOpen])
+
+  useEffect(() => {
+    if (navRef.current) {
+      const activeLink = navRef.current.querySelector<HTMLElement>('.bg-blue-50')
+      if (activeLink) {
+        setIsFloating(false); // Stop floating on navigation
+        const newActiveTop = activeLink.offsetTop + activeLink.offsetHeight / 2
+        
+        setIsMovingUp(newActiveTop < prevActiveTopRef.current)
+        
+        setActiveTop(newActiveTop)
+        setIsActive(true)
+
+        prevActiveTopRef.current = newActiveTop
+      } else {
+        setIsActive(false)
+      }
+    }
+  }, [pathname])
+
+  const variants: Variants = {
+    up: (y: number) => ({
+      y,
+      opacity: 0.75,
+      transition: {
+        y: { type: 'spring', stiffness: 100, damping: 20, mass: 0.5 },
+        opacity: { duration: 0.2 },
+      },
+    }),
+    floating: (y: number) => ({
+      y: [y, y - 10, y],
+      opacity: 0.75,
+      transition: {
+        y: { duration: 3, repeat: Infinity, ease: 'easeInOut' },
+      },
+    }),
+    down: (y: number) => ({
+      y,
+      opacity: 0.75,
+      transition: {
+        y: { type: 'spring', stiffness: 200, damping: 30, mass: 0.8 },
+        opacity: { duration: 0.2 },
+      },
+    }),
+    hidden: {
+      opacity: 0,
+      transition: { opacity: { duration: 0.2 } },
+    },
+  }
+
+  const getAnimationState = () => {
+    if (!isActive) return 'hidden';
+    if (isFloating) return 'floating';
+    return isMovingUp ? 'up' : 'down';
+  }
 
   return (
     <>
@@ -45,7 +106,21 @@ const Sidebar = () => {
           <div className="text-2xl font-bold mb-12">
             <Image src={taranaai2} alt="Logo" width={120} height={120} />
           </div>
-          <nav className="space-y-2">
+          <nav ref={navRef} className="space-y-2 relative">
+            <motion.div
+              className="absolute left-0 w-full h-40 animate-float rounded-full bg-gradient-to-br from-sky-200 to-blue-300 opacity-65 blur-2xl pointer-events-none animate-blob"
+              variants={variants}
+              custom={activeTop}
+              animate={getAnimationState()}
+              onAnimationComplete={(definition) => {
+                if (definition === 'up') {
+                  setIsFloating(true);
+                }
+              }}
+              style={{
+                transform: 'translateY(-50%)',
+              }}
+            />
             <Link href="/dashboard" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/dashboard" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
               <span className="mr-3">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7m-9 2v8m4-8v8m5 0a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2h14z" /></svg>
