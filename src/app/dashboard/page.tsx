@@ -89,7 +89,7 @@ const DashboardContent = () => {
       <main className="md:pl-64 flex-1 flex flex-col md:flex-row">
         {/* Center Content */}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
-          <div className="bg-gradient-to-br from-blue-300 to-blue-600 shadow-md rounded-2xl p-6 flex items-center mb-8">
+          <div className="bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 transition-all duration-300 ease-in-out animate-natural-shimmer hover:animate-none hover:-translate-y-2 hover:shadow-3xl hover:shadow-blue-500">
             <Image src={session?.user?.image || sampleprofile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div className="flex-grow">
               <div className="text-xl font-bold text-white">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="ml-1">👋</span></div>
