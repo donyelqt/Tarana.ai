@@ -19,6 +19,15 @@ const DashboardContent = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showSplash, setShowSplash] = useState(false)
+  const [isWelcomeCardAnimated, setIsWelcomeCardAnimated] = useState(false)
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setIsWelcomeCardAnimated((prev) => !prev)
+    }, 2000)
+
+    return () => clearInterval(intervalId)
+  }, [])
 
   useEffect(() => {
     if (searchParams.get('signedin') === 'true') {
@@ -91,7 +100,7 @@ const DashboardContent = () => {
       <main className="md:pl-64 flex-1 flex flex-col md:flex-row">
         {/* Center Content */}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
-          <div className="bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 transition-all duration-300 ease-in-out animate-natural-shimmer hover:animate-none hover:-translate-y-2 hover:shadow-3xl hover:shadow-blue-500">
+          <div className={`bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 transition-all duration-300 ease-in-out hover:animate-none hover:-translate-y-2 hover:shadow-3xl hover:shadow-blue-500 ${isWelcomeCardAnimated ? 'animate-none -translate-y-2 shadow-3xl shadow-blue-500' : 'animate-natural-shimmer'}`}>
             <Image src={session?.user?.image || sampleprofile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div className="flex-grow">
               <div className="text-xl font-bold text-white">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="ml-1">👋</span></div>
