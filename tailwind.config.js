@@ -10,6 +10,9 @@ module.exports = {
   ],
   theme: {
   	extend: {
+      boxShadow: {
+        '3xl': '0 35px 60px -15px, 0 0 20px 0px',
+      },
   		colors: {
   			primary: {
   				DEFAULT: 'hsl(var(--primary))',
@@ -76,6 +79,12 @@ module.exports = {
   				from: { height: "var(--radix-accordion-content-height)" },
   				to: { height: "0" },
   			},
+        "natural-shimmer": {
+          '0%, 100%': { boxShadow: '0 0 35px 0px rgba(59, 130, 246, 0.5)' },
+          '25%':      { boxShadow: '0 0 42px 3px rgba(59, 130, 246, 0.58)' },
+          '50%':      { boxShadow: '0 0 45px 5px rgba(59, 130, 246, 0.6)' },
+          '75%':      { boxShadow: '0 0 38px 2px rgba(59, 130, 246, 0.55)' },
+        },
   			"fade-in": {
   				"0%": {
   					opacity: "0",
@@ -115,6 +124,7 @@ module.exports = {
   			"accordion-down": "accordion-down 0.2s ease-out",
   			"accordion-up": "accordion-up 0.2s ease-out",
   			"fade-in": "fade-in 1.5s ease-in-out forwards",
+        "natural-shimmer": "natural-shimmer 40s ease-in-out infinite",
         "pulse-ring": "pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite",
         "pulse-ring-delayed": "pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite 0.5s",
         "pulse-ring-delayed-more": "pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite 1s",
