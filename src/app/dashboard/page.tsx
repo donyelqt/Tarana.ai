@@ -158,7 +158,7 @@ const DashboardContent = () => {
                     <Bookmark size={28} className="text-blue-500 fill-blue-500" />
                   </div>
                   <div className="font-semibold text-lg">View Saved Plans</div>
-                  <div className="text-gray-500 text-sm mt-1">Access your planned Itineraries</div>
+                  <div className="text-gray-500 text-sm mt-1">Access your planned Itineraries and meals</div>
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-2">
