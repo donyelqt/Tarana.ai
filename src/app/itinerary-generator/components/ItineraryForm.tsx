@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ItineraryFormProps, FormData } from "../types";
+import { useEffect } from "react";
 
 export default function ItineraryForm({
   showPreview,
@@ -28,6 +29,25 @@ export default function ItineraryForm({
   durationOptions
 }: ItineraryFormProps) {
   const { toast } = useToast();
+
+  // Calculate end date whenever start date or duration changes
+  useEffect(() => {
+    if (dates.start && duration) {
+      const startDate = new Date(dates.start);
+      // Extract the number from duration string like "2 Days"
+      const durationMatch = duration.match(/\d+/);
+      const durationNum = durationMatch ? parseInt(durationMatch[0], 10) : 0;
+      
+      if (durationNum > 0) {
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + durationNum - 1); // -1 because the first day is included
+        setDates({
+          start: dates.start,
+          end: endDate
+        });
+      }
+    }
+  }, [dates.start, duration]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
