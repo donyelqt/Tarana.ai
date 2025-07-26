@@ -107,9 +107,9 @@ export default function ItineraryGenerator() {
             setDuration={setDuration}
             dates={dates}
             setDates={setDates}
-            selectedInterests={selectedInterests}
             setSelectedInterests={setSelectedInterests}
             handleInterest={handleInterest}
+            selectedInterests={selectedInterests}
             interests={interests}
             budgetOptions={budgetOptions}
             paxOptions={paxOptions}

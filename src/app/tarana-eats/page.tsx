@@ -12,6 +12,10 @@ export default function TaranaEatsPage() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  const handleLoadingChange = (isLoading: boolean) => {
+    setLoading(isLoading);
+  };
+
   const handleGenerateResults = async (data: any) => {
     try {
       setLoading(true);
@@ -102,10 +106,10 @@ export default function TaranaEatsPage() {
       <Sidebar />
       <main className="md:h-screen md:overflow-hidden md:pl-64 flex flex-col md:flex-row">
         <div className="flex-1 md:overflow-y-auto">
-          <TaranaEatsForm onGenerate={handleGenerateResults} isLoading={loading} />
+          <TaranaEatsForm onGenerate={handleGenerateResults} isLoading={loading} onLoadingChange={handleLoadingChange} />
         </div>
         <div className="w-full md:w-[450px] border-l md:overflow-y-auto">
-          <FoodMatchesPreview results={results} />
+          <FoodMatchesPreview results={results} isLoading={loading} />
         </div>
       </main>
     </div>
