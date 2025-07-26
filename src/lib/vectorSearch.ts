@@ -26,6 +26,10 @@ export async function upsertActivityEmbedding(params: {
   textForEmbedding: string;
   metadata?: Record<string, any>;
 }) {
+  if (!supabaseAdmin) {
+    console.error("Supabase admin client is not initialized for upsertActivityEmbedding.");
+    throw new Error("Supabase admin client not available.");
+  }
   const { activity_id, textForEmbedding, metadata = {} } = params;
   const embedding = await generateEmbedding(textForEmbedding);
 
@@ -48,6 +52,10 @@ export async function upsertActivityEmbedding(params: {
  * @param matchCount Number of results to return (default 5).
  */
 export async function searchSimilarActivities(query: string, matchCount = 5) {
+  if (!supabaseAdmin) {
+    console.error("Supabase admin client is not initialized for searchSimilarActivities.");
+    return []; // Return empty array or throw an error based on desired behavior
+  }
   const queryEmbedding = await generateEmbedding(query);
 
   // Call Postgres RPC function that does vector cosine distance search.

@@ -17,8 +17,11 @@ interface SupabaseUser {
 
 // Function to add a new user to Supabase
 export async function createUserInSupabase(fullName: string, email: string, password: string) {
+  if (!supabaseAdmin) {
+    throw new Error("Supabase admin client is not initialized.");
+  }
   // Check if user already exists using the admin client
-  const { data: existingUser, error: fetchError } = await supabaseAdmin // <--- USE supabaseAdmin
+  const { data: existingUser, error: fetchError } = await supabaseAdmin
     .from('users')
     .select('email')
     .eq('email', email.toLowerCase())
@@ -55,6 +58,10 @@ export async function createUserInSupabase(fullName: string, email: string, pass
 
 // Function to find a user by email from Supabase
 export async function findUserByEmailFromSupabase(email: string): Promise<SupabaseUser | null> {
+  if (!supabaseAdmin) {
+    console.error("Supabase admin client is not initialized.");
+    return null;
+  }
   const { data, error } = await supabaseAdmin // <--- USE supabaseAdmin
     .from('users')
     .select('*') // Select all necessary fields, including hashed_password
@@ -147,6 +154,10 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google" && user.email) {
+        if (!supabaseAdmin) {
+          console.error("Supabase admin client is not initialized in signIn callback.");
+          return false;
+        }
         try {
           const { data: dbUser, error: fetchError } = await supabaseAdmin
             .from('users')
@@ -198,6 +209,10 @@ export const authOptions: NextAuthOptions = {
       // Patch: Ensure token.id is set for Google users
       if (account && user) {
         if (account.provider === "google") {
+          if (!supabaseAdmin) {
+            console.error("Supabase admin client is not initialized in jwt callback.");
+            return token;
+          }
           // Fetch user from Supabase to get the id
           const { data: dbUser } = await supabaseAdmin
             .from('users')
