@@ -88,14 +88,25 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
       <h2 className="text-2xl font-bold mb-2">Where to Eat? We Got You.</h2>
       <p className="text-gray-500 mb-6">Enter your budget and group size. We&apos;ll show you cafés and meals that fit.</p>
       <div className="mb-8">
-        <label className="block text-sm font-medium mb-1">Enter your Budget</label>
-        <Input
-          type="text"
-          placeholder="Enter your Budget Range"
-          value={budget}
-          onChange={(e) => setBudget(e.target.value)}
-          className="w-full rounded-xl"
-        />
+        <label className="block text-sm font-medium mb-2">Preferences</label>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Input
+              type="text"
+              placeholder="Enter your Budget Range"
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              className="w-full rounded-xl"
+            />
+          </div>
+          <div>
+            <select value={cuisine} onChange={e => setCuisine(e.target.value)} className="w-full border rounded-xl px-3 py-2 h-10">
+              {cuisineOptions.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
       <div className="mb-8">
         <label className="block text-sm font-medium mb-1">Number of Pax.</label>
@@ -117,14 +128,6 @@ export default function TaranaEatsForm({ onGenerate }: TaranaEatsFormProps) {
             </Button>
           ))}
         </div>
-      </div>
-      <div className="mb-8">
-        <label className="block text-sm font-medium mb-1">Enter your Cuisine Preference</label>
-        <select value={cuisine} onChange={e => setCuisine(e.target.value)} className="w-full border rounded-xl px-3 py-2">
-          {cuisineOptions.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
       </div>
       <div className="mb-8">
         <label className="block text-sm font-medium mb-1">Dietary Restrictions (Optional)</label>
