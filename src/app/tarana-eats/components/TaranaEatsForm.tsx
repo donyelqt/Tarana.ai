@@ -98,14 +98,29 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false }: Tarana
       <p className="text-gray-500 mb-6">Enter your budget and group size. We&apos;ll show you cafés and meals that fit.</p>
       
       <div className="mb-8">
-        <label className="block text-sm font-medium mb-1">Enter your Budget</label>
-        <Input
-          type="text"
-          placeholder="Enter your Budget Range"
-          value={formValues.budget}
-          onChange={(e) => updateFormValue("budget", e.target.value)}
-          className="w-full rounded-xl"
-        />
+        <label className="block text-sm font-medium mb-2">Preferences</label>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Input
+              type="text"
+              placeholder="Enter your Budget Range"
+              value={formValues.budget}
+              onChange={(e) => updateFormValue("budget", e.target.value)}
+              className="w-full rounded-xl"
+            />
+          </div>
+          <div>
+            <select 
+              value={formValues.cuisine} 
+              onChange={e => updateFormValue("cuisine", e.target.value)} 
+              className="w-full border rounded-xl px-3 py-2 h-10"
+            >
+              {cuisineOptions.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
       
       <div className="mb-8">
@@ -128,19 +143,6 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false }: Tarana
             </Button>
           ))}
         </div>
-      </div>
-      
-      <div className="mb-8">
-        <label className="block text-sm font-medium mb-1">Enter your Cuisine Preference</label>
-        <select 
-          value={formValues.cuisine} 
-          onChange={e => updateFormValue("cuisine", e.target.value)} 
-          className="w-full border rounded-xl px-3 py-2"
-        >
-          {cuisineOptions.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
       </div>
       
       <div className="mb-8">
