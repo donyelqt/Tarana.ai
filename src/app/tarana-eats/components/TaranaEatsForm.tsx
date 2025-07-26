@@ -12,12 +12,15 @@ import {
 import { useTaranaEatsAI } from "../hooks/useTaranaEatsAI";
 import { useToast } from "@/components/ui/use-toast";
 
+import { useEffect } from "react";
+
 interface TaranaEatsFormProps {
   onGenerate: (results: any) => void;
   isLoading?: boolean;
+  onLoadingChange?: (isLoading: boolean) => void;
 }
 
-export default function TaranaEatsForm({ onGenerate, isLoading = false }: TaranaEatsFormProps) {
+export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadingChange }: TaranaEatsFormProps) {
   const [formValues, setFormValues] = useState<TaranaEatsFormValues>({
     budget: "",
     cuisine: cuisineOptions[0],
@@ -28,6 +31,12 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false }: Tarana
   
   const { generateRecommendations, loading: aiLoading, error: aiError } = useTaranaEatsAI();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (onLoadingChange) {
+      onLoadingChange(aiLoading);
+    }
+  }, [aiLoading, onLoadingChange]);
 
   const updateFormValue = <K extends keyof TaranaEatsFormValues>(
     key: K, 
@@ -196,8 +205,17 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false }: Tarana
         disabled={isLoading || aiLoading}
         className="w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 hover:to-purple-500 text-white"
       >
-        {aiLoading || isLoading ? "Finding AI-Powered Meal Suggestions..." : "View AI-Powered Meal Suggestions"} 
-        {!aiLoading && !isLoading && <span className="ml-2">→</span>}
+        {aiLoading || isLoading ? (
+          <>
+            <span className="animate-pulse">Finding AI-Powered Meal Suggestions...</span>
+            <div className="ml-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+          </>
+        ) : (
+          <>
+            View AI-Powered Meal Suggestions
+            <span className="ml-2">→</span>
+          </>
+        )}
       </Button>
     </form>
   );
