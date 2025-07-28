@@ -113,7 +113,7 @@ const MealCard = ({ meal }: MealCardProps) => {
 
           <div className="flex items-center gap-2 mt-4">
             <Link href={`/saved-meals/${meal.id}`} passHref className="flex-1">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+              <Button className="flex-1 w-full bg-[#0066FF] hover:bg-[#0052cc] text-white font-medium py-2 px-4 rounded-xl transition-colors">
                 View Full Menu
               </Button>
             </Link>
