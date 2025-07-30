@@ -383,6 +383,52 @@ const ujiMatchaCafeMenu: FullMenu = {
   ]
 };
 
+  // K-Flavors Buffet Menu Data
+  const kFlavorsBuffetMenu: FullMenu = {
+    Breakfast: [],
+    Lunch: [
+      {
+        name: "Buffet (M-TH, No beef/cheese/ice cream)",
+        description: "NO beef, cheese, ice cream",
+        price: 399,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (M-TH, With beef/cheese/ice cream)",
+        description: "with beef, cheese, 1 scoop of ice cream",
+        price: 450,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (M-TH, With beef/cheese/ice cream/unli iced tea)",
+        description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
+        price: 470,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (F-S, No beef/cheese/ice cream)",
+        description: "NO beef, cheese, ice cream",
+        price: 450,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (F-S, With beef/cheese/ice cream)",
+        description: "with beef, cheese, 1 scoop of ice cream",
+        price: 470,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=4",
+      },
+      {
+        name: "Buffet (F-S, With beef/cheese/ice cream/unli iced tea)",
+        description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
+        price: 499,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=5",
+      }
+    ],
+    Dinner: [],
+    Snacks: [],
+    Drinks: []
+  };
+
 // ====================================================================
 // COMPLETE RESTAURANT DATA
 // ====================================================================
@@ -418,6 +464,21 @@ export const restaurants: RestaurantData[] = [
     tags: ["Vegetarian", "Filipino", "Art Cafe", "Baguio"],
     dietaryOptions: ["Vegan", "Vegetarian"],
   },
+  {
+    name: "K-Flavors Buffet",
+    cuisine: ["Korean", "Buffet"],
+    priceRange: {
+      min: 399,
+      max: 499,
+    },
+    location: "Baguio City",
+    popularFor: ["Korean BBQ", "Buffet", "Group Dining"],
+    menuItems: [],
+    fullMenu: kFlavorsBuffetMenu,
+    image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+    tags: ["Korean", "Buffet", "Baguio"],
+    dietaryOptions: [],
+  },
 ];
 
 // Create a record of all restaurant menus for easy lookup
@@ -425,6 +486,7 @@ export const allRestaurantMenus: Record<string, FullMenu> = {
   "Good Sheperd Cafe": goodSheperdCafeMenu,
   "Oh My Gulay": ohMyGulayMenu,
   "Uji-Matcha Cafe": ujiMatchaCafeMenu,
+  "K-Flavors Buffet": kFlavorsBuffetMenu,
 };
 
 // ====================================================================
