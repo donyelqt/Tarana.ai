@@ -130,603 +130,301 @@ export const createFoodPrompt = (preferences: any) => {
 // RESTAURANT & MENU DATA
 // ====================================================================
 
-// Hill Station Restaurant Data
-const hillStationMenu: FullMenu = {
-  Breakfast: [
-    {
-      name: "Beef Pares Breakfast Set",
-      description: "Tender beef stew with garlic rice and egg.",
-      price: 180,
-      image: "/images/bencab.png",
-    },
-    {
-      name: "Continental Breakfast",
-      description: "Toast, eggs, bacon, and fresh fruits.",
-      price: 220,
-      image: "/images/hillstation.png",
-    },
-    {
-      name: "Longsilog",
-      description: "Sweet Filipino sausage with garlic rice and egg.",
-      price: 160,
-      image: "/images/burnham.png",
-    }
-  ],
-  Lunch: [
-    {
-      name: "Cordilleran Rice Bowl",
-      description: "Mixed grains with local vegetables and chicken.",
-      price: 230,
-      image: "/images/goodtaste.png",
-    },
-    {
-      name: "Pinikpikan Bowl",
-      description: "Traditional Cordilleran chicken soup with rice.",
-      price: 180,
-      image: "/images/goodtaste.png",
-    },
-    {
-      name: "Adobo Rice Plate",
-      description: "Classic pork adobo with garlic rice and pickled papaya.",
-      price: 210,
-      image: "/images/hillstation.png",
-    }
-  ],
-  Dinner: [
-    {
-      name: "Beef Bulalo",
-      description: "Hearty beef soup with bone marrow and vegetables.",
-      price: 350,
-      image: "/images/hillstation.png",
-    },
-    {
-      name: "Crispy Pata",
-      description: "Deep-fried pork leg with dipping sauce.",
-      price: 450,
-      image: "/images/bencab.png",
-    },
-    {
-      name: "Grilled Tilapia",
-      description: "Fresh tilapia with calamansi and soy sauce.",
-      price: 280,
-      image: "/images/hillstation.png",
-    }
-  ],
+// Good Sheperd Cafe Menu Data
+const goodSheperdCafeMenu: FullMenu = {
+  Breakfast: [],
+  Lunch: [],
+  Dinner: [],
   Snacks: [
     {
-      name: "Camote Fries",
-      description: "Sweet potato fries with aioli dip.",
-      price: 120,
-      image: "/images/caferuins.png",
+      name: "Long Black (Coffee)",
+      description: "Our coffee is crafted from locally sourced beans handpicked from the farms in Atok, Benguet - bringing the taste of the Cordilleras to every sip.",
+      price: 125,
+      image: "/images/placeholders/coffee.png", // Placeholder image
     },
     {
-      name: "Turon",
-      description: "Sweet banana spring rolls with caramel drizzle.",
-      price: 90,
-      image: "/images/caferuins.png",
-    }
+      name: "Cafe Latte (Coffee)",
+      description: "Our coffee is crafted from locally sourced beans handpicked from the farms in Atok, Benguet - bringing the taste of the Cordilleras to every sip.",
+      price: 145,
+      image: "/images/placeholders/coffee.png", // Placeholder image
+    },
+    {
+      name: "Cappuccino (Coffee)",
+      description: "Our coffee is crafted from locally sourced beans handpicked from the farms in Atok, Benguet - bringing the taste of the Cordilleras to every sip.",
+      price: 145,
+      image: "/images/placeholders/coffee.png", // Placeholder image
+    },
+    {
+      name: "Caramel Macchiato (Coffee)",
+      description: "Our coffee is crafted from locally sourced beans handpicked from the farms in Atok, Benguet - bringing the taste of the Cordilleras to every sip.",
+      price: 185,
+      image: "/images/placeholders/coffee.png", // Placeholder image
+    },
+    {
+      name: "White Mocha Latte (Coffee)",
+      description: "Our coffee is crafted from locally sourced beans handpicked from the farms in Atok, Benguet - bringing the taste of the Cordilleras to every sip.",
+      price: 185,
+      image: "/images/placeholders/coffee.png", // Placeholder image
+    },
+    {
+      name: "Sheperd's Latte",
+      description: "Our coffee is crafted from locally sourced beans handpicked from the farms in Atok, Benguet - bringing the taste of the Cordilleras to every sip.",
+      price: 210,
+      image: "/images/placeholders/coffee.png", // Placeholder image
+    },
+    {
+      name: "Orange Espresso",
+      description: "Our coffee is crafted from locally sourced beans handpicked from the farms in Atok, Benguet - bringing the taste of the Cordilleras to every sip.",
+      price: 210,
+      image: "/images/placeholders/coffee.png", // Placeholder image
+    },
+    {
+      name: "Pineapple Hibiscus",
+      description: "No description available — yet.",
+      price: 160,
+      image: "/images/placeholders/juice.png", // Placeholder image
+    },
+    {
+      name: "Calamansi Juice",
+      description: "No description available — yet.",
+      price: 160,
+      image: "/images/placeholders/juice.png", // Placeholder image
+    },
   ],
-  Drinks: [
-    {
-      name: "Kapeng Barako",
-      description: "Strong local coffee blend.",
-      price: 55,
-      image: "/images/caferuins.png",
-    },
-    {
-      name: "Mountain Tea",
-      description: "Locally sourced herbal tea.",
-      price: 65,
-      image: "/images/hillstation.png",
-    },
-    {
-      name: "Baguio Berry Shake",
-      description: "Fresh strawberry shake with cream.",
-      price: 120,
-      image: "/images/hillstation.png",
-    }
-  ]
+  Drinks: [],
 };
 
-// Itaewon Cafe Data
-const itaewonCafeMenu: FullMenu = {
-  Breakfast: [
-    {
-      name: "Korean Breakfast Set",
-      description: "Rice, kimchi, grilled fish and soup.",
-      price: 220,
-      image: "/images/itaewon.png",
-    },
-    {
-      name: "Juk (Rice Porridge)",
-      description: "Creamy rice porridge with various toppings.",
-      price: 180,
-      image: "/images/itaewon.png",
-    }
-  ],
+// Oh My Gulay Menu Data
+const ohMyGulayMenu: FullMenu = {
+  Breakfast: [],
   Lunch: [
     {
-      name: "Bibimbap",
-      description: "Korean mixed rice with vegetables and meat.",
+      name: "Bonifacio's Waldofesto",
+      description: "Sliced apples, celery, potatoes, egg slices, nuts & garlic-mayo pesto",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513120.jpg??width=800",
+    },
+    {
+      name: "KKK Sliders",
+      description: "Two veggie burgers & salad",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513121.jpg??width=800",
+    },
+    {
+      name: "Pancit Gulay Ni Pepe",
+      description: "Egg noodles, tofu & vegetables in season",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513127.jpg??width=800",
+    },
+    {
+      name: "Walastik Bistek",
+      description: "Vegemeat, tofu, potatoes, onions & quail eggs",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513129.jpg??width=800",
+    },
+    {
+      name: "Tandang Sora Parmigiana",
+      description: "Breaded eggplant over whole wheat bread, special red sauce, pesto & cheese",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513122.jpg??width=800",
+    },
+    {
+      name: "CESAR ASAR",
+      description: "Vegetarian Ceasar Salad with toasted garlic bread",
       price: 200,
-      image: "/images/itaewon.png",
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/32477040.jpg??width=800",
     },
     {
-      name: "Bulgogi Rice",
-      description: "Marinated beef with steamed rice.",
-      price: 250,
-      image: "/images/itaewon.png",
+      name: "Bandilang Pula",
+      description: "Mountain rice, vegetables in season, mongolian sauce, tofu, omelette",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513128.jpg??width=800",
     },
     {
-      name: "Japchae",
-      description: "Sweet potato noodles with stir-fried vegetables.",
-      price: 180,
-      image: "/images/itaewon.png",
-    }
+      name: "Anak Ng Putanesca",
+      description: "No description available — yet.",
+      price: 220,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513123.jpg??width=800",
+    },
   ],
   Dinner: [
     {
-      name: "Korean BBQ Set",
-      description: "Assorted meats for grilling with side dishes.",
-      price: 650,
-      image: "/images/itaewon.png",
+      name: "Bonifacio's Waldofesto",
+      description: "Sliced apples, celery, potatoes, egg slices, nuts & garlic-mayo pesto",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513120.jpg??width=800",
     },
     {
-      name: "Kimchi Jjigae",
-      description: "Spicy kimchi stew with pork and tofu.",
-      price: 280,
-      image: "/images/itaewon.png",
+      name: "KKK Sliders",
+      description: "Two veggie burgers & salad",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513121.jpg??width=800",
     },
     {
-      name: "Sundubu Jjigae",
-      description: "Soft tofu stew with seafood or meat.",
-      price: 260,
-      image: "/images/itaewon.png",
-    }
+      name: "Pancit Gulay Ni Pepe",
+      description: "Egg noodles, tofu & vegetables in season",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513127.jpg??width=800",
+    },
+    {
+      name: "Walastik Bistek",
+      description: "Vegemeat, tofu, potatoes, onions & quail eggs",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513129.jpg??width=800",
+    },
+    {
+      name: "Tandang Sora Parmigiana",
+      description: "Breaded eggplant over whole wheat bread, special red sauce, pesto & cheese",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513122.jpg??width=800",
+    },
+    {
+      name: "CESAR ASAR",
+      description: "Vegetarian Ceasar Salad with toasted garlic bread",
+      price: 200,
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/32477040.jpg??width=800",
+    },
+    {
+      name: "Bandilang Pula",
+      description: "Mountain rice, vegetables in season, mongolian sauce, tofu, omelette",
+      price: 225,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513128.jpg??width=800",
+    },
+    {
+      name: "Anak Ng Putanesca",
+      description: "No description available — yet.",
+      price: 220,
+      image: "https://images.deliveryhero.io/image/fd-ph/products/5513123.jpg??width=800",
+    },
   ],
-  Snacks: [
-    {
-      name: "Tteokbokki",
-      description: "Spicy Korean rice cakes.",
-      price: 120,
-      image: "/images/itaewon.png",
-    },
-    {
-      name: "Kimbap",
-      description: "Korean seaweed rice rolls.",
-      price: 150,
-      image: "/images/itaewon.png",
-    },
-    {
-      name: "Fried Mandu",
-      description: "Korean dumplings with dipping sauce.",
-      price: 160,
-      image: "/images/itaewon.png",
-    }
-  ],
-  Drinks: [
-    {
-      name: "Soju",
-      description: "Korean alcoholic beverage.",
-      price: 180,
-      image: "/images/itaewon.png",
-    },
-    {
-      name: "Yuzu Iced Tea",
-      description: "Refreshing citrus tea.",
-      price: 95,
-      image: "/images/itaewon.png",
-    },
-    {
-      name: "Sikhye",
-      description: "Traditional sweet rice drink.",
-      price: 85,
-      image: "/images/itaewon.png",
-    }
-  ]
+  Snacks: [],
+  Drinks: [],
 };
 
-// Cafe Ysap Data
-const cafeYsapMenu: FullMenu = {
-  Breakfast: [
-    {
-      name: "Ysap Special",
-      description: "House specialty coffee with local beans and breakfast sandwich.",
-      price: 150,
-      image: "/images/caferuins.png",
-    },
-    {
-      name: "Breakfast Set",
-      description: "Eggs, bread, and coffee.",
-      price: 200,
-      image: "/images/caferuins.png",
-    },
-    {
-      name: "Pancake Stack",
-      description: "Fluffy pancakes with maple syrup and fruit.",
-      price: 180,
-      image: "/images/caferuins.png",
-    }
-  ],
-  Lunch: [
-    {
-      name: "Pasta Lunch",
-      description: "Choice of pasta with garlic bread.",
-      price: 230,
-      image: "/images/caferuins.png",
-    },
-    {
-      name: "Club Sandwich",
-      description: "Triple-decker sandwich with fries.",
-      price: 210,
-      image: "/images/caferuins.png",
-    },
-    {
-      name: "Caesar Salad",
-      description: "Fresh romaine lettuce with homemade dressing.",
-      price: 180,
-      image: "/images/caferuins.png",
-    }
-  ],
-  Dinner: [
-    {
-      name: "Dinner Plate",
-      description: "Main dish with rice and side salad.",
-      price: 280,
-      image: "/images/caferuins.png",
-    },
-    {
-      name: "Grilled Chicken",
-      description: "Herb-marinated chicken with roasted vegetables.",
-      price: 250,
-      image: "/images/caferuins.png",
-    },
-    {
-      name: "Pork Chop",
-      description: "Juicy pork chop with mashed potatoes.",
-      price: 270,
-      image: "/images/caferuins.png",
-    }
-  ],
-  Snacks: [
-    {
-      name: "Pastry Basket",
-      description: "Assorted freshly baked pastries.",
-      price: 180,
-      image: "/images/caferuins.png",
-    },
-    {
-      name: "Cheese Board",
-      description: "Selection of cheeses with crackers.",
-      price: 250,
-      image: "/images/caferuins.png",
-    },
-    {
-      name: "Bruschetta",
-      description: "Toasted bread with tomato, basil, and olive oil.",
-      price: 160,
-      image: "/images/caferuins.png",
-    }
-  ],
+// Uji-Matcha Cafe Menu Data
+const ujiMatchaCafeMenu: FullMenu = {
+  Breakfast: [],
+  Lunch: [],
+  Dinner: [],
+  Snacks: [],
   Drinks: [
     {
-      name: "Specialty Coffee",
-      description: "Single-origin coffee brewed to perfection.",
-      price: 120,
-      image: "/images/caferuins.png",
-    },
-    {
-      name: "Fruit Smoothie",
-      description: "Blended fresh fruits with yogurt.",
-      price: 150,
-      image: "/images/caferuins.png",
-    },
-    {
-      name: "Hot Chocolate",
-      description: "Rich chocolate drink with whipped cream.",
+      name: "Pure Uji-Matcha",
+      description: "Matcha + Water + Sweetener",
       price: 110,
-      image: "/images/caferuins.png",
-    }
-  ]
-};
-
-// Golden Wok Cafe Data
-const goldenWokMenu: FullMenu = {
-  Breakfast: [
-    {
-      name: "Congee",
-      description: "Rice porridge with choice of toppings.",
-      price: 120,
-      image: "/images/goodtaste.png",
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/39974537.jpg??width=800",
     },
-    {
-      name: "Dim Sum Breakfast",
-      description: "Assorted steamed dumplings and buns.",
-      price: 150,
-      image: "/images/goodtaste.png",
-    }
-  ],
-  Lunch: [
-    {
-      name: "Yang Chow Fried Rice",
-      description: "Classic Chinese fried rice with vegetables and meat.",
-      price: 120,
-      image: "/images/goodtaste.png",
-    },
-    {
-      name: "Lunch Set",
-      description: "One main dish with rice and soup.",
-      price: 180,
-      image: "/images/goodtaste.png",
-    },
-    {
-      name: "Noodle Bowl",
-      description: "Egg noodles with choice of meat and vegetables.",
-      price: 160,
-      image: "/images/goodtaste.png",
-    }
-  ],
-  Dinner: [
-    {
-      name: "Beef with Broccoli",
-      description: "Tender beef slices with fresh broccoli.",
-      price: 180,
-      image: "/images/goodtaste.png",
-    },
-    {
-      name: "Sweet and Sour Pork",
-      description: "Crispy pork with tangy sauce.",
-      price: 190,
-      image: "/images/goodtaste.png",
-    },
-    {
-      name: "Kung Pao Chicken",
-      description: "Spicy stir-fried chicken with peanuts.",
-      price: 200,
-      image: "/images/goodtaste.png",
-    }
-  ],
-  Snacks: [
-    {
-      name: "Spring Rolls",
-      description: "Vegetable or meat-filled crispy rolls.",
-      price: 100,
-      image: "/images/goodtaste.png",
-    },
-    {
-      name: "Dumplings",
-      description: "Steamed or fried dumplings with dipping sauce.",
-      price: 120,
-      image: "/images/goodtaste.png",
-    },
-    {
-      name: "Sesame Balls",
-      description: "Sweet rice flour balls with red bean filling.",
-      price: 90,
-      image: "/images/goodtaste.png",
-    }
-  ],
-  Drinks: [
-    {
-      name: "Chinese Tea",
-      description: "Traditional hot tea.",
-      price: 40,
-      image: "/images/goodtaste.png",
-    },
-    {
-      name: "Lychee Juice",
-      description: "Sweet lychee-flavored drink.",
-      price: 80,
-      image: "/images/goodtaste.png",
-    },
-    {
-      name: "Almond Milk",
-      description: "Sweetened almond milk drink.",
-      price: 90,
-      image: "/images/goodtaste.png",
-    }
-  ]
-};
-
-// Sakura Sip & Snack Data
-const sakuraMenu: FullMenu = {
-  Breakfast: [
-    {
-      name: "Japanese Breakfast",
-      description: "Grilled fish, rice, miso soup, and pickles.",
-      price: 200,
-      image: "/images/letai.png",
-    },
-    {
-      name: "Tamago Kake Gohan",
-      description: "Rice with raw egg and soy sauce.",
-      price: 150,
-      image: "/images/letai.png",
-    }
-  ],
-  Lunch: [
-    {
-      name: "Bento Box",
-      description: "Rice, protein, vegetables, and side dishes.",
-      price: 250,
-      image: "/images/letai.png",
-    },
-    {
-      name: "Curry Rice",
-      description: "Japanese curry with rice and protein.",
-      price: 220,
-      image: "/images/letai.png",
-    },
-    {
-      name: "Onigiri Set",
-      description: "Rice balls with various fillings and miso soup.",
-      price: 180,
-      image: "/images/letai.png",
-    }
-  ],
-  Dinner: [
-    {
-      name: "Ramen",
-      description: "Noodle soup with toppings.",
-      price: 220,
-      image: "/images/letai.png",
-    },
-    {
-      name: "Sushi Platter",
-      description: "Assorted sushi rolls and nigiri.",
-      price: 350,
-      image: "/images/letai.png",
-    },
-    {
-      name: "Donburi",
-      description: "Rice bowl topped with meat or fish.",
-      price: 250,
-      image: "/images/letai.png",
-    }
-  ],
-  Snacks: [
     {
       name: "Matcha Latte",
-      description: "Premium matcha with milk.",
-      price: 120,
-      image: "/images/letai.png",
+      description: "Matcha + Milk + Sweetener",
+      price: 155,
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/39974542.jpg??width=800",
     },
     {
-      name: "Dorayaki",
-      description: "Japanese pancake filled with sweet red bean paste.",
-      price: 80,
-      image: "/images/letai.png",
+      name: "Spanish Matcha Latte",
+      description: "Matcha + Milk + Condense Milk",
+      price: 155,
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/39974543.jpg??width=800",
     },
     {
-      name: "Taiyaki",
-      description: "Fish-shaped cake with various fillings.",
-      price: 90,
-      image: "/images/letai.png",
-    }
-  ],
-  Drinks: [
-    {
-      name: "Sakura Tea",
-      description: "Cherry blossom flavored tea.",
-      price: 90,
-      image: "/images/letai.png",
+      name: "Honey Matcha Latte",
+      description: "Matcha + Milk + Wildflower Honey",
+      price: 160,
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/53768974.jpg??width=800",
     },
     {
-      name: "Melon Soda",
-      description: "Sweet Japanese melon-flavored soda.",
-      price: 110,
-      image: "/images/letai.png",
+      name: "Dirty Matcha Latte",
+      description: "Matcha + Milk + Biscoff",
+      price: 165,
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/39974552.jpg??width=800",
     },
     {
-      name: "Ramune",
-      description: "Traditional Japanese marble soda.",
+      name: "Strawberry Matcha Latte (Iced Only)",
+      description: "Matcha + Milk + Strawberry",
+      price: 155,
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/39974553.jpg??width=800",
+    },
+    {
+      name: "Blueberry Matcha Latte (Iced Only)",
+      description: "Matcha + Milk + Blueberry",
+      price: 155,
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/39974554.jpg??width=800",
+    },
+    {
+      name: "Sweet Black (Espresso Based)",
+      description: "2 shots Espresso + Water + Sweetener",
       price: 100,
-      image: "/images/letai.png",
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/39974574.jpg??width=800",
+    },
+    {
+      name: "Spanish Latte (Espresso Based)",
+      description: "1 or 2 shots Espresso + Milk + Condense Milk",
+      price: 140,
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/39974577.jpg??width=800",
+    },
+    {
+      name: "Mocha Latte (Espresso Based)",
+      description: "1 shot Espresso + Milk + Salted Caramel",
+      price: 140,
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/39974579.jpg??width=800",
+    },
+    {
+      name: "Strawberry Milk (Non-Matcha)",
+      description: "Fresh milk infused with the natural sweetness of strawberries, delivers a fruity and refreshing flavor",
+      price: 125,
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/39974581.jpg??width=800",
+    },
+    {
+      name: "Houjicha Latte",
+      description: "Houjicha + Milk + Sweetener",
+      price: 160,
+      image: "https://images.deliveryhero.io/image/fd-ph/Products/64742086.jpg??width=800",
     }
   ]
-};
-
-// Legacy menu data for compatibility
-const MENU_DATA: Record<string, MenuItem[]> = {
-  "Hill Station": hillStationMenu.Breakfast.concat(hillStationMenu.Lunch, hillStationMenu.Dinner).slice(0, 3),
-  "Itaewon Cafe": itaewonCafeMenu.Lunch.concat(itaewonCafeMenu.Dinner).slice(0, 2),
 };
 
 // ====================================================================
 // COMPLETE RESTAURANT DATA
 // ====================================================================
 
-// Master restaurant data array with all details
 export const restaurants: RestaurantData[] = [
   {
-    name: "Hill Station",
-    cuisine: ["Filipino", "Ilocano/Cordilleran"],
+    name: "Good Sheperd Cafe",
+    cuisine: ["Cafe", "Coffee"],
     priceRange: {
-      min: 150,
-      max: 450
+      min: 125,
+      max: 210,
     },
-    location: "Session Road, Baguio City",
-    popularFor: ["Breakfast", "Lunch", "Dinner"],
-    menuItems: MENU_DATA["Hill Station"],
-    fullMenu: hillStationMenu,
-    image: "/images/hillstation.png",
-    tags: ["Family-Friendly", "Local Cuisine"],
-    ratings: 4.5,
-    dietaryOptions: ["Vegetarian"]
+    location: "Beside Baguio Cathedral",
+    popularFor: ["Coffee", "Local Beans"],
+    menuItems: [], // Legacy format, using fullMenu instead
+    fullMenu: goodSheperdCafeMenu,
+    image: "/images/caferuins.png", // Using a relevant placeholder
+    tags: ["Cafe", "Coffee", "Baguio"],
+    dietaryOptions: [],
   },
   {
-    name: "Itaewon Cafe",
-    cuisine: ["Korean"],
+    name: "Oh My Gulay",
+    cuisine: ["Filipino", "Vegetarian"],
     priceRange: {
-      min: 120,
-      max: 650
+      min: 200,
+      max: 225,
     },
-    location: "Upper Session Road, Baguio City",
-    popularFor: ["Lunch", "Dinner"],
-    menuItems: MENU_DATA["Itaewon Cafe"],
-    fullMenu: itaewonCafeMenu,
-    image: "/images/itaewon.png",
-    tags: ["Trendy", "International"],
-    ratings: 4.2,
-    dietaryOptions: ["Halal"]
+    location: "Session Road",
+    popularFor: ["Vegetarian Dishes", "Artistic Ambiance"],
+    menuItems: [], // Legacy format, using fullMenu instead
+    fullMenu: ohMyGulayMenu,
+    image: "/images/placeholders/ohmygulay.png", // Placeholder image
+    tags: ["Vegetarian", "Filipino", "Art Cafe", "Baguio"],
+    dietaryOptions: ["Vegan", "Vegetarian"],
   },
-  {
-    name: "Cafe Ysap",
-    cuisine: ["Filipino", "Ilocano/Cordilleran", "International"],
-    priceRange: {
-      min: 100,
-      max: 300
-    },
-    location: "Loakan, Baguio City",
-    popularFor: ["Breakfast", "Snacks"],
-    menuItems: cafeYsapMenu.Breakfast.slice(0, 2),
-    fullMenu: cafeYsapMenu,
-    image: "/images/caferuins.png",
-    tags: ["Cozy", "Local Cuisine"],
-    ratings: 4.3,
-    dietaryOptions: ["Vegetarian"]
-  },
-  {
-    name: "Golden Wok Cafe",
-    cuisine: ["Chinese"],
-    priceRange: {
-      min: 90,
-      max: 200
-    },
-    location: "Upper QM, near Lourdes Grotto, Baguio City",
-    popularFor: ["Dinner"],
-    menuItems: [goldenWokMenu.Lunch[0], goldenWokMenu.Dinner[0]],
-    fullMenu: goldenWokMenu,
-    image: "/images/goodtaste.png",
-    tags: ["Family-Friendly", "Group-Friendly"],
-    ratings: 4.0,
-    dietaryOptions: []
-  },
-  {
-    name: "Sakura Sip & Snack",
-    cuisine: ["Japanese"],
-    priceRange: {
-      min: 80,
-      max: 350
-    },
-    location: "Military Cut-off Road, Baguio City",
-    popularFor: ["Snacks", "Drinks"],
-    menuItems: [sakuraMenu.Snacks[0], sakuraMenu.Snacks[1]],
-    fullMenu: sakuraMenu,
-    image: "/images/letai.png",
-    tags: ["Cozy", "International"],
-    ratings: 4.1,
-    dietaryOptions: ["Vegetarian", "Vegan"]
-  }
 ];
 
-// Export all menus in a single object for easy access
+// Create a record of all restaurant menus for easy lookup
 export const allRestaurantMenus: Record<string, FullMenu> = {
-  "Hill Station": hillStationMenu,
-  "Itaewon Cafe": itaewonCafeMenu,
-  "Cafe Ysap": cafeYsapMenu,
-  "Golden Wok Cafe": goldenWokMenu,
-  "Sakura Sip & Snack": sakuraMenu
+  "Good Sheperd Cafe": goodSheperdCafeMenu,
+  "Oh My Gulay": ohMyGulayMenu,
+  "Uji-Matcha Cafe": ujiMatchaCafeMenu,
 };
 
 // ====================================================================
@@ -777,4 +475,4 @@ export const combinedFoodData = {
   restaurants,
   savedMeals: savedMealExperiences,
   formOptions: formOptionsData
-}; 
+};
