@@ -7,7 +7,7 @@ import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itinerar
 // Global initialization for Gemini model to avoid re-creating the client on every request.
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
-const geminiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" }) : null;
+const geminiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash" }) : null;
 
 // Simple in-memory cache for similar requests
 const responseCache = new Map<string, { response: any; timestamp: number }>();
