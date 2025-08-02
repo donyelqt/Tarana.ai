@@ -194,6 +194,40 @@ const goodSheperdCafeMenu: FullMenu = {
   Drinks: [],
 };
 
+// Myeong Dong Jjigae Restaurant Menu Data
+const myeongDongJjigaeMenu: FullMenu = {
+  Breakfast: [],
+  Lunch: [
+    {
+      name: "Myeongdong Set A",
+      description: "Buffet Only",
+      price: 399,
+      image: "https://www.facebook.com/photo.php?fbid=122177289860112650&set=pb.61553379521587.-2207520000&type=3",
+    },
+    {
+      name: "Myeongdong Set B",
+      description: "Buffet with Samgyeopsal",
+      price: 599,
+      image: "https://www.facebook.com/photo?fbid=122177289872112650&set=pb.61553379521587.-2207520000",
+    },
+    {
+      name: "Myeongdong Set C",
+      description: "Buffet with Hotpot/Jjigae",
+      price: 599,
+      image: "https://www.facebook.com/photo?fbid=122177289854112650&set=pb.61553379521587.-2207520000",
+    },
+    {
+      name: "Myeongdong Set D",
+      description: "All-in-Buffet with Samgyeopsal and Jjigae",
+      price: 699,
+      image: "https://www.facebook.com/photo?fbid=122177289866112650&set=pb.61553379521587.-2207520000",
+    },
+  ],
+  Dinner: [],
+  Snacks: [],
+  Drinks: [],
+};
+
 // Oh My Gulay Menu Data
 const ohMyGulayMenu: FullMenu = {
   Breakfast: [],
@@ -414,13 +448,13 @@ const ujiMatchaCafeMenu: FullMenu = {
         name: "Buffet (F-S, With beef/cheese/ice cream)",
         description: "with beef, cheese, 1 scoop of ice cream",
         price: 470,
-        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=4",
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
       },
       {
         name: "Buffet (F-S, With beef/cheese/ice cream/unli iced tea)",
         description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
         price: 499,
-        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=5",
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
       }
     ],
     Lunch: [
@@ -452,13 +486,13 @@ const ujiMatchaCafeMenu: FullMenu = {
         name: "Buffet (F-S, With beef/cheese/ice cream)",
         description: "with beef, cheese, 1 scoop of ice cream",
         price: 470,
-        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=4",
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
       },
       {
         name: "Buffet (F-S, With beef/cheese/ice cream/unli iced tea)",
         description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
         price: 499,
-        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=5",
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
       }
     ],
     Dinner: [
@@ -490,13 +524,13 @@ const ujiMatchaCafeMenu: FullMenu = {
         name: "Buffet (F-S, With beef/cheese/ice cream)",
         description: "with beef, cheese, 1 scoop of ice cream",
         price: 470,
-        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=4",
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
       },
       {
         name: "Buffet (F-S, With beef/cheese/ice cream/unli iced tea)",
         description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
         price: 499,
-        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=5",
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
       }
     ],
     Snacks: [],
@@ -529,13 +563,13 @@ const ujiMatchaCafeMenu: FullMenu = {
         name: "Buffet (F-S, With beef/cheese/ice cream)",
         description: "with beef, cheese, 1 scoop of ice cream",
         price: 470,
-        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=4",
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
       },
       {
         name: "Buffet (F-S, With beef/cheese/ice cream/unli iced tea)",
         description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
         price: 499,
-        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=5",
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
       }
     ]
   };
@@ -571,7 +605,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Vegetarian Dishes", "Artistic Ambiance"],
     menuItems: [], // Legacy format, using fullMenu instead
     fullMenu: ohMyGulayMenu,
-    image: "/images/placeholders/ohmygulay.png", // Placeholder image
+    image: "/images/ohmygulay.jpg", // Placeholder image    
     tags: ["Vegetarian", "Filipino", "Art Cafe", "Baguio"],
     dietaryOptions: ["Vegan", "Vegetarian"],
   },
@@ -598,6 +632,7 @@ export const allRestaurantMenus: Record<string, FullMenu> = {
   "Oh My Gulay": ohMyGulayMenu,
   "Uji-Matcha Cafe": ujiMatchaCafeMenu,
   "K-Flavors Buffet": kFlavorsBuffetMenu,
+  "Myeong Dong Jjigae Restaurant": myeongDongJjigaeMenu,
 };
 
 // ====================================================================
