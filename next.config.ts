@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
         hostname: 'images.deliveryhero.io',
         pathname: '/image/fd-ph/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.facebook.com',
+        pathname: '/**',
+      },
     ],
   },
   eslint: {
