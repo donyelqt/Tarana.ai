@@ -385,7 +385,44 @@ const ujiMatchaCafeMenu: FullMenu = {
 
   // K-Flavors Buffet Menu Data
   const kFlavorsBuffetMenu: FullMenu = {
-    Breakfast: [],
+    Breakfast: [
+      {
+        name: "Buffet (M-TH, No beef/cheese/ice cream)",
+        description: "NO beef, cheese, ice cream",
+        price: 399,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (M-TH, With beef/cheese/ice cream)",
+        description: "with beef, cheese, 1 scoop of ice cream",
+        price: 450,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (M-TH, With beef/cheese/ice cream/unli iced tea)",
+        description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
+        price: 470,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (F-S, No beef/cheese/ice cream)",
+        description: "NO beef, cheese, ice cream",
+        price: 450,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (F-S, With beef/cheese/ice cream)",
+        description: "with beef, cheese, 1 scoop of ice cream",
+        price: 470,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=4",
+      },
+      {
+        name: "Buffet (F-S, With beef/cheese/ice cream/unli iced tea)",
+        description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
+        price: 499,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=5",
+      }
+    ],
     Lunch: [
       {
         name: "Buffet (M-TH, No beef/cheese/ice cream)",
@@ -424,9 +461,83 @@ const ujiMatchaCafeMenu: FullMenu = {
         image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=5",
       }
     ],
-    Dinner: [],
+    Dinner: [
+      {
+        name: "Buffet (M-TH, No beef/cheese/ice cream)",
+        description: "NO beef, cheese, ice cream",
+        price: 399,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (M-TH, With beef/cheese/ice cream)",
+        description: "with beef, cheese, 1 scoop of ice cream",
+        price: 450,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (M-TH, With beef/cheese/ice cream/unli iced tea)",
+        description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
+        price: 470,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (F-S, No beef/cheese/ice cream)",
+        description: "NO beef, cheese, ice cream",
+        price: 450,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (F-S, With beef/cheese/ice cream)",
+        description: "with beef, cheese, 1 scoop of ice cream",
+        price: 470,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=4",
+      },
+      {
+        name: "Buffet (F-S, With beef/cheese/ice cream/unli iced tea)",
+        description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
+        price: 499,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=5",
+      }
+    ],
     Snacks: [],
-    Drinks: []
+    Drinks: [
+      {
+        name: "Buffet (M-TH, No beef/cheese/ice cream)",
+        description: "NO beef, cheese, ice cream",
+        price: 399,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (M-TH, With beef/cheese/ice cream)",
+        description: "with beef, cheese, 1 scoop of ice cream",
+        price: 450,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (M-TH, With beef/cheese/ice cream/unli iced tea)",
+        description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
+        price: 470,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (F-S, No beef/cheese/ice cream)",
+        description: "NO beef, cheese, ice cream",
+        price: 450,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+      },
+      {
+        name: "Buffet (F-S, With beef/cheese/ice cream)",
+        description: "with beef, cheese, 1 scoop of ice cream",
+        price: 470,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=4",
+      },
+      {
+        name: "Buffet (F-S, With beef/cheese/ice cream/unli iced tea)",
+        description: "with beef, cheese, 1 scoop of ice cream, unli iced tea",
+        price: 499,
+        image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=5",
+      }
+    ]
   };
 
 // ====================================================================
