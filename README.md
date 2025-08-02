@@ -234,7 +234,6 @@ This project is **not open source**. All rights reserved by Doniele Arys Antonio
 - Gemwil Salayog (CEO)
 - Cedric Navalta (CMO)
 - Leandro Gepila (CPO)
-- Jasper Gubatan (Chief Architect)
 
 ---
 
