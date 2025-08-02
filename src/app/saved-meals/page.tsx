@@ -12,13 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search } from 'lucide-react';
 import { savedMeals as initialSavedMeals, SavedMeal } from "./data";
 import MealCard from "./components/MealCard";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 
 const SavedMealsPage = () => {
-  const [savedMeals, setSavedMeals] = useState<SavedMeal[]>(initialSavedMeals);
+  const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
@@ -30,8 +30,7 @@ const SavedMealsPage = () => {
         const storedMeals = localStorage.getItem('savedMeals');
         if (storedMeals) {
           const parsedStoredMeals: SavedMeal[] = JSON.parse(storedMeals);
-          // Combine with initial static data
-          setSavedMeals([...initialSavedMeals, ...parsedStoredMeals]);
+          setSavedMeals(parsedStoredMeals);
         }
       } catch (error) {
         console.error("Error loading saved meals:", error);
@@ -48,26 +47,25 @@ const SavedMealsPage = () => {
           const storedMeals = localStorage.getItem('savedMeals');
           if (storedMeals) {
             const parsedStoredMeals: SavedMeal[] = JSON.parse(storedMeals);
-            setSavedMeals([...initialSavedMeals, ...parsedStoredMeals]);
+            setSavedMeals(parsedStoredMeals);
           } else {
-            setSavedMeals(initialSavedMeals);
+            setSavedMeals([]);
           }
         } else {
-          setSavedMeals(initialSavedMeals);
+          setSavedMeals([]);
         }
       } catch (error) {
         console.error("Error loading saved meals:", error);
-        setSavedMeals(initialSavedMeals);
+        setSavedMeals([]);
       }
     } else {
       // Get all meals including stored ones
-      let allMeals = [...initialSavedMeals];
+      let allMeals: SavedMeal[] = [];
       try {
         if (typeof window !== 'undefined') {
           const storedMeals = localStorage.getItem('savedMeals');
           if (storedMeals) {
-            const parsedStoredMeals: SavedMeal[] = JSON.parse(storedMeals);
-            allMeals = [...allMeals, ...parsedStoredMeals];
+            allMeals = JSON.parse(storedMeals);
           }
         }
       } catch (error) {
@@ -169,4 +167,4 @@ const SavedMealsPage = () => {
   );
 };
 
-export default SavedMealsPage; 
+export default SavedMealsPage;
