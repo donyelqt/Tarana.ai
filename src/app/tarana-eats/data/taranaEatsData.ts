@@ -605,7 +605,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Vegetarian Dishes", "Artistic Ambiance"],
     menuItems: [], // Legacy format, using fullMenu instead
     fullMenu: ohMyGulayMenu,
-    image: "/images/ohmygulay.jpg", // Placeholder image    
+    image: "/images/ohmygulay.jpg",   
     tags: ["Vegetarian", "Filipino", "Art Cafe", "Baguio"],
     dietaryOptions: ["Vegan", "Vegetarian"],
   },
