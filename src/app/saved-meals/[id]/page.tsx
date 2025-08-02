@@ -13,121 +13,7 @@ import { useToast } from '@/components/ui/use-toast';
 import MealCardPopup from '../components/MealCardPopup';
 
 // Static data for fallback
-const mealDetailsData = {
-  '1': {
-    name: 'Cafe Ysap',
-    location: 'Loakan, Baguio City',
-    hours: '9AM - 6PM',
-    priceRange: '₱150-₱900',
-    about: `A cozy café tucked in the heart of Baguio, Café Ysap serves home-cooked Filipino meals made with fresh, local ingredients. Known for its warm ambience and hearty silog plates, it's the perfect stop for comfort food and mountain air.`,
-    image: '/images/caferuins.png',
-    savedMeals: [
-      {
-        id: 'meal1',
-        name: 'Custom Meal 1',
-        type: 'Breakfast',
-        items: [
-          { name: 'Tapsilog', price: 150, quantity: 2, image: '/images/bencab.png' },
-          { name: 'Brewed Coffee', price: 60, quantity: 2, image: '/images/burnham.png' }
-        ],
-        totalPrice: 420,
-        goodFor: 2
-      }
-    ],
-    menuItems: [
-      { name: 'Tapsilog', type: 'Breakfast', price: 150, image: '/images/bencab.png', goodFor: 1 },
-      { name: 'Longsilog', type: 'Breakfast', price: 150, image: '/images/burnham.png', goodFor: 1 },
-      { name: 'Tocilog', type: 'Breakfast', price: 150, image: '/images/caferuins.png', goodFor: 1 },
-    ],
-    // Add fullMenu support without changing UI
-    fullMenu: {
-      Breakfast: [
-        { name: 'Tapsilog', description: 'Beef tapa with garlic rice and egg', price: 150, image: '/images/bencab.png' },
-        { name: 'Longsilog', description: 'Longanisa with garlic rice and egg', price: 150, image: '/images/burnham.png' },
-      ],
-      Lunch: [],
-      Dinner: [],
-      Snacks: [],
-      Drinks: []
-    }
-  },
-  '2': {
-    name: 'Golden Wok Cafe',
-    location: 'Upper QM, near Lourdes Grotto, Baguio City',
-    hours: '11AM - 10PM',
-    priceRange: '₱180-₱700',
-    about: `Golden Wok Cafe offers authentic Chinese cuisine with a Filipino twist. Known for its generous portions and affordable prices, this local favorite features classic stir-fry dishes, noodles, and dimsum in a casual dining atmosphere.`,
-    image: '/images/goodtaste.png',
-    savedMeals: [
-      {
-        id: 'meal2',
-        name: 'Special Dinner Set',
-        type: 'Dinner',
-        items: [
-          { name: 'Sweet and Sour Pork', price: 220, quantity: 1, image: '/images/hillstation.png' },
-          { name: 'Yang Chow Fried Rice', price: 180, quantity: 1, image: '/images/goodtaste.png' }
-        ],
-        totalPrice: 400,
-        goodFor: 2
-      }
-    ],
-    menuItems: [
-      { name: 'Sweet and Sour Pork', type: 'Dinner', price: 220, image: '/images/hillstation.png', goodFor: 2 },
-      { name: 'Yang Chow Fried Rice', type: 'Dinner', price: 180, image: '/images/goodtaste.png', goodFor: 2 },
-      { name: 'Beef with Broccoli', type: 'Dinner', price: 250, image: '/images/viewspark.png', goodFor: 2 },
-    ],
-    // Add fullMenu support without changing UI
-    fullMenu: {
-      Breakfast: [],
-      Lunch: [],
-      Dinner: [
-        { name: 'Sweet and Sour Pork', description: 'Crispy pork with sweet and sour sauce', price: 220, image: '/images/hillstation.png' },
-        { name: 'Yang Chow Fried Rice', description: 'Classic fried rice with vegetables and meat', price: 180, image: '/images/goodtaste.png' },
-      ],
-      Snacks: [],
-      Drinks: []
-    }
-  },
-  '3': {
-    name: 'Sakura Sip & Snack',
-    location: 'Military Cut-off Road, Baguio City',
-    hours: '10AM - 8PM',
-    priceRange: '₱80-₱350',
-    about: `Sakura Sip & Snack is a charming Japanese-inspired cafe offering a variety of light meals, pastries, and specialty drinks. Known for their matcha selections and aesthetic ambiance, it's perfect for afternoon tea or a quick snack while exploring Baguio.`,
-    image: '/images/letai.png',
-    savedMeals: [
-      {
-        id: 'meal3',
-        name: 'Afternoon Tea Set',
-        type: 'Snack',
-        items: [
-          { name: 'Matcha Latte', price: 120, quantity: 1, image: '/images/letai.png' },
-          { name: 'Cheese Tart', price: 80, quantity: 1, image: '/images/tamawan.png' }
-        ],
-        totalPrice: 200,
-        goodFor: 1
-      }
-    ],
-    menuItems: [
-      { name: 'Matcha Latte', type: 'Drinks', price: 120, image: '/images/letai.png', goodFor: 1 },
-      { name: 'Cheese Tart', type: 'Snacks', price: 80, image: '/images/tamawan.png', goodFor: 1 },
-      { name: 'Fruit Parfait', type: 'Snacks', price: 150, image: '/images/nightmarket.png', goodFor: 1 },
-    ],
-    // Add fullMenu support without changing UI
-    fullMenu: {
-      Breakfast: [],
-      Lunch: [],
-      Dinner: [],
-      Snacks: [
-        { name: 'Cheese Tart', description: 'Freshly baked tart with creamy cheese filling', price: 80, image: '/images/tamawan.png' },
-        { name: 'Fruit Parfait', description: 'Layered yogurt with fresh fruits and granola', price: 150, image: '/images/nightmarket.png' },
-      ],
-      Drinks: [
-        { name: 'Matcha Latte', description: 'Premium matcha with steamed milk', price: 120, image: '/images/letai.png' },
-      ]
-    }
-  }
-};
+const mealDetailsData = {};
 
 const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'];
 
@@ -472,4 +358,4 @@ const SavedMealPage = () => {
   );
 };
 
-export default SavedMealPage; 
+export default SavedMealPage;
