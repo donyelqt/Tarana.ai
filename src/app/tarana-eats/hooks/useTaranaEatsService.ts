@@ -90,7 +90,8 @@ export const useTaranaEatsService = () => {
             items: selectedItems.map(item => ({ 
               name: item.name, 
               price: item.price, 
-              quantity: 1 
+              quantity: 1,
+              image: item.image
             })),
             totalPrice,
             goodFor: restaurant.meals
@@ -146,4 +147,4 @@ export const useTaranaEatsService = () => {
     loading,
     error
   };
-}; 
+};
