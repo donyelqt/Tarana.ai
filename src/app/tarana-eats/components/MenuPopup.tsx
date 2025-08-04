@@ -30,18 +30,24 @@ export default function MenuPopup({
         .flat()
         .filter(Boolean);
     }
-    
     // Try to get from MENU_DATA
     const menuItems = MENU_DATA[match.name];
     if (menuItems && menuItems.length > 0) {
       return menuItems;
     }
-    
     // Fallback: get menu by restaurant name
     const fullMenu = getMenuByRestaurantName(match.name);
     return Object.values(fullMenu).flat().filter(Boolean);
   };
-  
+
+  // Helper to ensure valid image URL for next/image
+  const getValidImageUrl = (imageUrl: string): string => {
+    if (!imageUrl) return '/images/placeholders/hero-placeholder.svg';
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('/')) {
+      return imageUrl;
+    }
+    return `/${imageUrl}`;
+  };
   const menuItems = getMenuItems();
   
   const toggleItem = (item: MenuItem) => {
@@ -113,7 +119,7 @@ export default function MenuPopup({
           <div className="mb-6 flex items-start gap-4">
             <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full">
               <Image
-                src={match.image}
+                src={getValidImageUrl(match.image)}
                 alt={match.name}
                 fill
                 sizes="48px"
@@ -139,7 +145,7 @@ export default function MenuPopup({
                 >
                   <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg">
                     <Image
-                      src={item.image || match.image}
+                      src={getValidImageUrl(item.image || match.image)}
                       alt={item.name}
                       fill
                       sizes="80px"
@@ -212,4 +218,4 @@ export default function MenuPopup({
       </div>
     </div>
   );
-} 
+}
