@@ -68,12 +68,14 @@ export interface RestaurantData {
   };
   location: string;
   popularFor: string[];
-  menuItems: MenuItem[];  // Legacy format
-  fullMenu: FullMenu;     // Organized by category
+  menuItems: MenuItem[];
+  fullMenu: FullMenu;
   image: string;
   tags: string[];
   ratings?: number;
   dietaryOptions: string[];
+  about?: string;
+  hours?: string;
 }
 
 // ====================================================================
@@ -593,6 +595,8 @@ export const restaurants: RestaurantData[] = [
     image: "/images/caferuins.png", // Using a relevant placeholder
     tags: ["Cafe", "Coffee", "Baguio"],
     dietaryOptions: [],
+    about: "A cozy cafe beside Baguio Cathedral serving locally sourced coffee and snacks.",
+    hours: "8:00 AM - 6:00 PM",
   },
   {
     name: "Oh My Gulay",
@@ -601,13 +605,32 @@ export const restaurants: RestaurantData[] = [
       min: 200,
       max: 225,
     },
-    location: "Session Road",
-    popularFor: ["Vegetarian Dishes", "Artistic Ambiance"],
-    menuItems: [], // Legacy format, using fullMenu instead
+    location: "La Azotea Building, Session Road",
+    popularFor: ["Vegetarian", "Artistic Ambiance"],
+    menuItems: [],
     fullMenu: ohMyGulayMenu,
-    image: "/images/ohmygulay.jpg",   
-    tags: ["Vegetarian", "Filipino", "Art Cafe", "Baguio"],
-    dietaryOptions: ["Vegan", "Vegetarian"],
+    image: "/images/ohmygulay.jpg",
+    tags: ["Vegetarian", "Filipino", "Baguio"],
+    dietaryOptions: ["Vegetarian"],
+    about: "A vegetarian restaurant and art space with creative Filipino dishes and a unique atmosphere.",
+    hours: "11:00 AM - 9:00 PM",
+  },
+  {
+    name: "Uji-Matcha Cafe",
+    cuisine: ["Cafe", "Japanese", "Tea"],
+    priceRange: {
+      min: 100,
+      max: 165,
+    },
+    location: "Porta Vaga Mall, Session Road",
+    popularFor: ["Matcha", "Japanese Drinks"],
+    menuItems: [],
+    fullMenu: ujiMatchaCafeMenu,
+    image: "/images/ujimatcha.png",
+    tags: ["Cafe", "Matcha", "Japanese", "Baguio"],
+    dietaryOptions: [],
+    about: "A specialty cafe offering authentic Japanese matcha drinks and desserts.",
+    hours: "10:00 AM - 8:00 PM",
   },
   {
     name: "K-Flavors Buffet",
@@ -616,13 +639,15 @@ export const restaurants: RestaurantData[] = [
       min: 399,
       max: 499,
     },
-    location: "Baguio City",
-    popularFor: ["Korean BBQ", "Buffet", "Group Dining"],
+    location: "Upper Session Road",
+    popularFor: ["Buffet", "Korean BBQ"],
     menuItems: [],
     fullMenu: kFlavorsBuffetMenu,
-    image: "https://www.facebook.com/photo.php?fbid=660691786987731&set=pb.100091407458861.-2207520000&type=3",
+    image: "/images/kflavors.png",
     tags: ["Korean", "Buffet", "Baguio"],
     dietaryOptions: [],
+    about: "A popular Korean buffet spot with a wide selection of meats and side dishes.",
+    hours: "11:00 AM - 10:00 PM",
   },
 ];
 

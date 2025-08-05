@@ -6,6 +6,7 @@ export interface SavedMeal {
   goodFor: number;
   location: string;
   image: string;
+  menuItems?: any[];
 }
 
 export const savedMeals: SavedMeal[] = [];
