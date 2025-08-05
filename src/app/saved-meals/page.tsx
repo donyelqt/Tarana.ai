@@ -25,12 +25,19 @@ const SavedMealsPage = () => {
   const router = useRouter();
   const { data: session } = useSession();
 
-  useEffect(() => {
+  const loadSavedMeals = async () => {
     if (!session?.user?.id) return;
-    getSavedMeals(session.user.id).then(setSavedMeals).catch((error) => {
+    try {
+      const meals = await getSavedMeals(session.user.id);
+      setSavedMeals(meals);
+    } catch (error) {
       console.error("Error loading saved meals:", error);
       setSavedMeals([]);
-    });
+    }
+  };
+
+  useEffect(() => {
+    loadSavedMeals();
   }, [session?.user?.id]);
 
   const handleSearch = async (query: string) => {
@@ -124,7 +131,7 @@ const SavedMealsPage = () => {
           {/* Meals Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {savedMeals.map((meal) => (
-              <MealCard key={meal.id} meal={meal} />
+              <MealCard key={meal.id} meal={meal} onDelete={loadSavedMeals} />
             ))}
           </div>
         </div>

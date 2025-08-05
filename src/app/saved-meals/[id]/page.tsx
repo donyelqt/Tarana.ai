@@ -162,14 +162,6 @@ const SavedMealPage = () => {
               <div className="flex-1">
                 <div className="flex justify-between">
                   <h1 className="text-3xl font-bold text-gray-900">{mealDetails.cafeName}</h1>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="h-10 w-10 border-gray-300 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50"
-                    onClick={handleDeleteMeal}
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-500 mt-2">
                   <span className="flex items-center gap-1.5"><MapPin size={16} />{mealDetails.location}</span>

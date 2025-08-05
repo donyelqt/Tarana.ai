@@ -33,7 +33,7 @@ export default function FoodMatchesPreview({ results, isLoading }: FoodMatchesPr
     setSavedSelections(prev => ({ ...prev, [restaurantName]: items }));
   };
 
-  const handleSaveAllMeals = () => {
+  const handleSaveAllMeals = async () => {
     // Only run on client side
     if (typeof window === 'undefined') {
       return;
@@ -55,12 +55,12 @@ export default function FoodMatchesPreview({ results, isLoading }: FoodMatchesPr
     let failedSavesCount = 0;
     
     // Save each selected restaurant's meals
-    selectionEntries.forEach(([restaurantName, menuItems]) => {
+    for (const [restaurantName, menuItems] of selectionEntries) {
       const restaurantMatch = results?.matches.find(match => match.name === restaurantName);
       
       if (!restaurantMatch || menuItems.length === 0) {
         failedSavesCount++;
-        return;
+        continue;
       }
       
       // Determine meal type based on time of day (or could be selected by user)
@@ -72,14 +72,18 @@ export default function FoodMatchesPreview({ results, isLoading }: FoodMatchesPr
       else mealType = 'Dinner';
       
       // Save the meal
-      const savedMealId = saveToMeals(restaurantMatch, menuItems, mealType);
-      
-      if (savedMealId) {
-        savedMealsCount++;
-      } else {
+      try {
+        const savedMealId = await saveToMeals(restaurantMatch, menuItems, mealType);
+        
+        if (savedMealId) {
+          savedMealsCount++;
+        } else {
+          failedSavesCount++;
+        }
+      } catch (error) {
         failedSavesCount++;
       }
-    });
+    }
     
     // Show appropriate notification based on results
     if (savedMealsCount > 0) {

@@ -11,6 +11,7 @@ import { deleteMeal } from '@/lib/supabaseMeals'
 
 interface MealCardProps {
   meal: SavedMeal;
+  onDelete?: () => void;
 }
 
 const MealTypeIcon = ({ mealType }: { mealType: SavedMeal['mealType'] }) => {
@@ -26,7 +27,7 @@ const MealTypeIcon = ({ mealType }: { mealType: SavedMeal['mealType'] }) => {
   }
 };
 
-const MealCard = ({ meal }: MealCardProps) => {
+const MealCard = ({ meal, onDelete }: MealCardProps) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -48,7 +49,11 @@ const MealCard = ({ meal }: MealCardProps) => {
           description: "Meal deleted successfully!",
           variant: "success",
         });
-        router.refresh();
+        if (onDelete) {
+          onDelete();
+        } else {
+          router.refresh();
+        }
       } else {
         throw new Error('Failed to delete meal');
       }
