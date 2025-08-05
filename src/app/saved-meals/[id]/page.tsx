@@ -11,6 +11,9 @@ import Link from 'next/link';
 import { FullMenu } from '@/app/tarana-eats/data/taranaEatsData';
 import { useToast } from '@/components/ui/use-toast';
 import MealCardPopup from '../components/MealCardPopup';
+import { useSession } from 'next-auth/react'
+import { deleteMeal } from '@/lib/supabaseMeals'
+import { getSavedMealById } from '@/lib/supabaseMeals';
 
 // Static data for fallback
 const mealDetailsData = {};
@@ -37,49 +40,41 @@ const SavedMealPage = () => {
   const [isPopupVisible, setIsPopupVisible] = useState(false);
   const [selectedMealForPopup, setSelectedMealForPopup] = useState<any>(null);
   const { toast } = useToast();
+  const { data: session } = useSession();
   
   useEffect(() => {
-    // Get the meal ID from the URL query parameter
+    const fetchMeal = async () => {
+      if (!mealId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const meal = await getSavedMealById(mealId);
+        if (!meal) {
+          router.push('/saved-meals');
+          return;
+        }
+        setMealDetails(meal);
+        if (meal.menuItems && meal.menuItems.length > 0) {
+          setActiveMenu(meal.menuItems[0].type);
+        }
+        document.title = `Tarana.ai | ${meal.cafeName || 'Meal'}`;
+      } catch (error) {
+        console.error("Error fetching meal details:", error);
+        router.push('/saved-meals');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMeal();
+
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
       const mealParam = searchParams.get('meal');
       if (mealParam) {
         setSelectedMealId(mealParam);
       }
-      
-      // First, try to get meal details from localStorage
-      let details;
-      try {
-        if (typeof window !== 'undefined') {
-          const storedMealDetails = localStorage.getItem('mealDetailsData');
-          if (storedMealDetails) {
-            const parsedMealDetails = JSON.parse(storedMealDetails);
-            details = parsedMealDetails[mealId];
-          }
-        }
-      } catch (error) {
-        console.error("Error loading meal details from localStorage:", error);
-      }
-      
-      // If not found in localStorage, try the static data
-      if (!details) {
-        details = mealDetailsData[mealId as keyof typeof mealDetailsData];
-      }
-      
-      if (!details) {
-        // Redirect to saved meals page if the meal ID doesn't exist
-        router.push('/saved-meals');
-        return;
-      }
-      
-      setMealDetails(details);
-      setLoading(false);
-      
-      if (details && details.menuItems && details.menuItems.length > 0) {
-        setActiveMenu(details.menuItems[0].type);
-      }
-      
-      document.title = `Tarana.ai | ${details?.name || 'Meal'}`;
     }
   }, [mealId, router]);
 
@@ -102,35 +97,22 @@ const SavedMealPage = () => {
     handleClosePopup();
   };
 
-  const handleDeleteMeal = () => {
+  const handleDeleteMeal = async () => {
+    if (!session?.user?.id) return;
     try {
-      if (typeof window !== 'undefined') {
-        // Delete from localStorage
-        const storedMeals = localStorage.getItem('savedMeals');
-        if (storedMeals) {
-          const parsedStoredMeals = JSON.parse(storedMeals);
-          const updatedMeals = parsedStoredMeals.filter((meal: any) => meal.id !== mealId);
-          localStorage.setItem('savedMeals', JSON.stringify(updatedMeals));
-        }
-        
-        const storedMealDetails = localStorage.getItem('mealDetailsData');
-        if (storedMealDetails) {
-          const parsedMealDetails = JSON.parse(storedMealDetails);
-          delete parsedMealDetails[mealId];
-          localStorage.setItem('mealDetailsData', JSON.stringify(parsedMealDetails));
-        }
+      const success = await deleteMeal(session.user.id, mealId);
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Meal deleted successfully!",
+          variant: "success",
+        });
+        setTimeout(() => {
+          router.push('/saved-meals');
+        }, 1200);
+      } else {
+        throw new Error('Failed to delete meal');
       }
-      
-      toast({
-        title: "Success",
-        description: "Meal deleted successfully!",
-        variant: "success",
-      });
-      
-      // Redirect back to saved meals page after a short delay
-      setTimeout(() => {
-        router.push('/saved-meals');
-      }, 1200);
     } catch (error) {
       console.error("Error deleting meal:", error);
       toast({
@@ -139,7 +121,7 @@ const SavedMealPage = () => {
         variant: "destructive",
       });
     }
-  };
+  }
 
   if (loading || !mealDetails) {
     return (
@@ -168,18 +150,18 @@ const SavedMealPage = () => {
       <Sidebar />
       <main className="flex-1 md:pl-72 p-8">
         <div className="text-sm text-gray-500 mb-4">
-          <Link href="/saved-meals" className="hover:text-blue-600">Saved Plans</Link> &gt; <Link href="/saved-meals" className="hover:text-blue-600">Meals</Link> &gt; {mealDetails.name}
+          <Link href="/saved-meals" className="hover:text-blue-600">Saved Plans</Link> &gt; <Link href="/saved-meals" className="hover:text-blue-600">Meals</Link> &gt; {mealDetails.cafeName}
         </div>
         
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
           <div className="xl:col-span-2 flex flex-col gap-6">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-6">
               <div className="w-24 h-24 rounded-full bg-[#7d5a44] flex-shrink-0 flex items-center justify-center text-white text-center font-bold text-lg leading-tight">
-                {mealDetails.name.substring(0, 2)}
+                {mealDetails.cafeName?.substring(0, 2)}
               </div>
               <div className="flex-1">
                 <div className="flex justify-between">
-                  <h1 className="text-3xl font-bold text-gray-900">{mealDetails.name}</h1>
+                  <h1 className="text-3xl font-bold text-gray-900">{mealDetails.cafeName}</h1>
                   <Button 
                     variant="outline" 
                     size="icon" 
@@ -211,7 +193,7 @@ const SavedMealPage = () => {
             </div>
           </div>
           <div className="w-full h-64 xl:h-auto rounded-2xl overflow-hidden relative">
-            <Image src={mealDetails.image} alt={mealDetails.name} fill className="object-cover" />
+                        <Image src={mealDetails.image} alt={mealDetails.name || 'Meal Image'} fill className="object-cover" />
           </div>
         </div>
 
@@ -347,7 +329,7 @@ const SavedMealPage = () => {
       </main>
       {isPopupVisible && selectedMealForPopup && mealDetails && (
         <MealCardPopup
-          restaurantName={mealDetails.name}
+          restaurantName={mealDetails.cafeName}
           restaurantLocation={mealDetails.location}
           items={selectedMealForPopup.items}
           onClose={handleClosePopup}

@@ -1,6 +1,8 @@
 
 "use client";
 
+import { useSession } from 'next-auth/react'
+import { getSavedMeals } from '@/lib/supabaseMeals'
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -21,65 +23,29 @@ const SavedMealsPage = () => {
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+  const { data: session } = useSession();
 
   useEffect(() => {
-    // Load saved meals from localStorage when the component mounts
-    // Only run on client side
-    if (typeof window !== 'undefined') {
-      try {
-        const storedMeals = localStorage.getItem('savedMeals');
-        if (storedMeals) {
-          const parsedStoredMeals: SavedMeal[] = JSON.parse(storedMeals);
-          setSavedMeals(parsedStoredMeals);
-        }
-      } catch (error) {
-        console.error("Error loading saved meals:", error);
-      }
-    }
-  }, []);
+    if (!session?.user?.id) return;
+    getSavedMeals(session.user.id).then(setSavedMeals).catch((error) => {
+      console.error("Error loading saved meals:", error);
+      setSavedMeals([]);
+    });
+  }, [session?.user?.id]);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query);
+    if (!session?.user?.id) return;
     if (query.trim() === "") {
-      // Get stored meals again to ensure we have the latest
-      try {
-        if (typeof window !== 'undefined') {
-          const storedMeals = localStorage.getItem('savedMeals');
-          if (storedMeals) {
-            const parsedStoredMeals: SavedMeal[] = JSON.parse(storedMeals);
-            setSavedMeals(parsedStoredMeals);
-          } else {
-            setSavedMeals([]);
-          }
-        } else {
-          setSavedMeals([]);
-        }
-      } catch (error) {
-        console.error("Error loading saved meals:", error);
-        setSavedMeals([]);
-      }
+      getSavedMeals(session.user.id).then(setSavedMeals).catch(() => setSavedMeals([]));
     } else {
-      // Get all meals including stored ones
-      let allMeals: SavedMeal[] = [];
-      try {
-        if (typeof window !== 'undefined') {
-          const storedMeals = localStorage.getItem('savedMeals');
-          if (storedMeals) {
-            allMeals = JSON.parse(storedMeals);
-          }
-        }
-      } catch (error) {
-        console.error("Error loading saved meals for search:", error);
-      }
-
-      // Filter based on search query
+      const allMeals = await getSavedMeals(session.user.id);
       const filtered = allMeals.filter(
-        (meal) =>
-          meal.cafeName.toLowerCase().includes(query.toLowerCase())
+        (meal) => meal.cafeName.toLowerCase().includes(query.toLowerCase())
       );
       setSavedMeals(filtered);
     }
-  };
+  }
 
   const handleGenerateMeals = () => {
     router.push("/tarana-eats");
