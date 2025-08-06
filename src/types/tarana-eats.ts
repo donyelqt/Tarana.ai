@@ -3,6 +3,7 @@ export interface MenuItem {
   description: string;
   price: number;
   image: string;
+  tags?: string[];
 }
 
 export interface FullMenu {
@@ -32,4 +33,4 @@ export interface TaranaEatsFormValues {
 
 export interface FoodMatchesData {
   matches: ResultMatch[];
-} 
+}

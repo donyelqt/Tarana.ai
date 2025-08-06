@@ -13,6 +13,7 @@ import { myeongDongJjigaeMenu } from "./menus/myeongDongJjigae";
 import { ohMyGulayMenu } from "./menus/ohMyGulay";
 import { ujiMatchaCafeMenu } from "./menus/ujiMatchaCafe";
 import { kFlavorsBuffetMenu } from "./menus/kFlavorsBuffet";
+import { itaewonCafeMenu } from "./menus/itaewonCafe";
 
 export const restaurants: RestaurantData[] = [
   {
@@ -26,7 +27,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Coffee", "Local Beans"],
     menuItems: [],
     fullMenu: goodShepherdCafeMenu,
-    image: "/images/caferuins.png",
+    image: "/images/goodsheperd.jpg",
     tags: ["Cafe", "Coffee", "Baguio"],
     dietaryOptions: [],
     about: "A cozy cafe beside Baguio Cathedral serving locally sourced coffee and snacks.",
@@ -60,7 +61,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Matcha", "Japanese Drinks"],
     menuItems: [],
     fullMenu: ujiMatchaCafeMenu,
-    image: "/images/ujimatcha.png",
+    image: "/images/ujimatcha.jpg",
     tags: ["Cafe", "Matcha", "Japanese", "Baguio"],
     dietaryOptions: [],
     about: "A specialty cafe offering authentic Japanese matcha drinks and desserts.",
@@ -77,7 +78,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Buffet", "Korean BBQ"],
     menuItems: [],
     fullMenu: kFlavorsBuffetMenu,
-    image: "/images/kflavors.png",
+    image: "/images/kflavors.jpg",
     tags: ["Korean", "Buffet", "Baguio"],
     dietaryOptions: [],
     about: "A popular Korean buffet spot with a wide selection of meats and side dishes.",
@@ -94,10 +95,27 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Korean Buffet", "Jjigae", "Samgyeopsal"],
     menuItems: [],
     fullMenu: myeongDongJjigaeMenu,
-    image: "/images/myeongdong.png",
+    image: "/images/myeongdong.jpg",
     tags: ["Korean", "Buffet", "Jjigae", "Baguio"],
     dietaryOptions: [],
     about: "Authentic Korean restaurant specializing in traditional jjigae and buffet options.",
+    hours: "11:00 AM - 9:00 PM",
+  },
+  {
+    name: "Itaewon Cafe",
+    cuisine: ["Korean", "Cafe"],
+    priceRange: {
+      min: 115,
+      max: 220,
+    },
+    location: "Baguio City",
+    popularFor: ["Korean Street Food", "Specialty Drinks", "Artisanal Coffee"],
+    menuItems: [],
+    fullMenu: itaewonCafeMenu,
+    image: "/images/itaewon.jpg",
+    tags: ["Korean", "Cafe", "Baguio", "K-Culture"],
+    dietaryOptions: [],
+    about: "Itaewon Café is a Korean-inspired spot in Baguio known for its minimalist interiors, cozy atmosphere, and aesthetic appeal. It serves a mix of Korean street food, specialty drinks, and artisanal coffee that attracts students, couples, and K-culture fans. With warm lighting and IG-worthy corners, it's a favorite hangout for those seeking a quiet yet stylish café experience.",
     hours: "11:00 AM - 9:00 PM",
   },
 ];
@@ -109,4 +127,5 @@ export const allRestaurantMenus: Record<string, FullMenu> = {
   "Uji-Matcha Cafe": ujiMatchaCafeMenu,
   "K-Flavors Buffet": kFlavorsBuffetMenu,
   "Myeong Dong Jjigae Restaurant": myeongDongJjigaeMenu,
+  "Itaewon Cafe": itaewonCafeMenu,
 };

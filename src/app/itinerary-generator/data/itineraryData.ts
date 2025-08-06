@@ -1,4 +1,4 @@
-import { baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation, 
+import { baguio_cathedral, baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation, 
     mtulap, nightmarket, tamawan, taranaai, treetopcampjohnhay, viewspark, 
     vizcossessionroad} from "../../../../public";
   import { StaticImageData } from "next/image";
@@ -58,7 +58,7 @@ import { baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation,
         activities: [
           {
             image: goodtaste,
-            title: "Breakfast at Good Taste Restaurant",
+            title: "Good Taste Restaurant",
             time: "7:30AM-9:00AM",
             desc: "Fuel up with a hearty Filipino-Chinese breakfast at Good Taste, a Baguio favorite known for generous portions and affordable prices. Try their famous buttered chicken (₱180-250) and pancit canton (₱150-200). Located at Carino St., this 24-hour restaurant is perfect for early risers. Budget-friendly with meals averaging ₱150-300 per person. Travel time from city center: 5-10 minutes by taxi (₱70-100).",
             tags: ["Food & Culinary", "Budget-friendly", "Local Favorite", "Indoor-Friendly"]
@@ -149,7 +149,7 @@ import { baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation,
         period: "Anytime",
         activities: [
           {
-            image: taranaai,
+            image: baguio_cathedral,
             title: "Baguio Cathedral",
             time: "6:00 AM – 6:00 PM",
             desc: "Neo-Gothic cathedral with twin spires; offers panoramic city views.",

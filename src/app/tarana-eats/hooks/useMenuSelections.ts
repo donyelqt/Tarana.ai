@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MenuItem, ResultMatch } from '@/types/tarana-eats';
-import { getMenuByRestaurantName } from '../data/taranaEatsData';
+import { getMenuByRestaurantName, restaurants } from '../data/taranaEatsData';
 
 export const useMenuSelections = (match: ResultMatch) => {
   const [selectedItems, setSelectedItems] = useState<MenuItem[]>([]);
@@ -34,7 +34,7 @@ export const useMenuSelections = (match: ResultMatch) => {
     }
     
     // Fallback: get menu by restaurant name from data store
-    const fullMenu = getMenuByRestaurantName(match.name);
+    const fullMenu = getMenuByRestaurantName(match.name, restaurants);
     return Object.values(fullMenu).flat().filter(item => item);
   };
 
@@ -44,4 +44,4 @@ export const useMenuSelections = (match: ResultMatch) => {
     getTotalPrice,
     getMenuItems
   };
-}; 
+};
