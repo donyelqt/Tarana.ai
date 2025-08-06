@@ -5,7 +5,7 @@ import { PlusIcon, CheckIcon } from "@heroicons/react/24/solid";
 import { cn } from "@/lib/utils";
 import { ResultMatch, MenuItem } from "@/types/tarana-eats";
 import { MENU_DATA } from "../data/menuData";
-import { getMenuByRestaurantName } from "../data/taranaEatsData";
+import { getMenuByRestaurantName, restaurants } from "../data/taranaEatsData";
 import { useToast } from "@/components/ui/use-toast";
 
 interface MenuPopupProps {
@@ -36,7 +36,7 @@ export default function MenuPopup({
       return menuItems;
     }
     // Fallback: get menu by restaurant name
-    const fullMenu = getMenuByRestaurantName(match.name);
+    const fullMenu = getMenuByRestaurantName(match.name, restaurants);
     return Object.values(fullMenu).flat().filter(Boolean);
   };
 

@@ -26,3 +26,4 @@ export const vizcossessionroad = "/images/vizcossessionroad.png";
 export const taranaai = "/images/taranaai.png";
 export const taranaai2 = "/images/taranaai2.png";
 export const ohmygulay = "/images/ohmygulay.jpg";
+export const baguio_cathedral = "/images/baguio_cathedral.jpg";
