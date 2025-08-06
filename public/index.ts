@@ -27,3 +27,12 @@ export const taranaai = "/images/taranaai.png";
 export const taranaai2 = "/images/taranaai2.png";
 export const ohmygulay = "/images/ohmygulay.jpg";
 export const baguio_cathedral = "/images/baguio_cathedral.jpg";
+export const botanicalbaguio = "/images/botanicalbaguio.jpg";
+export const the_mansion_baguio = "/images/the_mansion_baguio.jpg";
+export const wrightpark = "/images/wrightpark.jpg";
+export const campjohnhay = "/images/campjohnhay.jpg"
+export const smbaguio = "/images/smbaguio.jpg"
+
+
+
+
