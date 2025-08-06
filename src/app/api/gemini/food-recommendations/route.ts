@@ -13,9 +13,10 @@ const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 const geminiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }) : null;
 
-// Simple in-memory cache for similar requests
+// Optimized caching system
 const responseCache = new Map<string, { response: any; timestamp: number }>();
-const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+const preprocessingCache = new Map<string, any>();
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes for better cache utilization
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,15 +41,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(fallbackRecommendations);
     }
 
-    // Generate cache key based on request parameters
+    // Parse preferences first to avoid block-scoped variable error
+    const preferences = parseUserPreferences(prompt);
+    
+    // Generate optimized cache key
     const cacheKey = JSON.stringify({
-      prompt: prompt?.substring(0, 100) // First 100 chars for similarity
+      prompt: prompt?.substring(0, 30), // Further reduced for better hit rates
+      budget: preferences.budget ? Math.floor(parseInt(preferences.budget) / 100) * 100 : null, // Round to nearest 100
+      cuisine: preferences.cuisine,
+      pax: preferences.pax || 2
     });
     
     // Check cache for recent similar requests
     const cached = responseCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
       return NextResponse.json(cached.response);
+    }
+    const preprocessingKey = `${preferences.cuisine || 'all'}-${preferences.budget || 'all'}-${preferences.pax || 2}`;
+    let relevantRestaurants = preprocessingCache.get(preprocessingKey);
+    if (!relevantRestaurants) {
+      relevantRestaurants = getRelevantRestaurants(foodData.restaurants, preferences);
+      preprocessingCache.set(preprocessingKey, relevantRestaurants);
     }
 
     // Re-use the globally initialised model
@@ -60,45 +73,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(fallbackRecommendations);
     }
 
-    // Create a more detailed prompt that includes the food data
     const enhancedPrompt = `
-    ${prompt}
+    USER REQUEST: ${prompt}
 
-    Available restaurant data:
-    ${JSON.stringify(foodData.restaurants.map((r: RestaurantData) => ({
+    RELEVANT RESTAURANTS:
+    ${JSON.stringify(relevantRestaurants.map((r: RestaurantData) => ({
       name: r.name,
       cuisine: r.cuisine,
       priceRange: r.priceRange,
       location: r.location,
       popularFor: r.popularFor,
       dietaryOptions: r.dietaryOptions,
-      ratings: r.ratings,
-      tags: r.tags
-    })))}
+      ratings: r.ratings || 0
+    })), null, 2)}
 
-    User saved meals history:
-    ${JSON.stringify(foodData.savedMeals)}
+    USER PREFERENCES: ${JSON.stringify(preferences)}
 
-    Available food options in form:
-    ${JSON.stringify(foodData.formOptions)}
-
-    Using the restaurant data and user preferences, provide recommendations for restaurants that best match the user's criteria.
-    
-    The response should be in the following format:
+    RESPONSE FORMAT:
     {
       "matches": [
         {
           "name": "Restaurant Name",
-          "meals": <number of people>,
-          "price": <average price>,
-          "image": "<image path>",
-          "reason": "Brief explanation why this is a good match"
-        },
-        ...more matches
+          "meals": <group size>,
+          "price": <total price>,
+          "image": "image path",
+          "reason": "Why this restaurant matches"
+        }
       ]
     }
-    
-    Only include restaurants from the available data. Return only the best matches (between 1-3 restaurants) - do not duplicate restaurants to reach exactly 3 recommendations.
     `;
 
     try {
@@ -107,20 +109,27 @@ export async function POST(req: NextRequest) {
       const response = await result.response;
       const textResponse = response.text();
       
-      // Try to parse the JSON response
+      // Try to parse the JSON response with enhanced error handling
       let recommendations: { matches: EnhancedResultMatch[] };
       try {
         // Look for JSON in the response
         const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           recommendations = JSON.parse(jsonMatch[0]);
+          
+          // Validate and enhance the response
+          if (recommendations && recommendations.matches && Array.isArray(recommendations.matches)) {
+            recommendations.matches = validateAndEnhanceRecommendations(recommendations.matches, foodData, prompt);
+          } else {
+            throw new Error("Invalid response structure");
+          }
         } else {
           throw new Error("No valid JSON found in response");
         }
       } catch (parseError) {
         console.error("Failed to parse Gemini response:", parseError);
         
-        // Fallback: Create a structured response based on the text
+        // Enhanced fallback: Create a structured response based on the text
         recommendations = createFallbackRecommendations(foodData, prompt);
       }
       
@@ -145,6 +154,31 @@ export async function POST(req: NextRequest) {
       });
 
       return NextResponse.json(recommendations);
+
+// Validation and enhancement helper
+function validateAndEnhanceRecommendations(matches: EnhancedResultMatch[], foodData: any, prompt: string): EnhancedResultMatch[] {
+  return matches.map(match => {
+    const restaurant = foodData.restaurants.find((r: RestaurantData) => r.name === match.name);
+    if (!restaurant) return match;
+
+    // Ensure calculated price is within restaurant's range
+    const groupSize = match.meals || 2;
+    const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
+    const calculatedPrice = Math.round(avgPrice * groupSize);
+    
+    // Adjust price if outside reasonable bounds
+    const minTotal = restaurant.priceRange.min * groupSize;
+    const maxTotal = restaurant.priceRange.max * groupSize;
+    const adjustedPrice = Math.max(minTotal, Math.min(maxTotal, calculatedPrice));
+
+    return {
+      ...match,
+      price: adjustedPrice,
+      image: restaurant.image || match.image,
+      fullMenu: restaurant.fullMenu
+    };
+  });
+}
     } catch (apiError) {
       console.error("Error calling Gemini API:", apiError);
       // Create a fallback response
@@ -160,84 +194,204 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Helper function to create fallback recommendations
+// Optimized fallback recommendations with simplified scoring
 function createFallbackRecommendations(foodData: any, prompt: string): { matches: EnhancedResultMatch[] } {
-  // Parse user preferences from prompt if possible
-  const prefersCuisine = (prompt.includes('cuisine') && 
-    (prompt.includes('Filipino') || prompt.includes('Korean') || prompt.includes('Japanese'))) 
-    ? prompt.includes('Filipino') ? 'Filipino' 
-    : prompt.includes('Korean') ? 'Korean' 
-    : 'Japanese'
-    : null;
+  const preferences = parseUserPreferences(prompt);
   
-  const isDietaryRestriction = prompt.includes('Vegetarian') || prompt.includes('Vegan') || prompt.includes('Halal');
+  // Quick scoring with pre-filtered restaurants
+  const scoredRestaurants = getRelevantRestaurants(foodData.restaurants, preferences)
+    .map((restaurant: any) => ({
+      ...restaurant,
+      score: calculateQuickScore(restaurant, preferences),
+      reason: generateQuickReason(restaurant, preferences)
+    }));
   
-  const isMealType = prompt.includes('Breakfast') || prompt.includes('Lunch') || prompt.includes('Dinner') || prompt.includes('Snack');
+  const topMatches = scoredRestaurants
+    .sort((a: any, b: any) => b.score - a.score)
+    .slice(0, 3);
   
-  // Filter restaurants based on the parsed preferences
-  let filteredRestaurants = [...foodData.restaurants];
-  
-  if (prefersCuisine) {
-    filteredRestaurants = filteredRestaurants.filter(r => 
-      r.cuisine.includes(prefersCuisine)
-    );
-  }
-  
-  if (isDietaryRestriction) {
-    if (prompt.includes('Vegetarian')) {
-      filteredRestaurants = filteredRestaurants.filter(r => 
-        r.dietaryOptions.includes('Vegetarian')
-      );
-    }
-    if (prompt.includes('Vegan')) {
-      filteredRestaurants = filteredRestaurants.filter(r => 
-        r.dietaryOptions.includes('Vegan')
-      );
-    }
-    if (prompt.includes('Halal')) {
-      filteredRestaurants = filteredRestaurants.filter(r => 
-        r.dietaryOptions.includes('Halal')
-      );
-    }
-  }
-  
-  if (isMealType) {
-    if (prompt.includes('Breakfast')) {
-      filteredRestaurants = filteredRestaurants.filter(r => 
-        r.popularFor.includes('Breakfast')
-      );
-    }
-    if (prompt.includes('Lunch')) {
-      filteredRestaurants = filteredRestaurants.filter(r => 
-        r.popularFor.includes('Lunch')
-      );
-    }
-    if (prompt.includes('Dinner')) {
-      filteredRestaurants = filteredRestaurants.filter(r => 
-        r.popularFor.includes('Dinner')
-      );
-    }
-    if (prompt.includes('Snack')) {
-      filteredRestaurants = filteredRestaurants.filter(r => 
-        r.popularFor.includes('Snack')
-      );
-    }
-  }
-  
-  // If we have no matches after filtering, use the original list
-  if (filteredRestaurants.length === 0) {
-    filteredRestaurants = foodData.restaurants.slice(0, 3);
-  }
-  
-  // Create enhanced result matches - don't force exactly 3 matches
-  const matches: EnhancedResultMatch[] = filteredRestaurants.map(restaurant => ({
+  const matches: EnhancedResultMatch[] = topMatches.map((restaurant: any) => ({
     name: restaurant.name,
-    meals: 2,  // Default value
-    price: (restaurant.priceRange.min + restaurant.priceRange.max) / 2,
+    meals: preferences.pax || 2,
+    price: calculateRecommendedPrice(restaurant, preferences.pax || 2),
     image: restaurant.image,
-    reason: `This restaurant offers ${restaurant.cuisine.join(', ')} cuisine and is popular for ${restaurant.popularFor.join(', ')}.`,
+    reason: restaurant.reason,
     fullMenu: restaurant.fullMenu
   }));
   
   return { matches };
-} 
+}
+
+// Parse user preferences from prompt
+function parseUserPreferences(prompt: string): any {
+  const preferences: any = {};
+  
+  // Extract budget
+  const budgetMatch = prompt.match(/₱(\d+)/) || prompt.match(/budget.*?(\d+)/i);
+  if (budgetMatch) {
+    preferences.budget = budgetMatch[1];
+  }
+  
+  // Extract cuisine
+  const cuisineOptions = ['Filipino', 'Korean', 'Japanese', 'Cafe', 'Coffee', 'Vegetarian', 'Buffet'];
+  for (const cuisine of cuisineOptions) {
+    if (prompt.toLowerCase().includes(cuisine.toLowerCase())) {
+      preferences.cuisine = cuisine;
+      break;
+    }
+  }
+  
+  // Extract pax/group size
+  const paxMatch = prompt.match(/(\d+)\s*people?/) || prompt.match(/(\d+)\s*pax/i);
+  if (paxMatch) {
+    preferences.pax = parseInt(paxMatch[1]);
+  }
+  
+  // Extract dietary restrictions
+  preferences.restrictions = [];
+  if (prompt.toLowerCase().includes('vegetarian')) preferences.restrictions.push('Vegetarian');
+  if (prompt.toLowerCase().includes('vegan')) preferences.restrictions.push('Vegan');
+  if (prompt.toLowerCase().includes('halal')) preferences.restrictions.push('Halal');
+  
+  // Extract meal type
+  preferences.mealType = [];
+  if (prompt.toLowerCase().includes('breakfast')) preferences.mealType.push('Breakfast');
+  if (prompt.toLowerCase().includes('lunch')) preferences.mealType.push('Lunch');
+  if (prompt.toLowerCase().includes('dinner')) preferences.mealType.push('Dinner');
+  if (prompt.toLowerCase().includes('snack')) preferences.mealType.push('Snack');
+  
+  // Extract location
+  const locationMatch = prompt.match(/at\s+(.+?)(?:\s+for|$)/i);
+  if (locationMatch) {
+    preferences.location = locationMatch[1];
+  }
+  
+  return preferences;
+}
+
+// Parse budget range
+function parseBudgetRange(budgetStr: string): { min: number; max: number } {
+  const budget = parseInt(budgetStr);
+  if (budget <= 200) return { min: 0, max: 200 };
+  if (budget <= 400) return { min: 201, max: 400 };
+  if (budget <= 600) return { min: 401, max: 600 };
+  return { min: 601, max: 1000 };
+}
+
+// Calculate recommended price based on group size and restaurant
+function calculateRecommendedPrice(restaurant: any, groupSize: number): number {
+  const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
+  return Math.round(avgPrice * groupSize);
+}
+
+// Pre-filter restaurants based on preferences
+function getRelevantRestaurants(restaurants: RestaurantData[], preferences: any): RestaurantData[] {
+  return restaurants.filter(restaurant => {
+    // Budget filter
+    if (preferences.budget) {
+      const budgetRange = parseBudgetRange(preferences.budget);
+      const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
+      if (avgPrice > budgetRange.max + 100) return false; // Allow slight buffer
+    }
+    
+    // Cuisine filter
+    if (preferences.cuisine && preferences.cuisine !== 'Show All') {
+      if (!restaurant.cuisine.some(c => c.toLowerCase().includes(preferences.cuisine.toLowerCase()))) {
+        return false;
+      }
+    }
+    
+    // Dietary restrictions filter
+    if (preferences.restrictions && preferences.restrictions.length > 0) {
+      const hasRequiredRestrictions = preferences.restrictions.every((restriction: string) => 
+        restaurant.dietaryOptions.includes(restriction)
+      );
+      if (!hasRequiredRestrictions) return false;
+    }
+    
+    return true;
+  }).slice(0, 5); // Limit to top 5 most relevant
+}
+
+// Quick scoring algorithm for fallback
+function calculateQuickScore(restaurant: any, preferences: any): number {
+  let score = 0;
+  
+  // Cuisine match
+  if (preferences.cuisine && restaurant.cuisine.includes(preferences.cuisine)) {
+    score += 50;
+  }
+  
+  // Budget match
+  if (preferences.budget) {
+    const budgetRange = parseBudgetRange(preferences.budget);
+    const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
+    if (avgPrice <= budgetRange.max) {
+      score += 30;
+    } else if (avgPrice <= budgetRange.max + 100) {
+      score += 15; // Partial match
+    }
+  }
+  
+  // Group size match
+  const groupSize = preferences.pax || 2;
+  const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
+  const totalPrice = avgPrice * groupSize;
+  
+  if (groupSize <= 2 && totalPrice <= 500) score += 20;
+  else if (groupSize <= 5 && totalPrice <= 1000) score += 20;
+  else if (groupSize > 5 && restaurant.cuisine.includes('Buffet')) score += 25;
+  
+  // Rating bonus
+  if (restaurant.ratings >= 4.0) score += 10;
+  
+  return score;
+}
+
+// Generate concise reason
+function generateQuickReason(restaurant: any, preferences: any): string {
+  const reasons: string[] = [];
+  
+  if (preferences.cuisine && restaurant.cuisine.includes(preferences.cuisine)) {
+    reasons.push(`Perfect ${preferences.cuisine} cuisine`);
+  }
+  
+  if (preferences.budget) {
+    const budgetRange = parseBudgetRange(preferences.budget);
+    const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
+    if (avgPrice <= budgetRange.max) {
+      reasons.push(`Fits ₱${preferences.budget} budget`);
+    }
+  }
+  
+  if (restaurant.ratings >= 4.0) {
+    reasons.push(`${restaurant.ratings}★ rated`);
+  }
+  
+  if (reasons.length === 0) {
+    return `Popular ${restaurant.cuisine.join(', ')} restaurant`;
+  }
+  
+  return reasons.join(' • ');
+}
+
+// Create general recommendations when no specific matches
+function createGeneralRecommendations(foodData: any, preferences: any): { matches: EnhancedResultMatch[] } {
+  const generalMatches = foodData.restaurants
+    .sort((a: any, b: any) => {
+      const aPrice = (a.priceRange.min + a.priceRange.max) / 2;
+      const bPrice = (b.priceRange.min + b.priceRange.max) / 2;
+      return aPrice - bPrice;
+    })
+    .slice(0, 3)
+    .map((restaurant: any) => ({
+      name: restaurant.name,
+      meals: preferences.pax || 2,
+      price: calculateRecommendedPrice(restaurant, preferences.pax || 2),
+      image: restaurant.image,
+      reason: `Popular choice for ${restaurant.cuisine.join(', ')}`,
+      fullMenu: restaurant.fullMenu
+    }));
+  
+  return { matches: generalMatches };
+}
