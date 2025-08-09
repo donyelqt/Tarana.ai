@@ -121,7 +121,35 @@ const SavedMealPage = () => {
         variant: "destructive",
       });
     }
-  }
+  };
+
+  const handleDeleteIndividualMeal = async (individualMealId: string) => {
+    if (!session?.user?.id) return;
+    try {
+      const success = await deleteMeal(session.user.id, individualMealId);
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Individual meal deleted successfully!",
+          variant: "success",
+        });
+        // Refresh the page data
+        const updatedMeal = await getSavedMealById(mealId);
+        if (updatedMeal) {
+          setMealDetails(updatedMeal);
+        }
+      } else {
+        throw new Error('Failed to delete individual meal');
+      }
+    } catch (error) {
+      console.error("Error deleting individual meal:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete individual meal. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSaveIndividualMeal = async (menuItem: any) => {
     if (!session?.user?.id) {
@@ -310,6 +338,13 @@ const SavedMealPage = () => {
                   >
                     {selectedMealId === 'custom-meal-1' ? 'Selected Meal' : 'View Meal Card'}
                   </Button>
+                  <Button 
+                    onClick={handleDeleteMeal}
+                    variant="outline" 
+                    className="py-3 h-auto rounded-lg border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 font-semibold px-4"
+                  >
+                    <Trash2 size={18} />
+                  </Button>
                 </div>
               </div>
             )}
@@ -363,6 +398,13 @@ const SavedMealPage = () => {
                         }`}
                       >
                         {isSelected ? 'Selected Meal' : 'View Meal Card'}
+                      </Button>
+                      <Button 
+                        onClick={() => handleDeleteIndividualMeal(individualMeal.id)}
+                        variant="outline" 
+                        className="py-3 h-auto rounded-lg border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 font-semibold px-4"
+                      >
+                        <Trash2 size={18} />
                       </Button>
                     </div>
                   </div>
