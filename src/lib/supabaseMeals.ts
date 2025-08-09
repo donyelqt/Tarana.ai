@@ -38,10 +38,43 @@ export async function getSavedMealById(mealId: string): Promise<any | null> {
     console.error('Error loading meal by ID from Supabase:', error);
     return null;
   }
+  
   // Find matching restaurant data
   const restaurant = restaurants.find(r => r.name === data.cafe_name);
-  // Merge Supabase meal data with static restaurant/menu data
-  // Transform menu_items to match the expected savedMeals structure
+  
+  // Get all individual saved meals from this restaurant for the current user
+  const { data: userData } = await supabase.auth.getUser();
+  let individualSavedMeals: SavedMeal[] = [];
+  
+  if (userData.user) {
+    const { data: allUserMeals } = await supabase
+      .from(TABLE_NAME)
+      .select('*')
+      .eq('user_id', userData.user.id)
+      .eq('cafe_name', data.cafe_name)
+      .neq('id', mealId) // Exclude the current combined meal
+      .order('created_at', { ascending: false });
+    
+    if (allUserMeals) {
+      individualSavedMeals = allUserMeals.map((meal) => ({
+        id: meal.id,
+        cafeName: meal.cafe_name,
+        mealType: meal.meal_type,
+        price: meal.price,
+        goodFor: meal.good_for,
+        location: meal.location,
+        image: meal.image,
+        items: meal.menu_items || [{
+          name: meal.meal_type,
+          price: meal.price,
+          quantity: 1,
+          image: meal.image
+        }]
+      }));
+    }
+  }
+  
+  // Transform menu_items to match the expected savedMeals structure for combined meals
   const savedMealsData = (data.menu_items || []).map((item: any, index: number) => ({
     id: item.id || `${data.id}_item_${index}`,
     name: item.name || `${data.meal_type} Meal`,
@@ -83,6 +116,7 @@ export async function getSavedMealById(mealId: string): Promise<any | null> {
       goodFor: data.good_for,
       image: data.image
     }],
+    individualSavedMeals: individualSavedMeals,
     fullMenu: restaurant?.fullMenu || allRestaurantMenus[data.cafe_name] || {},
     menuItems: restaurant?.menuItems || [],
   };
