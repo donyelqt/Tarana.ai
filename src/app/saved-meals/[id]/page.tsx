@@ -12,7 +12,7 @@ import { FullMenu } from '@/app/tarana-eats/data/taranaEatsData';
 import { useToast } from '@/components/ui/use-toast';
 import MealCardPopup from '../components/MealCardPopup';
 import { useSession } from 'next-auth/react'
-import { deleteMeal } from '@/lib/supabaseMeals'
+import { deleteMeal, saveMeal, getSavedMeals } from '@/lib/supabaseMeals'
 import { getSavedMealById } from '@/lib/supabaseMeals';
 
 // Static data for fallback
@@ -123,6 +123,69 @@ const SavedMealPage = () => {
     }
   }
 
+  const handleSaveIndividualMeal = async (menuItem: any) => {
+    if (!session?.user?.id) {
+      toast({
+        title: "Error",
+        description: "Please sign in to save meals.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Get existing saved meals to determine the next custom meal number
+      const existingMeals = await getSavedMeals(session.user.id);
+      
+      // Filter meals from this specific restaurant to get accurate count
+      const restaurantMeals = existingMeals.filter(meal => meal.cafeName === mealDetails.cafeName);
+      
+      // Calculate next custom meal number for this restaurant
+      // Custom meal 1 is reserved for combined tarana-eats meals
+      // Individual items start from custom meal 2
+      const nextCustomNumber = restaurantMeals.length + 2;
+
+      const newMeal = {
+        cafeName: mealDetails.cafeName,
+        mealType: (menuItem.type || activeMenu) as 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack',
+        price: menuItem.price,
+        goodFor: menuItem.goodFor || 1,
+        location: mealDetails.location,
+        image: menuItem.image || mealDetails.image,
+      };
+
+      const savedId = await saveMeal(session.user.id, newMeal, [{
+        name: menuItem.name,
+        price: menuItem.price,
+        quantity: 1,
+        image: menuItem.image || mealDetails.image
+      }]);
+
+      if (savedId) {
+        // Refresh the page data to show the newly saved meal
+        const updatedMeal = await getSavedMealById(mealId);
+        if (updatedMeal) {
+          setMealDetails(updatedMeal);
+        }
+        
+        toast({
+          title: "Success",
+          description: `Saved as Custom Meal ${nextCustomNumber}!`,
+          variant: "success",
+        });
+      } else {
+        throw new Error('Failed to save meal');
+      }
+    } catch (error) {
+      console.error("Error saving individual meal:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save meal. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading || !mealDetails) {
     return (
       <div className="min-h-screen bg-[#f7f9fb] flex">
@@ -192,42 +255,107 @@ const SavedMealPage = () => {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Saved Meals</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {mealDetails.savedMeals && mealDetails.savedMeals.map((savedMeal: any) => {
-              const isSelected = selectedMealId === savedMeal.id;
-              return (
-                <div 
-                  key={savedMeal.id} 
-                  className={`bg-white rounded-xl p-6 border w-full ${
-                    isSelected 
-                      ? 'border-blue-500 ring-2 ring-blue-200' 
-                      : 'border-gray-200'
-                  }`}
-                >
-                  {isSelected && (
-                    <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full mb-3 inline-block">
-                      Selected Meal
+            {/* Custom Meal 1 - Combined tarana-eats meals */}
+            {mealDetails.savedMeals && mealDetails.savedMeals.length > 0 && (
+              <div 
+                className={`bg-white rounded-xl p-6 border w-full ${
+                  selectedMealId === 'custom-meal-1' 
+                    ? 'border-blue-500 ring-2 ring-blue-200' 
+                    : 'border-gray-200'
+                }`}
+              >
+                {selectedMealId === 'custom-meal-1' && (
+                  <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full mb-3 inline-block">
+                    Selected Meal
+                  </div>
+                )}
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="text-lg font-bold">Custom Meal 1</h3>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <MealIcon type={mealDetails.mealType || 'Meals'} className="w-5 h-5" />
+                    <span className="font-medium">{mealDetails.mealType || 'Meals'}</span>
+                  </div>
+                </div>
+                <div className="space-y-1 text-gray-500">
+                  {mealDetails.savedMeals.map((savedMeal: any, idx: number) => (
+                    <div key={idx} className="border-b border-gray-100 pb-2 mb-2 last:border-0">
+                      <p className="font-medium">{savedMeal.cafeName}</p>
+                      {savedMeal.items && savedMeal.items.map((item: any, itemIdx: number) => (
+                        <p key={itemIdx} className="text-sm ml-2">{item.name} - ₱{item.price} x {item.quantity || 1}</p>
+                      ))}
                     </div>
-                  )}
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="text-lg font-bold">{savedMeal.name}</h3>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <MealIcon type={savedMeal.type} className="w-5 h-5" />
-                      <span className="font-medium">{savedMeal.type}</span>
+                  ))}
+                </div>
+                <div className="flex justify-between items-center mt-4">
+                  <p className="text-lg font-bold">Total: ₱{mealDetails.savedMeals.reduce((sum: number, meal: any) => 
+                    sum + (meal.totalPrice || 0), 0).toFixed(2)}</p>
+                  <p className="text-gray-500">Good for {Math.max(...mealDetails.savedMeals.map((m: any) => m.goodFor || 1))} pax</p>
+                </div>
+                <div className="flex items-center gap-3 mt-4">
+                  <Button 
+                    onClick={() => handleShowMealCard({
+                      id: 'custom-meal-1',
+                      type: 'Combined',
+                      items: mealDetails.savedMeals.flatMap((meal: any) => meal.items || []),
+                      totalPrice: mealDetails.savedMeals.reduce((sum: number, meal: any) => 
+                        sum + (meal.totalPrice || 0), 0),
+                      goodFor: mealDetails.savedMeals.reduce((sum: number, meal: any) => 
+                        Math.max(sum, meal.goodFor || 1), 1)
+                    })}
+                    className={`flex-1 py-3 h-auto rounded-lg ${
+                      selectedMealId === 'custom-meal-1' 
+                        ? 'bg-green-600 hover:bg-green-700 text-white font-semibold'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white font-semibold'
+                    }`}
+                  >
+                    {selectedMealId === 'custom-meal-1' ? 'Selected Meal' : 'View Meal Card'}
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Individual menu items saved from full menu - Custom Meal 2, 3, etc. */}
+            {/* These will be populated when users save individual items from the full menu */}
+            {/* For now, this section is handled by the handleSaveIndividualMeal function */}
+            
+            {/* Individual saved meals from this restaurant */}
+            {mealDetails.individualSavedMeals && mealDetails.individualSavedMeals.length > 0 && (
+              mealDetails.individualSavedMeals.map((individualMeal: any, index: number) => {
+                const customMealNumber = index + 2; // Start from 2 since 1 is reserved for combined meals
+                const isSelected = selectedMealId === individualMeal.id;
+                return (
+                  <div 
+                    key={individualMeal.id} 
+                    className={`bg-white rounded-xl p-6 border w-full ${
+                      isSelected 
+                        ? 'border-blue-500 ring-2 ring-blue-200' 
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    {isSelected && (
+                      <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full mb-3 inline-block">
+                        Selected Meal
+                      </div>
+                    )}
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="text-lg font-bold">Custom Meal {customMealNumber}</h3>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <MealIcon type={individualMeal.mealType} className="w-5 h-5" />
+                        <span className="font-medium">{individualMeal.mealType}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-1 text-gray-500">
-                    {savedMeal.items && savedMeal.items.map((item: any, idx: number) => (
-                      <p key={idx}>{item.name} - ₱{item.price} x {item.quantity || 1}</p>
-                    ))}
-                  </div>
-                  <div className="flex justify-between items-center mt-4">
-                    <p className="text-lg font-bold">Total: ₱{savedMeal.totalPrice ? savedMeal.totalPrice.toFixed(2) : '0.00'}</p>
-                    <p className="text-gray-500">Good for {savedMeal.goodFor}pax</p>
-                  </div>
-                  <div className="flex items-center gap-3 mt-4">
-                    
+                    <div className="space-y-1 text-gray-500">
+                      {individualMeal.items && individualMeal.items.map((item: any, idx: number) => (
+                        <p key={idx}>{item.name} - ₱{item.price} x {item.quantity || 1}</p>
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center mt-4">
+                      <p className="text-lg font-bold">Total: ₱{individualMeal.price ? individualMeal.price.toFixed(2) : '0.00'}</p>
+                      <p className="text-gray-500">Good for {individualMeal.goodFor}pax</p>
+                    </div>
+                    <div className="flex items-center gap-3 mt-4">
                       <Button 
-                        onClick={() => handleShowMealCard(savedMeal)}
+                        onClick={() => handleShowMealCard(individualMeal)}
                         className={`flex-1 py-3 h-auto rounded-lg ${
                           isSelected 
                             ? 'bg-green-600 hover:bg-green-700 text-white font-semibold'
@@ -236,19 +364,11 @@ const SavedMealPage = () => {
                       >
                         {isSelected ? 'Selected Meal' : 'View Meal Card'}
                       </Button>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="h-12 w-12 border-gray-300 rounded-lg"
-                      onClick={handleDeleteMeal}
-                    >
-                      <Trash2 className="w-5 h-5 text-gray-500" />
-                    </Button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -304,7 +424,10 @@ const SavedMealPage = () => {
                     <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-4">
                       <User size={14} />Good for {item.goodFor || '1'}
                     </div>
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 h-auto rounded-lg mt-auto">
+                    <Button 
+                      onClick={() => handleSaveIndividualMeal(item)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 h-auto rounded-lg mt-auto"
+                    >
                       Save to My Meals
                     </Button>
                   </div>
