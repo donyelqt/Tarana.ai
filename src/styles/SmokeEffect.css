@@ -1,0 +1,22 @@
+.smoke {
+    position: absolute;
+    width: 20px;
+    height: 40px;
+    background: rgb(0, 187, 255);
+    border-radius: 50%;
+    opacity: 0.3;
+    filter: blur(15px);
+    transform: scale(1);
+    animation: smoke-animation 0.5s ease-out forwards;
+  }
+  
+  @keyframes smoke-animation {
+    0% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(3);
+      opacity: 0;
+    }
+  }
