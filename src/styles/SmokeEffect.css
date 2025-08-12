@@ -1,7 +1,7 @@
 .smoke {
     position: absolute;
-    width: 40px;
-    height: 20px;
+    width: 30px;
+    height: 10px;
     background: rgb(0, 187, 255);
     border-radius: 50%;
     opacity: 0;
