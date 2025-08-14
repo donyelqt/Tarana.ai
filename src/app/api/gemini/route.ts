@@ -21,7 +21,6 @@ import {
   extractAndCleanJSON,
   buildTitleToImageLookup,
   cleanupActivities,
-  applyHeuristicScheduling,
   attemptJSONSalvage,
 } from "@/lib/gemini/responseProcessor";
 
@@ -127,11 +126,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const titleToImage = buildTitleToImageLookup();
       const cleanedParsed = cleanupActivities(parsed, titleToImage);
 
-      // Apply heuristic scheduling for optimization
-      const vectorResults: any[] = [];
-      const optimizedParsed = applyHeuristicScheduling(cleanedParsed, duration, vectorResults);
-
-      const responseData = { text: JSON.stringify(optimizedParsed) };
+      const responseData = { text: JSON.stringify(cleanedParsed) };
       setInCache(cacheKey, responseData);
 
       return NextResponse.json(responseData);

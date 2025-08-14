@@ -37,6 +37,7 @@ export function normalizePax(pax?: string) {
 
 export function extractDurationDays(duration: number | string | null | undefined): number | null {
   if (!duration && duration !== 0) return null;
+  if (typeof duration === 'number') return duration;
   const match = duration.toString().match(/\d+/);
   return match ? parseInt(match[0], 10) : null;
 }
@@ -45,10 +46,10 @@ export function buildDurationContext(durationDays: number | null) {
   if (!durationDays) return '';
   return `
         This is a ${durationDays}-day trip, so pace the itinerary accordingly:
-        ${durationDays === 1 ? 'Focus on must-see highlights and efficient time management. Select 2-3 activities per time period (morning, afternoon, evening) from the sample database.' : ''}
-        ${durationDays === 2 ? 'Balance major attractions with some deeper local experiences. Select 2-3 activities per time period per day from the sample database.' : ''}
-        ${durationDays === 3 ? "Include major attractions and allow time to explore local neighborhoods. Select 2 activities per time period per day from the sample database, allowing for more relaxed pacing." : ''}
-        ${durationDays >= 4 ? 'Include major attractions, local experiences, and some day trips to nearby areas. Select 1-2 activities per time period per day from the sample database, allowing for a very relaxed pace.' : ''}
+        ${durationDays === 1 ? 'Focus on must-see highlights and efficient time management. Select 2-3 activities per time period (morning, afternoon, evening) from the vector database.' : ''}
+        ${durationDays === 2 ? 'Balance major attractions with some deeper local experiences. Select 2-3 activities per time period per day from the vector database.' : ''}
+        ${durationDays === 3 ? "Include major attractions and allow time to explore local neighborhoods. Select 2 activities per time period per day from the vector database, allowing for more relaxed pacing." : ''}
+        ${durationDays >= 4 ? 'Include major attractions, local experiences, and some day trips to nearby areas. Select 1-2 activities per time period per day from the vector database, allowing for a very relaxed pace.' : ''}
       `;
 }
 
