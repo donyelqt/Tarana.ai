@@ -67,76 +67,345 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
     const weatherContext = WEATHER_CONTEXTS[weatherType](temperature, weatherDescription);
 
-    // Normalize inputs
-    const durationDays = extractDurationDays(duration);
-    const budgetCategory = normalizeBudget(budget);
-    const paxCategory = normalizePax(pax);
+    // Normalize UI inputs to internal categories for consistent prompt building
+    const durationDays = (() => {
+      if (!duration) return null;
+      const match = duration.toString().match(/\d+/); // extract first number
+      return match ? parseInt(match[0], 10) : null;
+    })();
 
-    // Build activities from vector search to create a constrained sample DB for the model
-    let effectiveSampleItinerary: SampleItinerary | null = null;
+    const budgetCategory = (() => {
+      if (!budget) return null;
+      if (budget === "less than ₱3,000/day" || budget === "₱3,000 - ₱5,000/day") return "Budget";
+      if (budget === "₱5,000 - ₱10,000/day") return "Mid-range";
+      if (budget === "₱10,000+/day") return "Luxury";
+      return budget; // fallback to the raw value
+    })();
+
+    const paxCategory = (() => {
+      if (!pax) return null;
+      if (pax === "1") return "Solo";
+      if (pax === "2") return "Couple";
+      if (pax === "3-5") return "Family";
+      if (pax === "6+") return "Group";
+      return pax; // fallback to the raw value
+    })();
+
+    // ------------------
+    // Prefilter sample itinerary to reduce prompt size and latency
+    // ------------------
+    if (effectiveSampleItinerary && typeof effectiveSampleItinerary === "object") {
+      const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
+      const interestSet = new Set(
+        interests && Array.isArray(interests) && !interests.includes("Random") ? interests : []
+      );
+      effectiveSampleItinerary = {
+        ...effectiveSampleItinerary,
+        items: effectiveSampleItinerary.items.map((section: any) => ({
+          ...section,
+          activities: section.activities.filter((act: any) => {
+            const interestMatch =
+              interestSet.size === 0 || act.tags.some((t: string) => interestSet.has(t));
+            const weatherMatch =
+              allowedWeatherTags.length === 0 || act.tags.some((t: string) => allowedWeatherTags.includes(t));
+            return interestMatch && weatherMatch;
+          }),
+        })),
+      };
+    }
+
+    // Always build the activity database from vector similarity search.
     if (typeof prompt === "string" && prompt.length > 0) {
       try {
-        const vectorResults = await buildActivitiesFromVector(
-          prompt,
-          interests,
-          budgetCategory,
-          paxCategory,
-          weatherType
+        const similar = await searchSimilarActivities(prompt, 40); // fetch top 40 matches for richer pool
+
+        // Apply weather + interest filters before constructing the itinerary object
+        const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
+        const interestSet = new Set(
+          interests && Array.isArray(interests) && !interests.includes("Random") ? interests : []
         );
 
-        if (vectorResults.length > 0) {
-          effectiveSampleItinerary = toSampleItineraryFromVector(vectorResults);
+        const filteredSimilar = (similar || []).filter((s) => {
+          const tags = s.metadata?.tags || [];
+          const interestMatch = interestSet.size === 0 || tags.some((t: string) => interestSet.has(t));
+          const weatherMatch = allowedWeatherTags.length === 0 || tags.some((t: string) => allowedWeatherTags.includes(t));
+          return interestMatch && weatherMatch;
+        });
+
+        if (filteredSimilar.length > 0) {
+          effectiveSampleItinerary = {
+            title: "Vector Suggestions",
+            subtitle: "Activities matched from vector search",
+            items: [
+              {
+                period: "Anytime",
+                activities: filteredSimilar.map((s) => ({
+                  image: s.metadata?.image || "",
+                  title: s.metadata?.title || s.activity_id,
+                  time: s.metadata?.time || "",
+                  desc: s.metadata?.desc || "",
+                  tags: s.metadata?.tags || [],
+                })),
+              },
+            ],
+          } as any;
         }
       } catch (vecErr) {
         console.warn("Vector search failed", vecErr);
       }
     }
 
-    // Build context strings
+    // Use effectiveSampleItinerary downstream
+
+    // Streamlined sample itinerary context – send the filtered DB only
     const sampleItineraryContext = effectiveSampleItinerary
-      ? `Database: ${JSON.stringify(effectiveSampleItinerary)}\nRULE: Only use activities from this database. Match user interests and weather tags.`
+      ? `Database: ${JSON.stringify(effectiveSampleItinerary)}\n\nRULE: Only use activities from this database. Activities are already pre-filtered and ranked by relevance to the user's query, interests, and current weather conditions. Higher relevanceScore values indicate better matches to the user's needs. Prioritize activities with higher relevance scores when creating the itinerary.`
       : "";
 
-    const interestsContext = buildInterestsContext(interests);
-    const durationContext = buildDurationContext(durationDays);
-    const budgetContext = buildBudgetContext(budgetCategory, budget);
-    const paxContext = buildPaxContext(paxCategory, pax);
+    // Weather context is now handled by the lookup table above
 
-    // Build detailed prompt
-    const detailedPrompt = buildDetailedPrompt(
-      prompt,
-      sampleItineraryContext,
-      weatherContext,
-      interestsContext,
-      durationContext,
-      budgetContext,
-      paxContext
-    );
-
-    // Generate itinerary
-    const geminiResponse = await generateItinerary(detailedPrompt);
-
-    if (geminiResponse.error) {
-      return NextResponse.json({ text: "", error: geminiResponse.error });
+    // Add user preference context
+    let interestsContext = "";
+    if (interests && Array.isArray(interests) && interests.length > 0 && !interests.includes("Random")) {
+      interestsContext = `
+        The visitor has expressed specific interest in: ${interests.join(", ")}.
+        From the sample itinerary database, prioritize activities that have tags matching these interests:
+        ${interests.map((interest: string) => INTEREST_DETAILS[interest as keyof typeof INTEREST_DETAILS] || `- ${interest}: Select appropriate activities from the sample database`).join("\n")}
+        
+        Ensure these activities are also appropriate for the current weather conditions.
+      `;
+    } else {
+      interestsContext = `
+        The visitor hasn't specified particular interests, so provide a balanced mix of Baguio's highlights across different categories.
+        Select a variety of activities from the sample itinerary database that cover different interest areas.
+      `;
     }
 
-    // Process response
-    try {
-      const parsed = extractAndCleanJSON(geminiResponse.text);
-      const titleToImage = buildTitleToImageLookup();
-      const cleanedParsed = cleanupActivities(parsed, titleToImage);
+    // Add duration context
+    let durationContext = "";
+    if (durationDays) {
+      durationContext = `
+        This is a ${durationDays}-day trip, so pace the itinerary accordingly:
+        ${durationDays === 1 ? "Focus on must-see highlights and efficient time management. Select 2-3 activities per time period (morning, afternoon, evening) from the sample database." : ""}
+        ${durationDays === 2 ? "Balance major attractions with some deeper local experiences. Select 2-3 activities per time period per day from the sample database." : ""}
+        ${durationDays === 3 ? "Include major attractions and allow time to explore local neighborhoods. Select 2 activities per time period per day from the sample database, allowing for more relaxed pacing." : ""}
+        ${durationDays >= 4 ? "Include major attractions, local experiences, and some day trips to nearby areas. Select 1-2 activities per time period per day from the sample database, allowing for a very relaxed pace." : ""}
+      `;
+    }
 
-      const responseData = { text: JSON.stringify(cleanedParsed) };
-      setInCache(cacheKey, responseData);
+    // Add budget context
+    let budgetContext = "";
+    if (budgetCategory) {
+      budgetContext = `
+        The visitor's budget preference is ${budget}, so recommend:
+        ${budgetCategory === "Budget" ? "From the sample itinerary database, prioritize activities with the 'Budget-friendly' tag. Focus on affordable dining, free/low-cost attractions, public transportation, and budget accommodations." : ""}
+        ${budgetCategory === "Mid-range" ? "From the sample itinerary database, select a mix of budget and premium activities. Include moderate restaurants, standard attraction fees, occasional taxis, and mid-range accommodations." : ""}
+        ${budgetCategory === "Luxury" ? "From the sample itinerary database, include premium experiences where available. Recommend fine dining options, premium experiences, private transportation, and luxury accommodations." : ""}
+      `;
+    }
+
+    // Add group size context
+    let paxContext = "";
+    if (paxCategory) {
+      paxContext = `
+        The group size is ${pax}, so consider:
+        ${paxCategory === "Solo" ? "From the sample itinerary database, select activities that are enjoyable for solo travelers. Include solo-friendly activities, social opportunities, and safety considerations." : ""}
+        ${paxCategory === "Couple" ? "From the sample itinerary database, prioritize activities suitable for couples. Include romantic settings, couple-friendly activities, and intimate dining options." : ""}
+        ${paxCategory === "Family" ? "From the sample itinerary database, prioritize activities with the 'Family-friendly' tag if available. Include family-friendly activities, child-appropriate options, and group dining venues." : ""}
+        ${paxCategory === "Group" ? "From the sample itinerary database, select activities that can accommodate larger parties. Include group-friendly venues, activities that accommodate larger parties, and group dining options." : ""}
+      `;
+    }
+
+    // Construct a detailed prompt for the AI
+    const detailedPrompt = `
+      ${prompt}
+      
+      ${sampleItineraryContext}
+      ${weatherContext}
+      ${interestsContext}
+      ${durationContext}
+      ${budgetContext}
+      ${paxContext}
+      
+      Generate a detailed Baguio City itinerary.
+
+      Rules:
+      1. **Be concise.**
+      2. **Strictly use the provided sample itinerary database.** Do NOT invent, suggest, or mention any activity, place, or experience that is not present in the provided database. If no suitable activity exists for a time slot, omit that time slot entirely and do not output any placeholder.
+      3. Match activities to user interests and weather.
+      4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards).
+      5. Pace the itinerary based on trip duration.
+      6. For each activity, include: **image** (exact image URL from the database), **title**, **time** slot (e.g., "9:00-10:30AM"), a **brief** description (features, costs, location, duration, weather notes), and **tags** (interest and weather).
+      7. Adhere to the user's budget.
+      8. Output a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"image": "...", "title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
+    `;
+
+    // Optimized generation parameters for faster response
+    const generationConfig = {
+      responseMimeType: "application/json",
+      temperature: 2,  // Lowered for faster, more deterministic responses
+      topK: 1,          // Further reduced for faster token selection
+      topP: 0.9,         // Kept the same to maintain quality
+      maxOutputTokens: 8192 // Increased to prevent incomplete JSON which causes API errors.
+    };
+
+    // Generate the itinerary with retry logic to gracefully handle temporary overloads (e.g., 503 Service Unavailable) or rate limits (429).
+    const MAX_RETRIES = 3;
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    let result: any = null;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        result = await model.generateContent({
+          contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
+          generationConfig,
+        });
+        break; // Success – exit retry loop.
+      } catch (err: any) {
+        const status = err?.status || err?.response?.status;
+        // Retry only for transient errors
+        if (attempt < MAX_RETRIES && (status === 503 || status === 429)) {
+          const delay = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+          console.warn(`Gemini transient error (status ${status}). Retry ${attempt} of ${MAX_RETRIES} after ${delay}ms`);
+          await sleep(delay);
+          continue;
+        }
+        // If not retryable or retries exhausted, rethrow to be handled by outer catch.
+        throw err;
+      }
+    }
+
+    // If result is still null here, all retries failed.
+    if (!result) {
+      return NextResponse.json(
+        { text: "", error: "Failed to generate content after multiple retries due to service unavailability." },
+        { status: 503 }
+      );
+    }
+
+    // Log the result object for debugging
+    console.log("Gemini result object:", result);
+    // Log the full response object for debugging
+    console.log("Gemini full response object:", result.response);
+
+    const response = result.response;
+    const text = response.text();
+    
+    // Log the raw Gemini response for debugging
+    console.log("Gemini raw response text:", text);
+    
+    // If text is empty, return the full response object for debugging
+    let finalText = text;
+    if (!finalText) {
+      // Try to manually extract text from candidates[0].content.parts
+      const candidate = response.candidates?.[0];
+      const parts = candidate?.content?.parts;
+      if (Array.isArray(parts)) {
+        finalText = parts.map(p => p.text || '').join('');
+        console.log("Manually extracted Gemini text:", finalText);
+      }
+      if (!finalText) {
+        return NextResponse.json({ text: "", error: "Gemini response.text() and manual extraction are empty", fullResponse: response });
+      }
+    }
+    
+    // Try to extract and clean JSON from the response
+    let cleanedJson = finalText;
+
+    // Use a more robust regex to extract from markdown code blocks
+    const codeBlockMatch = cleanedJson.match(/```(?:json)?\n?([\s\S]*?)\n?```/i);
+    if (codeBlockMatch) {
+      cleanedJson = codeBlockMatch[1];
+    }
+
+    // Further cleaning: remove comments and trailing commas
+    cleanedJson = cleanedJson
+      .replace(/\/\/.*$/gm, '')       // Remove single line comments
+      .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
+      .replace(/,\s*([\]}])/g, '$1')   // Remove trailing commas
+      .trim();
+
+    // Log the cleaned JSON before parsing
+    console.log("Cleaned JSON to parse:", cleanedJson);
+
+    try {
+      // Validate that it's proper JSON by parsing
+      const parsed = JSON.parse(cleanedJson);
+
+      // Remove placeholder activities titled "No available activity", drop empty periods,
+      // and back-fill any missing image URLs using the canonical sampleItineraryCombined.
+      if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).items)) {
+        // Build a quick lookup table: title -> image from sampleItineraryCombined
+        const titleToImage: Record<string, string> = {};
+        for (const sec of sampleItineraryCombined.items) {
+          for (const act of sec.activities) {
+            const img = typeof act.image === "string" ? act.image : (act.image as any)?.src || "";
+            if (act.title && img) {
+              titleToImage[act.title] = img;
+            }
+          }
+        }
+
+        (parsed as any).items = (parsed as any).items
+          .map((period: any) => {
+            const cleanedActs = Array.isArray(period.activities)
+              ? period.activities
+                  .filter((act: any) => act.title && act.title.toLowerCase() !== "no available activity")
+                  .map((act: any) => {
+                    if ((!act.image || act.image === "") && titleToImage[act.title]) {
+                      act.image = titleToImage[act.title];
+                    }
+                    return act;
+                  })
+              : [];
+            return { ...period, activities: cleanedActs };
+          })
+          .filter((period: any) => Array.isArray(period.activities) && period.activities.length > 0);
+      }
+
+      const responseData = { text: JSON.stringify(parsed) };
+
+      // Cache the successful response
+      responseCache.set(cacheKey, {
+        response: responseData,
+        timestamp: Date.now()
+      });
+
+      // Clean old cache entries periodically
+      if (responseCache.size > 100) {
+        const now = Date.now();
+        for (const [key, value] of responseCache.entries()) {
+          if (now - value.timestamp > CACHE_DURATION) {
+            responseCache.delete(key);
+          }
+        }
+      }
 
       return NextResponse.json(responseData);
     } catch (parseError) {
       // Attempt JSON salvage
       try {
-        const salvaged = attemptJSONSalvage(geminiResponse.text);
-        const responseData = { text: JSON.stringify(salvaged) };
-        setInCache(cacheKey, responseData);
-        return NextResponse.json(responseData);
+        const firstBrace = cleanedJson.indexOf('{');
+        const lastBrace = cleanedJson.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          const potentialJson = cleanedJson.slice(firstBrace, lastBrace + 1);
+          const parsed = JSON.parse(potentialJson);
+
+          if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).items)) {
+            (parsed as any).items = (parsed as any).items
+              .map((period: any) => {
+                const filteredActivities = Array.isArray(period.activities)
+                  ? period.activities.filter((act: any) => act.title && act.title.toLowerCase() !== "no available activity")
+                  : [];
+                return { ...period, activities: filteredActivities };
+              })
+              .filter((period: any) => period.activities.length > 0);
+          }
+
+          const responseData = { text: JSON.stringify(parsed) };
+          responseCache.set(cacheKey, { response: responseData, timestamp: Date.now() });
+          return NextResponse.json(responseData);
+        }
       } catch {
         console.error("Failed to parse JSON from Gemini response:", parseError, geminiResponse.text);
         return NextResponse.json({ text: "", error: "Failed to parse JSON from Gemini response.", raw: geminiResponse.text });
