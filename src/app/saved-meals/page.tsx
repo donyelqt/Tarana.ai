@@ -1,6 +1,8 @@
 
 "use client";
 
+import { useSession } from 'next-auth/react'
+import { getSavedMeals } from '@/lib/supabaseMeals'
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -12,76 +14,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search } from 'lucide-react';
 import { savedMeals as initialSavedMeals, SavedMeal } from "./data";
 import MealCard from "./components/MealCard";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 
 const SavedMealsPage = () => {
-  const [savedMeals, setSavedMeals] = useState<SavedMeal[]>(initialSavedMeals);
+  const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+  const { data: session } = useSession();
+
+  const loadSavedMeals = async () => {
+    if (!session?.user?.id) return;
+    try {
+      const meals = await getSavedMeals(session.user.id);
+      setSavedMeals(meals);
+    } catch (error) {
+      console.error("Error loading saved meals:", error);
+      setSavedMeals([]);
+    }
+  };
 
   useEffect(() => {
-    // Load saved meals from localStorage when the component mounts
-    // Only run on client side
-    if (typeof window !== 'undefined') {
-      try {
-        const storedMeals = localStorage.getItem('savedMeals');
-        if (storedMeals) {
-          const parsedStoredMeals: SavedMeal[] = JSON.parse(storedMeals);
-          // Combine with initial static data
-          setSavedMeals([...initialSavedMeals, ...parsedStoredMeals]);
-        }
-      } catch (error) {
-        console.error("Error loading saved meals:", error);
-      }
-    }
-  }, []);
+    loadSavedMeals();
+  }, [session?.user?.id]);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query);
+    if (!session?.user?.id) return;
     if (query.trim() === "") {
-      // Get stored meals again to ensure we have the latest
-      try {
-        if (typeof window !== 'undefined') {
-          const storedMeals = localStorage.getItem('savedMeals');
-          if (storedMeals) {
-            const parsedStoredMeals: SavedMeal[] = JSON.parse(storedMeals);
-            setSavedMeals([...initialSavedMeals, ...parsedStoredMeals]);
-          } else {
-            setSavedMeals(initialSavedMeals);
-          }
-        } else {
-          setSavedMeals(initialSavedMeals);
-        }
-      } catch (error) {
-        console.error("Error loading saved meals:", error);
-        setSavedMeals(initialSavedMeals);
-      }
+      getSavedMeals(session.user.id).then(setSavedMeals).catch(() => setSavedMeals([]));
     } else {
-      // Get all meals including stored ones
-      let allMeals = [...initialSavedMeals];
-      try {
-        if (typeof window !== 'undefined') {
-          const storedMeals = localStorage.getItem('savedMeals');
-          if (storedMeals) {
-            const parsedStoredMeals: SavedMeal[] = JSON.parse(storedMeals);
-            allMeals = [...allMeals, ...parsedStoredMeals];
-          }
-        }
-      } catch (error) {
-        console.error("Error loading saved meals for search:", error);
-      }
-
-      // Filter based on search query
+      const allMeals = await getSavedMeals(session.user.id);
       const filtered = allMeals.filter(
-        (meal) =>
-          meal.cafeName.toLowerCase().includes(query.toLowerCase())
+        (meal) => meal.cafeName.toLowerCase().includes(query.toLowerCase())
       );
       setSavedMeals(filtered);
     }
-  };
+  }
 
   const handleGenerateMeals = () => {
     router.push("/tarana-eats");
@@ -160,7 +131,7 @@ const SavedMealsPage = () => {
           {/* Meals Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {savedMeals.map((meal) => (
-              <MealCard key={meal.id} meal={meal} />
+              <MealCard key={meal.id} meal={meal} onDelete={loadSavedMeals} />
             ))}
           </div>
         </div>
@@ -169,4 +140,4 @@ const SavedMealsPage = () => {
   );
 };
 
-export default SavedMealsPage; 
+export default SavedMealsPage;

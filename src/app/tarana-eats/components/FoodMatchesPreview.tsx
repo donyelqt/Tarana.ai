@@ -9,9 +9,20 @@ import { useRouter } from 'next/navigation';
 
 interface FoodMatchesPreviewProps {
   results: { matches: ResultMatch[] } | null;
+  isLoading?: boolean;
 }
 
-export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps) {
+export default function FoodMatchesPreview({ results, isLoading }: FoodMatchesPreviewProps) {
+  if (isLoading) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-white/80 z-10 rounded-2xl shadow-md p-6">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+        <p className="text-lg font-semibold text-gray-700">Finding your food matches...</p>
+        <p className="text-md font-semibold text-gray-700">Thinking mode...</p>
+        <p className="text-sm text-gray-500">This might take a moment. Please wait.</p>
+      </div>
+    );
+  }
   const [activeMatch, setActiveMatch] = useState<ResultMatch | null>(null);
   const [savedSelections, setSavedSelections] = useState<Record<string, MenuItem[]>>({});
   const { saveToMeals, loading } = useTaranaEatsService();
@@ -22,7 +33,7 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
     setSavedSelections(prev => ({ ...prev, [restaurantName]: items }));
   };
 
-  const handleSaveAllMeals = () => {
+  const handleSaveAllMeals = async () => {
     // Only run on client side
     if (typeof window === 'undefined') {
       return;
@@ -44,12 +55,12 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
     let failedSavesCount = 0;
     
     // Save each selected restaurant's meals
-    selectionEntries.forEach(([restaurantName, menuItems]) => {
+    for (const [restaurantName, menuItems] of selectionEntries) {
       const restaurantMatch = results?.matches.find(match => match.name === restaurantName);
       
       if (!restaurantMatch || menuItems.length === 0) {
         failedSavesCount++;
-        return;
+        continue;
       }
       
       // Determine meal type based on time of day (or could be selected by user)
@@ -61,14 +72,18 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
       else mealType = 'Dinner';
       
       // Save the meal
-      const savedMealId = saveToMeals(restaurantMatch, menuItems, mealType);
-      
-      if (savedMealId) {
-        savedMealsCount++;
-      } else {
+      try {
+        const savedMealId = await saveToMeals(restaurantMatch, menuItems, mealType);
+        
+        if (savedMealId) {
+          savedMealsCount++;
+        } else {
+          failedSavesCount++;
+        }
+      } catch (error) {
         failedSavesCount++;
       }
-    });
+    }
     
     // Show appropriate notification based on results
     if (savedMealsCount > 0) {
@@ -109,14 +124,19 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
               {results.matches.map((match, idx) => {
                 const selection = savedSelections[match.name];
                 const total = selection?.reduce((sum, item) => sum + item.price, 0);
-                const hasValidImage = match.image && match.image !== "";
+                let imageSrc = match.image;
+                if (imageSrc && !imageSrc.startsWith('http') && !imageSrc.startsWith('/')) {
+                  imageSrc = `/${imageSrc}`;
+                }
+
+                const hasValidImage = imageSrc && imageSrc.startsWith('/');
                 const placeholderImage = "/images/placeholders/hero-placeholder.svg";
 
                 return (
                   <div key={idx} className="rounded-xl shadow border p-4">
                     <div className="relative w-full h-32 rounded-lg mb-4 overflow-hidden">
                       {hasValidImage ? (
-                        <Image src={match.image} alt={match.name} fill style={{ objectFit: "cover" }} />
+                        <Image src={imageSrc} alt={match.name} fill style={{ objectFit: "cover" }} />
                       ) : (
                         <Image src={placeholderImage} alt={match.name} fill style={{ objectFit: "cover" }} />
                       )}
@@ -157,7 +177,7 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
                 );
               })}
               <Button 
-                className="w-full mt-4" 
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4" 
                 onClick={handleSaveAllMeals} 
                 disabled={loading || Object.keys(savedSelections).length === 0}
               >
@@ -179,4 +199,4 @@ export default function FoodMatchesPreview({ results }: FoodMatchesPreviewProps)
       </div>
     </>
   );
-} 
+}

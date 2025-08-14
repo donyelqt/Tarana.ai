@@ -1,0 +1,7 @@
+export const INTEREST_DETAILS: Record<string, string> = {
+  "Nature & Scenery": "- Nature & Scenery: Burnham Park, Mines View Park, Wright Park, Camp John Hay, Botanical Garden, Mirador Heritage & Eco Park, Valley of Colors, Mt. Kalugong, Mt. Yangbew, Great Wall of Baguio, Camp John Hay Yellow Trail, Lions Head",
+  "Food & Culinary": "- Food & Culinary: Good Taste Restaurant, Café by the Ruins, Hill Station, Vizco's, Baguio Craft Brewery, Oh My Gulay, Choco-late de Batirol, Ili-Likha Food Hub, Canto Bogchi Joint, Arca's Yard, Amare La Cucina, Le Chef at The Manor, Lemon and Olives, Grumpy Joe, Luisa's Cafe, Agara Ramen, 50's Diner, Balajadia Kitchenette, Wagner Cafe, Pizza Volante",
+  "Culture & Arts": "- Culture & Arts: BenCab Museum, Tam-awan Village, Baguio Museum, Ili-Likha Artist Village, Baguio Cathedral, The Mansion, Diplomat Hotel, Philippine Military Academy, Igorot Stone Kingdom, Laperal White House, Mt. Cloud Bookshop, Mirador Heritage & Eco Park, Oh My Gulay",
+  "Shopping & Local Finds": "- Shopping & Local Finds: Night Market on Harrison Road, Baguio Public Market, Session Road shops, SM City Baguio, Good Shepherd Convent, Easter Weaving Room, Baguio Craft Market, Ili-Likha Food Hub",
+  "Adventure": "- Adventure: Tree Top Adventure, Mt. Ulap Eco-Trail, Mines View Park horseback riding, Wright Park horseback riding, Camp John Hay Yellow Trail, Great Wall of Baguio, Mt. Kalugong, Mt. Yangbew, Camp John Hay, Valley of Colors",
+};

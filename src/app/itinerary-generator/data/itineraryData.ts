@@ -1,6 +1,7 @@
-import { baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation, 
-    mtulap, nightmarket, tamawan, taranaai, treetopcampjohnhay, viewspark, 
-    vizcossessionroad} from "../../../../public";
+import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, caferuins, campjohnhay, goodtaste, hillstation, 
+    mtulap, nightmarket, smbaguio, tamawan, taranaai, the_mansion_baguio, treetopcampjohnhay, viewspark, 
+    vizcossessionroad,
+    wrightpark} from "../../../../public";
   import { StaticImageData } from "next/image";
   import { Dices, Mountain, Utensils, Palette, ShoppingBag, Compass } from 'lucide-react';
   import React from "react";
@@ -59,7 +60,7 @@ import { baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation,
         activities: [
           {
             image: goodtaste,
-            title: "Breakfast at Good Taste Restaurant",
+            title: "Good Taste Restaurant",
             time: "7:30AM-9:00AM",
             desc: "Fuel up with a hearty Filipino-Chinese breakfast at Good Taste, a Baguio favorite known for generous portions and affordable prices. Try their famous buttered chicken (₱180-250) and pancit canton (₱150-200). Located at Carino St., this 24-hour restaurant is perfect for early risers. Budget-friendly with meals averaging ₱150-300 per person. Travel time from city center: 5-10 minutes by taxi (₱70-100).",
             tags: ["Food & Culinary", "Budget-friendly", "Local Favorite", "Indoor-Friendly"]
@@ -150,42 +151,42 @@ import { baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation,
         period: "Anytime",
         activities: [
           {
-            image: taranaai,
+            image: baguio_cathedral,
             title: "Baguio Cathedral",
             time: "6:00 AM – 6:00 PM",
             desc: "Neo-Gothic cathedral with twin spires; offers panoramic city views.",
             tags: ["Culture & Arts", "Nature & Scenery", "Indoor-Friendly", "Weather-Flexible", "Budget-friendly"]
           },
           {
-            image: taranaai,
+            image: botanicalbaguio,
             title: "Botanical Garden",
             time: "6:00 AM – 6:00 PM",
             desc: "Lush garden showcasing native plants and cultural sculptures.",
             tags: ["Nature & Scenery", "Shopping & Local Finds", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
           },
           {
-            image: taranaai,
+            image: the_mansion_baguio,
             title: "The Mansion",
             time: "8:00 AM – 5:00 PM",
             desc: "Official summer residence of the Philippine President; features a grand gate and manicured lawns.",
             tags: ["Culture & Arts", "Nature & Scenery", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
           },
           {
-            image: taranaai,
+            image: wrightpark,
             title: "Wright Park",
             time: "6:00 AM – 6:00 PM",
             desc: "Tree-lined park with a reflecting pool; known for horseback riding.",
             tags: ["Nature & Scenery", "Adventure", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
           },
           {
-            image: taranaai,
+            image: campjohnhay, 
             title: "Camp John Hay",
             time: "8:00 AM – 5:00 PM",
             desc: "Former U.S. military base turned into a leisure complex with hotels, golf course, and trails.",
             tags: ["Adventure", "Nature & Scenery", "Outdoor-Friendly", "Weather-Flexible", "Budget-friendly"]
           },
           {
-            image: taranaai,
+            image: smbaguio,
             title: "SM City Baguio",
             time: "10:00 AM – 9:00 PM",
             desc: "Open-air mall with various retail stores, restaurants, and entertainment options.",

@@ -62,11 +62,7 @@ const MealCardPopup = ({
               <div key={index} className="border-2 border-gray-200 bg-white rounded-xl p-5 flex items-center justify-between">
                 <div className="flex items-center gap-5">
                   <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0 relative overflow-hidden">
-                     {item.image ? (
-                        <Image src={item.image} alt={item.name} layout="fill" className="object-cover" />
-                     ) : (
-                        <div className="w-full h-full bg-gray-200"></div>
-                     )}
+                    <Image src={item.image || taranaai} alt={item.name} layout="fill" className="object-cover" />
                   </div>
                   <div>
                     <p className="font-bold text-xl text-gray-800">{item.name}</p>
@@ -103,4 +99,4 @@ const MealCardPopup = ({
   );
 };
 
-export default MealCardPopup; 
+export default MealCardPopup;

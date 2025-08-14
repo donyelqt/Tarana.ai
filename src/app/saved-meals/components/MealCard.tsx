@@ -6,9 +6,12 @@ import { Utensils, Users, MapPin, Coffee, Pizza, Croissant, Trash2 } from "lucid
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import { useSession } from 'next-auth/react'
+import { deleteMeal } from '@/lib/supabaseMeals'
 
 interface MealCardProps {
   meal: SavedMeal;
+  onDelete?: () => void;
 }
 
 const MealTypeIcon = ({ mealType }: { mealType: SavedMeal['mealType'] }) => {
@@ -24,10 +27,11 @@ const MealTypeIcon = ({ mealType }: { mealType: SavedMeal['mealType'] }) => {
   }
 };
 
-const MealCard = ({ meal }: MealCardProps) => {
+const MealCard = ({ meal, onDelete }: MealCardProps) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { data: session } = useSession();
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -35,32 +39,23 @@ const MealCard = ({ meal }: MealCardProps) => {
     setShowDeleteModal(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
+    if (!session?.user?.id) return;
     try {
-      if (typeof window !== 'undefined') {
-        // Delete from localStorage
-        const storedMeals = localStorage.getItem('savedMeals');
-        if (storedMeals) {
-          const parsedStoredMeals = JSON.parse(storedMeals);
-          const updatedMeals = parsedStoredMeals.filter((m: SavedMeal) => m.id !== meal.id);
-          localStorage.setItem('savedMeals', JSON.stringify(updatedMeals));
-        }
-        
-        const storedMealDetails = localStorage.getItem('mealDetailsData');
-        if (storedMealDetails) {
-          const parsedMealDetails = JSON.parse(storedMealDetails);
-          delete parsedMealDetails[meal.id];
-          localStorage.setItem('mealDetailsData', JSON.stringify(parsedMealDetails));
-        }
-
+      const success = await deleteMeal(session.user.id, meal.id);
+      if (success) {
         toast({
           title: "Success",
           description: "Meal deleted successfully!",
           variant: "success",
         });
-
-        // Force a page reload to refresh the meals list
-        router.refresh();
+        if (onDelete) {
+          onDelete();
+        } else {
+          router.refresh();
+        }
+      } else {
+        throw new Error('Failed to delete meal');
       }
     } catch (error) {
       console.error("Error deleting meal:", error);
@@ -82,8 +77,12 @@ const MealCard = ({ meal }: MealCardProps) => {
       <div className="bg-white rounded-2xl shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300">
         <div className="relative h-48">
           <Image
-            src={meal.image}
-            alt={meal.cafeName}
+            src={
+              meal.image && (meal.image.startsWith("/") || meal.image.startsWith("http://") || meal.image.startsWith("https://"))
+                ? meal.image
+                : "/assets/images/placeholder.png"
+            }
+            alt={meal.cafeName ? meal.cafeName : "Meal image"}
             layout="fill"
             objectFit="cover"
           />
@@ -113,7 +112,7 @@ const MealCard = ({ meal }: MealCardProps) => {
 
           <div className="flex items-center gap-2 mt-4">
             <Link href={`/saved-meals/${meal.id}`} passHref className="flex-1">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+              <Button className="flex-1 w-full bg-[#0066FF] hover:bg-[#0052cc] text-white font-medium py-2 px-4 rounded-xl transition-colors">
                 View Full Menu
               </Button>
             </Link>
@@ -147,4 +146,4 @@ const MealCard = ({ meal }: MealCardProps) => {
   );
 };
 
-export default MealCard; 
+export default MealCard;

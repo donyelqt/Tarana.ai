@@ -1,6 +1,6 @@
 # Tarana.ai
 
-**Tarana.ai** is an AI-powered travel platform that generates real-time, personalized itineraries for Baguio City. It leverages live data (traffic, crowd density, weather, mobility patterns) and user preferences to help tourists avoid congestion, discover hidden gems, and enjoy smoother, more meaningful trips. The platform aims to reduce overtourism, support local businesses, and make urban travel more sustainable—think of it as the "Waze of Tourism."
+**Tarana.ai** is an agentic AI travel app that generates real-time, personalized itineraries for Baguio City. It leverages live data (traffic, crowd density, weather, mobility patterns) and user preferences to help tourists avoid congestion, discover hidden gems, and enjoy smoother, more meaningful trips. The platform aims to reduce overtourism, support local businesses, and make urban travel more sustainable—think of it as the "Waze of Tourism."
 
 ---
 
@@ -234,7 +234,6 @@ This project is **not open source**. All rights reserved by Doniele Arys Antonio
 - Gemwil Salayog (CEO)
 - Cedric Navalta (CMO)
 - Leandro Gepila (CPO)
-- Jasper Gubatan (Chief Architect)
 
 ---
 

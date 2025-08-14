@@ -4,7 +4,8 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { SessionProvider } from '@/components/providers/SessionProvider'
 import { ToastProvider } from "@/components/ui/use-toast"
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster";
+import SmokeEffect from "@/components/ui/SmokeEffect";
 
 // const inter = Inter({ subsets: ["latin"] })
 
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body className="font-sans">
         <SessionProvider>
           <ToastProvider>
+            <SmokeEffect />
             {children}
             <Toaster />
           </ToastProvider>

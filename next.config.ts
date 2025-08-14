@@ -15,6 +15,16 @@ const nextConfig: NextConfig = {
         hostname: 'lh3.googleusercontent.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.deliveryhero.io',
+        pathname: '/image/fd-ph/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.facebook.com',
+        pathname: '/**',
+      },
     ],
   },
   eslint: {
