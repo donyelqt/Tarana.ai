@@ -4,7 +4,7 @@ import { GeminiResponse } from './types';
 // Global initialization for Gemini model
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
-const geminiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" }) : null;
+const geminiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-2.0-flash" }) : null;
 
 export function initializeGemini() {
   if (!API_KEY) {
