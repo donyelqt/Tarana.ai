@@ -15,6 +15,7 @@ export interface Activity {
   time: string;
   desc: string;
   tags: string[];
+  relevanceScore?: number; // Optional relevance score from RAG results
 }
 
 export interface ItinerarySection {
@@ -77,4 +78,4 @@ export interface SavedItineraryItem {
   itineraryData: ItineraryData;
   weatherData?: WeatherData;
   createdAt: string;
-} 
+}

@@ -30,12 +30,13 @@ import { baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation,
   ];
   
   export interface Activity {
-    image: StaticImageData | string; // Allow string for potential future API responses
-    title: string;
-    time: string;
-    desc: string;
-    tags: string[];
-  }
+  image: StaticImageData | string; // Allow string for potential future API responses
+  title: string;
+  time: string;
+  desc: string;
+  tags: string[];
+  relevanceScore?: number; // Optional relevance score from RAG results
+}
   
   export interface ItinerarySection {
     period: string;
