@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchSimilarActivities } from "@/lib/vectorSearch";
 // Import the canonical sample itinerary so we can look up images by title as a fallback
 import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
+// Extracted helpers
+import { proposeSubqueries } from "./agent";
+import { removeDuplicateActivities, organizeItineraryByDays } from "./itineraryUtils";
 
 // Global initialization for Gemini model to avoid re-creating the client on every request.
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
@@ -173,11 +176,37 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // Enhanced RAG approach: Build the activity database from vector similarity search with semantic relevance.
+    // Enhanced RAG + minimal agent loop: Build the activity database from vector search,
+    // let the model propose targeted sub-queries for better coverage, then re-search and merge.
     if (typeof prompt === "string" && prompt.length > 0) {
       try {
-        // Fetch more matches for a richer pool and better semantic matching
-        const similar = await searchSimilarActivities(prompt, 60); 
+        // Initial retrieval
+        let similar = await searchSimilarActivities(prompt, 60);
+
+        // Agentic planning: if the pool is small or we want better coverage, ask for sub-queries
+        const existingTitles = (similar || []).map(s => s.metadata?.title || s.activity_id);
+        const subqueries = await proposeSubqueries({
+          model,
+          userPrompt: prompt,
+          interests: Array.isArray(interests) ? interests : undefined,
+          weatherType,
+          durationDays,
+          existingTitles,
+          maxQueries: 3
+        });
+
+        if (subqueries.length > 0) {
+          const batch = await searchSimilarActivities(subqueries, 30);
+          // Merge and dedupe by title, keep best similarity
+          const byTitle = new Map<string, { activity_id: string; similarity: number; metadata: Record<string, any>; }>();
+          for (const s of [...similar, ...batch]) {
+            const title: string = s.metadata?.title || s.activity_id;
+            if (!byTitle.has(title) || byTitle.get(title)!.similarity < s.similarity) {
+              byTitle.set(title, s);
+            }
+          }
+          similar = Array.from(byTitle.values());
+        }
 
         // Apply weather + interest filters before constructing the itinerary object
         const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
@@ -382,6 +411,7 @@ export async function POST(req: NextRequest) {
       2. **Strictly use the provided RAG-enhanced activity database.** The database contains activities that have been semantically matched to the user's query and preferences. Do NOT invent, suggest, or mention any activity, place, or experience that is not present in the provided database.
       3. **Prioritize activities with higher relevanceScore values** as they are more closely aligned with the user's query, interests, and weather conditions.
       4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards), respecting the time periods already suggested in the database.
+      ${durationDays ? `4.a. Ensure the itinerary spans exactly ${durationDays} day(s). Create separate day sections and, within each day, include Morning, Afternoon, and Evening periods populated only from the database.` : ""}
       5. Pace the itinerary based on trip duration, ensuring a balanced schedule.
       6. For each activity, include: **image** (exact image URL from the database), **title**, **time** slot (e.g., "9:00-10:30AM"), a **brief** description (features, costs, location, duration, weather notes), and **tags** (interest and weather).
       7. Adhere to the user's budget preferences.
@@ -402,41 +432,6 @@ export async function POST(req: NextRequest) {
     // Generate the itinerary with retry logic to gracefully handle temporary overloads (e.g., 503 Service Unavailable) or rate limits (429).
     const MAX_RETRIES = 3;
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-    // Function to check for duplicate activities across days
-    const removeDuplicateActivities = (parsedItinerary: any) => {
-      if (!parsedItinerary || !parsedItinerary.items || !Array.isArray(parsedItinerary.items)) {
-        return parsedItinerary;
-      }
-      
-      const seenActivities = new Set<string>();
-      const result = {
-        ...parsedItinerary,
-        items: parsedItinerary.items.map((day: any, dayIndex: number) => {
-          if (!day.activities || !Array.isArray(day.activities)) return day;
-          
-          return {
-            ...day,
-            activities: day.activities.filter((activity: any) => {
-              // Skip if no title
-              if (!activity.title) return true;
-              
-              // Check if we've seen this activity before
-              if (seenActivities.has(activity.title)) {
-                console.log(`Removing duplicate activity: ${activity.title} on day/period ${day.period}`);
-                return false;
-              }
-              
-              // Add to seen activities
-              seenActivities.add(activity.title);
-              return true;
-            })
-          };
-        }).filter((day: any) => day.activities && day.activities.length > 0)
-      };
-      
-      return result;
-    };
 
     let result: any = null;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -520,6 +515,10 @@ export async function POST(req: NextRequest) {
       // Apply the removeDuplicateActivities function to eliminate duplicates
       parsed = removeDuplicateActivities(parsed);
 
+      // organization handled by imported utility
+
+      parsed = organizeItineraryByDays(parsed, durationDays);
+
       // Remove placeholder activities titled "No available activity", drop empty periods,
       // back-fill any missing image URLs using the canonical sampleItineraryCombined,
       // and ensure no duplicate activities across days.
@@ -600,6 +599,10 @@ export async function POST(req: NextRequest) {
           
           // Apply the removeDuplicateActivities function to eliminate duplicates
           parsed = removeDuplicateActivities(parsed);
+
+          // organization handled by imported utility
+
+          parsed = organizeItineraryByDays(parsed, durationDays);
 
           if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).items)) {
             // Track seen activities to prevent duplicates across days
