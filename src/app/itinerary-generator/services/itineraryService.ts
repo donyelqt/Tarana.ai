@@ -3,7 +3,7 @@ import { ItineraryData, FormData } from "../types";
 import { sampleItinerary } from "../data/itineraryData";
 
 /**
- * Generates an itinerary by calling the Gemini API
+ * Generates an itinerary by calling the Gemini API with enhanced RAG capabilities
  * @param formData The form data for generating the itinerary
  * @param weatherData Current weather data for Baguio
  * @returns The generated itinerary or error
@@ -13,9 +13,36 @@ export const generateItinerary = async (
   weatherData: WeatherData | null
 ): Promise<{ itinerary: ItineraryData | null; error: string | null }> => {
   try {
-    const prompt = `Create a personalized ${formData.duration}-day itinerary for Baguio City, Philippines based on the user preferences and current weather conditions.`;
+    // Create a more detailed prompt that will help with semantic search
+    let promptDetails = [];
+    
+    // Add basic request
+    promptDetails.push(`Create a personalized ${formData.duration}-day itinerary for Baguio City, Philippines`);
+    
+    // Add interests for better semantic matching
+    if (formData.selectedInterests.length > 0) {
+      promptDetails.push(`focusing on ${formData.selectedInterests.join(", ")}`);
+    }
+    
+    // Add budget information
+    if (formData.budget) {
+      promptDetails.push(`with a ${formData.budget} budget`);
+    }
+    
+    // Add group size
+    if (formData.pax) {
+      promptDetails.push(`for a ${formData.pax}`);
+    }
+    
+    // Add weather context if available
+    if (weatherData?.weather?.[0]?.main) {
+      promptDetails.push(`considering the current ${weatherData.weather[0].main} weather`);
+    }
+    
+    // Combine all details into a rich semantic query
+    const prompt = promptDetails.join(" ");
 
-    // Call Gemini API via backend route
+    // Call Gemini API via backend route with enhanced prompt
     const response = await fetch("/api/gemini", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -64,10 +91,10 @@ export const generateItinerary = async (
 };
 
 /**
- * Enhances the itinerary with images and weather-appropriate tags
- * @param itinerary The raw itinerary data
+ * Enhances the itinerary with images, weather-appropriate tags, and preserves relevance scores
+ * @param itinerary The raw itinerary data from RAG-enhanced generation
  * @param weatherData Current weather data for appropriate tagging
- * @returns Enhanced itinerary with matching images and weather tags
+ * @returns Enhanced itinerary with matching images, weather tags, and relevance information
  */
 export const enhanceItinerary = (
   itinerary: ItineraryData,
@@ -78,6 +105,9 @@ export const enhanceItinerary = (
     items: itinerary.items.map((section: any) => ({
       ...section,
       activities: section.activities.map((activity: any) => {
+        // Preserve relevance score if it exists
+        const relevanceScore = activity.relevanceScore !== undefined ? activity.relevanceScore : null;
+        
         // Use the image provided by the backend if present; otherwise attempt to find a match in the local sample DB.
         let matchingImage: any = activity.image || "burnham";
         let bestMatchScore = 0;
@@ -120,7 +150,10 @@ export const enhanceItinerary = (
           tags.push("Weather-Flexible");
         }
         
-        return { ...activity, image: matchingImage, tags };
+        // Include relevance score in the enhanced activity if it exists
+        return relevanceScore !== null 
+          ? { ...activity, image: matchingImage, tags, relevanceScore } 
+          : { ...activity, image: matchingImage, tags };
       }),
     })),
   };

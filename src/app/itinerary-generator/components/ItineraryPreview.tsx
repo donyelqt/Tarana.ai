@@ -94,6 +94,12 @@ export default function ItineraryPreview({
                     <div className="text-xs text-gray-500 mb-2">{act.time}</div>
                     <div className="text-sm text-gray-700 mb-3">{act.desc}</div>
                     <div className="flex gap-2 flex-wrap">
+                      {/* Display relevance score if available */}
+                      {act.relevanceScore !== undefined && (
+                        <span className="inline-block bg-green-100 rounded-lg px-2 py-1 text-xs font-medium text-green-700 border border-green-300">
+                          Relevance: {(act.relevanceScore * 100).toFixed(0)}%
+                        </span>
+                      )}
                       {act.tags.map((tag, index) => (
                         <span
                           key={index}

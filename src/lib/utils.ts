@@ -133,6 +133,7 @@ export interface ItineraryItem {
     time: string
     desc: string
     tags: string[]
+    relevanceScore?: number
   }[]
 }
 
