@@ -173,10 +173,11 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // Always build the activity database from vector similarity search.
+    // Enhanced RAG approach: Build the activity database from vector similarity search with semantic relevance.
     if (typeof prompt === "string" && prompt.length > 0) {
       try {
-        const similar = await searchSimilarActivities(prompt, 40); // fetch top 40 matches for richer pool
+        // Fetch more matches for a richer pool and better semantic matching
+        const similar = await searchSimilarActivities(prompt, 60); 
 
         // Apply weather + interest filters before constructing the itinerary object
         const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
@@ -184,29 +185,117 @@ export async function POST(req: NextRequest) {
           interests && Array.isArray(interests) && !interests.includes("Random") ? interests : []
         );
 
-        const filteredSimilar = (similar || []).filter((s) => {
+        // Enhanced filtering with weighted relevance scoring
+        const scoredSimilar = (similar || []).map((s) => {
           const tags = s.metadata?.tags || [];
           const interestMatch = interestSet.size === 0 || tags.some((t: string) => interestSet.has(t));
           const weatherMatch = allowedWeatherTags.length === 0 || tags.some((t: string) => allowedWeatherTags.includes(t));
-          return interestMatch && weatherMatch;
+          
+          // Calculate relevance score based on multiple factors
+          let relevanceScore = s.similarity; // Base score from vector similarity
+          
+          // Boost score for interest matches
+          if (interestMatch && interestSet.size > 0) {
+            const matchCount = tags.filter((t: string) => interestSet.has(t)).length;
+            relevanceScore += (matchCount / interestSet.size) * 0.3; // Up to 30% boost for interest matches
+          }
+          
+          // Boost score for weather appropriateness
+          if (weatherMatch && allowedWeatherTags.length > 0) {
+            const matchCount = tags.filter((t: string) => allowedWeatherTags.includes(t)).length;
+            relevanceScore += (matchCount / allowedWeatherTags.length) * 0.2; // Up to 20% boost for weather matches
+          }
+          
+          return {
+            ...s,
+            relevanceScore,
+            interestMatch,
+            weatherMatch
+          };
         });
 
+        // Filter and sort by relevance score
+        const filteredSimilar = scoredSimilar
+          .filter(s => s.interestMatch && s.weatherMatch)
+          .sort((a, b) => b.relevanceScore - a.relevanceScore)
+          .slice(0, 40); // Keep top 40 most relevant activities
+
         if (filteredSimilar.length > 0) {
+          // Group activities by time periods for better organization
+          const morningActivities: any[] = [];
+          const afternoonActivities: any[] = [];
+          const eveningActivities: any[] = [];
+          const anytimeActivities: any[] = [];
+          
+          filteredSimilar.forEach(s => {
+            const timeStr = s.metadata?.time?.toLowerCase() || "";
+            const activity = {
+              image: s.metadata?.image || "",
+              title: s.metadata?.title || s.activity_id,
+              time: s.metadata?.time || "",
+              desc: s.metadata?.desc || "",
+              tags: s.metadata?.tags || [],
+              relevanceScore: s.relevanceScore // Include score for debugging/transparency
+            };
+            
+            if (timeStr.includes("am") || timeStr.includes("morning")) {
+              morningActivities.push(activity);
+            } else if (timeStr.includes("pm") || timeStr.includes("afternoon")) {
+              afternoonActivities.push(activity);
+            } else if (timeStr.includes("evening") || timeStr.includes("night")) {
+              eveningActivities.push(activity);
+            } else {
+              anytimeActivities.push(activity);
+            }
+          });
+          
+          // Create a more structured itinerary with time periods
+          const items = [];
+          
+          if (morningActivities.length > 0) {
+            items.push({
+              period: "Morning",
+              activities: morningActivities
+            });
+          }
+          
+          if (afternoonActivities.length > 0) {
+            items.push({
+              period: "Afternoon",
+              activities: afternoonActivities
+            });
+          }
+          
+          if (eveningActivities.length > 0) {
+            items.push({
+              period: "Evening",
+              activities: eveningActivities
+            });
+          }
+          
+          if (anytimeActivities.length > 0) {
+            items.push({
+              period: "Flexible Time",
+              activities: anytimeActivities
+            });
+          }
+          
           effectiveSampleItinerary = {
-            title: "Vector Suggestions",
-            subtitle: "Activities matched from vector search",
-            items: [
+            title: "Personalized Recommendations",
+            subtitle: "Activities matched to your preferences using semantic search",
+            items: items.length > 0 ? items : [
               {
                 period: "Anytime",
-                activities: filteredSimilar.map((s) => ({
+                activities: filteredSimilar.map(s => ({
                   image: s.metadata?.image || "",
                   title: s.metadata?.title || s.activity_id,
                   time: s.metadata?.time || "",
                   desc: s.metadata?.desc || "",
                   tags: s.metadata?.tags || [],
-                })),
-              },
-            ],
+                  relevanceScore: s.relevanceScore
+                }))
+              }
+            ]
           } as any;
         }
       } catch (vecErr) {
@@ -216,9 +305,9 @@ export async function POST(req: NextRequest) {
 
     // Use effectiveSampleItinerary downstream
 
-    // Streamlined sample itinerary context – send the filtered DB only
+    // Enhanced RAG context - send the filtered DB with relevance scores and clear instructions
     const sampleItineraryContext = effectiveSampleItinerary
-      ? `Database: ${JSON.stringify(effectiveSampleItinerary)}\nRULE: Only use activities from this database. Match user interests and weather tags.`
+      ? `Database: ${JSON.stringify(effectiveSampleItinerary)}\n\nRULE: Only use activities from this database. Activities are already pre-filtered and ranked by relevance to the user's query, interests, and current weather conditions. Higher relevanceScore values indicate better matches to the user's needs. Prioritize activities with higher relevance scores when creating the itinerary.`
       : "";
 
     // Weather context is now handled by the lookup table above
@@ -275,7 +364,7 @@ export async function POST(req: NextRequest) {
       `;
     }
 
-    // Construct a detailed prompt for the AI
+    // Construct a detailed prompt for the AI with RAG-enhanced instructions
     const detailedPrompt = `
       ${prompt}
       
@@ -286,17 +375,19 @@ export async function POST(req: NextRequest) {
       ${budgetContext}
       ${paxContext}
       
-      Generate a detailed Baguio City itinerary.
+      Generate a detailed Baguio City itinerary using the semantically retrieved activities from the database. For multi-day itineraries, ensure each activity is only recommended once across all days.
 
       Rules:
-      1. **Be concise.**
-      2. **Strictly use the provided sample itinerary database.** Do NOT invent, suggest, or mention any activity, place, or experience that is not present in the provided database. If no suitable activity exists for a time slot, omit that time slot entirely and do not output any placeholder.
-      3. Match activities to user interests and weather.
-      4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards).
-      5. Pace the itinerary based on trip duration.
+      1. **Be concise and personalized.**
+      2. **Strictly use the provided RAG-enhanced activity database.** The database contains activities that have been semantically matched to the user's query and preferences. Do NOT invent, suggest, or mention any activity, place, or experience that is not present in the provided database.
+      3. **Prioritize activities with higher relevanceScore values** as they are more closely aligned with the user's query, interests, and weather conditions.
+      4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards), respecting the time periods already suggested in the database.
+      5. Pace the itinerary based on trip duration, ensuring a balanced schedule.
       6. For each activity, include: **image** (exact image URL from the database), **title**, **time** slot (e.g., "9:00-10:30AM"), a **brief** description (features, costs, location, duration, weather notes), and **tags** (interest and weather).
-      7. Adhere to the user's budget.
-      8. Output a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"image": "...", "title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
+      7. Adhere to the user's budget preferences.
+      8. **IMPORTANT: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
+      9. If the database already contains organized time periods (Morning, Afternoon, Evening), use that structure as a starting point and refine it based on the user's needs.
+      10. Output a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"image": "...", "title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
     `;
 
     // Optimized generation parameters for faster response
@@ -311,6 +402,41 @@ export async function POST(req: NextRequest) {
     // Generate the itinerary with retry logic to gracefully handle temporary overloads (e.g., 503 Service Unavailable) or rate limits (429).
     const MAX_RETRIES = 3;
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // Function to check for duplicate activities across days
+    const removeDuplicateActivities = (parsedItinerary: any) => {
+      if (!parsedItinerary || !parsedItinerary.items || !Array.isArray(parsedItinerary.items)) {
+        return parsedItinerary;
+      }
+      
+      const seenActivities = new Set<string>();
+      const result = {
+        ...parsedItinerary,
+        items: parsedItinerary.items.map((day: any, dayIndex: number) => {
+          if (!day.activities || !Array.isArray(day.activities)) return day;
+          
+          return {
+            ...day,
+            activities: day.activities.filter((activity: any) => {
+              // Skip if no title
+              if (!activity.title) return true;
+              
+              // Check if we've seen this activity before
+              if (seenActivities.has(activity.title)) {
+                console.log(`Removing duplicate activity: ${activity.title} on day/period ${day.period}`);
+                return false;
+              }
+              
+              // Add to seen activities
+              seenActivities.add(activity.title);
+              return true;
+            })
+          };
+        }).filter((day: any) => day.activities && day.activities.length > 0)
+      };
+      
+      return result;
+    };
 
     let result: any = null;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -389,10 +515,14 @@ export async function POST(req: NextRequest) {
 
     try {
       // Validate that it's proper JSON by parsing
-      const parsed = JSON.parse(cleanedJson);
+      let parsed = JSON.parse(cleanedJson);
+      
+      // Apply the removeDuplicateActivities function to eliminate duplicates
+      parsed = removeDuplicateActivities(parsed);
 
       // Remove placeholder activities titled "No available activity", drop empty periods,
-      // and back-fill any missing image URLs using the canonical sampleItineraryCombined.
+      // back-fill any missing image URLs using the canonical sampleItineraryCombined,
+      // and ensure no duplicate activities across days.
       if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).items)) {
         // Build a quick lookup table: title -> image from sampleItineraryCombined
         const titleToImage: Record<string, string> = {};
@@ -404,12 +534,30 @@ export async function POST(req: NextRequest) {
             }
           }
         }
+        
+        // Track seen activities to prevent duplicates across days
+        const seenActivities = new Set<string>();
 
         (parsed as any).items = (parsed as any).items
           .map((period: any) => {
             const cleanedActs = Array.isArray(period.activities)
               ? period.activities
-                  .filter((act: any) => act.title && act.title.toLowerCase() !== "no available activity")
+                  .filter((act: any) => {
+                    // Filter out placeholder activities
+                    if (!act.title || act.title.toLowerCase() === "no available activity") {
+                      return false;
+                    }
+                    
+                    // Check for duplicates across days
+                    if (seenActivities.has(act.title)) {
+                      console.log(`Removing duplicate activity: ${act.title} in period ${period.period}`);
+                      return false;
+                    }
+                    
+                    // Add to seen activities
+                    seenActivities.add(act.title);
+                    return true;
+                  })
                   .map((act: any) => {
                     if ((!act.image || act.image === "") && titleToImage[act.title]) {
                       act.image = titleToImage[act.title];
@@ -448,13 +596,34 @@ export async function POST(req: NextRequest) {
         const lastBrace = cleanedJson.lastIndexOf('}');
         if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
           const potentialJson = cleanedJson.slice(firstBrace, lastBrace + 1);
-          const parsed = JSON.parse(potentialJson);
+          let parsed = JSON.parse(potentialJson);
+          
+          // Apply the removeDuplicateActivities function to eliminate duplicates
+          parsed = removeDuplicateActivities(parsed);
 
           if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).items)) {
+            // Track seen activities to prevent duplicates across days
+            const seenActivities = new Set<string>();
+            
             (parsed as any).items = (parsed as any).items
               .map((period: any) => {
                 const filteredActivities = Array.isArray(period.activities)
-                  ? period.activities.filter((act: any) => act.title && act.title.toLowerCase() !== "no available activity")
+                  ? period.activities.filter((act: any) => {
+                      // Filter out placeholder activities
+                      if (!act.title || act.title.toLowerCase() === "no available activity") {
+                        return false;
+                      }
+                      
+                      // Check for duplicates across days
+                      if (seenActivities.has(act.title)) {
+                        console.log(`Removing duplicate activity: ${act.title} in period ${period.period}`);
+                        return false;
+                      }
+                      
+                      // Add to seen activities
+                      seenActivities.add(act.title);
+                      return true;
+                    })
                   : [];
                 return { ...period, activities: filteredActivities };
               })
