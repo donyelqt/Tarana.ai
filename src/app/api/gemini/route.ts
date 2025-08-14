@@ -1,69 +1,128 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
-import { SampleItinerary } from "@/lib/types";
+import { searchSimilarActivities } from "@/lib/vectorSearch";
+// Import the canonical sample itinerary so we can look up images by title as a fallback
+import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
 
-// Types and utilities from modularized Gemini helpers
-import { RequestParams, WeatherCondition } from "@/lib/gemini/types";
-import { WEATHER_CONTEXTS, getWeatherType } from "@/lib/gemini/weather";
-import { getFromCache, setInCache, cleanupCache } from "@/lib/gemini/cache";
-import { buildActivitiesFromVector, toSampleItineraryFromVector } from "@/lib/gemini/vectorPipeline";
-import {
-  buildInterestsContext,
-  normalizeBudget,
-  normalizePax,
-  extractDurationDays,
-  buildDurationContext,
-  buildBudgetContext,
-  buildPaxContext,
-  buildDetailedPrompt,
-} from "@/lib/gemini/prompt";
-import { generateItinerary } from "@/lib/gemini/geminiService";
-import {
-  extractAndCleanJSON,
-  buildTitleToImageLookup,
-  cleanupActivities,
-  attemptJSONSalvage,
-} from "@/lib/gemini/responseProcessor";
+// Global initialization for Gemini model to avoid re-creating the client on every request.
+const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+const geminiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" }) : null;
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+// Simple in-memory cache for similar requests
+const responseCache = new Map<string, { response: any; timestamp: number }>();
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+// Define a type for the keys of WEATHER_CONTEXTS
+type WeatherCondition = keyof typeof WEATHER_CONTEXTS;
+
+// Pre-computed weather context lookup for faster processing
+const WEATHER_CONTEXTS = {
+  thunderstorm: (temp: number, desc: string) =>
+    `WARNING: ${desc} (${temp}°C). ONLY indoor activities: Museums, malls, indoor dining. Select "Indoor-Friendly" tagged activities only.`,
+  rainy: (temp: number, desc: string) =>
+    `${desc} (${temp}°C). Prioritize "Indoor-Friendly" tagged activities: Museums, malls, covered dining.`,
+  snow: (temp: number, desc: string) =>
+    `${desc} (${temp}°C)! Focus on "Indoor-Friendly" activities: warm venues, hot beverages, brief safe outdoor viewing.`,
+  foggy: (temp: number, desc: string) =>
+    `${desc} (${temp}°C). Use "Indoor-Friendly" or "Weather-Flexible" activities. Avoid viewpoints.`,
+  cloudy: (temp: number, desc: string) =>
+    `${desc} (${temp}°C). Mix of "Weather-Flexible" activities. Good for photography.`,
+  clear: (temp: number, desc: string) =>
+    `${desc} (${temp}°C). Perfect for "Outdoor-Friendly" activities: hiking, parks, viewpoints.`,
+  cold: (temp: number, desc: string) =>
+    `${desc} (${temp}°C). Prioritize "Indoor-Friendly" activities with warming options.`,
+  default: (temp: number, desc: string) =>
+    `Weather: ${desc} at ${temp}°C. Balance indoor/outdoor activities.`,
+};
+
+// Mapping of weather types to acceptable activity tags – used to pre-filter the sample DB sent to Gemini
+const WEATHER_TAG_FILTERS = {
+  thunderstorm: ["Indoor-Friendly"],
+  rainy: ["Indoor-Friendly"],
+  snow: ["Indoor-Friendly"],
+  foggy: ["Indoor-Friendly", "Weather-Flexible"],
+  cloudy: ["Outdoor-Friendly", "Weather-Flexible"],
+  clear: ["Outdoor-Friendly"],
+  cold: ["Indoor-Friendly"],
+  default: []
+} as const;
+
+// Interest mapping for faster lookup
+const INTEREST_DETAILS = {
+  "Nature & Scenery": "- Nature & Scenery: Burnham Park, Mines View Park, Wright Park, Camp John Hay, Botanical Garden, Mirador Heritage & Eco Park, Valley of Colors, Mt. Kalugong, Mt. Yangbew, Great Wall of Baguio, Camp John Hay Yellow Trail, Lions Head",
+  "Food & Culinary": "- Food & Culinary: Good Taste Restaurant, Café by the Ruins, Hill Station, Vizco's, Baguio Craft Brewery, Oh My Gulay, Choco-late de Batirol, Ili-Likha Food Hub, Canto Bogchi Joint, Arca's Yard, Amare La Cucina, Le Chef at The Manor, Lemon and Olives, Grumpy Joe, Luisa's Cafe, Agara Ramen, 50's Diner, Balajadia Kitchenette, Wagner Cafe, Pizza Volante",
+  "Culture & Arts": "- Culture & Arts: BenCab Museum, Tam-awan Village, Baguio Museum, Ili-Likha Artist Village, Baguio Cathedral, The Mansion, Diplomat Hotel, Philippine Military Academy, Igorot Stone Kingdom, Laperal White House, Mt. Cloud Bookshop, Mirador Heritage & Eco Park, Oh My Gulay",
+  "Shopping & Local Finds": "- Shopping & Local Finds: Night Market on Harrison Road, Baguio Public Market, Session Road shops, SM City Baguio, Good Shepherd Convent, Easter Weaving Room, Baguio Craft Market, Ili-Likha Food Hub",
+  "Adventure": "- Adventure: Tree Top Adventure, Mt. Ulap Eco-Trail, Mines View Park horseback riding, Wright Park horseback riding, Camp John Hay Yellow Trail, Great Wall of Baguio, Mt. Kalugong, Mt. Yangbew, Camp John Hay, Valley of Colors"
+};
+
+export async function POST(req: NextRequest) {
   try {
-    const requestBody: RequestParams = await req.json();
-    const { prompt, weatherData, interests, duration: rawDuration, budget, pax, sampleItinerary } = requestBody;
+    const { prompt, weatherData, interests, duration, budget, pax, sampleItinerary } = await req.json();
 
-    // Validate and parse duration
-    const duration = typeof rawDuration === "string"
-      ? parseInt(rawDuration.replace(/\D/g, ""), 10)
-      : typeof rawDuration === "number"
-      ? rawDuration
-      : 1;
+    // We now always build the itinerary from the vector database (pgvector).
+    // Any sampleItinerary sent by the client is ignored except for logging purposes.
+    let effectiveSampleItinerary: any = null;
+
+    // Log the incoming request body for debugging
+    console.log("Gemini API request body:", { prompt, weatherData, interests, duration, budget, pax, sampleItinerary });
+
+    // Check and log API key presence
+    const apiKey = process.env.GOOGLE_GEMINI_API_KEY || "";
+    if (!apiKey) {
+      console.error("GOOGLE_GEMINI_API_KEY is missing!");
+      return NextResponse.json({ text: "", error: "GOOGLE_GEMINI_API_KEY is missing on the server." }, { status: 500 });
+    }
 
     if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Prompt is required" },
+        { status: 400 }
+      );
     }
-
-    // Generate cache key
+    
+    // Generate cache key based on request parameters
     const cacheKey = JSON.stringify({
-      prompt: prompt?.substring(0, 100),
-      weatherId: weatherData?.weather?.[0]?.id ?? null,
-      temp: Math.round(weatherData?.main?.temp ?? 0),
-      interests: Array.isArray(interests) ? [...interests].sort() : [],
+      prompt: prompt?.substring(0, 100), // First 100 chars for similarity
+      weatherId: weatherData?.weather?.[0]?.id,
+      temp: Math.round(weatherData?.main?.temp || 0),
+      interests: interests?.sort(),
       duration,
       budget,
-      pax,
+      pax
     });
-
-    // Check cache
-    const cached = getFromCache(cacheKey);
-    if (cached) {
-      return NextResponse.json(cached);
+    
+    // Check cache for recent similar requests
+    const cached = responseCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return NextResponse.json(cached.response);
     }
 
-    cleanupCache();
+    // Re-use the globally initialised model (created once per lambda / server instance)
+    const model = geminiModel;
+    if (!model) {
+      console.error("Gemini model is not initialized – missing API key?");
+      return NextResponse.json({ text: "", error: "Gemini model not available." }, { status: 500 });
+    }
 
-    // Process weather data
-    const weatherId = weatherData?.weather?.[0]?.id ?? 0;
-    const weatherDescription = weatherData?.weather?.[0]?.description ?? "";
-    const temperature = weatherData?.main?.temp ?? 20;
-
+    // Optimized weather processing
+    const weatherId = weatherData?.weather?.[0]?.id || 0;
+    const weatherDescription = weatherData?.weather?.[0]?.description || "";
+    const temperature = weatherData?.main?.temp || 20;
+    
+    // Fast weather type determination
+    const getWeatherType = (id: number, temp: number): WeatherCondition => {
+      if (id >= 200 && id <= 232) return 'thunderstorm';
+      if ((id >= 300 && id <= 321) || (id >= 500 && id <= 531)) return 'rainy';
+      if (id >= 600 && id <= 622) return 'snow';
+      if (id >= 701 && id <= 781) return 'foggy';
+      if (id === 800) return 'clear';
+      if (id >= 801 && id <= 804) return 'cloudy';
+      if (temp < 15) return 'cold';
+      return 'default';
+    };
+    
     const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
     const weatherContext = WEATHER_CONTEXTS[weatherType](temperature, weatherDescription);
 
@@ -530,8 +589,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
 
       return NextResponse.json(responseData);
-    } catch (parseError) {
-      // Attempt JSON salvage
+    } catch (e) {
+      // Parsing failed – attempt to salvage JSON between first '{' and last '}'
       try {
         const firstBrace = cleanedJson.indexOf('{');
         const lastBrace = cleanedJson.lastIndexOf('}');
@@ -576,29 +635,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           return NextResponse.json(responseData);
         }
       } catch {
-        console.error("Failed to parse JSON from Gemini response:", parseError, geminiResponse.text);
-        return NextResponse.json({ text: "", error: "Failed to parse JSON from Gemini response.", raw: geminiResponse.text });
+        // fallthrough to final error handling
       }
+      console.error("Failed to parse JSON from Gemini response:", e, cleanedJson);
+      return NextResponse.json({ text: "", error: "Failed to parse JSON from Gemini response.", raw: finalText });
     }
   } catch (error) {
     console.error("Error calling Gemini API:", error);
 
-    if (typeof error === "object" && error !== null) {
-      const errorMessage = (error as any).message || "";
-
-      if (errorMessage.includes("quota exceeded") || errorMessage.includes("429")) {
-        return NextResponse.json(
-          { text: "", error: "API quota exceeded. Please check your plan and billing details, or try again later." },
-          { status: 429 }
-        );
-      } else if (errorMessage.includes("overloaded") || errorMessage.includes("503")) {
-        return NextResponse.json(
-          { text: "", error: "The Gemini model is currently overloaded. Please try again shortly." },
-          { status: 503 }
-        );
-      }
+    // Handle rate limit errors
+    if (typeof error === 'object' && error !== null && 'status' in error && (error as any).status === 429) {
+      return NextResponse.json(
+        { text: "", error: "API quota exceeded. Please check your plan and billing details, or try again later." },
+        { status: 429 }
+      );
+    } else if (typeof error === 'object' && error !== null && 'status' in error && (error as any).status === 503) {
+      return NextResponse.json(
+        { text: "", error: "The Gemini model is currently overloaded. Please try again shortly." },
+        { status: 503 }
+      );
     }
-
-    return NextResponse.json({ text: "", error: "Failed to generate content." }, { status: 500 });
+    
+    // Handle other errors
+    return NextResponse.json(
+      { text: "", error: "Failed to generate content." },
+      { status: 500 }
+    );
   }
 }
