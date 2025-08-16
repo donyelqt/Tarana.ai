@@ -21,6 +21,7 @@ export interface Activity {
 export interface ItinerarySection {
   period: string;
   activities: Activity[];
+  reason?: string; // AI-generated reason for empty time slots
 }
 
 export interface ItineraryData {

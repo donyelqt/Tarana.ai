@@ -79,44 +79,55 @@ export default function ItineraryPreview({
             <div className="flex items-center gap-2 mb-2">
               <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold">{section.period}</span>
             </div>
-            {section.activities.map((act, i) => {
-              let imageSrc: string = "";
-              if (typeof act.image === "string") {
-                imageSrc = act.image;
-              } else if (act.image && typeof act.image === "object" && "src" in act.image) {
-                imageSrc = act.image.src;
-              }
-              return (
-                <div key={i} className="bg-white rounded-xl shadow-md mb-4 overflow-hidden border border-gray-100">
-                  <Image src={imageSrc} alt={act.title} width={300} height={200} className="w-full h-[200px] object-cover" />
-                  <div className="p-4">
-                    <div className="font-semibold text-gray-900 text-base mb-1">{act.title}</div>
-                    <div className="text-xs text-gray-500 mb-2">{act.time}</div>
-                    <div className="text-sm text-gray-700 mb-3">{act.desc}</div>
-                    <div className="flex gap-2 flex-wrap">
-                      {/* Display relevance score if available */}
-                      {act.relevanceScore !== undefined && (
-                        <span className="inline-block bg-green-100 rounded-lg px-2 py-1 text-xs font-medium text-green-700 border border-green-300">
-                          Relevance: {(act.relevanceScore * 100).toFixed(0)}%
-                        </span>
-                      )}
-                      {act.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="inline-block bg-white rounded-lg px-2 py-1 text-xs font-medium text-gray-500 border border-gray-300"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+            {section.activities && section.activities.length > 0 ? (
+              section.activities.map((act, i) => {
+                let imageSrc: string = "";
+                if (typeof act.image === "string") {
+                  imageSrc = act.image;
+                } else if (act.image && typeof act.image === "object" && "src" in act.image) {
+                  imageSrc = act.image.src;
+                }
+                return (
+                  <div key={i} className="bg-white rounded-xl shadow-md mb-4 overflow-hidden border border-gray-100">
+                    <Image src={imageSrc} alt={act.title} width={300} height={200} className="w-full h-[200px] object-cover" />
+                    <div className="p-4">
+                      <div className="font-semibold text-gray-900 text-base mb-1">{act.title}</div>
+                      <div className="text-xs text-gray-500 mb-2">{act.time}</div>
+                      <div className="text-sm text-gray-700 mb-3">{act.desc}</div>
+                      <div className="flex gap-2 flex-wrap">
+                        {/* Display relevance score if available */}
+                        {act.relevanceScore !== undefined && (
+                          <span className="inline-block bg-green-100 rounded-lg px-2 py-1 text-xs font-medium text-green-700 border border-green-300">
+                            Relevance: {(act.relevanceScore * 100).toFixed(0)}%
+                          </span>
+                        )}
+                        {act.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="inline-block bg-white rounded-lg px-2 py-1 text-xs font-medium text-gray-500 border border-gray-300"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
+                );
+              })
+            ) : (
+              section.reason && (
+                <div className="bg-gradient-to-b from-blue-700 to-blue-500 rounded-3xl shadow-lg p-4 border border-gray-200">
+                  <div className="flex items-center mb-2">
+                    <span className="bg-white/20 text-white text-xs font-medium px-2 py-1 rounded-lg">Tarana-ai Suggestion</span>
+                  </div>
+                  <p className="text-sm italic text-white">{section.reason}</p>
                 </div>
-              );
-            })}
+              )
+            )}
           </div>
         ))}
         <Button
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4"
+          className="w-full bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4"
           onClick={onSave}
         >
           Save Itinerary
