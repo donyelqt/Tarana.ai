@@ -1,3 +1,5 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 // Utilities for itinerary post-processing
 
 // Function to check for duplicate activities across days
@@ -34,6 +36,117 @@ const inferSlot = (label: string) => {
   if (/evening|night/.test(l)) return 'Evening';
   return 'Flexible';
 };
+
+export async function ensureFullItinerary(
+  itinerary: any,
+  userPrompt: string,
+  durationDays: number,
+  model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>
+): Promise<any> {
+  const dayActivities: { [key: string]: any[] } = {};
+  for (const item of itinerary.items) {
+    const day = item.period.split(" - ")[0];
+    if (!dayActivities[day]) {
+      dayActivities[day] = [];
+    }
+    dayActivities[day].push(...item.activities);
+  }
+
+  const missingDays = Array.from({ length: durationDays }, (_, i) => `Day ${i + 1}`)
+    .filter(day => !dayActivities[day] || dayActivities[day].length === 0);
+
+  if (missingDays.length > 0) {
+    const guidance = `You are an itinerary planner for Baguio. The user wants a ${durationDays}-day trip. The current itinerary is missing a full plan for the following days: ${missingDays.join(", ")}. Please generate a detailed plan for these specific days, with distinct activities for morning, afternoon, and evening. Ensure the output is in JSON format with a root object containing an "items" array, where each item has "period" (e.g., "Day X - Morning") and "activities" array.`;
+
+    const resp = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: `${guidance}\n\nUser prompt: ${userPrompt}` }] }],
+    });
+
+    const text = resp.response?.text() ?? "";
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        const generatedItinerary = JSON.parse(match[0]);
+        if (generatedItinerary && Array.isArray(generatedItinerary.items)) {
+          // Remove the empty day placeholders
+          itinerary.items = itinerary.items.filter((item: any) => {
+            const day = item.period.split(" - ")[0];
+            return !missingDays.includes(day);
+          });
+          // Add the newly generated days
+          itinerary.items.push(...generatedItinerary.items);
+        }
+      } catch (e) {
+        console.error("Failed to parse generated itinerary for missing days:", e);
+      }
+    }
+  }
+
+  // Find all empty periods and ask the AI to generate reasons for them in a single batch.
+  const emptyPeriods = itinerary.items.filter((item: any) => !item.activities || item.activities.length === 0);
+
+  if (emptyPeriods.length > 0) {
+    const reasonPrompt = `
+      You are an expert travel assistant. For the following user trip request, analyze why no activities are recommended for certain time slots and provide a clear, contextual reason for EACH empty slot. Consider the following factors:
+      - Time of day (morning/afternoon/evening)
+      - Weather conditions if mentioned
+      - User's stated interests and preferences
+      - Duration of the trip
+      - Common travel wisdom (e.g., rest periods, meal times, travel time)
+      - Activities already scheduled for that day
+
+      USER TRIP REQUEST: "${userPrompt}"
+
+      IMPORTANT: You MUST provide a reason for EVERY empty time slot listed below. Each reason should be specific to that particular time slot and day. Consider the following for each empty slot:
+      - Time of day (morning/afternoon/evening)
+      - Activities before/after this slot
+      - Realistic travel and rest times
+      - Local customs (e.g., siesta time, meal times)
+
+      EMPTY SLOTS THAT NEED REASONS:
+      ${emptyPeriods.map((p: any) => `- ${p.period}`).join('\n')}
+
+      RETURN FORMAT: A JSON object where keys are the period names (e.g., "Day 2 - Evening") and values are the generated reasons.
+      
+      EXAMPLE RESPONSE FOR 4-DAY ITINERARY:
+      {
+        "Day 1 - Evening": "Evening left open to allow for a relaxed dinner and recovery after travel. The nearby Session Road offers many dining options within walking distance.",
+        "Day 2 - Evening": "No evening activities suggested to allow for rest after a full day of exploring. Consider visiting a local café or enjoying the hotel's amenities.",
+        "Day 3 - Evening": "Evening kept free for packing and preparing for departure tomorrow. You might want to revisit your favorite spots or do some last-minute souvenir shopping.",
+        "Day 4 - Morning": "Morning left open for a relaxed breakfast and final preparations before checking out. Consider visiting a nearby café to enjoy your last moments in the city.",
+        "Day 4 - Afternoon": "Afternoon kept free for travel to your next destination. Ensure you have all your belongings and have checked out of your accommodation.",
+        "Day 4 - Evening": "Evening slot falls after your scheduled departure. Safe travels!"
+      }
+      
+      Now provide reasons for ALL the empty slots listed above. Make sure to include EVERY slot in your response.
+    `;
+
+    try {
+      const result = await model.generateContent(reasonPrompt);
+      const text = result.response.text();
+      const reasonsJson = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+      const reasons = JSON.parse(reasonsJson);
+
+      // Add the AI-generated reasons back to the itinerary.
+      itinerary.items.forEach((item: any) => {
+        if (reasons[item.period]) {
+          item.reason = reasons[item.period];
+        }
+      });
+
+    } catch (error) {
+      console.error("Failed to generate AI reasons for empty slots:", error);
+      // As a fallback, add a generic reason if the AI fails.
+      itinerary.items.forEach((item: any) => {
+        if (!item.activities || item.activities.length === 0) {
+          item.reason = "This time is intentionally left open for you to relax or explore spontaneously.";
+        }
+      });
+    }
+  }
+
+  return itinerary;
+}
 
 export function organizeItineraryByDays(it: any, days: number | null) {
   if (!days || !it || !Array.isArray(it.items) || days <= 0) return it;
@@ -79,9 +192,9 @@ export function organizeItineraryByDays(it: any, days: number | null) {
     const slots: Array<'Morning'|'Afternoon'|'Evening'> = ['Morning','Afternoon','Evening'];
     for (const s of slots) {
       const acts = daysBuckets[i][s];
-      if (acts.length > 0) {
-        newItems.push({ period: `Day ${dayNum} - ${s}`, activities: acts });
-      }
+      // Always create a period for each slot, even if empty.
+      // The ensureFullItinerary function will handle filling the gaps.
+      newItems.push({ period: `Day ${dayNum} - ${s}`, activities: acts });
     }
   }
   return { ...it, items: newItems };

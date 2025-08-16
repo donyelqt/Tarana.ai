@@ -24,7 +24,7 @@ export async function proposeSubqueries(params: {
       - interests: ${(interests && interests.length > 0) ? interests.join(", ") : "(none specified)"}
       - durationDays: ${durationDays ?? "unknown"}
       - time-of-day coverage (morning/afternoon/evening) and budget fit when possible
-      Existing titles: ${existingTitles.slice(0, 50).join(" | ")}
+      Existing titles: ${existingTitles.slice(0, 60).join(" | ")}
       Output a JSON array of strings only, e.g.: ["kid friendly indoor museum", "romantic dinner", "budget friendly viewpoint"].
     `;
     const resp = await model.generateContent({

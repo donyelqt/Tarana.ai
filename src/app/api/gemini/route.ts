@@ -5,7 +5,7 @@ import { searchSimilarActivities } from "@/lib/vectorSearch";
 import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
 // Extracted helpers
 import { proposeSubqueries } from "./agent";
-import { removeDuplicateActivities, organizeItineraryByDays } from "./itineraryUtils";
+import { ensureFullItinerary, removeDuplicateActivities, organizeItineraryByDays } from "./itineraryUtils";
 
 // Global initialization for Gemini model to avoid re-creating the client on every request.
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
@@ -59,6 +59,36 @@ const INTEREST_DETAILS = {
   "Shopping & Local Finds": "- Shopping & Local Finds: Night Market on Harrison Road, Baguio Public Market, Session Road shops, SM City Baguio, Good Shepherd Convent, Easter Weaving Room, Baguio Craft Market, Ili-Likha Food Hub",
   "Adventure": "- Adventure: Tree Top Adventure, Mt. Ulap Eco-Trail, Mines View Park horseback riding, Wright Park horseback riding, Camp John Hay Yellow Trail, Great Wall of Baguio, Mt. Kalugong, Mt. Yangbew, Camp John Hay, Valley of Colors"
 };
+
+async function processItinerary(parsed: any, prompt: string, durationDays: number | null, model: any) {
+  let processed = removeDuplicateActivities(parsed);
+  processed = organizeItineraryByDays(processed, durationDays);
+  if (durationDays && model) {
+    processed = await ensureFullItinerary(processed, prompt, durationDays, model);
+  }
+
+  // Final cleanup of any placeholder activities or duplicates that might have been added.
+  if (processed && typeof processed === "object" && Array.isArray((processed as any).items)) {
+    const seenActivities = new Set<string>();
+    (processed as any).items = (processed as any).items
+      .map((period: any) => {
+        const filteredActivities = Array.isArray(period.activities)
+          ? period.activities.filter((act: any) => {
+              if (!act.title || act.title.toLowerCase() === "no available activity") {
+                return false;
+              }
+              if (seenActivities.has(act.title)) {
+                return false;
+              }
+              seenActivities.add(act.title);
+              return true;
+            })
+          : [];
+        return { ...period, activities: filteredActivities };
+      });
+  }
+  return processed;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -509,84 +539,10 @@ export async function POST(req: NextRequest) {
     console.log("Cleaned JSON to parse:", cleanedJson);
 
     try {
-      // Validate that it's proper JSON by parsing
       let parsed = JSON.parse(cleanedJson);
-      
-      // Apply the removeDuplicateActivities function to eliminate duplicates
-      parsed = removeDuplicateActivities(parsed);
-
-      // organization handled by imported utility
-
-      parsed = organizeItineraryByDays(parsed, durationDays);
-
-      // Remove placeholder activities titled "No available activity", drop empty periods,
-      // back-fill any missing image URLs using the canonical sampleItineraryCombined,
-      // and ensure no duplicate activities across days.
-      if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).items)) {
-        // Build a quick lookup table: title -> image from sampleItineraryCombined
-        const titleToImage: Record<string, string> = {};
-        for (const sec of sampleItineraryCombined.items) {
-          for (const act of sec.activities) {
-            const img = typeof act.image === "string" ? act.image : (act.image as any)?.src || "";
-            if (act.title && img) {
-              titleToImage[act.title] = img;
-            }
-          }
-        }
-        
-        // Track seen activities to prevent duplicates across days
-        const seenActivities = new Set<string>();
-
-        (parsed as any).items = (parsed as any).items
-          .map((period: any) => {
-            const cleanedActs = Array.isArray(period.activities)
-              ? period.activities
-                  .filter((act: any) => {
-                    // Filter out placeholder activities
-                    if (!act.title || act.title.toLowerCase() === "no available activity") {
-                      return false;
-                    }
-                    
-                    // Check for duplicates across days
-                    if (seenActivities.has(act.title)) {
-                      console.log(`Removing duplicate activity: ${act.title} in period ${period.period}`);
-                      return false;
-                    }
-                    
-                    // Add to seen activities
-                    seenActivities.add(act.title);
-                    return true;
-                  })
-                  .map((act: any) => {
-                    if ((!act.image || act.image === "") && titleToImage[act.title]) {
-                      act.image = titleToImage[act.title];
-                    }
-                    return act;
-                  })
-              : [];
-            return { ...period, activities: cleanedActs };
-          })
-          .filter((period: any) => Array.isArray(period.activities) && period.activities.length > 0);
-      }
-
+      parsed = await processItinerary(parsed, prompt, durationDays, model);
       const responseData = { text: JSON.stringify(parsed) };
-
-      // Cache the successful response
-      responseCache.set(cacheKey, {
-        response: responseData,
-        timestamp: Date.now()
-      });
-
-      // Clean old cache entries periodically
-      if (responseCache.size > 100) {
-        const now = Date.now();
-        for (const [key, value] of responseCache.entries()) {
-          if (now - value.timestamp > CACHE_DURATION) {
-            responseCache.delete(key);
-          }
-        }
-      }
-
+      responseCache.set(cacheKey, { response: responseData, timestamp: Date.now() });
       return NextResponse.json(responseData);
     } catch (e) {
       // Parsing failed – attempt to salvage JSON between first '{' and last '}'
@@ -596,48 +552,16 @@ export async function POST(req: NextRequest) {
         if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
           const potentialJson = cleanedJson.slice(firstBrace, lastBrace + 1);
           let parsed = JSON.parse(potentialJson);
-          
-          // Apply the removeDuplicateActivities function to eliminate duplicates
-          parsed = removeDuplicateActivities(parsed);
 
-          // organization handled by imported utility
-
-          parsed = organizeItineraryByDays(parsed, durationDays);
-
-          if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).items)) {
-            // Track seen activities to prevent duplicates across days
-            const seenActivities = new Set<string>();
-            
-            (parsed as any).items = (parsed as any).items
-              .map((period: any) => {
-                const filteredActivities = Array.isArray(period.activities)
-                  ? period.activities.filter((act: any) => {
-                      // Filter out placeholder activities
-                      if (!act.title || act.title.toLowerCase() === "no available activity") {
-                        return false;
-                      }
-                      
-                      // Check for duplicates across days
-                      if (seenActivities.has(act.title)) {
-                        console.log(`Removing duplicate activity: ${act.title} in period ${period.period}`);
-                        return false;
-                      }
-                      
-                      // Add to seen activities
-                      seenActivities.add(act.title);
-                      return true;
-                    })
-                  : [];
-                return { ...period, activities: filteredActivities };
-              })
-              .filter((period: any) => period.activities.length > 0);
-          }
+          // Process the itinerary using the consolidated function
+          parsed = await processItinerary(parsed, prompt, durationDays, model);
 
           const responseData = { text: JSON.stringify(parsed) };
           responseCache.set(cacheKey, { response: responseData, timestamp: Date.now() });
           return NextResponse.json(responseData);
         }
-      } catch {
+      } catch (salvageError) {
+        console.error("Failed to salvage JSON from Gemini response:", salvageError, cleanedJson);
         // fallthrough to final error handling
       }
       console.error("Failed to parse JSON from Gemini response:", e, cleanedJson);
