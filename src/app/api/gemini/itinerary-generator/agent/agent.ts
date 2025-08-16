@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { WeatherCondition } from "./types";
+import type { WeatherCondition } from "../types/types";
 
 // Lightweight agentic helper: ask the model to propose up to N targeted sub-queries
 // to improve retrieval coverage (e.g., fill gaps for weather, interests, or time slots).
