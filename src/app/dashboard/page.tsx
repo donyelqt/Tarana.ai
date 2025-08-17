@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { BAGUIO_COORDINATES, WeatherData, fetchWeatherFromAPI, getWeatherIconUrl } from "@/lib/utils"
-import { Bookmark, Plus, MapPin, Car, Utensils, Wand2 } from "lucide-react"
+import { Bookmark, Plus, MapPin, Car, Utensils, Wand2, Link, Share2 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 
@@ -304,8 +304,44 @@ const DashboardContent = () => {
             </div>
           </div>
           <div>
-            <div className="font-semibold text-lg mb-2">Upcoming Events</div>
-            <div className="bg-gray-200 rounded-xl h-20 flex items-center justify-center text-gray-500">Coming Soon</div>
+            <div className="font-semibold text-lg mb-2">Refer a Friend</div>
+            <div
+              className="rounded-2xl p-8 text-white relative overflow-hidden"
+              style={{ backgroundImage: `linear-gradient(to bottom, #3b82f6, #1d4ed8)` }}
+            >
+              <img
+                src="/images/referafriend.png"
+                alt=""
+                className="absolute top-1/2 right-0 transform -translate-y-1/2 translate-x-1/4 h-[100%] w-auto z-0"
+                style={{
+                  filter:
+                    'brightness(0) saturate(100%) invert(70%) sepia(79%) saturate(2351%) hue-rotate(185deg) brightness(102%) contrast(101%)',
+                }}
+              />
+              <div className="relative z-10">
+                <h3 className="text-xl font-bold">Refer a Friend.</h3>
+                <h3 className="text-xl font-bold">Earn rewards.</h3>
+                <p className="text-slate-200 text-sm mt-1 mb-4">Invite friends. They get a welcome perk, you earn points and rewards.</p>
+                
+                <div className="font-semibold mb-2">Your invite link</div>
+                <div className="flex space-x-2 mb-4">
+                  <Button variant="outline" className="border border-gray-300 bg-white text-xs text-blue-700 px-3 py-1.5 hover:bg-blue-50 whitespace-nowrap">
+                    <Link size={16} className="mr-1" />
+                    Copy invite link
+                  </Button>
+                  <Button variant="secondary" className="bg-slate-900 text-white hover:bg-slate-800 text-xs px-3 py-1.5">
+                    <Share2 size={16} className="mr-2" />
+                    Share
+                  </Button>
+                </div>
+
+                <div className="text-sm mb-1">1/3 referrals</div>
+                <div className="w-full bg-blue-500/50 rounded-full h-2.5 mb-1">
+                  <div className="bg-yellow-400 h-2.5 rounded-full" style={{ width: "33.33%" }}></div>
+                </div>
+                <div className="text-xs text-blue-200">Refer 3 friends to unlock premium for 7 days</div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
