@@ -3,6 +3,7 @@
 import Image from "next/image"
 import sampleprofile from "../../../public/images/sampleprofile.png"
 import Sidebar from "../../components/Sidebar"
+import SuggestedSpots from "./components/SuggestedSpots"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
 import { useSession } from "next-auth/react"
@@ -196,16 +197,7 @@ const DashboardContent = () => {
               </PopoverContent>
             </Popover>
           </div>
-          <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 mb-8">
-            <div className="font-semibold text-lg mb-4">Current Itinerary</div>
-            <div className="bg-blue-50 rounded-xl p-4 flex items-center">
-              <MapPin size={24} className="mr-3 flex-shrink-0 text-blue-500 fill-white" />
-              <div>
-                <div className="font-medium text-gray-900">1 Day Itinerary <span className="text-xs text-gray-400 ml-2">#BC402</span></div>
-                <div className="text-xs text-gray-500">April 26 - 27, 2025 | 7:30AM - 8:00PM</div>
-              </div>
-            </div>
-          </div>
+          <SuggestedSpots />
         </div>
         {/* Right Sidebar */}
         <div className="w-full md:w-80 border-2 border-gray-200 bg-white rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-full">
