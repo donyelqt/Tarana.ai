@@ -312,7 +312,7 @@ const DashboardContent = () => {
               <img
                 src="/images/referafriend.png"
                 alt=""
-                className="absolute top-1/2 right-0 transform -translate-y-1/2 translate-x-1/4 h-[100%] w-auto z-0"
+                className="absolute top-1/2 right-0 transform -translate-y-1/2 translate-x-1/4 h-[100%] w-auto z-0 opacity-35"
                 style={{
                   filter:
                     'brightness(0) saturate(100%) invert(70%) sepia(79%) saturate(2351%) hue-rotate(185deg) brightness(102%) contrast(101%)',
