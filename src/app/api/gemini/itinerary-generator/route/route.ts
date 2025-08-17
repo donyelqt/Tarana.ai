@@ -4,8 +4,13 @@ import { searchSimilarActivities } from "@/lib/vectorSearch";
 // Import the canonical sample itinerary so we can look up images by title as a fallback
 import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
 // Extracted helpers
-import { proposeSubqueries } from "./agent";
-import { ensureFullItinerary, removeDuplicateActivities, organizeItineraryByDays } from "./itineraryUtils";
+import { proposeSubqueries } from "../agent/agent";
+import {
+  ensureFullItinerary,
+  removeDuplicateActivities,
+  organizeItineraryByDays,
+} from "../utils/itineraryUtils";
+import type { WeatherCondition } from "../types/types";
 
 // Global initialization for Gemini model to avoid re-creating the client on every request.
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
@@ -17,8 +22,6 @@ const responseCache = new Map<string, { response: any; timestamp: number }>();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 // Define a type for the keys of WEATHER_CONTEXTS
-type WeatherCondition = keyof typeof WEATHER_CONTEXTS;
-
 // Pre-computed weather context lookup for faster processing
 const WEATHER_CONTEXTS = {
   thunderstorm: (temp: number, desc: string) =>
