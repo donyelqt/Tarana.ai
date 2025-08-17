@@ -228,7 +228,7 @@ const DashboardContent = () => {
                 <div className="text-red-500 text-sm">{error}</div>
               </div>
             ) : weatherData ? (
-              <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl p-4 flex flex-col text-white shadow-lg">
+              <div className="bg-gradient-to-b from-blue-700 to-blue-500 rounded-xl p-4 flex flex-col text-white shadow-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center">
                     <span className="text-4xl font-bold mr-2">{Math.round(weatherData.main.temp)}°C</span>
@@ -273,10 +273,34 @@ const DashboardContent = () => {
             )}
           </div>
           <div className="mb-6">
-            <div className="font-semibold text-lg mb-2">Recommended For You</div>
-            <div className="space-y-4">
-              <div className="bg-gray-200 rounded-xl h-20 flex items-center justify-center text-gray-500">Ad Space</div>
-              <div className="bg-gray-200 rounded-xl h-20 flex items-center justify-center text-gray-500">Ad Space</div>
+            <div className="font-semibold text-lg mb-2">Tarana Stats</div>
+            <div className="bg-blue-600 rounded-xl p-3 text-white shadow-lg">
+              <div className="flex justify-between items-center mb-4">
+                <div className="font-medium text-lg">Tarana Stats</div>
+                <div className="flex items-center bg-slate-900 text-green-700 border-2 border-green-800 rounded-full px-3 py-1 text-xs font-bold">
+
+                  <span className="w-2 h-2 bg-green-700 rounded-full mr-2"></span>
+                  LIVE
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-blue-500/80 rounded-xl p-4 text-center">
+                  <div className="text-3xl font-bold">302</div>
+                  <div className="text-xs opacity-90">ITINERARIES GENERATED</div>
+                </div>
+                <div className="bg-blue-500/80 rounded-xl p-4 text-center">
+                  <div className="text-3xl font-bold">22</div>
+                  <div className="text-xs opacity-90">CAFES LISTED</div>
+                </div>
+                <div className="bg-blue-500/80 rounded-xl p-4 text-center">
+                  <div className="text-3xl font-bold">104</div>
+                  <div className="text-xs opacity-90">TODAY'S VISITS</div>
+                </div>
+                <div className="bg-blue-500/80 rounded-xl p-4 text-center">
+                  <div className="text-3xl font-bold">4,901</div>
+                  <div className="text-xs opacity-90">TOTAL VISITS</div>
+                </div>
+              </div>
             </div>
           </div>
           <div>
