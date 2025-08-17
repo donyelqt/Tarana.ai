@@ -43,7 +43,7 @@ export const generateItinerary = async (
     const prompt = promptDetails.join(" ");
 
     // Call Gemini API via backend route with enhanced prompt
-    const response = await fetch("/api/gemini", {
+    const response = await fetch("/api/gemini/itinerary-generator/route", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
