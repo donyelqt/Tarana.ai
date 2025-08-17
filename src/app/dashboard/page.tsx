@@ -3,7 +3,7 @@
 import Image from "next/image"
 import sampleprofile from "../../../public/images/sampleprofile.png"
 import Sidebar from "../../components/Sidebar"
-import SuggestedSpots from "./components/SuggestedSpots"
+import SuggestedSpots, { RecommendedCafes } from "./components/SuggestedSpots"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
 import { useSession } from "next-auth/react"
@@ -198,6 +198,7 @@ const DashboardContent = () => {
             </Popover>
           </div>
           <SuggestedSpots />
+          <RecommendedCafes />
         </div>
         {/* Right Sidebar */}
         <div className="w-full md:w-80 border-2 border-gray-200 bg-white rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-full">

@@ -79,4 +79,74 @@ const SuggestedSpots = () => {
   )
 }
 
+
+const cafes = [
+  {
+    name: "Cafe Ysap",
+    image: "/images/taranaai.png",
+    distance: "0.9km",
+    time: "6 min",
+    traffic: "Low",
+  },
+  {
+    name: "Cafe Ysap",
+    image: "/images/taranaai.png",
+    distance: "0.9km",
+    time: "6 min",
+    traffic: "Low",
+  },
+  {
+    name: "Cafe Ysap",
+    image: "/images/taranaai.png",
+    distance: "0.9km",
+    time: "6 min",
+    traffic: "Low",
+  },
+]
+
+const CafeCard = ({ cafe }: { cafe: (typeof cafes)[0] }) => (
+  <div className="bg-white border border-gray-200/40 rounded-2xl flex flex-col shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+    <div className="relative w-full h-40">
+      <Image src={cafe.image} alt={cafe.name} layout="fill" objectFit="cover" />
+    </div>
+    <div className="p-3 flex flex-col flex-grow">
+      <h3 className="font-medium text-lg text-gray-800 mb-2">{cafe.name}</h3>
+      <div className="flex items-center text-gray-500 text-sm mb-3 space-x-4">
+        <div className="flex items-center">
+          <MapPin size={16} className="mr-1.5" />
+          <span>{cafe.distance}</span>
+        </div>
+        <div className="flex items-center">
+          <Clock size={16} className="mr-1.5" />
+          <span>{cafe.time}</span>
+        </div>
+      </div>
+      <div
+        className={`text-sm font-medium px-3 py-1 rounded-lg self-start mb-4 border flex items-center ${trafficStyles[cafe.traffic]}`}>
+        <TrafficCone size={14} className="mr-2" />
+        {cafe.traffic} Traffic
+      </div>
+      <Button className="w-full mt-auto bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-medium">
+        View Cafe
+      </Button>
+    </div>
+  </div>
+)
+
+export const RecommendedCafes = () => {
+  return (
+    <div className="mb-8">
+      <div className="flex justify-between items-center mb-6 px-1">
+        <h2 className="font-medium text-xl text-gray-900">Recommended Cafes</h2>
+        <p className="text-sm text-gray-500">Matched to your tastes</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cafes.map((cafe, index) => (
+          <CafeCard key={index} cafe={cafe} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default SuggestedSpots
