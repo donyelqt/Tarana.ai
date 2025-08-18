@@ -313,8 +313,8 @@ const DashboardContent = () => {
                 }}
               />
               <div className="relative z-10">
-                <h3 className="text-xl font-medium">Refer a Friend.</h3>
-                <h3 className="text-xl font-medium">Earn rewards.</h3>
+                <h3 className="text-lg font-medium">Refer a Friend.</h3>
+                <h3 className="text-lg font-medium">Earn rewards.</h3>
                 <p className="text-slate-200 text-sm mt-1 mb-4">Invite friends. They get a welcome perk, you earn points and rewards.</p>
                 
                 <div className="font-medium text-md mb-2">Your invite link</div>
