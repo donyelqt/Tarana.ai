@@ -47,8 +47,8 @@ export async function proposeSubqueries(params: {
     const resp = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: guidance + "\n\nUser prompt: " + userPrompt }] }],
       generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1024
+        temperature: 2,
+        maxOutputTokens: 8192
       }
     });
     const text = resp.response?.text() ?? "";
