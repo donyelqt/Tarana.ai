@@ -62,10 +62,14 @@ export const generateItinerary = async (
       }),
     });
 
-    const { text, error } = await response.json();
+    const responseData = await response.json();
+    const { text, error, details } = responseData;
 
     if (error || !text) {
       console.error("Gemini API Error:", error || "No text returned");
+      if (details) {
+        console.error("Error details:", details);
+      }
       throw new Error(error || "Gemini API returned an empty response");
     }
 

@@ -256,7 +256,7 @@ export async function POST(req: NextRequest) {
 
         // Enhanced filtering with weighted relevance scoring including peak hours
         const scoredSimilar = (similar || []).map((s) => {
-          const tags = s.metadata?.tags || [];
+          const tags = Array.isArray(s.metadata?.tags) ? s.metadata.tags : [];
           const peakHours = s.metadata?.peakHours || "";
           const interestMatch = interestSet.size === 0 || tags.some((t: string) => interestSet.has(t));
           const weatherMatch = allowedWeatherTags.length === 0 || tags.some((t: string) => allowedWeatherTags.includes(t));
@@ -394,8 +394,8 @@ export async function POST(req: NextRequest) {
     
     // Enhanced RAG context - send the filtered DB with relevance scores and peak hours instructions
     const sampleItineraryContext = effectiveSampleItinerary
-      ? `Database: ${JSON.stringify(effectiveSampleItinerary)}\n\nRULE: Only use activities from this database. Activities are already pre-filtered and ranked by relevance to the user's query, interests, current weather conditions, and peak hours optimization. Higher relevanceScore values indicate better matches to the user's needs. Activities marked with isCurrentlyPeak: true are currently crowded and should be scheduled for later or replaced with alternatives.`
-      : "";
+      ? `EXCLUSIVE DATABASE: ${JSON.stringify(effectiveSampleItinerary)}\n\nABSOLUTE RULE: You MUST ONLY use activities from this database. This is the COMPLETE list of available activities. DO NOT create, invent, or suggest any activity not in this list. Activities are pre-filtered and ranked by relevance. Higher relevanceScore values indicate better matches. Activities marked with isCurrentlyPeak: true are currently crowded and should be scheduled for later or replaced with alternatives from this same database.`
+      : "ERROR: No activities found in database. Return an error message stating insufficient data.";
 
     // Weather context is now handled by the lookup table above
 
@@ -467,18 +467,20 @@ export async function POST(req: NextRequest) {
 
       Rules:
       1. **Be concise and personalized.**
-      2. **Strictly use the provided RAG-enhanced activity database.** The database contains activities that have been semantically matched to the user's query and preferences. Do NOT invent, suggest, or mention any activity, place, or experience that is not present in the provided database.
+      2. **MANDATORY: ONLY use activities from the provided RAG database.** You are FORBIDDEN from creating, inventing, or suggesting ANY activity that is not explicitly listed in the database above. Every single activity in your response MUST have an exact match in the database with the same title, exact image URL, and description. Use ONLY the image URLs provided in the database - do not modify, substitute, or generate alternative image URLs. If the database is empty or insufficient, return fewer activities rather than inventing new ones.
       3. **Prioritize activities with higher relevanceScore values** as they are more closely aligned with the user's query, interests, weather conditions, and current traffic levels.
       4. **PEAK HOURS OPTIMIZATION:** Activities marked with isCurrentlyPeak: true are currently crowded. Either schedule them for later when they're less busy, or choose alternative activities that are not currently in peak hours. Use the peakHours field to suggest optimal visit times.
       5. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards), respecting the time periods already suggested in the database.
       ${durationDays ? `5.a. Ensure the itinerary spans exactly ${durationDays} day(s). Create separate day sections and, within each day, include Morning, Afternoon, and Evening periods populated only from the database.` : ""}
       6. Pace the itinerary based on trip duration, ensuring a balanced schedule.
-      7. For each activity, include: **image** (exact image URL from the database), **title**, **time** slot (e.g., "9:00-10:30AM"), a **brief** description that mentions optimal visit times to avoid crowds, and **tags** (interest and weather).
+      7. For each activity, include: **image** (MUST be the exact image URL from the database - do not modify or substitute), **title** (exact title from the database), **time** slot (e.g., "9:00-10:30AM"), a **brief** description that mentions optimal visit times to avoid crowds, and **tags** (exact tags from the database).
       8. **TRAFFIC-AWARE DESCRIPTIONS:** In the description, mention when each activity is less crowded based on the peakHours data. For example: "Best visited after 2 PM to avoid morning crowds" or "Currently low traffic - perfect time to visit!"
-      9. Adhere to the user's budget preferences.
-      10. **IMPORTANT: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
-      11. If the database already contains organized time periods (Morning, Afternoon, Evening), use that structure as a starting point and refine it based on the user's needs and current traffic conditions.
-      12. Output a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"image": "...", "title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
+      9. Adhere to the user's budget preferences by selecting only activities from the database that match the budget category.
+      10. **CRITICAL: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
+      11. **VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database. If you cannot find sufficient activities in the database to fill the requested itinerary duration, return a shorter itinerary with only the available database activities.
+      12. If the database already contains organized time periods (Morning, Afternoon, Evening), use that structure as a starting point and refine it based on the user's needs and current traffic conditions.
+      13. **OUTPUT FORMAT:** Return a JSON object with this exact structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"image": "...", "title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
+      14. **FINAL CHECK:** Before outputting, verify every single activity title, image URL, and tags match exactly with the provided database entries. Each image field must contain the exact URL string from the database without any modifications.
     `;
 
     // Optimized generation parameters for faster response
@@ -550,53 +552,92 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    // Try to extract and clean JSON from the response
+    // Enhanced JSON extraction and parsing with multiple fallback strategies
     let cleanedJson = finalText;
+    let parseAttempts = [];
 
-    // Use a more robust regex to extract from markdown code blocks
+    // Strategy 1: Extract from markdown code blocks
     const codeBlockMatch = cleanedJson.match(/```(?:json)?\n?([\s\S]*?)\n?```/i);
     if (codeBlockMatch) {
       cleanedJson = codeBlockMatch[1];
+      parseAttempts.push('markdown_extraction');
     }
 
-    // Further cleaning: remove comments and trailing commas
+    // Strategy 2: Find JSON object boundaries
+    const firstBrace = cleanedJson.indexOf('{');
+    const lastBrace = cleanedJson.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const potentialJson = cleanedJson.slice(firstBrace, lastBrace + 1);
+      parseAttempts.push('brace_extraction');
+      
+      // Try parsing the extracted JSON first
+      try {
+        let parsed = JSON.parse(potentialJson);
+        console.log("Successfully parsed JSON using brace extraction");
+        parsed = await processItinerary(parsed, prompt, durationDays, model);
+        const responseData = { text: JSON.stringify(parsed) };
+        responseCache.set(cacheKey, { response: responseData, timestamp: Date.now() });
+        return NextResponse.json(responseData);
+      } catch (braceError: any) {
+        console.warn("Brace extraction failed, trying cleaning:", braceError?.message || braceError);
+        cleanedJson = potentialJson;
+      }
+    }
+
+    // Strategy 3: Clean the JSON string
     cleanedJson = cleanedJson
       .replace(/\/\/.*$/gm, '')       // Remove single line comments
       .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
       .replace(/,\s*([\]}])/g, '$1')   // Remove trailing commas
+      .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
+      .replace(/\n\s*\n/g, '\n')      // Remove empty lines
       .trim();
 
     // Log the cleaned JSON before parsing
-    console.log("Cleaned JSON to parse:", cleanedJson);
+    console.log("Cleaned JSON to parse:", cleanedJson.substring(0, 500) + '...');
+    console.log("Parse attempts:", parseAttempts);
 
+    // Strategy 4: Try parsing the cleaned JSON
     try {
       let parsed = JSON.parse(cleanedJson);
+      console.log("Successfully parsed JSON after cleaning");
       parsed = await processItinerary(parsed, prompt, durationDays, model);
       const responseData = { text: JSON.stringify(parsed) };
       responseCache.set(cacheKey, { response: responseData, timestamp: Date.now() });
       return NextResponse.json(responseData);
-    } catch (e) {
-      // Parsing failed – attempt to salvage JSON between first '{' and last '}'
+    } catch (cleanError: any) {
+      console.error("Cleaned JSON parsing failed:", cleanError?.message || cleanError);
+      
+      // Strategy 5: Try to fix common JSON issues
       try {
-        const firstBrace = cleanedJson.indexOf('{');
-        const lastBrace = cleanedJson.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-          const potentialJson = cleanedJson.slice(firstBrace, lastBrace + 1);
-          let parsed = JSON.parse(potentialJson);
-
-          // Process the itinerary using the consolidated function
-          parsed = await processItinerary(parsed, prompt, durationDays, model);
-
-          const responseData = { text: JSON.stringify(parsed) };
-          responseCache.set(cacheKey, { response: responseData, timestamp: Date.now() });
-          return NextResponse.json(responseData);
-        }
-      } catch (salvageError) {
-        console.error("Failed to salvage JSON from Gemini response:", salvageError, cleanedJson);
-        // fallthrough to final error handling
+        let fixedJson = cleanedJson
+          .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":') // Add quotes to unquoted keys
+          .replace(/:\s*'([^']*)'/g, ': "$1"')  // Replace single quotes with double quotes
+          .replace(/,\s*}/g, '}')               // Remove trailing commas before closing braces
+          .replace(/,\s*]/g, ']');              // Remove trailing commas before closing brackets
+        
+        let parsed = JSON.parse(fixedJson);
+        console.log("Successfully parsed JSON after fixing common issues");
+        parsed = await processItinerary(parsed, prompt, durationDays, model);
+        const responseData = { text: JSON.stringify(parsed) };
+        responseCache.set(cacheKey, { response: responseData, timestamp: Date.now() });
+        return NextResponse.json(responseData);
+      } catch (fixError: any) {
+        console.error("JSON fixing failed:", fixError?.message || fixError);
+        
+        // Strategy 6: Last resort - return detailed error for debugging
+        console.error("All JSON parsing strategies failed. Raw response:", finalText.substring(0, 1000));
+        return NextResponse.json({ 
+          text: "", 
+          error: "Failed to parse JSON from Gemini response after multiple attempts.", 
+          details: {
+            originalError: cleanError?.message || String(cleanError),
+            fixError: fixError?.message || String(fixError),
+            parseAttempts,
+            rawResponsePreview: finalText.substring(0, 500)
+          }
+        });
       }
-      console.error("Failed to parse JSON from Gemini response:", e, cleanedJson);
-      return NextResponse.json({ text: "", error: "Failed to parse JSON from Gemini response.", raw: finalText });
     }
   } catch (error) {
     console.error("Error calling Gemini API:", error);
