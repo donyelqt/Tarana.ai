@@ -300,7 +300,7 @@ const DashboardContent = () => {
           <div>
             <div className="font-semibold text-lg mb-2">Refer a Friend</div>
             <div
-              className="rounded-2xl p-8 text-white relative overflow-hidden"
+              className="rounded-2xl lg:px-5 lg:py-3 p-8 text-white relative overflow-hidden"
               style={{ backgroundImage: `linear-gradient(to bottom, #3b82f6, #1d4ed8)` }}
             >
               <img
@@ -313,11 +313,11 @@ const DashboardContent = () => {
                 }}
               />
               <div className="relative z-10">
-                <h3 className="text-xl font-bold">Refer a Friend.</h3>
-                <h3 className="text-xl font-bold">Earn rewards.</h3>
+                <h3 className="text-xl font-medium">Refer a Friend.</h3>
+                <h3 className="text-xl font-medium">Earn rewards.</h3>
                 <p className="text-slate-200 text-sm mt-1 mb-4">Invite friends. They get a welcome perk, you earn points and rewards.</p>
                 
-                <div className="font-semibold mb-2">Your invite link</div>
+                <div className="font-medium text-md mb-2">Your invite link</div>
                 <div className="flex space-x-2 mb-4">
                   <Button variant="outline" className="border border-gray-300 bg-white text-xs text-blue-700 px-3 py-1.5 hover:bg-blue-50 whitespace-nowrap">
                     <Link size={16} className="mr-1" />
