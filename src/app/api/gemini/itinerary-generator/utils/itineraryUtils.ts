@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { sampleItineraryCombined, taranaai } from "@/app/itinerary-generator/data/itineraryData";
 
 // Utilities for itinerary post-processing
 
@@ -198,4 +199,86 @@ export function organizeItineraryByDays(it: any, days: number | null) {
     }
   }
   return { ...it, items: newItems };
+}
+
+/**
+ * Get the correct image URL for an activity title by searching directly in itineraryData.ts
+ * Falls back to the vector database image if no match exists
+ */
+export function getActivityImage(title: string, fallbackImage?: string): any {
+  const canonicalActivity = sampleItineraryCombined.items
+    .flatMap(section => section.activities)
+    .find(act => act.title.toLowerCase() === title.toLowerCase());
+  
+  return canonicalActivity?.image || fallbackImage || taranaai; // Use taranaai as final fallback
+}
+
+/**
+ * Validate that an activity exists in our canonical data and return the validated activity
+ * with correct image URL from local imports
+ */
+export function validateAndEnrichActivity(activity: any): any | null {
+  // Check if the activity exists in our canonical sample data
+  const canonicalActivity = sampleItineraryCombined.items
+    .flatMap(section => section.activities)
+    .find(act => act.title.toLowerCase() === activity.title?.toLowerCase());
+  
+  if (!canonicalActivity) {
+    console.warn(`Activity "${activity.title}" not found in canonical data, excluding from itinerary`);
+    return null;
+  }
+  
+  // Return enriched activity with correct local image
+  return {
+    ...activity,
+    image: getActivityImage(activity.title, activity.image),
+    // Ensure we use canonical data for consistency
+    desc: canonicalActivity.desc,
+    tags: canonicalActivity.tags,
+    peakHours: canonicalActivity.peakHours,
+    time: canonicalActivity.time
+  };
+}
+
+export async function processItinerary(parsed: any, prompt: string, durationDays: number | null, model: any) {
+  let processed = removeDuplicateActivities(parsed);
+  processed = organizeItineraryByDays(processed, durationDays);
+  if (durationDays && model) {
+    processed = await ensureFullItinerary(processed, prompt, durationDays, model);
+  }
+
+  // Final cleanup and validation pass.
+  if (processed && typeof processed === "object" && Array.isArray((processed as any).items)) {
+    const seenActivities = new Set<string>();
+    (processed as any).items = (processed as any).items
+      .map((period: any) => {
+        if (!period.activities || !Array.isArray(period.activities)) {
+          period.activities = [];
+        }
+
+        const validatedActivities = period.activities
+          .map((act: any) => validateAndEnrichActivity(act)) // Validate every activity
+          .filter((act: any): act is any => {
+            if (!act || !act.title || act.title.toLowerCase() === "no available activity") {
+              return false; // Filter out nulls and placeholders
+            }
+            if (seenActivities.has(act.title)) {
+              return false; // Filter out duplicates
+            }
+            seenActivities.add(act.title);
+            return true;
+          });
+
+        const finalPeriod = { ...period, activities: validatedActivities };
+
+        // If a period is empty and has no reason, add a default one.
+        if (finalPeriod.activities.length === 0 && !finalPeriod.reason) {
+          finalPeriod.reason = "This time is intentionally left open for you to relax or explore spontaneously.";
+        }
+        
+        return finalPeriod;
+      })
+  }
+  
+  return processed;
 }

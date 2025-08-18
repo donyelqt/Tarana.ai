@@ -7,10 +7,10 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
   import React from "react";
   
   export {
-    baguio_panorama, bencab, burnham, caferuins, goodtaste, hillstation,
-    mtulap, nightmarket, tamawan, taranaai, treetopcampjohnhay, viewspark,
-    vizcossessionroad
-  };    
+  baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, caferuins, 
+  campjohnhay, goodtaste, hillstation, mtulap, nightmarket, smbaguio, tamawan, 
+  taranaai, the_mansion_baguio, treetopcampjohnhay, viewspark, vizcossessionroad, wrightpark
+};    
   
   export const budgetOptions = [
     "less than ₱3,000/day",
