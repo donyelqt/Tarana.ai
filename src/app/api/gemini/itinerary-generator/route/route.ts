@@ -11,6 +11,13 @@ import {
   organizeItineraryByDays,
 } from "../utils/itineraryUtils";
 import type { WeatherCondition } from "../types/types";
+// Peak hours management
+import {
+  getPeakHoursContext,
+  filterLowTrafficActivities,
+  getManilaTime,
+  isCurrentlyPeakHours
+} from "@/lib/peakHours";
 
 // Global initialization for Gemini model to avoid re-creating the client on every request.
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
@@ -247,11 +254,13 @@ export async function POST(req: NextRequest) {
           interests && Array.isArray(interests) && !interests.includes("Random") ? interests : []
         );
 
-        // Enhanced filtering with weighted relevance scoring
+        // Enhanced filtering with weighted relevance scoring including peak hours
         const scoredSimilar = (similar || []).map((s) => {
           const tags = s.metadata?.tags || [];
+          const peakHours = s.metadata?.peakHours || "";
           const interestMatch = interestSet.size === 0 || tags.some((t: string) => interestSet.has(t));
           const weatherMatch = allowedWeatherTags.length === 0 || tags.some((t: string) => allowedWeatherTags.includes(t));
+          const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
           
           // Calculate relevance score based on multiple factors
           let relevanceScore = s.similarity; // Base score from vector similarity
@@ -268,11 +277,20 @@ export async function POST(req: NextRequest) {
             relevanceScore += (matchCount / allowedWeatherTags.length) * 0.2; // Up to 20% boost for weather matches
           }
           
+          // Boost score for low-traffic activities (not currently in peak hours)
+          if (!isCurrentlyPeak) {
+            relevanceScore += 0.25; // 25% boost for activities not in peak hours
+          } else {
+            relevanceScore -= 0.1; // Small penalty for activities currently in peak hours
+          }
+          
           return {
             ...s,
             relevanceScore,
             interestMatch,
-            weatherMatch
+            weatherMatch,
+            isCurrentlyPeak,
+            peakHours
           };
         });
 
@@ -297,7 +315,9 @@ export async function POST(req: NextRequest) {
               time: s.metadata?.time || "",
               desc: s.metadata?.desc || "",
               tags: s.metadata?.tags || [],
-              relevanceScore: s.relevanceScore // Include score for debugging/transparency
+              peakHours: s.metadata?.peakHours || "",
+              relevanceScore: s.relevanceScore, // Include score for debugging/transparency
+              isCurrentlyPeak: s.isCurrentlyPeak
             };
             
             if (timeStr.includes("am") || timeStr.includes("morning")) {
@@ -354,7 +374,9 @@ export async function POST(req: NextRequest) {
                   time: s.metadata?.time || "",
                   desc: s.metadata?.desc || "",
                   tags: s.metadata?.tags || [],
-                  relevanceScore: s.relevanceScore
+                  peakHours: s.metadata?.peakHours || "",
+                  relevanceScore: s.relevanceScore,
+                  isCurrentlyPeak: s.isCurrentlyPeak
                 }))
               }
             ]
@@ -367,9 +389,12 @@ export async function POST(req: NextRequest) {
 
     // Use effectiveSampleItinerary downstream
 
-    // Enhanced RAG context - send the filtered DB with relevance scores and clear instructions
+    // Get peak hours context for current Manila time
+    const peakHoursContext = getPeakHoursContext();
+    
+    // Enhanced RAG context - send the filtered DB with relevance scores and peak hours instructions
     const sampleItineraryContext = effectiveSampleItinerary
-      ? `Database: ${JSON.stringify(effectiveSampleItinerary)}\n\nRULE: Only use activities from this database. Activities are already pre-filtered and ranked by relevance to the user's query, interests, and current weather conditions. Higher relevanceScore values indicate better matches to the user's needs. Prioritize activities with higher relevance scores when creating the itinerary.`
+      ? `Database: ${JSON.stringify(effectiveSampleItinerary)}\n\nRULE: Only use activities from this database. Activities are already pre-filtered and ranked by relevance to the user's query, interests, current weather conditions, and peak hours optimization. Higher relevanceScore values indicate better matches to the user's needs. Activities marked with isCurrentlyPeak: true are currently crowded and should be scheduled for later or replaced with alternatives.`
       : "";
 
     // Weather context is now handled by the lookup table above
@@ -432,6 +457,7 @@ export async function POST(req: NextRequest) {
       
       ${sampleItineraryContext}
       ${weatherContext}
+      ${peakHoursContext}
       ${interestsContext}
       ${durationContext}
       ${budgetContext}
@@ -442,15 +468,17 @@ export async function POST(req: NextRequest) {
       Rules:
       1. **Be concise and personalized.**
       2. **Strictly use the provided RAG-enhanced activity database.** The database contains activities that have been semantically matched to the user's query and preferences. Do NOT invent, suggest, or mention any activity, place, or experience that is not present in the provided database.
-      3. **Prioritize activities with higher relevanceScore values** as they are more closely aligned with the user's query, interests, and weather conditions.
-      4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards), respecting the time periods already suggested in the database.
-      ${durationDays ? `4.a. Ensure the itinerary spans exactly ${durationDays} day(s). Create separate day sections and, within each day, include Morning, Afternoon, and Evening periods populated only from the database.` : ""}
-      5. Pace the itinerary based on trip duration, ensuring a balanced schedule.
-      6. For each activity, include: **image** (exact image URL from the database), **title**, **time** slot (e.g., "9:00-10:30AM"), a **brief** description (features, costs, location, duration, weather notes), and **tags** (interest and weather).
-      7. Adhere to the user's budget preferences.
-      8. **IMPORTANT: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
-      9. If the database already contains organized time periods (Morning, Afternoon, Evening), use that structure as a starting point and refine it based on the user's needs.
-      10. Output a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"image": "...", "title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
+      3. **Prioritize activities with higher relevanceScore values** as they are more closely aligned with the user's query, interests, weather conditions, and current traffic levels.
+      4. **PEAK HOURS OPTIMIZATION:** Activities marked with isCurrentlyPeak: true are currently crowded. Either schedule them for later when they're less busy, or choose alternative activities that are not currently in peak hours. Use the peakHours field to suggest optimal visit times.
+      5. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards), respecting the time periods already suggested in the database.
+      ${durationDays ? `5.a. Ensure the itinerary spans exactly ${durationDays} day(s). Create separate day sections and, within each day, include Morning, Afternoon, and Evening periods populated only from the database.` : ""}
+      6. Pace the itinerary based on trip duration, ensuring a balanced schedule.
+      7. For each activity, include: **image** (exact image URL from the database), **title**, **time** slot (e.g., "9:00-10:30AM"), a **brief** description that mentions optimal visit times to avoid crowds, and **tags** (interest and weather).
+      8. **TRAFFIC-AWARE DESCRIPTIONS:** In the description, mention when each activity is less crowded based on the peakHours data. For example: "Best visited after 2 PM to avoid morning crowds" or "Currently low traffic - perfect time to visit!"
+      9. Adhere to the user's budget preferences.
+      10. **IMPORTANT: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
+      11. If the database already contains organized time periods (Morning, Afternoon, Evening), use that structure as a starting point and refine it based on the user's needs and current traffic conditions.
+      12. Output a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"image": "...", "title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
     `;
 
     // Optimized generation parameters for faster response
