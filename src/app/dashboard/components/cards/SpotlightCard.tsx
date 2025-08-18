@@ -20,7 +20,7 @@ interface SpotlightCardProps {
 }
 
 const SpotlightCard = ({ name, image, distance, time, traffic, ctaText }: SpotlightCardProps) => (
-  <div className="bg-white border border-gray-200/40 rounded-2xl flex flex-col shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+  <div className="bg-white border border-gray-200/40 rounded-2xl flex flex-col shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
     <div className="relative w-full h-40">
       <Image src={image} alt={name} layout="fill" objectFit="cover" />
     </div>

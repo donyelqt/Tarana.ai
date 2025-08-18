@@ -44,6 +44,7 @@ export const valley_of_colors = "images/valley_of_colors.jpg"
 export const easter_weaving_room = "images/easter_weaving_room.jpg"
 export const mt_kalugong = "images/mt_kalugong.jpg"
 export const yellow_trail = "images/yellow_trail.jpg"
+export const kapi_kullaaw = "images/kapi_kullaaw.jpg"
 
 
 

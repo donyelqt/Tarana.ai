@@ -4,24 +4,24 @@ import SpotlightCard from "./cards/SpotlightCard";
 
 const cafes = [
   {
-    name: "Cafe Ysap",
-    image: "/images/taranaai.png",
+    name: "Itaewon Cafe",
+    image: "/images/itaewon.jpg",
     distance: "0.9km",
     time: "6 min",
     traffic: "Low" as const,
   },
   {
-    name: "Cafe Ysap",
-    image: "/images/taranaai.png",
-    distance: "0.9km",
-    time: "6 min",
+    name: "Good Shepherd Cafe",
+    image: "/images/goodsheperd.jpg",
+    distance: "2.5km",
+    time: "8 - 20 min",
     traffic: "Low" as const,
   },
   {
-    name: "Cafe Ysap",
-    image: "/images/taranaai.png",
-    distance: "0.9km",
-    time: "6 min",
+    name: "Kapi Kullaaw",
+    image: "/images/kapi_kullaaw.jpg",
+    distance: "1.2km",
+    time: "7 min",
     traffic: "Low" as const,
   },
 ];
