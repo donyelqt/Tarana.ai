@@ -6,6 +6,31 @@ import { cn } from "@/lib/utils";
 import { ItineraryPreviewProps } from "../types";
 import { sampleItinerary } from "../data/itineraryData";
 import { getWeatherIconUrl, getWeatherDescription } from "../utils/weatherUtils";
+import { TrafficCone } from "lucide-react";
+import { isCurrentlyPeakHours } from "@/lib/peakHours";
+
+// Traffic styles matching dashboard implementation
+const trafficStyles: { [key: string]: string } = {
+  Low: "border-green-300 bg-green-50 text-green-600",
+  Moderate: "border-yellow-300 bg-yellow-50 text-yellow-600",
+  High: "border-red-300 bg-red-50 text-red-600",
+};
+
+// Function to determine traffic level based on peak hours
+const getTrafficLevel = (activity: any): "Low" | "Moderate" | "High" => {
+  // If activity has isCurrentlyPeak flag, use that
+  if (activity.isCurrentlyPeak !== undefined) {
+    return activity.isCurrentlyPeak ? "High" : "Low";
+  }
+  
+  // Fallback: check peak hours string if available
+  if (activity.peakHours) {
+    return isCurrentlyPeakHours(activity.peakHours) ? "High" : "Low";
+  }
+  
+  // Default to LOW traffic since the system prioritizes low-traffic recommendations
+  return "Low";
+};
 
 export default function ItineraryPreview({
   showPreview,
@@ -69,7 +94,7 @@ export default function ItineraryPreview({
                 {getWeatherDescription(weatherData)}
               </div>
               <div className="text-xs text-gray-200 italic mt-1">
-                Itinerary adapted to current weather conditions
+                Itinerary adapted to current weather and traffic conditions
               </div>
             </div>
           </div>
@@ -93,14 +118,37 @@ export default function ItineraryPreview({
                     <div className="p-4">
                       <div className="font-semibold text-gray-900 text-base mb-1">{act.title}</div>
                       <div className="text-xs text-gray-500 mb-2">{act.time}</div>
-                      <div className="text-sm text-gray-700 mb-3">{act.desc}</div>
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="text-sm text-gray-700 mb-3">
+                        {act.desc}
+                        {/* Add traffic timing hint */}
+                        {act.peakHours && (
+                          <div className="text-xs text-gray-500 mt-1 italic">
+                            Peak hours: {act.peakHours}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2 flex-wrap mb-3">
+                        {/* Traffic Level Tag */}
+                        {(() => {
+                          const trafficLevel = getTrafficLevel(act);
+                          return (
+                            <span className={`text-xs font-medium px-3 py-1 rounded-lg border flex items-center ${trafficStyles[trafficLevel]}`}>
+                              <TrafficCone size={12} className="mr-1.5" />
+                              {trafficLevel} Traffic
+                            </span>
+                          );
+                        })()}
+                        
                         {/* Display relevance score if available */}
                         {act.relevanceScore !== undefined && (
-                          <span className="inline-block bg-green-100 rounded-lg px-2 py-1 text-xs font-medium text-green-700 border border-green-300">
-                            Relevance: {(act.relevanceScore * 100).toFixed(0)}%
+                          <span className="inline-block bg-blue-100 rounded-lg px-2 py-1 text-xs font-medium text-blue-700 border border-blue-300">
+                            Match: {(act.relevanceScore * 100).toFixed(0)}%
                           </span>
                         )}
+                      </div>
+                      
+                      {/* Activity Tags */}
+                      <div className="flex gap-2 flex-wrap">
                         {act.tags.map((tag, index) => (
                           <span
                             key={index}

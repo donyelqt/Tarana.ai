@@ -7,6 +7,7 @@ export interface FormData {
   duration: string;
   dates: { start: Date | undefined; end: Date | undefined };
   selectedInterests: string[];
+  peakHours?: boolean;
 }
 
 export interface Activity {
@@ -15,7 +16,9 @@ export interface Activity {
   time: string;
   desc: string;
   tags: string[];
+  peakHours?: string; // Peak hours information
   relevanceScore?: number; // Optional relevance score from RAG results
+  isCurrentlyPeak?: boolean; // Whether activity is currently in peak hours
 }
 
 export interface ItinerarySection {
@@ -75,6 +78,7 @@ export interface SavedItineraryItem {
     duration: string;
     dates: { start: string; end: string };
     selectedInterests: string[];
+    peakHours?: boolean;
   };
   itineraryData: ItineraryData;
   weatherData?: WeatherData;

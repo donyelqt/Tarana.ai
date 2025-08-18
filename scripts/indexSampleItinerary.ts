@@ -25,13 +25,14 @@ async function main() {
       const imageUrl = typeof act.image === "string" ? act.image : (act.image as any)?.src || "";
       await upsertActivityEmbedding({
         activity_id: id,
-        textForEmbedding: `${act.title}. ${act.desc}`,
+        textForEmbedding: `${act.title}. ${act.desc} Peak hours: ${act.peakHours}`,
         metadata: {
           title: act.title,
           desc: act.desc,
           tags: act.tags,
           time: act.time,
           image: imageUrl,
+          peakHours: act.peakHours,
         },
       });
       success += 1;

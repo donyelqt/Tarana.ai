@@ -38,6 +38,11 @@ export const generateItinerary = async (
     if (weatherData?.weather?.[0]?.main) {
       promptDetails.push(`considering the current ${weatherData.weather[0].main} weather`);
     }
+
+    // Add peak hours preference
+    if (formData.peakHours) {
+      promptDetails.push(`and avoiding peak hours`);
+    }
     
     // Combine all details into a rich semantic query
     const prompt = promptDetails.join(" ");
