@@ -25,6 +25,11 @@ const nextConfig: NextConfig = {
         hostname: 'www.facebook.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'example.com',
+        pathname: '/**',
+      },
     ],
   },
   eslint: {

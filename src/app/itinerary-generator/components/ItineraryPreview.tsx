@@ -68,6 +68,19 @@ export default function ItineraryPreview({
 
   const displayItinerary = generatedItinerary || sampleItinerary;
 
+  // Handle the case where the itinerary is valid but has no items (e.g., no activities found)
+  if (displayItinerary && (!displayItinerary.items || displayItinerary.items.length === 0)) {
+    return (
+      <aside className={cn("w-full h-full", showPreview ? "block" : "hidden")}>
+        <div className="bg-white rounded-2xl shadow-md p-6 h-full flex flex-col items-center justify-center text-center">
+          <Image src={taranaaiLogo} alt="Tarana.ai Suggestion" width={80} height={80} className="mb-4" />
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">{displayItinerary.title}</h3>
+          <p className="text-gray-600">{displayItinerary.subtitle}</p>
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside className={cn(
       "w-full h-full",
