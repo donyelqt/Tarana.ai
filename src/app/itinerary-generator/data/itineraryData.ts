@@ -1,7 +1,12 @@
-import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, caferuins, campjohnhay, goodtaste, hillstation, 
-    mtulap, nightmarket, smbaguio, tamawan, taranaai, the_mansion_baguio, treetopcampjohnhay, viewspark, 
+import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botanicalbaguio, burnham, caferuins, campjohnhay, diplomat_hotel, easter_weaving_room, goodsheperdconventbaguio, goodtaste, great_wall_of_baguio, hillstation, 
+    ili_likha_baguio, 
+    lion_heads_baguio, 
+    miradorheritageandecopark, 
+    mt_kalugong, 
+    mtulap, nightmarket, pma, smbaguio, tamawan, taranaai, the_mansion_baguio, treetopcampjohnhay, valley_of_colors, viewspark, 
     vizcossessionroad,
-    wrightpark} from "../../../../public";
+    wrightpark,
+    yellow_trail} from "../../../../public";
   import { StaticImageData } from "next/image";
   import { Dices, Mountain, Utensils, Palette, ShoppingBag, Compass } from 'lucide-react';
   import React from "react";
@@ -60,7 +65,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
         period: "Anytime",
         activities: [
             {
-                image: burnham, // Placeholder image
+                image: burnham, 
                 title: "Burnham Park",
                 time: "24 Hours",
                 desc: "Central park with a lake, boat rides, bike rentals, gardens, and open spaces. Entrance Fee: Free. Est. Duration: 1 Hour 30 Minutes. Best Day to visit: Weekdays (less crowded).",
@@ -68,7 +73,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "10 am - 11 am / 4 pm - 6 pm",
             },
             {
-                image: viewspark, // Placeholder image
+                image: viewspark, 
                 title: "Mines View Park",
                 time: "6:00 AM – 8:00 PM",
                 desc: "Scenic viewpoint overlooking Benguet’s mining towns; souvenir shops nearby. Entrance Fee: Free. Est. Duration: 45 Minutes. Best Day to visit: Weekdays (AM).",
@@ -76,7 +81,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "6 am - 8 am / 5 pm - 6 pm",
             },
             {
-                image: baguio_cathedral, // Placeholder image
+                image: baguio_cathedral, 
                 title: "Baguio Cathedral",
                 time: "6:00 AM – 6:00 PM",
                 desc: "Neo-Gothic cathedral with twin spires; offers panoramic city views. Entrance Fee: Free. Est. Duration: 45 Minutes. Best Day to visit: Sunday (AM).",
@@ -84,7 +89,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "Saturday & Sunday 6 am - 5 pm",
             },
             {
-                image: botanicalbaguio, // Placeholder image
+                image: botanicalbaguio, 
                 title: "Botanical Garden",
                 time: "6:00 AM – 6:00 PM",
                 desc: "Lush garden showcasing native plants and cultural sculptures. Entrance Fee: Free. Est. Duration: 1 Hour. Best Day to visit: Weekdays.",
@@ -92,7 +97,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "10:00 am - 12:00 pm",
             },
             {
-                image: the_mansion_baguio, // Placeholder image
+                image: the_mansion_baguio, 
                 title: "The Mansion",
                 time: "8:00 AM – 5:00 PM",
                 desc: "Official summer residence of the Philippine President; features a grand gate and manicured lawns. Entrance Fee: Free. Est. Duration: 45 Minutes. Best Day to visit: Weekdays.",
@@ -100,7 +105,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "10:00 am - 12:00 pm",
             },
             {
-                image: wrightpark, // Placeholder image
+                image: wrightpark, 
                 title: "Wright Park",
                 time: "6:00 AM – 6:00 PM",
                 desc: "Tree-lined park with a reflecting pool; known for horseback riding. Entrance Fee: Free. Est. Duration: 1 Hour. Best Day to visit: Weekends (AM).",
@@ -124,7 +129,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "10:00 am - 12:00 pm",
             },
             {
-                image: tamawan, // Placeholder image
+                image: tamawan,
                 title: "Tam-Awan Village",
                 time: "9:00 AM – 6:00 PM",
                 desc: "Reconstructed traditional Ifugao village showcasing Cordilleran culture and art. Entrance Fee: ₱60.00. Est. Duration: 1 Hour 30 Minutes. Best Day to visit: Saturday.",
@@ -132,7 +137,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "10:00 am - 12:00 pm",
             },
             {
-                image: nightmarket, // Placeholder image
+                image: nightmarket,
                 title: "Baguio Night Market",
                 time: "9:00 PM – 2:00 AM",
                 desc: "Evening market offering affordable clothes, accessories, and street food. Entrance Fee: Free. Est. Duration: 1 Hour 30 Minutes. Best Day to visit: Every Night.",
@@ -140,7 +145,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "9:00 pm - 10:00 pm",
             },
             {
-                image: smbaguio, // Placeholder image
+                image: smbaguio,
                 title: "SM City Baguio",
                 time: "10:00 AM – 9:00 PM",
                 desc: "Open-air mall with various retail stores, restaurants, and entertainment options. Entrance Fee: Free. Est. Duration: 2 Hours. Best Day to visit: Weekdays.",
@@ -148,7 +153,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "Saturday & Sunday 6 am - 5 pm",
             },
             {
-                image: taranaai, // Placeholder image
+                image: baguio_public_market,
                 title: "Baguio Public Market",
                 time: "5:00 AM – 7:00 PM",
                 desc: "Traditional market selling fresh produce, local delicacies, and handicrafts. Entrance Fee: Free. Est. Duration: 1 Hour. Best Day to visit: Weekdays.",
@@ -156,7 +161,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "5 am - 7 am / 5 pm - 7 pm",
             },
             {
-                image: taranaai, // Placeholder image
+                image: goodsheperdconventbaguio,
                 title: "Good Shepherd Convent",
                 time: "8:00 AM – 5:00 PM",
                 desc: "Known for its homemade ube jam and other local treats made by nuns. Entrance Fee: Free. Est. Duration: 45 Minutes. Best Day to visit: Weekdays (AM).",
@@ -164,7 +169,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "1:00 pm - 3:00 pm",
             },
             {
-                image: taranaai, // Placeholder image
+                image: miradorheritageandecopark,
                 title: "Mirador Heritage and Eco Park",
                 time: "6:00 AM – 6:00 PM",
                 desc: "Eco-park with trails, bamboo groves, and a peace memorial; offers city views. Entrance Fee: ₱100.00. Est. Duration: 1 Hour. Best Day to visit: Weekdays (PM).",
@@ -172,7 +177,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "7 am - 10 am / 5 pm - 6 pm",
             },
             {
-                image: taranaai, // Placeholder image
+                image: diplomat_hotel, 
                 title: "Diplomat Hotel",
                 time: "6:00 AM – 6:00 PM",
                 desc: "Historic, abandoned hotel known for its architecture and ghost stories. Entrance Fee: Free. Est. Duration: 1 Hour. Best Day to visit: Weekdays (AM).",
@@ -180,7 +185,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "5:00 pm - 6:00 pm",
             },
             {
-                image: taranaai, // Placeholder image
+                image: lion_heads_baguio, 
                 title: "Lions Head",
                 time: "24 Hours",
                 desc: "Iconic lion sculpture along Kennon Road; popular photo stop. Entrance Fee: Free. Est. Duration: 30 Minutes. Best Day to visit: Weekdays (PM).",
@@ -188,7 +193,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "5 am - 7 am / 8 pm - 10 pm",
             },
             {
-                image: taranaai, // Placeholder image
+                image: ili_likha_baguio, 
                 title: "Ili-Likha Artists Village",
                 time: "10:00 AM – 8:00 PM",
                 desc: "Creative space featuring art installations, eco-friendly architecture, and local eateries. Entrance Fee: Free. Est. Duration: 1 Hour. Best Day to visit: Weekdays (PM).",
@@ -196,7 +201,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "12:00 pm - 3:00 pm",
             },
             {
-                image: taranaai, // Placeholder image
+                image: pma, 
                 title: "Philippine Military Academy",
                 time: "8:00 AM – 5:00 PM",
                 desc: "Premier military school with a museum and ceremonial grounds open to visitors. Entrance Fee: Free. Est. Duration: 2 Hours. Best Day to visit: Weekdays.",
@@ -204,7 +209,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "8:00 am - 10:00 am",
             },
             {
-                image: taranaai, // Placeholder image
+                image: great_wall_of_baguio, 
                 title: "Great wall of Baguio",
                 time: "6:00 AM – 6:00 PM",
                 desc: "Staircase resembling the Great Wall; offers panoramic views of the city mountains. Entrance Fee: Free. Est. Duration: 1 Hour. Best Day to visit: Weekdays (AM).",
@@ -212,7 +217,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "10:00 am - 12:00 pm",
             },
             {
-                image: campjohnhay, // Placeholder image
+                image: yellow_trail,
                 title: "Camp John Hay Yellow Trail",
                 time: "8:00 AM - 6:00 PM",
                 desc: "A scenic, easy trail in Camp John Hay, offering a refreshing walk among pine trees. Entrance Fee: Free. Est. Duration: 2 hours. Best Day to visit: Weekdays (AM).",
@@ -220,7 +225,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "8:00 am - 10:00 pm",
             },
             {
-                image: taranaai, // Placeholder image
+                image: valley_of_colors,
                 title: "Valley of Colors",
                 time: "Anytime",
                 desc: "A vibrant hillside community in La Trinidad near Baguio, where brightly colored houses form a striking mural. Entrance Fee: Free. Est. Duration: 15 minutes. Best Day to visit: Weekdays.",
@@ -228,7 +233,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "10:00 am - 11:00 am",
             },
             {
-                image: taranaai, // Placeholder image
+                image: easter_weaving_room, 
                 title: "Easter Weaving Room",
                 time: "8:00 AM - 5:00 PM",
                 desc: "A historic center preserving Cordillera weaving, where visitors can watch artisans create handcrafted textiles. Entrance Fee: 150 - 200. Est. Duration: 1 Hour. Best Day to visit: Weekdays.",
@@ -236,7 +241,7 @@ import { baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, ca
                 peakHours: "10:00 am - 12:00 pm",
             },
             {
-                image: taranaai, // Placeholder image
+                image: mt_kalugong, 
                 title: "Mt. Kalugong",
                 time: "6:00 AM - 6:00 PM",
                 desc: "Mt. Kalugong is a scenic limestone mountain in La Trinidad with stunning valley views and unique rock formations. Entrance Fee: 80 - 100. Est. Duration: 2 hours. Best Day to visit: Everyday.",

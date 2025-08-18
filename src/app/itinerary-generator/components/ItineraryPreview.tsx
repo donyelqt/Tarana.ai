@@ -121,7 +121,12 @@ export default function ItineraryPreview({
               section.activities.map((act, i) => {
                 let imageSrc: string = "";
                 if (typeof act.image === "string") {
-                  imageSrc = act.image;
+                  // Ensure relative paths start with a leading slash
+                  if (act.image.startsWith("images/")) {
+                    imageSrc = `/${act.image}`;
+                  } else {
+                    imageSrc = act.image;
+                  }
                 } else if (act.image && typeof act.image === "object" && "src" in act.image) {
                   imageSrc = act.image.src;
                 }

@@ -32,7 +32,18 @@ export const the_mansion_baguio = "/images/the_mansion_baguio.jpg";
 export const wrightpark = "/images/wrightpark.jpg";
 export const campjohnhay = "/images/campjohnhay.jpg"
 export const smbaguio = "/images/smbaguio.jpg"
-
+export const baguio_public_market = "/images/baguiopublicmarket.jpg"
+export const goodsheperdconventbaguio = "/images/goodsheperdconventbaguio.jpg"
+export const miradorheritageandecopark = "/images/miradorheritageandecopark.jpg"
+export const diplomat_hotel = "/images/diplomat_hotel.jpg"
+export const lion_heads_baguio = "/images/lion_heads_baguio.jpg"
+export const ili_likha_baguio = "/images/ili_likha_baguio.jpg"
+export const pma = "/images/pma.jpg"
+export const great_wall_of_baguio = "/images/great_wall_of_baguio.jpg"
+export const valley_of_colors = "images/valley_of_colors.jpg"
+export const easter_weaving_room = "images/easter_weaving_room.jpg"
+export const mt_kalugong = "images/mt_kalugong.jpg"
+export const yellow_trail = "images/yellow_trail.jpg"
 
 
 
