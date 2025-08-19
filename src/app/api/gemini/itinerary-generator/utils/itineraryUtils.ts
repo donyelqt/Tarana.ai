@@ -42,7 +42,8 @@ export async function ensureFullItinerary(
   itinerary: any,
   userPrompt: string,
   durationDays: number,
-  model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>
+  model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>,
+  peakHoursContext: string
 ): Promise<any> {
   const dayActivities: { [key: string]: any[] } = {};
   for (const item of itinerary.items) {
@@ -95,6 +96,7 @@ export async function ensureFullItinerary(
       - Duration of the trip
       - Common travel wisdom (e.g., rest periods, meal times, travel time)
       - Activities already scheduled for that day
+      - Current traffic conditions: ${peakHoursContext}
 
       USER TRIP REQUEST: "${userPrompt}"
 
@@ -240,11 +242,11 @@ export function validateAndEnrichActivity(activity: any): any | null {
   };
 }
 
-export async function processItinerary(parsed: any, prompt: string, durationDays: number | null, model: any) {
+export async function processItinerary(parsed: any, prompt: string, durationDays: number | null, model: any, peakHoursContext: string) {
   let processed = removeDuplicateActivities(parsed);
   processed = organizeItineraryByDays(processed, durationDays);
   if (durationDays && model) {
-    processed = await ensureFullItinerary(processed, prompt, durationDays, model);
+    processed = await ensureFullItinerary(processed, prompt, durationDays, model, peakHoursContext);
   }
 
   // Final cleanup and validation pass.

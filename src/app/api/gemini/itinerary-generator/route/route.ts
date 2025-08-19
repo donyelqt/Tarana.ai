@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { geminiModel, responseCache, CACHE_DURATION, API_KEY } from "../lib/config";
+import { getPeakHoursContext } from "@/lib/peakHours";
 import { buildDetailedPrompt } from "../lib/contextBuilder";
 import { findAndScoreActivities } from "../lib/activitySearch";
 import { generateItinerary, handleItineraryProcessing, parseAndCleanJson } from "../lib/responseHandler";
@@ -82,8 +83,9 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        const peakHoursContext = getPeakHoursContext();
         let parsed = parseAndCleanJson(finalText);
-        const finalItinerary = await handleItineraryProcessing(parsed, prompt, durationDays);
+        const finalItinerary = await handleItineraryProcessing(parsed, prompt, durationDays, peakHoursContext);
         const responseData = { text: JSON.stringify(finalItinerary) };
         responseCache.set(cacheKey, { response: responseData, timestamp: Date.now() });
         return NextResponse.json(responseData);
