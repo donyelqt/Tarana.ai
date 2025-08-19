@@ -41,8 +41,8 @@ export async function generateItinerary(detailedPrompt: string, prompt: string, 
     return result.response;
 }
 
-export async function handleItineraryProcessing(parsed: any, prompt: string, durationDays: number | null) {
-    let processed = await processItinerary(parsed, prompt, durationDays, geminiModel);
+export async function handleItineraryProcessing(parsed: any, prompt: string, durationDays: number | null, peakHoursContext: string) {
+    let processed = await processItinerary(parsed, prompt, durationDays, geminiModel, peakHoursContext);
 
     if (!processed || !processed.items || processed.items.length === 0) {
         const isReasonProvided = processed.subtitle && processed.subtitle.toLowerCase().includes("could not find");
