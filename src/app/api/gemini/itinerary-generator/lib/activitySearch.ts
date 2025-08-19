@@ -80,7 +80,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
         });
 
         const filteredSimilar = scoredSimilar
-            .filter(s => s.interestMatch && s.weatherMatch)
+            .filter(s => s.interestMatch && s.weatherMatch && !s.isCurrentlyPeak)
             .sort((a, b) => b.relevanceScore - a.relevanceScore)
             .slice(0, 40);
 
