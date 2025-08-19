@@ -18,10 +18,12 @@ interface TaranaEatsFormProps {
   onGenerate: (results: any) => void;
   isLoading?: boolean;
   onLoadingChange?: (isLoading: boolean) => void;
+  initialValues?: TaranaEatsFormValues | null;
+  isGenerated?: boolean;
 }
 
-export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadingChange }: TaranaEatsFormProps) {
-  const [formValues, setFormValues] = useState<TaranaEatsFormValues>({
+export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadingChange, initialValues, isGenerated }: TaranaEatsFormProps) {
+  const [formValues, setFormValues] = useState<TaranaEatsFormValues>(initialValues || {
     budget: "",
     cuisine: cuisineOptions[0],
     pax: null,
@@ -37,6 +39,12 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
       onLoadingChange(aiLoading);
     }
   }, [aiLoading, onLoadingChange]);
+
+  useEffect(() => {
+    if (initialValues) {
+      setFormValues(initialValues);
+    }
+  }, [initialValues]);
 
   const updateFormValue = <K extends keyof TaranaEatsFormValues>(
     key: K, 
@@ -116,6 +124,7 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
               value={formValues.budget}
               onChange={(e) => updateFormValue("budget", e.target.value)}
               className="w-full rounded-xl"
+              disabled={isGenerated}
             />
           </div>
           <div>
@@ -123,6 +132,7 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
               value={formValues.cuisine} 
               onChange={e => updateFormValue("cuisine", e.target.value)} 
               className="w-full border rounded-xl px-3 py-2 h-10"
+              disabled={isGenerated}
             >
               {cuisineOptions.map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
@@ -141,6 +151,7 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
               type="button"
               variant="outline"
               onClick={() => updateFormValue("pax", opt.value)}
+              disabled={isGenerated}
               className={cn(
                 'flex items-center justify-center gap-1 py-3 w-full font-medium transition',
                 formValues.pax === opt.value
@@ -163,6 +174,7 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
               type="button"
               variant="outline"
               onClick={() => toggleArrayValue("restrictions", opt.label)}
+              disabled={isGenerated}
               className={cn(
                 "flex items-center justify-center gap-1 py-3 w-full font-medium transition",
                 formValues.restrictions.includes(opt.label)
@@ -186,6 +198,7 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
               type="button"
               variant="outline"
               onClick={() => toggleArrayValue("mealType", opt.label)}
+              disabled={isGenerated}
               className={cn(
                 'flex items-center justify-center gap-2 py-3 font-medium transition',
                 formValues.mealType.includes(opt.label)
@@ -202,7 +215,7 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
       
       <Button 
         type="submit" 
-        disabled={isLoading || aiLoading}
+        disabled={isLoading || aiLoading || isGenerated}
         className="w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 hover:to-purple-500 text-white"
       >
         {aiLoading || isLoading ? (

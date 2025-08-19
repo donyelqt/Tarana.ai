@@ -108,7 +108,8 @@ export async function POST(req: NextRequest) {
       const result = await model.generateContent(enhancedPrompt);
       const response = await result.response;
       const textResponse = response.text();
-      
+      console.log("Gemini Raw Response for Debugging:", textResponse); // Temporary debug log
+
       // Try to parse the JSON response with enhanced error handling
       let recommendations: { matches: EnhancedResultMatch[] };
       try {
