@@ -9,33 +9,30 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
     let effectiveSampleItinerary: any = null;
 
     try {
-        // Initial retrieval
-        let similar = await searchSimilarActivities(prompt, 60);
-
-        // Agentic planning: if the pool is small or we want better coverage, ask for sub-queries
-        const existingTitles = (similar || []).map(s => s.metadata?.title || s.activity_id);
+        // Agentic planning: generate sub-queries to broaden the search and improve coverage.
         const subqueries = await proposeSubqueries({
             model,
             userPrompt: prompt,
             interests: Array.isArray(interests) ? interests : undefined,
             weatherType,
             durationDays,
-            existingTitles,
+            existingTitles: [], // No existing titles initially
             maxQueries: 3
         });
 
-        if (subqueries.length > 0) {
-            const batch = await searchSimilarActivities(subqueries, 30);
-            // Merge and dedupe by title, keep best similarity
-            const byTitle = new Map<string, { activity_id: string; similarity: number; metadata: Record<string, any>; }>();
-            for (const s of [...similar, ...batch]) {
-                const title: string = s.metadata?.title || s.activity_id;
-                if (!byTitle.has(title) || byTitle.get(title)!.similarity < s.similarity) {
-                    byTitle.set(title, s);
-                }
+        // Combine the original prompt with sub-queries for a single batch search.
+        const allQueries = [prompt, ...subqueries];
+        const searchResults = await searchSimilarActivities(allQueries, 30);
+
+        // Merge and dedupe results by title, keeping the highest similarity score.
+        const byTitle = new Map<string, { activity_id: string; similarity: number; metadata: Record<string, any>; }>();
+        for (const s of searchResults) {
+            const title: string = s.metadata?.title || s.activity_id;
+            if (!byTitle.has(title) || byTitle.get(title)!.similarity < s.similarity) {
+                byTitle.set(title, s);
             }
-            similar = Array.from(byTitle.values());
         }
+        const similar = Array.from(byTitle.values());
 
         // Apply weather + interest filters before constructing the itinerary object
         const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
@@ -80,7 +77,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
         });
 
         const filteredSimilar = scoredSimilar
-            .filter(s => s.interestMatch && s.weatherMatch && !s.isCurrentlyPeak)
+            .filter(s => s.interestMatch && s.weatherMatch)
             .sort((a, b) => b.relevanceScore - a.relevanceScore)
             .slice(0, 40);
 

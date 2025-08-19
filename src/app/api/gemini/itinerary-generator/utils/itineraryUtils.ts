@@ -38,11 +38,12 @@ const inferSlot = (label: string) => {
   return 'Flexible';
 };
 
+
 export async function ensureFullItinerary(
   itinerary: any,
   userPrompt: string,
   durationDays: number,
-  model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>,
+  model: any,
   peakHoursContext: string
 ): Promise<any> {
   const dayActivities: { [key: string]: any[] } = {};
