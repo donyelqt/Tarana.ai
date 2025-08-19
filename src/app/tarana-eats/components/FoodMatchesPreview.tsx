@@ -177,7 +177,7 @@ export default function FoodMatchesPreview({ results, isLoading }: FoodMatchesPr
                 );
               })}
               <Button 
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4" 
+                className="w-full bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4" 
                 onClick={handleSaveAllMeals} 
                 disabled={loading || Object.keys(savedSelections).length === 0}
               >
