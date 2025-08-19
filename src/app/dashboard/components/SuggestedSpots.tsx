@@ -12,7 +12,7 @@ const spots = [
   },
   {
     name: "CJH - Yellow Trail",
-    image: "/images/yellow_trail.jpg",
+    image: "/images/yellow_trail.png",
     distance: "1.2km",
     time: "8 min",
     traffic: "Moderate" as const,

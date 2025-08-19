@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import TaranaEatsForm from "./components/TaranaEatsForm";
 import FoodMatchesPreview from "./components/FoodMatchesPreview";
@@ -10,6 +10,8 @@ import { combinedFoodData } from "./data/taranaEatsData";
 export default function TaranaEatsPage() {
   const [results, setResults] = useState<FoodMatchesData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isGenerated, setIsGenerated] = useState(false);
+  const [formInputs, setFormInputs] = useState<TaranaEatsFormValues | null>(null);
   const { toast } = useToast();
 
   const handleLoadingChange = (isLoading: boolean) => {
@@ -19,6 +21,7 @@ export default function TaranaEatsPage() {
   const handleGenerateResults = async (data: any) => {
     try {
       setLoading(true);
+      setIsGenerated(true);
       
       // Check if we have AI-generated results already
       if (data.matches) {
@@ -35,6 +38,7 @@ export default function TaranaEatsPage() {
       
       // If we received form values, use them to filter restaurants
       const formValues = data as TaranaEatsFormValues;
+      setFormInputs(formValues);
       
       // Filter restaurants based on form values
       const filteredRestaurants = combinedFoodData.restaurants
@@ -106,7 +110,13 @@ export default function TaranaEatsPage() {
       <Sidebar />
       <main className="md:h-screen md:overflow-hidden md:pl-64 flex flex-col md:flex-row">
         <div className="flex-1 md:overflow-y-auto">
-          <TaranaEatsForm onGenerate={handleGenerateResults} isLoading={loading} onLoadingChange={handleLoadingChange} />
+          <TaranaEatsForm 
+            onGenerate={handleGenerateResults} 
+            isLoading={loading} 
+            onLoadingChange={handleLoadingChange} 
+            initialValues={formInputs}
+            isGenerated={isGenerated}
+          />
         </div>
         <div className="w-full md:w-[450px] border-l md:overflow-y-auto">
           <FoodMatchesPreview results={results} isLoading={loading} />

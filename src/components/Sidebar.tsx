@@ -155,7 +155,7 @@ const Sidebar = () => {
               <span className="mr-3 animate-icon-interactive">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a4 4 0 014-4h4m0 0V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h5" /></svg>
               </span>
-              Itinerary Generator
+              Tarana Gala
             </Link>
             <Link href="/tarana-eats" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/tarana-eats" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
               <span className="mr-3 animate-icon-interactive">
