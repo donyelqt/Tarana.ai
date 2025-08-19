@@ -41,7 +41,7 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
     const peakHoursContext = getPeakHoursContext();
     
     const sampleItineraryContext = effectiveSampleItinerary
-      ? `EXCLUSIVE DATABASE: ${JSON.stringify(effectiveSampleItinerary)}\n\nABSOLUTE RULE: You MUST ONLY use activities from this database. This is the COMPLETE list of available activities. DO NOT create, invent, or suggest any activity not in this list. Activities are pre-filtered and ranked by relevance. Higher relevanceScore values indicate better matches. Activities marked with isCurrentlyPeak: true are currently crowded and should be scheduled for later or replaced with alternatives from this same database.`
+      ? `EXCLUSIVE DATABASE: ${JSON.stringify(effectiveSampleItinerary)}\n\nABSOLUTE RULE: You MUST ONLY use activities from this database. This is the COMPLETE list of available activities. DO NOT create, invent, or suggest any activity not in this list. Activities are pre-filtered and ranked by relevance. Higher relevanceScore values indicate better matches.`
       : "ERROR: No activities found in database. Return an error message stating insufficient data.";
 
     let interestsContext = "";
@@ -109,17 +109,16 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       1. **Be precise and personalized.**
       2. **MANDATORY: ONLY use activities from the provided RAG database that also exist in our canonical activity list.** You are FORBIDDEN from creating, inventing, or suggesting ANY activity that is not explicitly listed in both the RAG database and our canonical data. Every single activity in your response MUST have an exact title match in our canonical data. The system will automatically provide the correct image URLs from our local imports - do not modify image URLs. If the database is empty or insufficient, return fewer activities rather than inventing new ones.
       3. **Prioritize activities with higher relevanceScore values** as they are more closely aligned with the user's query, interests, weather conditions, and current traffic levels.
-      4. **PEAK HOURS OPTIMIZATION:** Activities marked with isCurrentlyPeak: true are currently crowded. Either schedule them for later when they're less busy, or choose alternative activities that are not currently in peak hours. Use the peakHours field to suggest optimal visit times.
-      5. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards), respecting the time periods already suggested in the database.
-      ${durationDays ? `5.a. Ensure the itinerary spans exactly ${durationDays} day(s). Create separate day sections and, within each day, include Morning, Afternoon, and Evening periods populated only from the database.` : ""}
-      6. Pace the itinerary based on trip duration, ensuring a balanced schedule.
-      7. For each activity, include: **image** (MUST be the exact image URL from the database - do not modify or substitute), **title** (exact title from the database), **time** slot (e.g., "9:00-10:30AM"), a **brief** description that mentions optimal visit times to avoid crowds, and **tags** (exact tags from the database).
-      8. **TRAFFIC-AWARE DESCRIPTIONS:** In the description, mention when each activity is less crowded based on the peakHours data. For example: "Best visited after 2 PM to avoid morning crowds" or "Currently low traffic - perfect time to visit!"
-      9. Adhere to the user's budget preferences by selecting only activities from the database that match the budget category.
-      10. **CRITICAL: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
-      11. **VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database. If you cannot find sufficient activities in the database to fill the requested itinerary duration, return a shorter itinerary with only the available database activities.
-      12. If the database already contains organized time periods (Morning, Afternoon, Evening), use that structure as a starting point and refine it based on the user's needs and current traffic conditions.
-      13.**OUTPUT FORMAT:** Return a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"image": "...", "title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
-      14. **FINAL CHECK:** Before outputting, verify every single activity title, image URL, and tags match exactly with the provided database entries. Each image field must contain the exact URL string from the database without any modifications.
+      4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards), respecting the time periods already suggested in the database.
+      ${durationDays ? `4.a. Ensure the itinerary spans exactly ${durationDays} day(s). Create separate day sections and, within each day, include Morning, Afternoon, and Evening periods populated only from the database.` : ""}
+      5. Pace the itinerary based on trip duration, ensuring a balanced schedule.
+      6. For each activity, include: **image** (MUST be the exact image URL from the database - do not modify or substitute), **title** (exact title from the database), **time** slot (e.g., "9:00-10:30AM"), a **brief** description that mentions optimal visit times to avoid crowds, and **tags** (exact tags from the database).
+      7. **TRAFFIC-AWARE DESCRIPTIONS:** In the description, mention when each activity is less crowded based on the peakHours data. For example: "Best visited after 2 PM to avoid morning crowds" or "Currently low traffic - perfect time to visit!"
+      8. Adhere to the user's budget preferences by selecting only activities from the database that match the budget category.
+      9. **CRITICAL: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
+      10. **VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database. If you cannot find sufficient activities in the database to fill the requested itinerary duration, return a shorter itinerary with only the available database activities.
+      11. If the database already contains organized time periods (Morning, Afternoon, Evening), use that structure as a starting point and refine it based on the user's needs and current traffic conditions.
+      12.**OUTPUT FORMAT:** Return a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"image": "...", "title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
+      13. **FINAL CHECK:** Before outputting, verify every single activity title, image URL, and tags match exactly with the provided database entries. Each image field must contain the exact URL string from the database without any modifications.
     `;
 }
