@@ -6,9 +6,6 @@ export const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 export const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 export const geminiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" }) : null;
 
-// Simple in-memory cache for similar requests
-export const responseCache = new Map<string, { response: any; timestamp: number }>();
-export const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 // Pre-computed weather context lookup for faster processing
 export const WEATHER_CONTEXTS = {

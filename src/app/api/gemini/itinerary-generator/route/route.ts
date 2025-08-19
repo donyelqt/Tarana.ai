@@ -1,44 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { geminiModel, responseCache, CACHE_DURATION, API_KEY } from "../lib/config";
+import { unstable_cache } from "next/cache";
+import { createHash } from "crypto";
+import { geminiModel, API_KEY } from "../lib/config";
 import { getPeakHoursContext } from "@/lib/peakHours";
 import { buildDetailedPrompt } from "../lib/contextBuilder";
 import { findAndScoreActivities } from "../lib/activitySearch";
 import { generateItinerary, handleItineraryProcessing, parseAndCleanJson } from "../lib/responseHandler";
 import type { WeatherCondition } from "../types/types";
 
-export async function POST(req: NextRequest) {
-    try {
-        const { prompt, weatherData, interests, duration, budget, pax } = await req.json();
-
-        console.log("Gemini API request body:", { prompt, weatherData, interests, duration, budget, pax });
-
-        if (!API_KEY) {
-            console.error("GOOGLE_GEMINI_API_KEY is missing!");
-            return NextResponse.json({ text: "", error: "GOOGLE_GEMINI_API_KEY is missing on the server." }, { status: 500 });
-        }
-
-        if (!prompt) {
-            return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
-        }
-
-        const cacheKey = JSON.stringify({
-            prompt: prompt?.substring(0, 100),
-            weatherId: weatherData?.weather?.[0]?.id,
-            temp: Math.round(weatherData?.main?.temp || 0),
-            interests: interests?.sort(),
-            duration,
-            budget,
-            pax
-        });
-
-        const cached = responseCache.get(cacheKey);
-        if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-            return NextResponse.json(cached.response);
-        }
+// Main logic for generating an itinerary, wrapped for caching
+const getCachedItinerary = unstable_cache(
+    async (requestBody: any, hash: string) => {
+        const { prompt, weatherData, interests, duration, budget, pax } = requestBody;
 
         if (!geminiModel) {
-            console.error("Gemini model is not initialized – missing API key?");
-            return NextResponse.json({ text: "", error: "Gemini model not available." }, { status: 500 });
+            throw new Error("Gemini model not available.");
         }
 
         const durationDays = (() => {
@@ -62,32 +38,46 @@ export async function POST(req: NextRequest) {
         const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
 
         const effectiveSampleItinerary = await findAndScoreActivities(prompt, interests, weatherType, durationDays, geminiModel);
-
         const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, interests, durationDays, budget, pax);
-
         const response = await generateItinerary(detailedPrompt, prompt, durationDays);
 
         const text = response.text();
-        console.log("Gemini raw response text:", text);
-
-        let finalText = text;
-        if (!finalText) {
-            const candidate = response.candidates?.[0];
-            const parts = candidate?.content?.parts;
-            if (Array.isArray(parts)) {
-                finalText = parts.map(p => p.text || '').join('');
-                console.log("Manually extracted Gemini text:", finalText);
-            }
-            if (!finalText) {
-                return NextResponse.json({ text: "", error: "Gemini response is empty", fullResponse: response });
-            }
+        if (!text) {
+            throw new Error("Gemini response is empty");
         }
 
         const peakHoursContext = getPeakHoursContext();
-        let parsed = parseAndCleanJson(finalText);
+        let parsed = parseAndCleanJson(text);
         const finalItinerary = await handleItineraryProcessing(parsed, prompt, durationDays, peakHoursContext);
-        const responseData = { text: JSON.stringify(finalItinerary) };
-        responseCache.set(cacheKey, { response: responseData, timestamp: Date.now() });
+        return { text: JSON.stringify(finalItinerary) };
+    },
+    ['itinerary-requests'], // Cache key prefix
+    {
+        revalidate: 30 * 60, // 30-minute cache revalidation
+        tags: ['itineraries'],
+    }
+);
+
+export async function POST(req: NextRequest) {
+    try {
+        const requestBody = await req.json();
+        const { prompt } = requestBody;
+
+        if (!API_KEY) {
+            console.error("GOOGLE_GEMINI_API_KEY is missing!");
+            return NextResponse.json({ text: "", error: "GOOGLE_GEMINI_API_KEY is missing on the server." }, { status: 500 });
+        }
+
+        if (!prompt) {
+            return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
+        }
+
+        // Generate a stable cache key from the request body
+        const hash = createHash('sha256').update(JSON.stringify(requestBody)).digest('hex');
+
+        // Call the cached function with a stable key
+        const responseData = await getCachedItinerary(requestBody, hash);
+
         return NextResponse.json(responseData);
 
     } catch (e: any) {

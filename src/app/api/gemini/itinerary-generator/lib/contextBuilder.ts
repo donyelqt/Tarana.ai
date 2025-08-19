@@ -117,8 +117,9 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       8. Adhere to the user's budget preferences by selecting only activities from the database that match the budget category.
       9. **CRITICAL: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
       10. **VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database. If you cannot find sufficient activities in the database to fill the requested itinerary duration, return a shorter itinerary with only the available database activities.
-      11. If the database already contains organized time periods (Morning, Afternoon, Evening), use that structure as a starting point and refine it based on the user's needs and current traffic conditions.
-      12.**OUTPUT FORMAT:** Return a JSON object with this structure: { "title": "Your X Day Itinerary", "subtitle": "...", "items": [{"period": "...", "activities": [{"image": "...", "title": "...", "time": "...", "desc": "...", "tags": [...]}]}] }
-      13. **FINAL CHECK:** Before outputting, verify every single activity title, image URL, and tags match exactly with the provided database entries. Each image field must contain the exact URL string from the database without any modifications.
+      11. **OUTPUT FORMAT:** Return a JSON object that strictly follows this Zod schema:\n          \`z.object({\n            title: z.string(),\n            subtitle: z.string(),\n            items: z.array(z.object({\n              period: z.string(),\n              activities: z.array(z.object({\n                image: z.string(),\n                title: z.string(),\n                time: z.string(),\n                desc: z.string(),\n                tags: z.array(z.string()),
+              })),
+            })),\n          })\`
+      12. **FINAL CHECK:** Before outputting, verify every single activity title, image URL, and tags match exactly with the provided database entries. Each image field must contain the exact URL string from the database without any modifications.
     `;
 }

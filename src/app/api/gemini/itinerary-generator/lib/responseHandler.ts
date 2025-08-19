@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { processItinerary } from "../utils/itineraryUtils";
 import { geminiModel } from "./config";
+import { ItinerarySchema } from "../types/schemas";
 
 const MAX_RETRIES = 3;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -8,7 +9,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export async function generateItinerary(detailedPrompt: string, prompt: string, durationDays: number | null) {
     const generationConfig = {
         responseMimeType: "application/json",
-        temperature: 2,
+        temperature: 0.7, // Lowered for more predictable JSON output
         topK: 1,
         topP: 0.9,
         maxOutputTokens: 8192
@@ -72,5 +73,13 @@ export function parseAndCleanJson(text: string) {
         cleanedJson = cleanedJson.slice(firstBrace, lastBrace + 1);
     }
 
-    return JSON.parse(cleanedJson);
+    const parsed = JSON.parse(cleanedJson);
+    const validationResult = ItinerarySchema.safeParse(parsed);
+
+    if (!validationResult.success) {
+        console.error("Zod validation failed:", validationResult.error.issues);
+        throw new Error("Invalid itinerary structure received from AI.");
+    }
+
+    return validationResult.data;
 }
