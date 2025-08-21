@@ -98,6 +98,12 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       ${sampleItineraryContext}
       ${weatherContext}
       ${peakHoursContext}
+      
+      CRITICAL PEAK HOURS FILTERING:
+      - ONLY suggest activities that are NOT currently in peak hours based on Manila time
+      - If popular activities are currently crowded, either schedule them for off-peak times or choose alternatives
+      - Always prioritize low-traffic activities for the current time period
+      - Mention in descriptions when activities will be less crowded
       ${interestsContext}
       ${durationContext}
       ${budgetContext}
@@ -113,7 +119,7 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       ${durationDays ? `4.a. Ensure the itinerary spans exactly ${durationDays} day(s). Create separate day sections and, within each day, include Morning, Afternoon, and Evening periods populated only from the database.` : ""}
       5. Pace the itinerary based on trip duration, ensuring a balanced schedule.
       6. For each activity, include: **image** (MUST be the exact image URL from the database - do not modify or substitute), **title** (exact title from the database), **time** slot (e.g., "9:00-10:30AM"), a **brief** description that mentions optimal visit times to avoid crowds, and **tags** (exact tags from the database).
-      7. **TRAFFIC-AWARE DESCRIPTIONS:** In the description, mention when each activity is less crowded based on the peakHours data. For example: "Best visited after 2 PM to avoid morning crowds" or "Currently low traffic - perfect time to visit!"
+      7. **TRAFFIC-AWARE DESCRIPTIONS:** In the description, mention when each activity is less crowded based on the peakHours data. For example: "Best visited after 2 PM to avoid morning crowds" or "Currently low traffic - perfect time to visit!" If an activity is currently in peak hours, do NOT include it in the itinerary.
       8. Adhere to the user's budget preferences by selecting only activities from the database that match the budget category.
       9. **CRITICAL: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
       10. **VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database. If you cannot find sufficient activities in the database to fill the requested itinerary duration, return a shorter itinerary with only the available database activities.

@@ -63,7 +63,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             if (!isCurrentlyPeak) {
                 relevanceScore += 0.25; // 25% boost for activities not in peak hours
             } else {
-                relevanceScore -= 0.1; // Small penalty for activities currently in peak hours
+                relevanceScore -= 0.5; // Strong penalty for activities currently in peak hours
             }
             
             return {
@@ -77,7 +77,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
         });
 
         const filteredSimilar = scoredSimilar
-            .filter(s => s.interestMatch && s.weatherMatch)
+            .filter(s => s.interestMatch && s.weatherMatch && !s.isCurrentlyPeak) // STRICTLY exclude peak hour activities
             .sort((a, b) => b.relevanceScore - a.relevanceScore)
             .slice(0, 40);
 
