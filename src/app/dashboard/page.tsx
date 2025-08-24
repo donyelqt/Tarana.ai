@@ -1,7 +1,6 @@
 "use client"
 
 import Image from "next/image"
-import sampleprofile from "../../../public/images/sampleprofile.png"
 import Sidebar from "../../components/Sidebar"
 import SuggestedSpots from "./components/SuggestedSpots"
 import RecommendedCafes from "./components/RecommendedCafes"
@@ -12,6 +11,7 @@ import { BAGUIO_COORDINATES, WeatherData, fetchWeatherFromAPI, getWeatherIconUrl
 import { Bookmark, Plus, MapPin, Car, Utensils, Wand2, Link, Share2 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+import { noProfile } from "public"
 
 const DashboardContent = () => {
   const router = useRouter()
@@ -103,7 +103,7 @@ const DashboardContent = () => {
         {/* Center Content */}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
           <div className={`bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 transition-all duration-300 ease-in-out hover:animate-none hover:-translate-y-2 hover:shadow-3xl hover:shadow-blue-500 ${isWelcomeCardAnimated ? 'animate-none -translate-y-2 shadow-3xl shadow-blue-500' : 'animate-natural-shimmer'}`}>
-            <Image src={session?.user?.image || sampleprofile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
+            <Image src={session?.user?.image || noProfile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div className="flex-grow">
               <div className="text-xl font-bold text-white">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="wave ml-1 text-3xl">👋</span></div>
               <div className="text-gray-200 text-sm">Ready to plan your next adventure?</div>
