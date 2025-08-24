@@ -11,22 +11,28 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { AnimatePresence, motion } from "framer-motion"
 
 // Component that uses useSearchParams
-function RegisteredMessage() {
-    const [success, setSuccess] = useState<string | null>(null)
+function StatusMessage() {
+    const [message, setMessage] = useState<{ text: string; type: 'success' | 'info' } | null>(null)
     const searchParams = useSearchParams()
     
     useEffect(() => {
         // Check if user has just registered
         if (searchParams?.get('registered') === 'true') {
-            setSuccess('Account created successfully! Please sign in.')
+            setMessage({ text: 'Account created successfully! Please sign in.', type: 'success' })
+        }
+        // Check if password was reset successfully
+        else if (searchParams?.get('reset') === 'success') {
+            setMessage({ text: 'Password reset successfully! Please sign in with your new password.', type: 'success' })
         }
     }, [searchParams])
     
-    if (!success) return null
+    if (!message) return null
+    
+    const bgColor = message.type === 'success' ? 'bg-green-50 text-green-500' : 'bg-blue-50 text-blue-500'
     
     return (
-        <div className="bg-green-50 text-green-500 p-3 rounded-lg text-sm mb-4">
-            {success}
+        <div className={`${bgColor} p-3 rounded-lg text-sm mb-4`}>
+            {message.text}
         </div>
     )
 }
@@ -40,24 +46,48 @@ const SignIn = () => {
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     
+    // Load remembered email on component mount
+    useEffect(() => {
+        const rememberedEmail = localStorage.getItem('rememberedEmail')
+        const shouldRemember = localStorage.getItem('rememberMe') === 'true'
+        
+        if (shouldRemember && rememberedEmail) {
+            setEmail(rememberedEmail)
+            setRememberMe(true)
+        }
+    }, [])
+    
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
         setIsLoading(true)
         
         try {
+            // Handle remember me by setting session duration
+            const callbackUrl = '/dashboard?signedin=true'
+            
             const result = await signIn('credentials', {
                 email,
                 password,
-                redirect: false
+                redirect: false,
+                callbackUrl
             })
             
             if (result?.error) {
                 setError('Invalid email or password')
                 console.error('Authentication error:', result.error)
             } else {
+                // Store remember me preference in localStorage for future sessions
+                if (rememberMe) {
+                    localStorage.setItem('rememberMe', 'true')
+                    localStorage.setItem('rememberedEmail', email)
+                } else {
+                    localStorage.removeItem('rememberMe')
+                    localStorage.removeItem('rememberedEmail')
+                }
+                
                 // Redirect to dashboard on success
-                window.location.href = '/dashboard?signedin=true'
+                window.location.href = callbackUrl
             }
         } catch (error) {
             setError('An unexpected error occurred')
@@ -153,7 +183,7 @@ const SignIn = () => {
                                 />
                                 <Label htmlFor="remember-me" className="ml-2 block text-gray-900">Remember me</Label>
                             </div>
-                            <Link href="#" className="text-gray-400 hover:text-[#0066FF]">Forgot Password ?</Link>
+                            <Link href="/auth/forgot-password" className="text-gray-400 hover:text-[#0066FF]">Forgot Password ?</Link>
                         </div>
                         {error && (
                             <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm mb-4">
@@ -162,7 +192,7 @@ const SignIn = () => {
                         )}
                         {/* Wrap the component that uses useSearchParams in Suspense */}
                         <Suspense fallback={<div className="h-10"></div>}>
-                            <RegisteredMessage />
+                            <StatusMessage />
                         </Suspense>
                         <Button
                             type="submit"

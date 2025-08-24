@@ -111,6 +111,8 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        // rememberMe will be handled in the signin page
+
         try {
           // Find user by email from Supabase
           const user = await findUserByEmailFromSupabase(credentials.email);
@@ -150,6 +152,10 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days default
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 days default
   },
   callbacks: {
     async signIn({ user, account }) {
