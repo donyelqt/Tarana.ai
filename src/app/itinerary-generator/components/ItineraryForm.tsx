@@ -110,9 +110,9 @@ export default function ItineraryForm({
                 variant="outline"
                 role="combobox"
                 className={cn(
-                  "w-full justify-between text-md font-normal",
+                  "w-full justify-between text-md font-medium",
                   !budget && "text-muted-foreground",
-                  budget && "border-slate-300 text-gray-700 hover:text-blue-500",
+                  budget && "border-slate-300 text-gray-700 hover:text-blue-600",
                   showPreview && "cursor-not-allowed"
                 )}
                 disabled={showPreview}
