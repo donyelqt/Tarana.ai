@@ -129,46 +129,58 @@ export function getPeakHoursContext(): string {
     CURRENT MANILA TIME CONTEXT:
     Current time: ${timeStr} on ${dayStr}
     
-    PEAK HOURS OPTIMIZATION:
-    - Each activity in the database has "peakHours" indicating when it's most crowded
-    - PRIORITIZE activities that are NOT currently in their peak hours to ensure a better experience
-    - If an activity is currently in peak hours, either:
-      1. Schedule it for a different time when it's less crowded, OR
-      2. Choose an alternative activity that's not currently crowded
-    - Consider that peak hours vary by activity type:
-      * Tourist attractions: Usually busiest 10 AM - 12 PM and 4 PM - 6 PM
-      * Restaurants: Lunch (12 PM - 2 PM) and Dinner (6 PM - 8 PM) rush
-      * Markets: Early morning (5 AM - 8 AM) and evening (5 PM - 7 PM)
-      * Shopping malls: Weekends and evenings
+    STRICT PEAK HOURS ENFORCEMENT:
+    - ABSOLUTE RULE: NO activities currently in peak hours are allowed in the itinerary
+    - The system has already filtered out all peak hour activities from the database
+    - Only suggest activities that are guaranteed to be in low-traffic periods right now
+    - Every recommended activity is currently experiencing optimal (low) traffic conditions
     
-    TRAFFIC-AWARE SCHEDULING:
-    - Suggest activities during their low-traffic periods for optimal experience
-    - Mention the best times to visit each recommended activity
-    - If scheduling for later, note when the activity will be less crowded
+    PEAK HOURS REFERENCE (for context only - these activities are already excluded):
+    - Tourist attractions: Usually busiest 10 AM - 12 PM and 4 PM - 6 PM
+    - Restaurants: Lunch (12 PM - 2 PM) and Dinner (6 PM - 8 PM) rush
+    - Markets: Early morning (5 AM - 8 AM) and evening (5 PM - 7 PM)
+    - Shopping malls: Weekends and evenings
+    
+    TRAFFIC-AWARE MESSAGING:
+    - Emphasize that all suggested activities are currently in their optimal (low-traffic) periods
+    - Mention specific benefits of visiting during current low-traffic times
+    - Highlight the perfect timing for crowd-free experiences
   `;
 }
 
 /**
  * Filter activities to prioritize low-traffic options based on current time
+ * STRICT filtering - absolutely no peak hour activities allowed
  */
-export function filterLowTrafficActivities<T extends { peakHours?: string }>(
+export function filterLowTrafficActivities<T extends { peakHours?: string; title?: string }>(
   activities: T[]
 ): { lowTraffic: T[]; currentlyPeak: T[] } {
   const lowTraffic: T[] = [];
   const currentlyPeak: T[] = [];
   
+  console.log(`=== FILTERING ${activities.length} ACTIVITIES FOR PEAK HOURS ===`);
+  
   for (const activity of activities) {
+    const activityTitle = activity.title || 'Unknown Activity';
+    
     if (!activity.peakHours) {
-      lowTraffic.push(activity); // No peak hours data, assume it's fine
+      console.log(`✓ ${activityTitle}: No peak hours data - ALLOWED`);
+      lowTraffic.push(activity);
       continue;
     }
     
-    if (isCurrentlyPeakHours(activity.peakHours)) {
+    const isPeak = isCurrentlyPeakHours(activity.peakHours);
+    if (isPeak) {
+      console.log(`✗ ${activityTitle}: Currently in peak hours (${activity.peakHours}) - BLOCKED`);
       currentlyPeak.push(activity);
     } else {
+      console.log(`✓ ${activityTitle}: Not in peak hours (${activity.peakHours}) - ALLOWED`);
       lowTraffic.push(activity);
     }
   }
+  
+  console.log(`RESULT: ${lowTraffic.length} allowed, ${currentlyPeak.length} blocked`);
+  console.log('=======================================');
   
   return { lowTraffic, currentlyPeak };
 }

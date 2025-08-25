@@ -140,8 +140,23 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             });
         }
 
+        // STRICT peak hours filtering - absolutely no peak hour activities allowed
         const filteredSimilar = scoredSimilar
-            .filter(s => s.interestMatch && s.weatherMatch && !s.isCurrentlyPeak) // STRICTLY exclude peak hour activities
+            .filter(s => {
+                // Must match interests and weather
+                if (!s.interestMatch || !s.weatherMatch) return false;
+                
+                // CRITICAL: Double-check peak hours status
+                const peakHours = s.metadata?.peakHours || s.peakHours || "";
+                const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
+                
+                if (isCurrentlyPeak) {
+                    console.log(`FILTERING OUT: ${s.metadata?.title || s.activity_id} - Currently in peak hours: ${peakHours}`);
+                    return false;
+                }
+                
+                return true;
+            })
             .sort((a, b) => b.relevanceScore - a.relevanceScore)
             .slice(0, 40);
 
@@ -153,15 +168,24 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             
             filteredSimilar.forEach(s => {
                 const timeStr = s.metadata?.time?.toLowerCase() || "";
+                // Final peak hours check before adding to activities
+                const peakHours = s.metadata?.peakHours || "";
+                const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
+                
+                if (isCurrentlyPeak) {
+                    console.log(`SKIPPING: ${s.metadata?.title || s.activity_id} - Still in peak hours during activity creation`);
+                    return; // Skip this activity
+                }
+                
                 const rawActivity = {
                     image: s.metadata?.image || "",
                     title: s.metadata?.title || s.activity_id,
                     time: s.metadata?.time || "",
                     desc: s.metadata?.desc || "",
                     tags: s.metadata?.tags || [],
-                    peakHours: s.metadata?.peakHours || "",
+                    peakHours: peakHours,
                     relevanceScore: s.relevanceScore,
-                    isCurrentlyPeak: s.isCurrentlyPeak
+                    isCurrentlyPeak: false // Guaranteed false at this point
                 };
                 
                 const activity = validateAndEnrichActivity(rawActivity);
@@ -207,15 +231,24 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                     {
                         period: "Anytime",
                         activities: filteredSimilar.map(s => {
+                            // Final peak hours validation for fallback activities
+                            const peakHours = s.metadata?.peakHours || "";
+                            const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
+                            
+                            if (isCurrentlyPeak) {
+                                console.log(`FALLBACK FILTER: Excluding ${s.metadata?.title || s.activity_id} - Currently in peak hours`);
+                                return null; // Will be filtered out by .filter(Boolean)
+                            }
+                            
                             const rawActivity = {
                                 image: s.metadata?.image || "",
                                 title: s.metadata?.title || s.activity_id,
                                 time: s.metadata?.time || "",
                                 desc: s.metadata?.desc || "",
                                 tags: s.metadata?.tags || [],
-                                peakHours: s.metadata?.peakHours || "",
+                                peakHours: peakHours,
                                 relevanceScore: s.relevanceScore || s.similarity,
-                                isCurrentlyPeak: s.isCurrentlyPeak,
+                                isCurrentlyPeak: false, // Guaranteed false
                                 searchReasoning: s.reasoning || [],
                                 confidence: s.confidence || 0.7
                             };
