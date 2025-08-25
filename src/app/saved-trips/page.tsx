@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { getSavedItineraries, SavedItinerary, deleteItinerary } from "@/lib/savedItineraries"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
+import { Trash2 } from "lucide-react"
 
 
 
@@ -92,7 +93,7 @@ const SavedTrips = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl bg-white p-3 rounded-xl md:text-3xl font-bold border text-gray-900 mb-6">Saved Itineraries</h1>
-          
+
           {/* Search Bar */}
           <div className="relative max-w-full bg-white rounded-lg">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -123,14 +124,14 @@ const SavedTrips = () => {
                   className="object-cover"
                 />
               </div>
-              
+
               {/* Content */}
               <div className="p-6">
                 {/* Title and ID */}
                 <div className="mb-3">
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">{itinerary.title} <span className="text-sm text-gray-400 font-normal">#{itinerary.id}</span></h3>
                 </div>
-                
+
                 {/* Date and Time */}
                 <div className="mb-3">
                   <div className="flex items-center text-sm text-gray-600">
@@ -140,7 +141,7 @@ const SavedTrips = () => {
                     {itinerary.date}
                   </div>
                 </div>
-                
+
                 {/* Budget */}
                 <div className="mb-4">
                   <div className="flex items-center text-sm text-gray-600">
@@ -150,7 +151,7 @@ const SavedTrips = () => {
                     Budget: {itinerary.budget}
                   </div>
                 </div>
-                
+
                 {/* Tags */}
                 <div className="mb-4">
                   <div className="flex flex-wrap gap-2">
@@ -168,27 +169,34 @@ const SavedTrips = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 {/* Action Buttons */}
                 <div className="flex gap-2">
-                  <Button 
+                  <Button
                     className="flex-1 bg-[#0066FF] hover:bg-[#0052cc] text-white font-medium py-2 px-4 rounded-xl transition-colors"
                     onClick={() => router.push(`/saved-trips/${itinerary.id}`)}
                   >
                     View Itinerary
                   </Button>
-                  <Button 
+                  {/*<Button 
                     className="bg-gray-200 hover:bg-gray-300 text-black font-medium py-2 px-4 rounded-xl transition-colors"
                     onClick={(e) => handleDeleteClick(itinerary, e)}
                   >
                     Delete
+                  </Button>*/}
+                  <Button
+                    onClick={(e) =>  handleDeleteClick(itinerary, e)}
+                    variant="outline"
+                    className="py-3 h-auto rounded-lg border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 font-semibold px-4"
+                  >
+                    <Trash2 size={18} />
                   </Button>
                 </div>
               </div>
             </div>
           ))}
         </div>
-        
+
         {/* Empty State */}
         {filteredItineraries.length === 0 && (
           <div className="text-center py-12">
@@ -199,7 +207,7 @@ const SavedTrips = () => {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No itineraries found</h3>
             <p className="text-gray-500 mb-4">Try adjusting your search or create a new itinerary.</p>
-            <Button 
+            <Button
               className="bg-[#0066FF] hover:bg-[#0052cc] text-white"
               onClick={() => router.push('/itinerary-generator')}
             >
