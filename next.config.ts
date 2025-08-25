@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: path.join(__dirname),
   transpilePackages: ['lucide-react'], // Add lucide-react for proper module handling
   /* other config options here */
   images: {
