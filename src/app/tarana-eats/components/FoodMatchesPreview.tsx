@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import MenuPopup from './MenuPopup';
@@ -7,27 +7,71 @@ import { useTaranaEatsService } from '@/app/tarana-eats/hooks/useTaranaEatsServi
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 
+// Loading messages
+const loadingMessages = [
+  "Finding the best restaurants for you...",
+  "Analyzing menus and preferences...",
+  "Checking dietary restrictions...",
+  "Personalizing your food matches...",
+  "Almost there, just a few more seconds...",
+];
+
 interface FoodMatchesPreviewProps {
   results: { matches: ResultMatch[] } | null;
   isLoading?: boolean;
+  taranaaiLogo: any;
 }
 
-export default function FoodMatchesPreview({ results, isLoading }: FoodMatchesPreviewProps) {
-  if (isLoading) {
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-white/80 z-10 rounded-2xl shadow-md p-6">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-        <p className="text-lg font-semibold text-gray-700">Finding your food matches...</p>
-        <p className="text-md font-semibold text-gray-700">Intelligently searching for your perfect food matches...</p>
-        <p className="text-sm text-gray-500">This might take a moment. Please wait.</p>
-      </div>
-    );
-  }
+export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }: FoodMatchesPreviewProps) {
+  // All hooks must be called at the top level, before any early returns
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [activeMatch, setActiveMatch] = useState<ResultMatch | null>(null);
   const [savedSelections, setSavedSelections] = useState<Record<string, MenuItem[]>>({});
   const { saveToMeals, loading } = useTaranaEatsService();
   const { toast } = useToast();
   const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) {
+      const interval = setInterval(() => {
+        setCurrentMessageIndex((prevIndex) =>
+          (prevIndex + 1) % loadingMessages.length
+        );
+      }, 2500); // Change message every 2.5 seconds to sync with fade-in-out animation
+
+      return () => clearInterval(interval);
+    }
+  }, [isLoading]);
+
+  // Early return for loading state - all hooks are already called above
+  if (isLoading) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm z-10 rounded-2xl shadow-lg p-8">
+        <div className="relative mb-6">
+          <div className="absolute inset-0 bg-blue-500 rounded-full blur-xl opacity-50 animate-pulse"></div>
+          <Image 
+            src={taranaaiLogo} 
+            alt="Tarana.ai is thinking" 
+            width={120} 
+            height={120} 
+            className="relative animate-bounce rounded-full"
+          />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Finding Your Perfect with Intelligent Searching</h2>
+        <p className="text-gray-600 text-center max-w-md">
+          Our AI is intelligently analyzing restaurant data and menus to find your perfect, personalized food recommendations.
+        </p>
+        <div className="mt-8 w-full max-w-sm">
+          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 animate-progress w-full"></div>
+          </div>
+          <p className="text-sm text-blue-600 font-semibold text-center mt-3 animate-fade-in-out">
+            {loadingMessages[currentMessageIndex]}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSaveSelection = (restaurantName: string, items: MenuItem[]) => {
     setSavedSelections(prev => ({ ...prev, [restaurantName]: items }));

@@ -6,6 +6,7 @@ import FoodMatchesPreview from "./components/FoodMatchesPreview";
 import { useToast } from "@/components/ui/use-toast";
 import { TaranaEatsFormValues, FoodMatchesData } from "@/types/tarana-eats";
 import { combinedFoodData } from "./data/taranaEatsData";
+import { taranaai } from "../../../public";
 
 export default function TaranaEatsPage() {
   const [results, setResults] = useState<FoodMatchesData | null>(null);
@@ -119,7 +120,7 @@ export default function TaranaEatsPage() {
           />
         </div>
         <div className="w-full md:w-[450px] border-l md:overflow-y-auto">
-          <FoodMatchesPreview results={results} isLoading={loading} />
+          <FoodMatchesPreview results={results} isLoading={loading} taranaaiLogo={taranaai} />
         </div>
       </main>
     </div>
