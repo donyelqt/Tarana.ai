@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import Image from "next/image"
 import Sidebar from "../../components/Sidebar"
 import SuggestedSpots from "./components/SuggestedSpots"
@@ -109,7 +110,7 @@ const DashboardContent = () => {
               <div className="text-gray-200 text-sm">Ready to plan your next adventure?</div>
               {/*<div className="text-gray-500 text-sm">{session?.user?.email}</div>*/}
             </div>
-          </div>
+          </div> 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Popover>
               <PopoverTrigger asChild>
