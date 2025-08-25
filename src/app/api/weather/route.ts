@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const lon = parseFloat(url.searchParams.get('lon') || '120.5960');
     
     // Use server-side environment variable (not exposed to client)
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const apiKey = process.env.OPENWEATHER_API_KEY;
     
     if (!apiKey) {
       console.error('Weather API key not configured');
