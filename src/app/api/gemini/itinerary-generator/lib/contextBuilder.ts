@@ -99,11 +99,12 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       ${weatherContext}
       ${peakHoursContext}
       
-      CRITICAL PEAK HOURS FILTERING:
-      - ONLY suggest activities that are NOT currently in peak hours based on Manila time
-      - If popular activities are currently crowded, either schedule them for off-peak times or choose alternatives
-      - Always prioritize low-traffic activities for the current time period
-      - Mention in descriptions when activities will be less crowded
+      MANDATORY PEAK HOURS FILTERING:
+      - ABSOLUTELY FORBIDDEN: Do not include any activity currently in peak hours
+      - The provided database has already been filtered to exclude peak hour activities
+      - If you cannot find enough activities, return fewer activities rather than including peak hour ones
+      - Every activity description must mention optimal visit times to avoid crowds
+      - Current Manila time context is provided - use it to validate timing recommendations
       ${interestsContext}
       ${durationContext}
       ${budgetContext}
@@ -119,10 +120,10 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       ${durationDays ? `4.a. Ensure the itinerary spans exactly ${durationDays} day(s). Create separate day sections and, within each day, include Morning, Afternoon, and Evening periods populated only from the database.` : ""}
       5. Pace the itinerary based on trip duration, ensuring a balanced schedule.
       6. For each activity, include: **image** (MUST be the exact image URL from the database - do not modify or substitute), **title** (exact title from the database), **time** slot (e.g., "9:00-10:30AM"), a **brief** description that mentions optimal visit times to avoid crowds, and **tags** (exact tags from the database).
-      7. **TRAFFIC-AWARE DESCRIPTIONS:** In the description, mention when each activity is less crowded based on the peakHours data. For example: "Best visited after 2 PM to avoid morning crowds" or "Currently low traffic - perfect time to visit!" If an activity is currently in peak hours, do NOT include it in the itinerary.
+      7. **TRAFFIC-AWARE DESCRIPTIONS:** Every activity description MUST include traffic timing information. Examples: "Best visited after 2 PM to avoid morning crowds" or "Currently low traffic - perfect time to visit!" The provided database contains only non-peak activities, so all suggestions should emphasize their current low-traffic status.
       8. Adhere to the user's budget preferences by selecting only activities from the database that match the budget category.
       9. **CRITICAL: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
-      10. **VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database. If you cannot find sufficient activities in the database to fill the requested itinerary duration, return a shorter itinerary with only the available database activities.
+      10. **VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database AND is not currently in peak hours. The database has been pre-filtered for peak hours, but you must still validate. If insufficient non-peak activities exist, return a shorter itinerary rather than including peak hour activities.
       11. **OUTPUT FORMAT:** Return a JSON object that strictly follows this Zod schema:\n          \`z.object({\n            title: z.string(),\n            subtitle: z.string(),\n            items: z.array(z.object({\n              period: z.string(),\n              activities: z.array(z.object({\n                image: z.string(),\n                title: z.string(),\n                time: z.string(),\n                desc: z.string(),\n                tags: z.array(z.string()),
               })),
             })),\n          })\`
