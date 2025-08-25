@@ -6,7 +6,10 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ItineraryFormProps, FormData } from "../types";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { ChevronDown } from "lucide-react";
+import { DollarSign, PiggyBank, CreditCard, Wallet, Coins, Gem } from "lucide-react";
 
 export default function ItineraryForm({
   showPreview,
@@ -29,6 +32,8 @@ export default function ItineraryForm({
   durationOptions
 }: ItineraryFormProps) {
   const { toast } = useToast();
+  // Local state to control the budget popover
+  const [openBudget, setOpenBudget] = useState(false);
 
   // Calculate end date whenever start date or duration changes
   useEffect(() => {
@@ -99,20 +104,62 @@ export default function ItineraryForm({
         {/* Budget Range */}
         <div>
           <Label htmlFor="budget" className="block font-medium mb-2 text-gray-900">Budget Range</Label>
-          <select
-            id="budget"
-            className={cn(
-              "w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2",
-              showPreview ? 'border-gray-300' : 'border-gray-300 focus:ring-blue-200'
-            )}
-            value={budget}
-            onChange={e => setBudget(e.target.value)}
-            disabled={showPreview}
-          >
-            {budgetOptions.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+          <Popover open={openBudget} onOpenChange={setOpenBudget}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                className={cn(
+                  "w-full justify-between text-md font-normal",
+                  !budget && "text-muted-foreground",
+                  budget && "border-slate-300 text-gray-700 hover:text-blue-500",
+                  showPreview && "cursor-not-allowed"
+                )}
+                disabled={showPreview}
+              >
+                {budget || "Select budget range"}
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[700px] p-2" align="center">
+              <div className="grid gap-1 p-2">
+                {budgetOptions.map((option, idx) => {
+                  let Icon;
+                  // Map icon by position for visual cues
+                  switch (idx) {
+                    case 0:
+                      Icon = PiggyBank; // lowest
+                      break;
+                    case 1:
+                      Icon = Wallet;
+                      break;
+                    case 2:
+                      Icon = CreditCard;
+                      break;
+                    case 3:
+                      Icon = Gem; // highest
+                      break;
+                    default:
+                      Icon = DollarSign;
+                  }
+                  return (
+                    <Button
+                      key={option}
+                      variant="ghost"
+                      className={`w-full flex items-center text-md justify-start gap-2 py-2 px-3 rounded-md text-left ${budget === option ? "bg-primary/10" : ""}`}
+                      onClick={() => {
+                        setBudget(option);
+                        setOpenBudget(false);
+                      }}
+                    >
+                      <Icon className="w-5 h-5 text-primary" />
+                      <span>{option}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
         {/* Number of Pax */}
         <div>
