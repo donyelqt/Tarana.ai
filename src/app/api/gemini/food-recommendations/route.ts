@@ -113,10 +113,13 @@ export async function POST(req: NextRequest) {
       // Try to parse the JSON response with enhanced error handling
       let recommendations: { matches: EnhancedResultMatch[] };
       try {
-        // Look for JSON in the response
-        const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          recommendations = JSON.parse(jsonMatch[0]);
+        // Look for JSON in the response with multiple extraction strategies
+        let jsonString = extractJsonFromResponse(textResponse);
+        
+        if (jsonString) {
+          // Sanitize the JSON string before parsing
+          jsonString = sanitizeJsonString(jsonString);
+          recommendations = JSON.parse(jsonString);
           
           // Validate and enhance the response
           if (recommendations && recommendations.matches && Array.isArray(recommendations.matches)) {
@@ -129,6 +132,7 @@ export async function POST(req: NextRequest) {
         }
       } catch (parseError) {
         console.error("Failed to parse Gemini response:", parseError);
+        console.error("Raw response:", textResponse.substring(0, 500));
         
         // Enhanced fallback: Create a structured response based on the text
         recommendations = createFallbackRecommendations(foodData, prompt);
@@ -374,6 +378,66 @@ function generateQuickReason(restaurant: any, preferences: any): string {
   }
   
   return reasons.join(' • ');
+}
+
+// Extract JSON from Gemini response with multiple strategies
+function extractJsonFromResponse(textResponse: string): string | null {
+  // Strategy 1: Look for complete JSON object
+  let jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return jsonMatch[0];
+  }
+  
+  // Strategy 2: Look for JSON between code blocks
+  jsonMatch = textResponse.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch) {
+    return jsonMatch[1].trim();
+  }
+  
+  // Strategy 3: Look for JSON after specific markers
+  const markers = ['RESPONSE:', 'JSON:', 'Result:', 'Output:'];
+  for (const marker of markers) {
+    const markerIndex = textResponse.indexOf(marker);
+    if (markerIndex !== -1) {
+      const afterMarker = textResponse.substring(markerIndex + marker.length);
+      const jsonMatch = afterMarker.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return jsonMatch[0];
+      }
+    }
+  }
+  
+  return null;
+}
+
+// Sanitize JSON string to fix common issues
+function sanitizeJsonString(jsonString: string): string {
+  // Remove any leading/trailing whitespace
+  jsonString = jsonString.trim();
+  
+  // Fix common issues with quotes in property names
+  jsonString = jsonString.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+  
+  // Fix unescaped quotes in string values
+  jsonString = jsonString.replace(/:\s*"([^"]*?)"([^,}\]]*?)"([^"]*?)"/g, (match, p1, p2, p3) => {
+    // If p2 contains quotes, escape them
+    const escapedP2 = p2.replace(/"/g, '\\"');
+    return `: "${p1}${escapedP2}${p3}"`;
+  });
+  
+  // Fix trailing commas
+  jsonString = jsonString.replace(/,\s*([}\]])/g, '$1');
+  
+  // Fix single quotes to double quotes
+  jsonString = jsonString.replace(/'/g, '"');
+  
+  // Remove any non-JSON content after the closing brace
+  const lastBraceIndex = jsonString.lastIndexOf('}');
+  if (lastBraceIndex !== -1) {
+    jsonString = jsonString.substring(0, lastBraceIndex + 1);
+  }
+  
+  return jsonString;
 }
 
 // Create general recommendations when no specific matches

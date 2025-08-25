@@ -8,6 +8,16 @@ import { sampleItinerary } from "../data/itineraryData";
 import { getWeatherIconUrl, getWeatherDescription } from "../utils/weatherUtils";
 import { TrafficCone } from "lucide-react";
 import { isCurrentlyPeakHours } from "@/lib/peakHours";
+import React, { useState, useEffect } from "react";
+
+// Loading messages
+const loadingMessages = [
+  "Finding the best spots for you...",
+  "Checking real-time traffic conditions...",
+  "Analyzing weather patterns...",
+  "Personalizing your travel plan...",
+  "Almost there, just a few more seconds...",
+];
 
 // Traffic styles matching dashboard implementation
 const trafficStyles: { [key: string]: string } = {
@@ -40,13 +50,50 @@ export default function ItineraryPreview({
   onSave,
   taranaaiLogo
 }: ItineraryPreviewProps) {
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentMessageIndex((prevIndex: number) =>
+        prevIndex === loadingMessages.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 2500); // Change message every 2.5 seconds
+    if (isLoadingItinerary) {
+      const interval = setInterval(() => {
+        setCurrentMessageIndex((prevIndex) =>
+          (prevIndex + 1) % loadingMessages.length
+        );
+      }, 2500); // Change message every 2.5 seconds to sync with fade-in-out animation
+
+      return () => clearInterval(interval);
+    }
+  }, [isLoadingItinerary]);
+
   if (isLoadingItinerary) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-white/80 z-10 rounded-2xl shadow-md p-6">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-        <p className="text-lg font-semibold text-gray-700">Generating your itinerary...</p>
-        <p className="text-md font-semibold text-gray-700">Intelligently searching for your perfect itinerary...</p>
-        <p className="text-sm text-gray-500">This might take a moment. Please wait.</p>
+      <div className="w-full h-full flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm z-10 rounded-2xl shadow-lg p-8">
+        <div className="relative mb-6">
+          <div className="absolute inset-0 bg-blue-500 rounded-full blur-xl opacity-50 animate-pulse"></div>
+          <Image 
+            src={taranaaiLogo} 
+            alt="Tarana.ai is thinking" 
+            width={120} 
+            height={120} 
+            className="relative animate-bounce rounded-full"
+          />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Crafting Your Adventure with Intelligent Searching</h2>
+        <p className="text-gray-600 text-center max-w-md">
+          Our AI is intelligently analyzing millions of data points to build your perfect, personalized itinerary.
+        </p>
+        <div className="mt-8 w-full max-w-sm">
+          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500 animate-progress w-full"></div>
+          </div>
+          <p className="text-sm text-blue-600 font-semibold text-center mt-3 animate-fade-in-out">
+            {loadingMessages[currentMessageIndex]}
+          </p>
+        </div>
       </div>
     );
   }
