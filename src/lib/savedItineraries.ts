@@ -21,6 +21,7 @@ export interface ItineraryData {
 }
 
 import { WeatherData } from "../lib/utils"; // Added import
+import { normalizeImagePath, getFallbackImage } from "./imageUtils";
 
 export interface SavedItinerary {
   id: string;
@@ -74,6 +75,7 @@ export const getSavedItineraries = async (): Promise<SavedItinerary[]> => {
     // Ensure data matches SavedItinerary structure, especially for JSON fields
     return data.map(item => ({
       ...item,
+      image: normalizeImagePath(item.image) || getFallbackImage(item.tags),
       formData: typeof item.form_data === 'string' ? JSON.parse(item.form_data) : item.form_data,
       itineraryData: typeof item.itinerary_data === 'string' ? JSON.parse(item.itinerary_data) : item.itinerary_data,
     })) as SavedItinerary[];
@@ -95,7 +97,7 @@ export const saveItinerary = async (itinerary: Omit<SavedItinerary, 'id' | 'crea
     title: itinerary.title,
     date: itinerary.date,
     budget: itinerary.budget,
-    image: typeof itinerary.image === 'string' ? itinerary.image : (itinerary.image as StaticImageData).src,
+    image: normalizeImagePath(typeof itinerary.image === 'string' ? itinerary.image : (itinerary.image as StaticImageData).src) || getFallbackImage(itinerary.tags),
     tags: itinerary.tags,
     form_data: itinerary.formData,
     itinerary_data: itinerary.itineraryData,

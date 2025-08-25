@@ -122,6 +122,10 @@ const SavedTrips = () => {
                   alt={itinerary.title}
                   fill
                   className="object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/images/placeholders/default-itinerary.jpg';
+                  }}
                 />
               </div>
 
