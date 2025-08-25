@@ -84,7 +84,7 @@ export default function ItineraryPreview({
         </div>
         <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Crafting Your Adventure with Intelligent Searching</h2>
         <p className="text-gray-600 text-center max-w-md">
-          Our AI is intelligently analyzing millions of data points with Retrieval Augmented AI (RAA) to build your perfect, personalized itinerary.
+          Our AI is intelligently analyzing millions of data points with Retrieval Augmented AI (RAA) and agentic AI to build your perfect, personalized itinerary.
         </p>
         <div className="mt-8 w-full max-w-sm">
           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
