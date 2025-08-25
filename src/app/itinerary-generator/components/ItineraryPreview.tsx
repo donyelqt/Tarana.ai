@@ -45,7 +45,7 @@ export default function ItineraryPreview({
       <div className="w-full h-full flex flex-col items-center justify-center bg-white/80 z-10 rounded-2xl shadow-md p-6">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
         <p className="text-lg font-semibold text-gray-700">Generating your itinerary...</p>
-        <p className="text-md font-semibold text-gray-700">Thinking mode...</p>
+        <p className="text-md font-semibold text-gray-700">Intelligently searching for your perfect itinerary...</p>
         <p className="text-sm text-gray-500">This might take a moment. Please wait.</p>
       </div>
     );
