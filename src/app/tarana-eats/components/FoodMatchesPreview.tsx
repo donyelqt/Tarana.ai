@@ -159,88 +159,88 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
           onSave={(items) => handleSaveSelection(activeMatch.name, items)}
         />
       )}
-      <div className="rounded-lg h-full p-6 w-full">
+      <aside className="w-full h-full min-h-full">
         {results ? (
-          <>
-            <h2 className="text-xl font-bold mb-2">Your Food Matches</h2>
-            <p className="text-gray-500 mb-6">A preview of your matched meal plans!</p>
-            <div className="space-y-4">
-              {results.matches.map((match, idx) => {
-                const selection = savedSelections[match.name];
-                const total = selection?.reduce((sum, item) => sum + item.price, 0);
-                let imageSrc = match.image;
-                if (imageSrc && !imageSrc.startsWith('http') && !imageSrc.startsWith('/')) {
-                  imageSrc = `/${imageSrc}`;
-                }
+          <div className="bg-white rounded-2xl shadow-md p-4 sm:p-6 h-full flex flex-col">
+            <div className="mb-2 text-sm text-gray-900 font-bold">Your Food Matches</div>
+            <div className="mb-4 text-xs text-gray-700">A preview of your matched meal plans!</div>
+            <div className="flex-1 overflow-y-auto">
+            {results.matches.map((match, idx) => {
+              const selection = savedSelections[match.name];
+              const total = selection?.reduce((sum, item) => sum + item.price, 0);
+              let imageSrc = match.image;
+              if (imageSrc && !imageSrc.startsWith('http') && !imageSrc.startsWith('/')) {
+                imageSrc = `/${imageSrc}`;
+              }
 
-                const hasValidImage = imageSrc && imageSrc.startsWith('/');
-                const placeholderImage = "/images/placeholders/hero-placeholder.svg";
+              const hasValidImage = imageSrc && imageSrc.startsWith('/');
+              const placeholderImage = "/images/placeholders/hero-placeholder.svg";
 
-                return (
-                  <div key={idx} className="rounded-xl shadow border p-4">
-                    <div className="relative w-full h-32 rounded-lg mb-4 overflow-hidden">
-                      {hasValidImage ? (
-                        <Image src={imageSrc} alt={match.name} fill style={{ objectFit: "cover" }} />
-                      ) : (
-                        <Image src={placeholderImage} alt={match.name} fill style={{ objectFit: "cover" }} />
-                      )}
-                    </div>
-                    <div className="font-semibold text-lg">{match.name}</div>
-                    <div className="text-gray-500 text-sm">{match.meals} meals under ₱{match.price}</div>
-                    
-                    {/* AI Recommendation Reason */}
-                    {match.reason && (
-                      <div className="mt-2 px-2 py-1 bg-blue-50 rounded text-sm text-blue-800 border border-blue-100">
-                        <p className="italic">"{match.reason}"</p>
-                      </div>
+              return (
+                <div key={idx} className="rounded-xl shadow border p-4 mb-4">
+                  <div className="relative w-full h-32 rounded-lg mb-4 overflow-hidden">
+                    {hasValidImage ? (
+                      <Image src={imageSrc} alt={match.name} fill style={{ objectFit: "cover" }} />
+                    ) : (
+                      <Image src={placeholderImage} alt={match.name} fill style={{ objectFit: "cover" }} />
                     )}
-                    
-                    {selection && (
-                      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                        <div className="flex justify-between items-center">
-                          <h4 className="font-semibold text-sm">Your Selection</h4>
-                          <p className="font-bold text-sm">Total: ₱{total || 0}</p>
-                        </div>
-                        <ul className="list-disc pl-5 mt-2 text-sm text-gray-600">
-                          {selection.map(item => <li key={item.name}>{item.name} - ₱{item.price}</li>)}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center justify-between mt-4">
-                      <Button onClick={() => setActiveMatch(match)}>
-                        {selection ? 'Edit Menu' : 'View Menu'}
-                      </Button>
-                      <Button variant="outline" size="icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-3.125L5 18V4z" />
-                        </svg>
-                      </Button>
-                    </div>
                   </div>
-                );
-              })}
-              <Button 
-                className="w-full bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4" 
-                onClick={handleSaveAllMeals} 
-                disabled={loading || Object.keys(savedSelections).length === 0}
-              >
-                {loading ? 'Saving...' : 'Save Meals'}
-              </Button>
+                  <div className="font-semibold text-lg">{match.name}</div>
+                  <div className="text-gray-500 text-sm">{match.meals} meals under ₱{match.price}</div>
+                  
+                  {/* AI Recommendation Reason */}
+                  {match.reason && (
+                    <div className="mt-2 px-2 py-1 bg-blue-50 rounded text-sm text-blue-800 border border-blue-100">
+                      <p className="italic">"{match.reason}"</p>
+                    </div>
+                  )}
+                  
+                  {selection && (
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-semibold text-sm">Your Selection</h4>
+                        <p className="font-bold text-sm">Total: ₱{total || 0}</p>
+                      </div>
+                      <ul className="list-disc pl-5 mt-2 text-sm text-gray-600">
+                        {selection.map(item => <li key={item.name}>{item.name} - ₱{item.price}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between mt-4">
+                    <Button onClick={() => setActiveMatch(match)}>
+                      {selection ? 'Edit Menu' : 'View Menu'}
+                    </Button>
+                    <Button variant="outline" size="icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-3.125L5 18V4z" />
+                      </svg>
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
             </div>
-          </>
+            <Button 
+              className="w-full bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition mt-4" 
+              onClick={handleSaveAllMeals} 
+              disabled={loading || Object.keys(savedSelections).length === 0}
+            >
+              {loading ? 'Saving...' : 'Save Meals'}
+            </Button>
+          </div>
         ) : (
-          <div className="text-center rounded-lg flex flex-col items-center justify-center h-[90vh]">
+          <div className="bg-white rounded-2xl shadow-md p-14 h-full flex flex-col items-center justify-center">
             <div className="mb-4 text-gray-300">
-              <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="sm:w-[100px] sm:h-[100px]">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Find Your Next Meal</h3>
-            <p className="text-gray-500">Your food matches will appear here.</p>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">Find Your Next Meal</h3>
+            <p className="text-gray-500 text-center text-sm sm:text-base">Your food matches will appear here.</p>
           </div>
         )}
-      </div>
+      </aside>
     </>
   );
 }
