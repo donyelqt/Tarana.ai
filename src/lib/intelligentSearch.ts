@@ -9,6 +9,8 @@
 import { generateEmbedding } from "./embeddings";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { isCurrentlyPeakHours, getManilaTime } from "./peakHours";
+import { tomtomTrafficService } from "./tomtomTraffic";
+import { getActivityCoordinates } from "./baguioCoordinates";
 import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
 
 // Advanced search configuration
@@ -301,19 +303,56 @@ class ContextualAnalyzer {
 }
 
 /**
- * Temporal optimization engine
+ * Temporal optimization engine with real-time traffic integration
  */
 class TemporalOptimizer {
-  static calculateTemporalScore(activity: Activity, context: SearchContext): { score: number; factors: string[] } {
+  static async calculateTemporalScore(activity: Activity, context: SearchContext): Promise<{ score: number; factors: string[] }> {
     const factors: string[] = [];
     let score = 0;
 
-    // Peak hours penalty/bonus
+    // Get activity coordinates for traffic data
+    const coordinates = getActivityCoordinates(activity.title);
+    let realTimeTrafficScore = 0;
+    
+    if (coordinates) {
+      try {
+        // Fetch real-time traffic data
+        const trafficData = await tomtomTrafficService.getLocationTrafficData(coordinates.lat, coordinates.lon);
+        if (trafficData) {
+          const { trafficLevel, recommendationScore } = trafficData;
+          
+          // Convert traffic level to score bonus/penalty
+          switch (trafficLevel) {
+            case 'LOW':
+              realTimeTrafficScore = 0.3;
+              factors.push(`Real-time traffic: ${trafficLevel} (${Math.round(recommendationScore)}% optimal)`);
+              break;
+            case 'MODERATE':
+              realTimeTrafficScore = 0.1;
+              factors.push(`Real-time traffic: ${trafficLevel} (${Math.round(recommendationScore)}% optimal)`);
+              break;
+            case 'HIGH':
+              realTimeTrafficScore = -0.2;
+              factors.push(`Real-time traffic: ${trafficLevel} (${Math.round(recommendationScore)}% optimal)`);
+              break;
+            case 'SEVERE':
+              realTimeTrafficScore = -0.4;
+              factors.push(`Real-time traffic: ${trafficLevel} (${Math.round(recommendationScore)}% optimal)`);
+              break;
+          }
+        }
+      } catch (error) {
+        console.warn(`Traffic data unavailable for ${activity.title}:`, error);
+        factors.push('Traffic data unavailable - using peak hours only');
+      }
+    }
+
+    // Combine real-time traffic with peak hours data
     if (activity.peakHours) {
       const isCurrentlyPeak = isCurrentlyPeakHours(activity.peakHours);
       if (!isCurrentlyPeak) {
         score += 0.4;
-        factors.push('Currently low traffic');
+        factors.push('Currently outside peak hours');
       } else {
         score -= 0.3;
         factors.push('Currently in peak hours');
@@ -322,6 +361,9 @@ class TemporalOptimizer {
       score += 0.2;
       factors.push('No peak hour restrictions');
     }
+
+    // Add real-time traffic score
+    score += realTimeTrafficScore;
 
     // Time of day alignment
     const activityTime = activity.time.toLowerCase();
@@ -539,12 +581,12 @@ export class IntelligentSearchEngine {
 
       // Temporal optimization
       if (this.config.enableTemporalOptimization && this.config.temporalWeight > 0) {
-        const temporalResult = TemporalOptimizer.calculateTemporalScore(activity, context);
-        scores.temporal = temporalResult.score;
-        metadata.temporalFactors = temporalResult.factors;
+        const temporalScore = await TemporalOptimizer.calculateTemporalScore(activity, context);
+        scores.temporal = temporalScore.score;
+        metadata.temporalFactors = temporalScore.factors;
         
         if (scores.temporal > 0.5) {
-          reasoning.push(`Good temporal fit: ${temporalResult.factors.join(', ')}`);
+          reasoning.push(`Good temporal fit: ${temporalScore.factors.join(', ')}`);
         }
       }
 
