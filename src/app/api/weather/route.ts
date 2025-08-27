@@ -11,14 +11,18 @@ export async function GET(request: Request) {
     const lon = parseFloat(url.searchParams.get('lon') || '120.5960');
     
     // Use server-side environment variable (not exposed to client)
-    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+    const apiKey = process.env.OPENWEATHER_API_KEY || process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
     
     if (!apiKey) {
-      console.error('Weather API key not configured');
-      return NextResponse.json(
-        { error: 'Weather service not configured' },
-        { status: 500 }
-      );
+      console.warn('Weather API key not configured - using fallback data');
+      // Return fallback weather data instead of throwing error
+      return NextResponse.json({
+        weather: [{ id: 800, main: 'Clear', description: 'clear sky' }],
+        main: { temp: 20, feels_like: 20, humidity: 60 },
+        wind: { speed: 2 },
+        name: 'Baguio City',
+        fallback: true
+      });
     }
     
     console.log('Using API key:', apiKey ? 'API key is present' : 'API key is missing');
@@ -30,25 +34,29 @@ export async function GET(request: Request) {
       const weatherData = await fetchWeatherData(lat, lon, apiKey);
       
       if (!weatherData) {
-        console.error('Weather data returned null');
-        return NextResponse.json(
-          { error: 'Failed to fetch weather data' },
-          { status: 500 }
-        );
+        console.warn('Weather data returned null - using fallback');
+        return NextResponse.json({
+          weather: [{ id: 800, main: 'Clear', description: 'clear sky' }],
+          main: { temp: 20, feels_like: 20, humidity: 60 },
+          wind: { speed: 2 },
+          name: 'Baguio City',
+          fallback: true
+        });
       }
       
       // Return the weather data to the client (without exposing the API key)
       return NextResponse.json(weatherData);
     } catch (fetchError) {
-      console.error('Error in fetchWeatherData:', fetchError);
-      const errorMessage = fetchError instanceof Error 
-        ? fetchError.message 
-        : 'Unknown error occurred';
+      console.warn('Error in fetchWeatherData, using fallback:', fetchError);
       
-      return NextResponse.json(
-        { error: `Weather data fetch error: ${errorMessage}` },
-        { status: 500 }
-      );
+      // Return fallback weather data instead of error
+      return NextResponse.json({
+        weather: [{ id: 800, main: 'Clear', description: 'clear sky' }],
+        main: { temp: 20, feels_like: 20, humidity: 60 },
+        wind: { speed: 2 },
+        name: 'Baguio City',
+        fallback: true
+      });
     }
     
   } catch (error) {

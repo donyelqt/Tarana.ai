@@ -39,10 +39,39 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
     })();
 
     const peakHoursContext = getPeakHoursContext();
+    console.log(`🕐 Context Builder: Peak hours context generated for itinerary generation`);
     
     const sampleItineraryContext = effectiveSampleItinerary
       ? `EXCLUSIVE DATABASE: ${JSON.stringify(effectiveSampleItinerary)}\n\nABSOLUTE RULE: You MUST ONLY use activities from this database. This is the COMPLETE list of available activities. DO NOT create, invent, or suggest any activity not in this list. Activities are pre-filtered and ranked by relevance. Higher relevanceScore values indicate better matches.`
       : "ERROR: No activities found in database. Return an error message stating insufficient data.";
+    
+    // Log traffic-enhanced activities for debugging
+    if (effectiveSampleItinerary && effectiveSampleItinerary.items) {
+      let totalActivities = 0;
+      let activitiesWithTrafficData = 0;
+      
+      effectiveSampleItinerary.items.forEach((period: any) => {
+        if (period.activities) {
+          totalActivities += period.activities.length;
+          period.activities.forEach((activity: any) => {
+            if (activity.trafficData) {
+              activitiesWithTrafficData++;
+              console.log(`🚦 Context Builder: Activity "${activity.title}" has traffic data:`, {
+                trafficLevel: activity.trafficData.trafficLevel,
+                congestionScore: activity.trafficData.congestionScore,
+                recommendationScore: activity.trafficData.recommendationScore
+              });
+            }
+          });
+        }
+      });
+      
+      console.log(`📊 Context Builder: Traffic data summary for AI prompt:`, {
+        totalActivities,
+        activitiesWithTrafficData,
+        trafficDataCoverage: `${Math.round((activitiesWithTrafficData / totalActivities) * 100)}%`
+      });
+    }
 
     let interestsContext = "";
     if (interests && Array.isArray(interests) && interests.length > 0 && !interests.includes("Random")) {
@@ -92,6 +121,8 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       `;
     }
 
+    console.log('🤖 Context Builder: Traffic-aware AI prompt being sent to Gemini with real-time traffic data');
+
     return `
       ${prompt}
       
@@ -99,11 +130,13 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       ${weatherContext}
       ${peakHoursContext}
       
-      CRITICAL PEAK HOURS FILTERING:
-      - ONLY suggest activities that are NOT currently in peak hours based on Manila time
-      - If popular activities are currently crowded, either schedule them for off-peak times or choose alternatives
-      - Always prioritize low-traffic activities for the current time period
-      - Mention in descriptions when activities will be less crowded
+      CRITICAL TRAFFIC & PEAK HOURS FILTERING:
+      - Activities are now enhanced with REAL-TIME TRAFFIC DATA from TomTom API combined with hardcoded peak hours
+      - PRIORITIZE activities with high combinedTrafficScore (80+) and trafficRecommendation of 'VISIT_NOW' or 'VISIT_SOON'
+      - AVOID activities with trafficRecommendation of 'AVOID_NOW' or crowdLevel of 'VERY_HIGH'
+      - Each activity now includes real-time traffic insights in descriptions - use this information
+      - Traffic data includes: congestionScore, recommendationScore, trafficLevel, and AI-generated traffic analysis
+      - Combine both hardcoded peak hours AND real-time traffic conditions for optimal recommendations
       ${interestsContext}
       ${durationContext}
       ${budgetContext}
@@ -119,7 +152,7 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       ${durationDays ? `4.a. Ensure the itinerary spans exactly ${durationDays} day(s). Create separate day sections and, within each day, include Morning, Afternoon, and Evening periods populated only from the database.` : ""}
       5. Pace the itinerary based on trip duration, ensuring a balanced schedule.
       6. For each activity, include: **image** (MUST be the exact image URL from the database - do not modify or substitute), **title** (exact title from the database), **time** slot (e.g., "9:00-10:30AM"), a **brief** description that mentions optimal visit times to avoid crowds, and **tags** (exact tags from the database).
-      7. **TRAFFIC-AWARE DESCRIPTIONS:** In the description, mention when each activity is less crowded based on the peakHours data. For example: "Best visited after 2 PM to avoid morning crowds" or "Currently low traffic - perfect time to visit!" If an activity is currently in peak hours, do NOT include it in the itinerary.
+      7. **TRAFFIC-AWARE DESCRIPTIONS:** In the description, mention when each activity is less crowded based on the peakHours data AND real-time traffic conditions. For example: "Best visited after 2 PM to avoid morning crowds" or "Currently low traffic - perfect time to visit!" or "Real-time traffic shows moderate congestion - consider visiting later." If an activity is currently in peak hours OR has poor traffic conditions, do NOT include it in the itinerary.
       8. Adhere to the user's budget preferences by selecting only activities from the database that match the budget category.
       9. **CRITICAL: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
       10. **VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database. If you cannot find sufficient activities in the database to fill the requested itinerary duration, return a shorter itinerary with only the available database activities.

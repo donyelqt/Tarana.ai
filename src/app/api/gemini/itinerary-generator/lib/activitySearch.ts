@@ -3,6 +3,8 @@ import { proposeSubqueries } from "../agent/agent";
 import { isCurrentlyPeakHours } from "@/lib/peakHours";
 import { WEATHER_TAG_FILTERS } from "./config";
 import { validateAndEnrichActivity } from "../utils/itineraryUtils";
+import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/trafficAwareActivitySearch";
+import { getActivityCoordinates } from "@/lib/baguioCoordinates";
 import type { WeatherCondition } from "../types/types";
 
 export async function findAndScoreActivities(prompt: string, interests: string[], weatherType: WeatherCondition, durationDays: number | null, model: any) {
@@ -40,7 +42,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             interests && Array.isArray(interests) && !interests.includes("Random") ? interests : []
         );
 
-        // Enhanced filtering with weighted relevance scoring including peak hours
+        // Enhanced filtering with weighted relevance scoring including peak hours and real-time traffic
         const scoredSimilar = (similar || []).map((s) => {
             const tags = Array.isArray(s.metadata?.tags) ? s.metadata.tags : [];
             const peakHours = s.metadata?.peakHours || "";
@@ -48,22 +50,31 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             const weatherMatch = allowedWeatherTags.length === 0 || tags.some((t: string) => allowedWeatherTags.includes(t));
             const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
             
+            // Get coordinates for traffic analysis
+            const coordinates = getActivityCoordinates(s.metadata?.title || s.activity_id);
+            
             let relevanceScore = s.similarity; // Base score from vector similarity
             
             if (interestMatch && interestSet.size > 0) {
                 const matchCount = tags.filter((t: string) => interestSet.has(t)).length;
-                relevanceScore += (matchCount / interestSet.size) * 0.3; // Up to 30% boost for interest matches
+                relevanceScore += (matchCount / interestSet.size) * 0.25; // Up to 25% boost for interest matches
             }
             
             if (weatherMatch && allowedWeatherTags.length > 0) {
                 const matchCount = tags.filter((t: string) => allowedWeatherTags.includes(t)).length;
-                relevanceScore += (matchCount / allowedWeatherTags.length) * 0.2; // Up to 20% boost for weather matches
+                relevanceScore += (matchCount / allowedWeatherTags.length) * 0.15; // Up to 15% boost for weather matches
             }
             
+            // Peak hours penalty (reduced to make room for traffic scoring)
             if (!isCurrentlyPeak) {
-                relevanceScore += 0.25; // 25% boost for activities not in peak hours
+                relevanceScore += 0.15; // 15% boost for activities not in peak hours
             } else {
-                relevanceScore -= 0.5; // Strong penalty for activities currently in peak hours
+                relevanceScore -= 0.3; // Penalty for activities currently in peak hours
+            }
+            
+            // Add coordinates for traffic analysis later
+            if (coordinates) {
+                relevanceScore += 0.1; // Small boost for activities with known coordinates
             }
             
             return {
@@ -72,7 +83,8 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                 interestMatch,
                 weatherMatch,
                 isCurrentlyPeak,
-                peakHours
+                peakHours,
+                coordinates
             };
         });
 
@@ -82,13 +94,8 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             .slice(0, 40);
 
         if (filteredSimilar.length > 0) {
-            const morningActivities: any[] = [];
-            const afternoonActivities: any[] = [];
-            const eveningActivities: any[] = [];
-            const anytimeActivities: any[] = [];
-            
-            filteredSimilar.forEach(s => {
-                const timeStr = s.metadata?.time?.toLowerCase() || "";
+            // Create activities with coordinates
+            const activitiesWithCoords = filteredSimilar.map(s => {
                 const rawActivity = {
                     image: s.metadata?.image || "",
                     title: s.metadata?.title || s.activity_id,
@@ -97,21 +104,92 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                     tags: s.metadata?.tags || [],
                     peakHours: s.metadata?.peakHours || "",
                     relevanceScore: s.relevanceScore,
-                    isCurrentlyPeak: s.isCurrentlyPeak
+                    isCurrentlyPeak: s.isCurrentlyPeak,
+                    lat: s.coordinates?.lat,
+                    lon: s.coordinates?.lon
                 };
                 
-                const activity = validateAndEnrichActivity(rawActivity);
-                if (!activity) return;
+                return validateAndEnrichActivity(rawActivity);
+            }).filter(Boolean);
+
+            console.log(`🚗 Itinerary Generator: Starting traffic enhancement for ${activitiesWithCoords.length} activities`);
+            
+            // Enhance activities with real-time traffic data
+            const trafficOptions = createDefaultTrafficOptions(true);
+            console.log(`⚙️ Itinerary Generator: Traffic options configured:`, {
+                prioritizeTraffic: trafficOptions.prioritizeTraffic,
+                avoidCrowds: trafficOptions.avoidCrowds,
+                flexibleTiming: trafficOptions.flexibleTiming,
+                maxTrafficLevel: trafficOptions.maxTrafficLevel
+            });
+            
+            const trafficEnhancedActivities = await trafficAwareActivitySearch.enhanceActivitiesWithTraffic(
+                activitiesWithCoords,
+                trafficOptions
+            );
+            
+            console.log(`📊 Itinerary Generator: Traffic enhancement completed. Enhanced ${trafficEnhancedActivities.length} activities`);
+            
+            // Log traffic data summary
+            const trafficSummary = trafficEnhancedActivities.map(activity => ({
+                name: activity.title,
+                hasTrafficData: !!activity.trafficData,
+                congestionScore: activity.trafficData?.congestionScore || 'N/A',
+                trafficLevel: activity.trafficData?.trafficLevel || 'N/A',
+                recommendationScore: activity.trafficData?.recommendationScore || 'N/A'
+            }));
+            console.log(`🎯 Itinerary Generator: Traffic data summary:`, trafficSummary);
+
+            // Filter and sort by traffic conditions
+            console.log(`🔍 Itinerary Generator: Filtering and sorting by traffic conditions`);
+            const finalActivities = trafficAwareActivitySearch.filterAndSortByTraffic(
+                trafficEnhancedActivities,
+                trafficOptions
+            );
+            
+            console.log(`✅ Itinerary Generator: Traffic filtering completed. Final count: ${finalActivities.length} activities`);
+
+            // Update descriptions with traffic insights
+            console.log(`📝 Itinerary Generator: Adding traffic insights to activity descriptions`);
+            const activitiesWithTrafficInsights = trafficAwareActivitySearch.updateDescriptionsWithTrafficInsights(
+                finalActivities
+            );
+            
+            console.log(`🎨 Itinerary Generator: Traffic insights added to descriptions. Processing ${activitiesWithTrafficInsights.length} activities`);
+
+            // Organize by time periods with traffic-aware logging
+            console.log(`⏰ Itinerary Generator: Organizing activities by time periods with traffic considerations`);
+            const morningActivities: any[] = [];
+            const afternoonActivities: any[] = [];
+            const eveningActivities: any[] = [];
+            const anytimeActivities: any[] = [];
+            
+            activitiesWithTrafficInsights.forEach(activity => {
+                const timeStr = activity.time?.toLowerCase() || "";
+                const trafficInfo = activity.trafficData ? 
+                    `(Traffic: ${activity.trafficData.trafficLevel}, Score: ${activity.trafficData.recommendationScore})` : 
+                    '(No traffic data)';
                 
                 if (timeStr.includes("am") || timeStr.includes("morning")) {
                     morningActivities.push(activity);
+                    console.log(`🌅 Morning: ${activity.title} ${trafficInfo}`);
                 } else if (timeStr.includes("pm") || timeStr.includes("afternoon")) {
                     afternoonActivities.push(activity);
+                    console.log(`☀️ Afternoon: ${activity.title} ${trafficInfo}`);
                 } else if (timeStr.includes("evening") || timeStr.includes("night")) {
                     eveningActivities.push(activity);
+                    console.log(`🌆 Evening: ${activity.title} ${trafficInfo}`);
                 } else {
                     anytimeActivities.push(activity);
+                    console.log(`🕐 Anytime: ${activity.title} ${trafficInfo}`);
                 }
+            });
+            
+            console.log(`📋 Itinerary Generator: Time period organization complete:`, {
+                morning: morningActivities.length,
+                afternoon: afternoonActivities.length,
+                evening: eveningActivities.length,
+                anytime: anytimeActivities.length
             });
             
             const items = [];

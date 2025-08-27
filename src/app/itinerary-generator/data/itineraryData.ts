@@ -43,6 +43,14 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
   tags: string[];
   peakHours?: string;
   relevanceScore?: number; // Optional relevance score from RAG results
+  lat?: number; // Latitude coordinate for traffic analysis
+  lon?: number; // Longitude coordinate for traffic analysis
+  trafficData?: {
+    congestionScore: number;
+    recommendationScore: number;
+    trafficLevel: 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
+    lastUpdated: Date;
+  };
 }
   
   export interface ItinerarySection {
