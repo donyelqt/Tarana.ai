@@ -40,7 +40,7 @@ describe('/api/auth/forgot-password', () => {
     
     // Default mocks
     (supabaseAdmin as any).supabaseAdmin = mockSupabaseAdmin;
-    mockCrypto.randomBytes.mockReturnValue(Buffer.from('test-token-hex', 'hex'));
+(mockCrypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test-token-hex', 'hex'));
     mockEmail.sendPasswordResetEmail.mockResolvedValue(true);
   });
 
