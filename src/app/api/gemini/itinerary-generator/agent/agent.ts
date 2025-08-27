@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { WeatherCondition } from "../types/types";
 import { getManilaTime, getPeakHoursContext } from "@/lib/peakHours";
+import { tomtomTrafficService } from "@/lib/tomtomTraffic";
+import { getActivityCoordinates } from "@/lib/baguioCoordinates";
 
 // Lightweight agentic helper: ask the model to propose up to N targeted sub-queries
 // to improve retrieval coverage (e.g., fill gaps for weather, interests, or time slots).
@@ -14,8 +16,9 @@ export async function proposeSubqueries(params: {
   existingTitles: string[];
   maxQueries?: number;
   includePeakHoursContext?: boolean;
+  includeTrafficData?: boolean;
 }): Promise<string[]> {
-  const { model, userPrompt, interests, weatherType, durationDays, existingTitles, includePeakHoursContext = true } = params;
+  const { model, userPrompt, interests, weatherType, durationDays, existingTitles, includePeakHoursContext = true, includeTrafficData = true } = params;
   const maxQueries = Math.min(params.maxQueries ?? 3, 5);
   
   // Get current Manila time context for peak hours optimization
@@ -26,6 +29,52 @@ export async function proposeSubqueries(params: {
     hour12: true,
     timeZone: 'Asia/Manila'
   });
+  
+  // Get real-time traffic context for major Baguio locations
+  let trafficContext = "";
+  if (includeTrafficData) {
+    console.log(`🚦 AGENT: Fetching real-time traffic data for subquery optimization`);
+    try {
+      // Sample key Baguio locations for traffic assessment
+      const keyLocations = [
+        { name: "Burnham Park", coords: getActivityCoordinates("Burnham Park") },
+        { name: "Session Road", coords: getActivityCoordinates("Baguio Public Market") },
+        { name: "Mines View Park", coords: getActivityCoordinates("Mines View Park") }
+      ];
+      
+      const trafficPromises = keyLocations
+        .filter(loc => loc.coords)
+        .map(async (loc) => {
+          try {
+            const traffic = await tomtomTrafficService.getLocationTrafficData(loc.coords!.lat, loc.coords!.lon);
+            return {
+              area: loc.name,
+              level: traffic?.trafficLevel || 'UNKNOWN',
+              score: traffic?.recommendationScore || 50
+            };
+          } catch {
+            return { area: loc.name, level: 'UNKNOWN', score: 50 };
+          }
+        });
+      
+      const trafficData = await Promise.all(trafficPromises);
+      const lowTrafficAreas = trafficData.filter(t => t.level === 'LOW' || t.score >= 70);
+      const highTrafficAreas = trafficData.filter(t => t.level === 'HIGH' || t.level === 'SEVERE');
+      
+      trafficContext = `
+    - REAL-TIME TRAFFIC DATA: Current traffic conditions in Baguio:
+      ${trafficData.map(t => `${t.area}: ${t.level} traffic (${t.score}% optimal)`).join(', ')}
+    - LOW TRAFFIC AREAS: ${lowTrafficAreas.length > 0 ? lowTrafficAreas.map(t => t.area).join(', ') : 'None identified'}
+    - AVOID HIGH TRAFFIC: ${highTrafficAreas.length > 0 ? highTrafficAreas.map(t => t.area).join(', ') : 'No major congestion'}
+    - Prioritize activities near low-traffic areas or suggest alternative timing for congested locations.`;
+      
+      console.log(`✅ AGENT: Traffic context generated for ${trafficData.length} locations`);
+    } catch (error) {
+      console.warn(`⚠️ AGENT: Failed to fetch traffic data for subqueries:`, error);
+      trafficContext = `
+    - TRAFFIC DATA: Real-time traffic data unavailable, using peak hours guidance only.`;
+    }
+  }
   
   const peakHoursGuidance = includePeakHoursContext ? `
     - PEAK HOURS OPTIMIZATION: Current Manila time is ${currentTimeStr}. Prioritize activities that are typically less crowded at this time.
@@ -40,15 +89,15 @@ export async function proposeSubqueries(params: {
       - current weather type: ${weatherType}
       - interests: ${(interests && interests.length > 0) ? interests.join(", ") : "(none specified)"}
       - durationDays: ${durationDays ?? "unknown"}
-      - time-of-day coverage (morning/afternoon/evening) and budget fit when possible${peakHoursGuidance}
+      - time-of-day coverage (morning/afternoon/evening) and budget fit when possible${peakHoursGuidance}${trafficContext}
       Existing titles: ${existingTitles.slice(0, 60).join(" | ")}
-      Output a JSON array of strings only, e.g.: ["low traffic morning hike", "evening market less crowded", "indoor museum avoid peak hours"].
+      Output a JSON array of strings only, e.g.: ["low traffic morning hike", "evening market less crowded", "indoor museum avoid peak hours", "activities near low traffic areas"].
     `;
     const resp = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: guidance + "\n\nUser prompt: " + userPrompt }] }],
       generationConfig: {
-        temperature: 1,
-        maxOutputTokens: 8192
+        temperature: 0.7,
+        maxOutputTokens: 1024
       }
     });
     const text = resp.response?.text() ?? "";
