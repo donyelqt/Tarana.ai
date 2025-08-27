@@ -1,12 +1,23 @@
 import { searchSimilarActivities } from "@/lib/vectorSearch";
-import { intelligentSearchEngine, type SearchContext } from "@/lib/intelligentSearch";
-import { searchOptimizer, type SearchOptimization } from "@/lib/searchOptimizer";
 import { proposeSubqueries } from "../agent/agent";
 import { isCurrentlyPeakHours, getManilaTime } from "@/lib/peakHours";
 import { WEATHER_TAG_FILTERS } from "./config";
 import { validateAndEnrichActivity } from "../utils/itineraryUtils";
-import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
+import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/trafficAwareActivitySearch";
+import { getActivityCoordinates } from "@/lib/baguioCoordinates";
+import { IntelligentSearchEngine } from "@/lib/intelligentSearch";
+import { SearchOptimizer } from "@/lib/searchOptimizer";
 import type { WeatherCondition } from "../types/types";
+import type { SearchContext } from "@/lib/intelligentSearch";
+import type { SearchOptimization } from "@/lib/searchOptimizer";
+import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
+
+// Import sample itinerary data
+import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
+
+// Initialize intelligent search components
+const intelligentSearchEngine = new IntelligentSearchEngine();
+const searchOptimizer = new SearchOptimizer();
 
 export async function findAndScoreActivities(prompt: string, interests: string[], weatherType: WeatherCondition, durationDays: number | null, model: any) {
     let effectiveSampleItinerary: any = null;
@@ -25,11 +36,13 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
         };
 
         // Generate search optimization
-        const searchOptimization: SearchOptimization = searchOptimizer.generateSearchOptimization(prompt, searchContext);
+        const searchOptimization: SearchOptimization = SearchOptimizer.generateSearchOptimization(prompt, searchContext);
         
         // Use intelligent search engine
         const availableActivities = sampleItineraryCombined.items[0].activities;
+        console.log(`\n🔍 INTELLIGENT SEARCH: Starting search for "${prompt}" with ${availableActivities.length} activities`);
         const intelligentResults = await intelligentSearchEngine.search(prompt, searchContext, availableActivities);
+        console.log(`✅ INTELLIGENT SEARCH: Found ${intelligentResults.length} results with traffic-aware scoring`);
         
         // Fallback to legacy search if intelligent search fails or returns insufficient results
         let searchResults: any[] = [];
@@ -204,6 +217,60 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             
             const items = [];
             
+            // Apply traffic-aware activity search with detailed logging
+            console.log(`\n🚦 TRAFFIC-AWARE SEARCH: Processing ${filteredSimilar.length} activities`);
+            const trafficOptions = createDefaultTrafficOptions();
+            const trafficEnhancedActivities = await trafficAwareActivitySearch.enhanceActivitiesWithTraffic(
+                filteredSimilar.map(s => s.metadata),
+                trafficOptions
+            );
+            console.log(`✅ TRAFFIC-AWARE SEARCH: Enhanced ${trafficEnhancedActivities.length} activities with real-time traffic data`);
+            
+            // Log detailed traffic integration results
+            console.log(`\n=== TOMTOM API INTEGRATION RESULTS ===`);
+            const trafficSummary = trafficEnhancedActivities.map(activity => ({
+                name: activity.title,
+                coordinates: activity.trafficAnalysis ? `${activity.trafficAnalysis.lat}, ${activity.trafficAnalysis.lon}` : 'NO_COORDS',
+                trafficLevel: activity.trafficAnalysis?.realTimeTraffic?.trafficLevel || 'NO_DATA',
+                congestionScore: activity.trafficAnalysis?.realTimeTraffic?.congestionScore || 0,
+                recommendationScore: activity.trafficAnalysis?.realTimeTraffic?.recommendationScore || 0,
+                hasRealTimeData: !!activity.trafficAnalysis?.realTimeTraffic
+            }));
+            
+            const successfulTrafficFetches = trafficSummary.filter(a => a.hasRealTimeData).length;
+            const totalActivities = trafficSummary.length;
+            
+            console.log(`🎯 TOMTOM API SUCCESS RATE: ${successfulTrafficFetches}/${totalActivities} (${Math.round(successfulTrafficFetches/totalActivities*100)}%)`);
+            console.log(`📊 DETAILED TRAFFIC DATA:`, trafficSummary);
+            console.log(`=======================================\n`);
+
+            // Final activity selection and validation
+            const finalActivities = trafficEnhancedActivities.slice(0, Math.min(12, trafficEnhancedActivities.length));
+            console.log(`🎯 FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`);
+            
+            // Log real-time traffic integration success for final activities
+            console.log(`\n=== FINAL ITINERARY TRAFFIC INTEGRATION ===`);
+            const finalTrafficStats = finalActivities.map(activity => ({
+                activity: activity.title,
+                realTimeTraffic: activity.trafficAnalysis?.realTimeTraffic ? 'INTEGRATED' : 'FALLBACK',
+                trafficLevel: activity.trafficAnalysis?.realTimeTraffic?.trafficLevel || 'UNKNOWN',
+                optimalScore: activity.trafficAnalysis?.realTimeTraffic?.recommendationScore || 0,
+                combinedScore: activity.combinedTrafficScore || 0,
+                recommendation: activity.trafficRecommendation || 'UNKNOWN'
+            }));
+            
+            const integratedCount = finalTrafficStats.filter(a => a.realTimeTraffic === 'INTEGRATED').length;
+            console.log(`🚀 REAL-TIME TRAFFIC INTEGRATION: ${integratedCount}/${finalActivities.length} activities using live TomTom data`);
+            console.log(`📈 TRAFFIC-AWARE ITINERARY:`, finalTrafficStats);
+            console.log(`==========================================\n`);
+            
+            // Validate and enrich each activity
+            const validatedActivities = finalActivities.map(activity => {
+                const validated = validateAndEnrichActivity(activity);
+                console.log(`✅ Activity validated: ${validated.title} (Peak: ${validated.peakHours || 'None'})`);
+                return validated;
+            });
+
             if (morningActivities.length > 0) {
                 items.push({ period: "Morning", activities: morningActivities });
             }
@@ -269,10 +336,10 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
         
         // Ultimate fallback: return a subset of activities based on simple text matching
         const availableActivities = sampleItineraryCombined.items[0].activities;
-        const basicMatches = availableActivities.filter(activity => 
+        const basicMatches = availableActivities.filter((activity: Activity) => 
             activity.title.toLowerCase().includes(prompt.toLowerCase()) ||
             activity.desc.toLowerCase().includes(prompt.toLowerCase()) ||
-            (activity.tags || []).some(tag => tag.toLowerCase().includes(prompt.toLowerCase()))
+            (activity.tags || []).some((tag: string) => tag.toLowerCase().includes(prompt.toLowerCase()))
         ).slice(0, 20);
         
         if (basicMatches.length > 0) {
@@ -281,7 +348,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                 subtitle: "Activities matched using basic text search (fallback mode)",
                 items: [{
                     period: "Anytime",
-                    activities: basicMatches.map(activity => ({
+                    activities: basicMatches.map((activity: Activity) => ({
                         ...activity,
                         relevanceScore: 0.5,
                         isCurrentlyPeak: false
