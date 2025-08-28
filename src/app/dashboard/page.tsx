@@ -4,6 +4,7 @@ import React from "react"
 import Image from "next/image"
 import Sidebar from "../../components/Sidebar"
 import SuggestedSpots from "./components/SuggestedSpots"
+import RouteOptimizationWidget from "./components/RouteOptimizationWidget"
 import RecommendedCafes from "./components/RecommendedCafes"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
@@ -200,6 +201,7 @@ const DashboardContent = () => {
             </Popover>
           </div>
           <SuggestedSpots />
+          <RouteOptimizationWidget />
           <RecommendedCafes />
         </div>
         {/* Right Sidebar */}
