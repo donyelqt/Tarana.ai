@@ -96,6 +96,10 @@ const RouteOptimizationWidget: React.FC = () => {
     lastUpdated: null
   });
 
+  // Separate state for origin and destination
+  const [origin, setOrigin] = useState<LocationPoint | null>(null);
+  const [destination, setDestination] = useState<LocationPoint | null>(null);
+
   // Component refs
   const mapRef = useRef<any>(null);
   const calculationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -114,6 +118,10 @@ const RouteOptimizationWidget: React.FC = () => {
 
   const handleRouteCalculation = useCallback(async (request: RouteRequest) => {
     console.log('🚀 Route Widget: Starting route calculation');
+    
+    // Update origin and destination from the request
+    setOrigin(request.origin);
+    setDestination(request.destination);
     
     setState(prev => ({
       ...prev,
@@ -479,6 +487,10 @@ const RouteOptimizationWidget: React.FC = () => {
                     selectedWaypoints={state.selectedWaypoints}
                     onWaypointAdd={handleWaypointAdd}
                     onWaypointRemove={handleWaypointRemove}
+                    origin={origin}
+                    destination={destination}
+                    onOriginChange={setOrigin}
+                    onDestinationChange={setDestination}
                   />
                 </ErrorBoundary>
               </div>
@@ -498,8 +510,8 @@ const RouteOptimizationWidget: React.FC = () => {
                       currentRoute={state.currentRoute}
                       alternativeRoutes={state.alternativeRoutes}
                       trafficConditions={state.trafficConditions}
-                      origin={state.routePreferences.origin || null}
-                      destination={state.routePreferences.destination || null}
+                      origin={origin}
+                      destination={destination}
                       waypoints={state.selectedWaypoints}
                       onRouteSelect={(routeId: string) => {
                         console.log('Route selected:', routeId);
