@@ -14,146 +14,146 @@ export interface ActivityCoordinates {
 export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
   // Core Tourist Attractions
   "Burnham Park": {
-    lat: 16.4138,
-    lon: 120.5934,
+    lat: 16.40801,
+    lon: 120.595985,
     name: "Burnham Park",
     category: "park"
   },
   "Mines View Park": {
-    lat: 16.4023,
-    lon: 120.5960,
+    lat: 16.419701,
+    lon: 120.627499,
     name: "Mines View Park",
     category: "viewpoint"
   },
   "Baguio Cathedral": {
-    lat: 16.4156,
-    lon: 120.5923,
+    lat: 16.412901,
+    lon: 120.598497,
     name: "Baguio Cathedral",
     category: "religious"
   },
   "Botanical Garden": {
-    lat: 16.4167,
-    lon: 120.5889,
+    lat: 16.414116,
+    lon: 120.613781,
     name: "Botanical Garden",
     category: "nature"
   },
   "The Mansion": {
-    lat: 16.4108,
-    lon: 120.5969,
+    lat: 16.412356,
+    lon: 120.621452,
     name: "The Mansion",
     category: "historical"
   },
   "Wright Park": {
-    lat: 16.4089,
-    lon: 120.5978,
+    lat: 16.415139,
+    lon: 120.61859,
     name: "Wright Park",
     category: "park"
   },
   "Camp John Hay": {
-    lat: 16.4031,
-    lon: 120.5997,
+    lat: 16.399407,
+    lon: 120.615699,
     name: "Camp John Hay",
     category: "recreational"
   },
   "Bencab Museum": {
-    lat: 16.3567,
-    lon: 120.6123,
+    lat: 16.410572,
+    lon: 120.550296,
     name: "Bencab Museum",
     category: "museum"
   },
   "Tam-Awan Village": {
-    lat: 16.4234,
-    lon: 120.5678,
+    lat: 16.429956,
+    lon: 120.576908,
     name: "Tam-Awan Village",
     category: "cultural"
   },
 
   // Shopping & Markets
   "Baguio Night Market": {
-    lat: 16.4134,
-    lon: 120.5945,
+    lat: 16.412099,
+    lon: 120.59605,
     name: "Baguio Night Market",
     category: "market"
   },
   "SM City Baguio": {
-    lat: 16.4167,
-    lon: 120.5889,
+    lat: 16.408943,
+    lon: 120.599174,
     name: "SM City Baguio",
     category: "mall"
   },
   "Baguio Public Market": {
-    lat: 16.4145,
-    lon: 120.5923,
+    lat: 16.4153,
+    lon: 120.595686,
     name: "Baguio Public Market",
     category: "market"
   },
   "Good Shepherd Convent": {
-    lat: 16.4089,
-    lon: 120.5834,
+    lat: 16.422087,
+    lon: 120.626227,
     name: "Good Shepherd Convent",
     category: "religious"
   },
 
   // Nature & Adventure Sites
   "Mirador Heritage and Eco Park": {
-    lat: 16.4201,
-    lon: 120.5812,
+    lat: 16.408916,
+    lon: 120.581238,
     name: "Mirador Heritage and Eco Park",
     category: "nature"
   },
   "Diplomat Hotel": {
-    lat: 16.4067,
-    lon: 120.5945,
+    lat: 16.405921,
+    lon: 120.585076,
     name: "Diplomat Hotel",
     category: "historical"
   },
   "Lions Head": {
-    lat: 16.3978,
-    lon: 120.5945,
+    lat: 16.358905,
+    lon: 120.60392,
     name: "Lions Head",
     category: "viewpoint"
   },
   "Ili-Likha Artists Village": {
-    lat: 16.4123,
-    lon: 120.5867,
+    lat: 16.413788,
+    lon: 120.59738,
     name: "Ili-Likha Artists Village",
     category: "cultural"
   },
   "Philippine Military Academy": {
-    lat: 16.3889,
-    lon: 120.5823,
+    lat: 16.360855,
+    lon: 120.619666,
     name: "Philippine Military Academy",
     category: "educational"
   },
   "Great wall of Baguio": {
-    lat: 16.4089,
-    lon: 120.5756,
+    lat: 16.369751,
+    lon: 120.611562,
     name: "Great wall of Baguio",
     category: "viewpoint"
   },
   "Camp John Hay Yellow Trail": {
-    lat: 16.4031,
-    lon: 120.5997,
+    lat: 16.399407,
+    lon: 120.615699,
     name: "Camp John Hay Yellow Trail",
     category: "trail"
   },
 
   // La Trinidad Area (Near Baguio)
   "Valley of Colors": {
-    lat: 16.4567,
-    lon: 120.5923,
+    lat: 16.4333,
+    lon: 120.597199,
     name: "Valley of Colors",
     category: "cultural"
   },
   "Easter Weaving Room": {
-    lat: 16.4234,
-    lon: 120.5756,
+    lat: 16.422626,
+    lon: 120.590118,
     name: "Easter Weaving Room",
     category: "cultural"
   },
   "Mt. Kalugong": {
-    lat: 16.4678,
-    lon: 120.5834,
+    lat: 16.455,
+    lon: 120.5875,
     name: "Mt. Kalugong",
     category: "mountain"
   }
