@@ -33,7 +33,7 @@ class TrafficAwareActivitySearchService {
       prioritizeTraffic: true,
       avoidCrowds: true,
       flexibleTiming: true,
-      maxTrafficLevel: 'HIGH'
+      maxTrafficLevel: 'LOW'
     }
   ): Promise<TrafficEnhancedActivity[]> {
     const context = createTrafficContext({
@@ -122,32 +122,33 @@ class TrafficAwareActivitySearchService {
   ): TrafficEnhancedActivity[] {
     console.log(`🔍 Traffic Filtering: Starting with ${activities.length} activities`);
 
-    // Filter based on traffic conditions and user preferences
+    // STRICT filtering: Only allow LOW traffic activities
     let filtered = activities.filter(activity => {
-      // Filter by maximum traffic level
+      // CRITICAL: Strict traffic level filtering - only LOW allowed
       if (activity.trafficAnalysis?.realTimeTraffic.trafficLevel) {
-        const trafficLevels = ['LOW', 'MODERATE', 'HIGH', 'SEVERE'];
-        const activityLevel = trafficLevels.indexOf(activity.trafficAnalysis.realTimeTraffic.trafficLevel);
-        const maxLevel = trafficLevels.indexOf(options.maxTrafficLevel);
+        const trafficLevel = activity.trafficAnalysis.realTimeTraffic.trafficLevel;
         
-        if (activityLevel > maxLevel) {
-          console.log(`🚫 Traffic Filtering: Excluding "${activity.title}" - traffic level ${activity.trafficAnalysis.realTimeTraffic.trafficLevel} exceeds ${options.maxTrafficLevel}`);
+        // ABSOLUTE REQUIREMENT: Only LOW traffic activities allowed
+        if (trafficLevel !== 'LOW') {
+          console.log(`🚫 STRICT TRAFFIC FILTERING: Excluding "${activity.title}" - traffic level ${trafficLevel} (ONLY LOW ALLOWED)`);
           return false;
         }
       }
 
-      // Filter by crowd avoidance preference
-      if (options.avoidCrowds && activity.crowdLevel === 'VERY_HIGH') {
-        console.log(`🚫 Traffic Filtering: Excluding "${activity.title}" - very high crowd level`);
+      // Additional filtering: Exclude MODERATE/HIGH crowd levels
+      if (activity.crowdLevel && ['MODERATE', 'HIGH', 'VERY_HIGH'].includes(activity.crowdLevel)) {
+        console.log(`🚫 STRICT CROWD FILTERING: Excluding "${activity.title}" - crowd level ${activity.crowdLevel} (ONLY LOW CROWDS ALLOWED)`);
         return false;
       }
 
-      // Filter by traffic recommendation
-      if (options.prioritizeTraffic && activity.trafficRecommendation === 'AVOID_NOW') {
-        console.log(`🚫 Traffic Filtering: Excluding "${activity.title}" - recommendation is AVOID_NOW`);
+      // Filter by traffic recommendation - exclude anything not optimal
+      if (activity.trafficRecommendation && ['AVOID_NOW', 'PLAN_LATER'].includes(activity.trafficRecommendation)) {
+        console.log(`🚫 STRICT RECOMMENDATION FILTERING: Excluding "${activity.title}" - recommendation ${activity.trafficRecommendation} (ONLY VISIT_NOW/VISIT_SOON ALLOWED)`);
         return false;
       }
 
+      // Final validation: Ensure only activities with LOW traffic make it through
+      console.log(`✅ STRICT FILTERING PASSED: "${activity.title}" - traffic level: ${activity.trafficAnalysis?.realTimeTraffic.trafficLevel || 'UNKNOWN'}, crowd: ${activity.crowdLevel || 'UNKNOWN'}, recommendation: ${activity.trafficRecommendation || 'UNKNOWN'}`);
       return true;
     });
 
@@ -269,7 +270,7 @@ class TrafficAwareActivitySearchService {
       prioritizeTraffic: true,
       avoidCrowds: true,
       flexibleTiming: true,
-      maxTrafficLevel: 'HIGH'
+      maxTrafficLevel: 'LOW'
     }
   ): Promise<{
     recommended: TrafficEnhancedActivity[];
@@ -324,7 +325,7 @@ export function createDefaultTrafficOptions(prioritizeTraffic: boolean = true): 
     prioritizeTraffic,
     avoidCrowds: true,
     flexibleTiming: true,
-    maxTrafficLevel: 'HIGH',
+    maxTrafficLevel: 'LOW',
     weatherCondition: undefined
   };
 }

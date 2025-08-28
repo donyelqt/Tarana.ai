@@ -157,14 +157,15 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       ${peakHoursContext}
       ${trafficAwareContext}
       
-      MANDATORY TRAFFIC-AWARE FILTERING:
-      - ABSOLUTELY FORBIDDEN: Do not include any activity currently in peak hours OR with SEVERE real-time traffic
-      - The provided database combines historical peak hours with live TomTom traffic data
-      - Activities marked as 'AVOID_NOW' should be excluded from immediate recommendations
-      - Prioritize activities with 'VISIT_NOW' or 'VISIT_SOON' traffic recommendations
-      - If you cannot find enough optimal activities, return fewer activities rather than including high-traffic ones
-      - Every activity description must mention both peak hours status AND current traffic conditions
-      - Current Manila time and real-time traffic context are provided - use both to validate timing recommendations
+      CRITICAL TRAFFIC-ONLY FILTERING - STRICTLY ENFORCED:
+      - ABSOLUTELY FORBIDDEN: Include ANY activity with MODERATE, HIGH, or SEVERE traffic levels
+      - ONLY LOW TRAFFIC ACTIVITIES ALLOWED: The system has pre-filtered activities to include ONLY those with LOW real-time traffic levels
+      - MANDATORY REQUIREMENT: Every single activity in the database has been validated to have LOW traffic status
+      - ZERO TOLERANCE: No exceptions for MODERATE traffic - if traffic is not LOW, the activity is automatically excluded
+      - STRICT VALIDATION: The provided database contains ONLY activities that passed strict LOW-traffic-only filtering
+      - TRAFFIC LEVEL ENFORCEMENT: Only activities with trafficLevel: 'LOW' and recommendation: 'VISIT_NOW' or 'VISIT_SOON' are included
+      - QUALITY OVER QUANTITY: Return fewer activities rather than compromising on LOW traffic requirement
+      - REAL-TIME GUARANTEE: All activities combine Manila peak hours data with live TomTom traffic validation for LOW traffic only
       ${interestsContext}
       ${durationContext}
       ${budgetContext}
