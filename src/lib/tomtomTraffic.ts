@@ -166,7 +166,7 @@ class TomTomTrafficService {
   }
 
   /**
-   * Get traffic incidents from TomTom Incidents API with improved error handling
+   * Get traffic incidents from TomTom Incidents API with corrected parameters
    */
   private async getTrafficIncidents(lat: number, lon: number, radiusMeters: number): Promise<TrafficIncident[]> {
     if (!this.config.apiKey) {
@@ -175,11 +175,16 @@ class TomTomTrafficService {
     }
 
     try {
-      // Use simpler incident detection endpoint with proper parameters
+      // Use correct TomTom Incidents API v5 endpoint with proper parameters
       const url = `${this.config.baseUrl}/traffic/services/5/incidentDetails`;
+      
+      // Create bounding box (smaller area for better API response)
+      const offset = 0.005; // ~500m radius
+      const bbox = `${lon - offset},${lat - offset},${lon + offset},${lat + offset}`;
+      
       const params = new URLSearchParams({
-        bbox: `${lon - 0.01},${lat - 0.01},${lon + 0.01},${lat + 0.01}`,
-        fields: 'incidents{type,properties{id,iconCategory,magnitudeOfDelay,events{description},delay}}',
+        bbox: bbox,
+        fields: '{incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,events{description,code,iconCategory},startTime,endTime,from,to,length,delay,roadNumbers,timeValidity}}}',
         language: 'en-US',
         key: this.config.apiKey
       });
@@ -202,9 +207,8 @@ class TomTomTrafficService {
       console.log(`📡 TomTom: Incidents API response status: ${response.status}`);
 
       if (!response.ok) {
-        // Log the error but don't throw - gracefully degrade to flow data only
-        console.log(`⚠️ TomTom: Incidents API unavailable (${response.status}), using flow data only`);
-        return [];
+        // Try alternative simpler request format
+        return await this.getTrafficIncidentsSimple(lat, lon);
       }
 
       const data = await response.json();
@@ -213,7 +217,7 @@ class TomTomTrafficService {
       console.log(`✅ TomTom: Incidents data received - ${incidents.length} incidents found`);
 
       return incidents.map((incident: any) => ({
-        id: incident.properties?.id || 'unknown',
+        id: incident.properties?.id || `incident_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         iconCategory: incident.properties?.iconCategory || 0,
         magnitudeOfDelay: incident.properties?.magnitudeOfDelay || 0,
         events: incident.properties?.events || [],
@@ -230,6 +234,63 @@ class TomTomTrafficService {
     } catch (error) {
       // Graceful degradation - log warning but don't fail the entire traffic analysis
       console.log(`⚠️ TomTom: Incidents API failed, continuing with flow data only:`, error instanceof Error ? error.message : 'Unknown error');
+      return [];
+    }
+  }
+
+  /**
+   * Fallback method with simplified incidents API request
+   */
+  private async getTrafficIncidentsSimple(lat: number, lon: number): Promise<TrafficIncident[]> {
+    try {
+      // Use minimal parameters for incidents API
+      const url = `${this.config.baseUrl}/traffic/services/5/incidentDetails`;
+      const offset = 0.01;
+      const bbox = `${lon - offset},${lat - offset},${lon + offset},${lat + offset}`;
+      
+      const params = new URLSearchParams({
+        bbox: bbox,
+        key: this.config.apiKey
+      });
+
+      console.log(`🌐 TomTom: Trying simplified incidents request: ${url}?${params.toString()}`);
+
+      const response = await fetch(`${url}?${params.toString()}`, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Tarana.ai/1.0'
+        }
+      });
+
+      console.log(`📡 TomTom: Simple incidents API response status: ${response.status}`);
+
+      if (!response.ok) {
+        console.log(`⚠️ TomTom: Simple incidents API also failed (${response.status}), using flow data only`);
+        return [];
+      }
+
+      const data = await response.json();
+      const incidents = data.incidents || [];
+      
+      console.log(`✅ TomTom: Simple incidents data received - ${incidents.length} incidents found`);
+
+      return incidents.map((incident: any, index: number) => ({
+        id: incident.properties?.id || `simple_incident_${index}`,
+        iconCategory: incident.properties?.iconCategory || 0,
+        magnitudeOfDelay: incident.properties?.magnitudeOfDelay || 1,
+        events: incident.properties?.events || [{ description: 'Traffic incident', code: 0, iconCategory: 0 }],
+        startTime: incident.properties?.startTime || '',
+        endTime: incident.properties?.endTime || '',
+        from: incident.properties?.from || '',
+        to: incident.properties?.to || '',
+        length: incident.properties?.length || 0,
+        delay: incident.properties?.delay || 0,
+        roadNumbers: incident.properties?.roadNumbers || [],
+        timeValidity: incident.properties?.timeValidity || ''
+      }));
+
+    } catch (error) {
+      console.log(`⚠️ TomTom: Simple incidents API also failed:`, error instanceof Error ? error.message : 'Unknown error');
       return [];
     }
   }
