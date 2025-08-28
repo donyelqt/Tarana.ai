@@ -30,20 +30,20 @@ import RouteInputPanel from './route/RouteInputPanel';
 import InteractiveRouteMap from './route/InteractiveRouteMap';
 import RouteDetailsPanel from './route/RouteDetailsPanel';
 
-// Default Baguio locations for quick selection
+// Demo-ready Baguio locations for AI hackathon presentation
 const POPULAR_LOCATIONS: LocationPoint[] = [
   {
     id: 'uc_baguio',
     name: 'University of the Cordilleras',
-    address: 'Gov. Pack Rd, Baguio, Benguet',
+    address: 'Gov. Pack Rd, Baguio City',
     lat: 16.4088,
     lng: 120.5979,
     category: 'Education'
   },
   {
     id: 'newtown_plaza',
-    name: 'New Town Plaza Hotel Baguio',
-    address: 'Navy Base Road, Baguio, Benguet',
+    name: 'New Town Plaza Hotel',
+    address: 'Navy Base Road, Baguio City',
     lat: 16.4158,
     lng: 120.6122,
     category: 'Hotel'
@@ -51,7 +51,7 @@ const POPULAR_LOCATIONS: LocationPoint[] = [
   {
     id: 'burnham_park',
     name: 'Burnham Park',
-    address: 'Downtown Baguio City, Benguet',
+    address: 'Downtown Baguio City',
     lat: 16.4095,
     lng: 120.5948,
     category: 'Park'
@@ -59,7 +59,7 @@ const POPULAR_LOCATIONS: LocationPoint[] = [
   {
     id: 'sm_baguio',
     name: 'SM City Baguio',
-    address: 'Upper Session Rd, Baguio, Benguet',
+    address: 'Upper Session Rd, Baguio City',
     lat: 16.4088,
     lng: 120.5993,
     category: 'Shopping'
@@ -67,10 +67,34 @@ const POPULAR_LOCATIONS: LocationPoint[] = [
   {
     id: 'session_road',
     name: 'Session Road',
-    address: 'Session Rd, Baguio, Benguet',
+    address: 'Session Rd, Baguio City',
     lat: 16.4124,
     lng: 120.5973,
     category: 'Shopping'
+  },
+  {
+    id: 'baguio_cathedral',
+    name: 'Baguio Cathedral',
+    address: 'Cathedral Loop, Baguio City',
+    lat: 16.4138,
+    lng: 120.5934,
+    category: 'Landmark'
+  },
+  {
+    id: 'camp_john_hay',
+    name: 'Camp John Hay',
+    address: 'Loakan Rd, Baguio City',
+    lat: 16.4025,
+    lng: 120.5897,
+    category: 'Recreation'
+  },
+  {
+    id: 'mines_view_park',
+    name: 'Mines View Park',
+    address: 'Mines View Park Rd, Baguio City',
+    lat: 16.4089,
+    lng: 120.5678,
+    category: 'Tourist Spot'
   }
 ];
 
@@ -364,12 +388,14 @@ const RouteOptimizationWidget: React.FC = () => {
   const renderHeader = () => (
     <div className="flex items-center justify-between mb-6 px-1">
       <div className="flex items-center space-x-3">
-        <div className="flex items-center justify-center w-10 h-10 bg-blue-500 rounded-lg">
+        <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg">
           <Route className="w-5 h-5 text-white" />
         </div>
         <div>
           <h2 className="font-semibold text-xl text-gray-900">Route Optimization</h2>
-          <p className="text-sm text-gray-500">Find the fastest route avoiding traffic</p>
+          <p className="text-sm text-gray-500">
+            <span className="font-medium text-blue-600"></span> Smart traffic-aware navigation for Baguio City
+          </p>
         </div>
       </div>
       
@@ -382,21 +408,21 @@ const RouteOptimizationWidget: React.FC = () => {
         )}
         
         {state.trafficConditions && (
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3 px-3 py-2 rounded-lg border border-green-200">
             <div className="flex items-center space-x-2">
               <div 
-                className="w-3 h-3 rounded-full"
+                className="w-3 h-3 rounded-full animate-pulse"
                 style={{ 
                   backgroundColor: getTrafficColorFromScore(state.trafficConditions.congestionScore).color 
                 }}
               />
-              <span className={getTrafficLevelClasses(getTrafficLevelFromScore(state.trafficConditions.congestionScore))}>
-                {getTrafficLevelFromScore(state.trafficConditions.congestionScore)}
+              <span className={`font-medium ${getTrafficLevelClasses(getTrafficLevelFromScore(state.trafficConditions.congestionScore))}`}>
+                {getTrafficLevelFromScore(state.trafficConditions.congestionScore)} Traffic
               </span>
             </div>
-            <div className="flex items-center space-x-1 text-gray-600">
-              <TrendingUp className="w-4 h-4" />
-              <span className="text-sm">
+            <div className="flex items-center space-x-1 text-gray-700">
+              <TrendingUp className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium">
                 {state.trafficConditions.congestionScore}% congestion
               </span>
             </div>
