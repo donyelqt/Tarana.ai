@@ -414,40 +414,6 @@ const RouteOptimizationWidget: React.FC = () => {
     </div>
   );
 
-  const renderQuickRoutes = () => (
-    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-      <h3 className="font-medium text-sm text-blue-900 mb-3">Quick Routes</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button
-          onClick={() => handleQuickRoute(POPULAR_LOCATIONS[0], POPULAR_LOCATIONS[1])}
-          className="text-left p-3 bg-white rounded-lg border border-blue-300 hover:bg-blue-50 transition-colors"
-          disabled={state.isCalculating}
-        >
-          <div className="flex items-center space-x-2">
-            <Navigation className="w-4 h-4 text-blue-600" />
-            <div>
-              <div className="font-medium text-sm text-gray-900">UC to New Town Plaza</div>
-              <div className="text-xs text-gray-600">Popular route</div>
-            </div>
-          </div>
-        </button>
-        
-        <button
-          onClick={() => handleQuickRoute(POPULAR_LOCATIONS[2], POPULAR_LOCATIONS[3])}
-          className="text-left p-3 bg-white rounded-lg border border-blue-300 hover:bg-blue-50 transition-colors"
-          disabled={state.isCalculating}
-        >
-          <div className="flex items-center space-x-2">
-            <MapPin className="w-4 h-4 text-green-600" />
-            <div>
-              <div className="font-medium text-sm text-gray-900">Burnham to SM City</div>
-              <div className="text-xs text-gray-600">Shopping route</div>
-            </div>
-          </div>
-        </button>
-      </div>
-    </div>
-  );
 
   const renderError = () => {
     if (!state.error) return null;
@@ -494,7 +460,6 @@ const RouteOptimizationWidget: React.FC = () => {
           <div className="p-3 sm:p-4 lg:p-6">
             {renderHeader()}
             {renderError()}
-            {renderQuickRoutes()}
             
             {/* Responsive Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
