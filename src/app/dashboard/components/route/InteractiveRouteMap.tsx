@@ -244,33 +244,98 @@ export default function InteractiveRouteMap({
       console.warn('Error during map cleanup:', error);
     }
 
-    // Add markers with error handling
+    // Add markers with enhanced visibility
     try {
-      // Add origin marker
+      // Add origin marker with enhanced styling
       if (origin && window.tt.Marker && window.tt.Popup) {
-        const originMarker = new window.tt.Marker({ color: 'green' })
+        console.log('🟢 Adding origin marker:', origin);
+        const originMarker = new window.tt.Marker({ 
+          color: '#10b981', // Bright green
+          scale: 1.2,
+          draggable: false
+        })
           .setLngLat([origin.lng, origin.lat])
-          .setPopup(new window.tt.Popup().setHTML(`<div><strong>Origin</strong><br/>${origin.address || 'Starting point'}</div>`))
+          .setPopup(new window.tt.Popup({ 
+            offset: 25,
+            closeButton: true,
+            closeOnClick: false
+          }).setHTML(`
+            <div style="padding: 8px; min-width: 150px;">
+              <div style="font-weight: bold; color: #10b981; margin-bottom: 4px;">📍 Starting Point</div>
+              <div style="font-size: 13px; color: #374151;">${origin.name || 'Origin'}</div>
+              <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${origin.address || 'Starting location'}</div>
+            </div>
+          `))
           .addTo(map);
       }
 
-      // Add destination marker
+      // Add destination marker with enhanced styling
       if (destination && window.tt.Marker && window.tt.Popup) {
-        const destMarker = new window.tt.Marker({ color: 'red' })
+        console.log('🔴 Adding destination marker:', destination);
+        const destMarker = new window.tt.Marker({ 
+          color: '#ef4444', // Bright red
+          scale: 1.2,
+          draggable: false
+        })
           .setLngLat([destination.lng, destination.lat])
-          .setPopup(new window.tt.Popup().setHTML(`<div><strong>Destination</strong><br/>${destination.address || 'End point'}</div>`))
+          .setPopup(new window.tt.Popup({ 
+            offset: 25,
+            closeButton: true,
+            closeOnClick: false
+          }).setHTML(`
+            <div style="padding: 8px; min-width: 150px;">
+              <div style="font-weight: bold; color: #ef4444; margin-bottom: 4px;">🎯 Destination</div>
+              <div style="font-size: 13px; color: #374151;">${destination.name || 'Destination'}</div>
+              <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${destination.address || 'End location'}</div>
+            </div>
+          `))
           .addTo(map);
       }
 
-      // Add waypoint markers
+      // Add waypoint markers with enhanced styling
       waypoints.forEach((waypoint, index) => {
         if (waypoint && window.tt.Marker && window.tt.Popup) {
-          const waypointMarker = new window.tt.Marker({ color: 'blue' })
+          console.log(`🔵 Adding waypoint ${index + 1} marker:`, waypoint);
+          const waypointMarker = new window.tt.Marker({ 
+            color: '#3b82f6', // Bright blue
+            scale: 1.1,
+            draggable: false
+          })
             .setLngLat([waypoint.lng, waypoint.lat])
-            .setPopup(new window.tt.Popup().setHTML(`<div><strong>Waypoint ${index + 1}</strong><br/>${waypoint.address || `Stop ${index + 1}`}</div>`))
+            .setPopup(new window.tt.Popup({ 
+              offset: 25,
+              closeButton: true,
+              closeOnClick: false
+            }).setHTML(`
+              <div style="padding: 8px; min-width: 150px;">
+                <div style="font-weight: bold; color: #3b82f6; margin-bottom: 4px;">🚩 Waypoint ${index + 1}</div>
+                <div style="font-size: 13px; color: #374151;">${waypoint.name || `Stop ${index + 1}`}</div>
+                <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${waypoint.address || `Waypoint ${index + 1}`}</div>
+              </div>
+            `))
             .addTo(map);
         }
       });
+
+      // Auto-fit map to show all markers if any exist
+      if ((origin || destination || waypoints.length > 0) && window.tt.LngLatBounds) {
+        const bounds = new window.tt.LngLatBounds();
+        
+        if (origin) bounds.extend([origin.lng, origin.lat]);
+        if (destination) bounds.extend([destination.lng, destination.lat]);
+        waypoints.forEach(waypoint => {
+          if (waypoint) bounds.extend([waypoint.lng, waypoint.lat]);
+        });
+        
+        // Fit map to bounds with padding
+        map.fitBounds(bounds, { 
+          padding: { top: 50, bottom: 50, left: 50, right: 50 },
+          maxZoom: 16
+        });
+        
+        console.log('🗺️ Map fitted to marker bounds');
+      }
+      
     } catch (error) {
       console.warn('Error adding markers:', error);
     }

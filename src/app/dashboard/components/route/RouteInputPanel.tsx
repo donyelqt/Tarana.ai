@@ -44,6 +44,10 @@ interface RouteInputPanelProps {
   selectedWaypoints: LocationPoint[];
   onWaypointAdd: (waypoint: LocationPoint) => void;
   onWaypointRemove: (waypointId: string) => void;
+  origin?: LocationPoint | null;
+  destination?: LocationPoint | null;
+  onOriginChange?: (origin: LocationPoint | null) => void;
+  onDestinationChange?: (destination: LocationPoint | null) => void;
 }
 
 interface LocationInputProps {
@@ -191,7 +195,7 @@ const LocationInput: React.FC<LocationInputProps> = ({
             className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
           >
             <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
-              Popular Locations
+              Recent Locations
             </div>
             {popularLocations.map((location) => (
               <button
@@ -223,10 +227,12 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
   popularLocations,
   selectedWaypoints,
   onWaypointAdd,
-  onWaypointRemove
+  onWaypointRemove,
+  origin = null,
+  destination = null,
+  onOriginChange,
+  onDestinationChange
 }) => {
-  const [origin, setOrigin] = useState<LocationPoint | null>(null);
-  const [destination, setDestination] = useState<LocationPoint | null>(null);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -273,9 +279,9 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
   // Swap origin and destination
   const handleSwapLocations = useCallback(() => {
     const temp = origin;
-    setOrigin(destination);
-    setDestination(temp);
-  }, [origin, destination]);
+    onOriginChange?.(destination);
+    onDestinationChange?.(temp);
+  }, [origin, destination, onOriginChange, onDestinationChange]);
 
   // Route type options
   const routeTypeOptions: Array<{ value: RouteType; label: string; description: string; icon: React.ReactNode }> = [
@@ -310,7 +316,7 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
             label="From"
             placeholder="Enter starting location"
             value={origin}
-            onChange={setOrigin}
+            onChange={(location) => onOriginChange?.(location)}
             onSearch={handleLocationSearch}
             searchResults={searchResults}
             isSearching={isSearching}
@@ -335,7 +341,7 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
             label="To"
             placeholder="Enter destination"
             value={destination}
-            onChange={setDestination}
+            onChange={(location) => onDestinationChange?.(location)}
             onSearch={handleLocationSearch}
             searchResults={searchResults}
             isSearching={isSearching}
