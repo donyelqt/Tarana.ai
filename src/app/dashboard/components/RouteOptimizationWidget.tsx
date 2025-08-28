@@ -51,7 +51,7 @@ const POPULAR_LOCATIONS: LocationPoint[] = [
   {
     id: 'burnham_park',
     name: 'Burnham Park',
-    address: 'Jose Abad Santos Dr, Baguio, Benguet',
+    address: 'Downtown Baguio City, Benguet',
     lat: 16.4095,
     lng: 120.5948,
     category: 'Park'
