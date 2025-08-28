@@ -169,7 +169,7 @@ class RouteTrafficAnalyzer {
           isCurrentlyPeakHour: isPeakHour(departureTime),
           peakHourMultiplier,
           expectedTrafficIncrease: (peakHourMultiplier - 1) * 100,
-          nextPeakHour: getNextPeakHour(departureTime),
+          nextPeakHour: getNextPeakHour(departureTime) || undefined,
           historicalAverage: currentAnalysis.peakHourImpact.historicalAverage
         },
         lastUpdated: new Date()
@@ -287,7 +287,7 @@ class RouteTrafficAnalyzer {
       isCurrentlyPeakHour: isCurrentPeakHour,
       peakHourMultiplier: peakMultiplier,
       expectedTrafficIncrease: (peakMultiplier - 1) * 100,
-      nextPeakHour: getNextPeakHour(now),
+      nextPeakHour: getNextPeakHour(now) || undefined,
       historicalAverage: route.summary.travelTimeInSeconds / 60 // Convert to minutes
     };
   }

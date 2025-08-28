@@ -16,6 +16,14 @@ import {
 import { BAGUIO_COORDINATES } from '@/lib/utils';
 import { Route, Navigation, MapPin, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
 import ErrorBoundary from '@/components/ui/error-boundary';
+import TrafficLegend from '@/components/ui/TrafficLegend';
+import { 
+  getTrafficColorFromScore, 
+  getTrafficLevelFromScore,
+  getTrafficLevelClasses,
+  formatTrafficDelay,
+  getTrafficRecommendation 
+} from '@/lib/utils/trafficColors';
 
 // Component imports (will be created next)
 import RouteInputPanel from './route/RouteInputPanel';
@@ -366,11 +374,24 @@ const RouteOptimizationWidget: React.FC = () => {
         )}
         
         {state.trafficConditions && (
-          <div className="flex items-center space-x-2 text-gray-600">
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-sm">
-              {state.trafficConditions.congestionScore}% congestion
-            </span>
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2">
+              <div 
+                className="w-3 h-3 rounded-full"
+                style={{ 
+                  backgroundColor: getTrafficColorFromScore(state.trafficConditions.congestionScore).color 
+                }}
+              />
+              <span className={getTrafficLevelClasses(getTrafficLevelFromScore(state.trafficConditions.congestionScore))}>
+                {getTrafficLevelFromScore(state.trafficConditions.congestionScore)}
+              </span>
+            </div>
+            <div className="flex items-center space-x-1 text-gray-600">
+              <TrendingUp className="w-4 h-4" />
+              <span className="text-sm">
+                {state.trafficConditions.congestionScore}% congestion
+              </span>
+            </div>
           </div>
         )}
         
@@ -533,6 +554,18 @@ const RouteOptimizationWidget: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Traffic Legend - Show when route exists */}
+            {state.trafficConditions && (
+              <div className="mt-4 sm:mt-6">
+                <TrafficLegend 
+                  compact={true}
+                  currentTrafficLevel={getTrafficLevelFromScore(state.trafficConditions.congestionScore)}
+                  estimatedDelay={state.trafficConditions.estimatedDelay}
+                  className="mb-4"
+                />
+              </div>
+            )}
 
             {/* Route Details Panel - Full Width Below Grid */}
             {(state.currentRoute || state.alternativeRoutes.length > 0) && (

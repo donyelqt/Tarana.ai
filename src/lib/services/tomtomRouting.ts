@@ -13,13 +13,35 @@ import {
   GeocodeResult,
   AddressResult,
   BoundingBox,
-  RouteError,
   RouteSummary,
   RouteInstruction,
   RouteGeometry,
   RouteLeg,
   TrafficLevel
 } from '@/types/route-optimization';
+
+// Route Error class for handling routing errors
+export class RouteError extends Error {
+  public type: string;
+  public details?: any;
+  public timestamp: Date;
+  public retryable: boolean;
+
+  constructor(errorData: {
+    type: string;
+    message: string;
+    details?: any;
+    timestamp: Date;
+    retryable: boolean;
+  }) {
+    super(errorData.message);
+    this.name = 'RouteError';
+    this.type = errorData.type;
+    this.details = errorData.details;
+    this.timestamp = errorData.timestamp;
+    this.retryable = errorData.retryable;
+  }
+}
 
 interface TomTomRoutingConfig {
   apiKey: string;
@@ -653,26 +675,3 @@ class TomTomRoutingService {
 
 // Export singleton instance
 export const tomtomRoutingService = new TomTomRoutingService();
-
-// Export error class for external use
-export class RouteError extends Error {
-  public type: string;
-  public details?: any;
-  public timestamp: Date;
-  public retryable: boolean;
-
-  constructor(errorData: {
-    type: string;
-    message: string;
-    details?: any;
-    timestamp: Date;
-    retryable: boolean;
-  }) {
-    super(errorData.message);
-    this.name = 'RouteError';
-    this.type = errorData.type;
-    this.details = errorData.details;
-    this.timestamp = errorData.timestamp;
-    this.retryable = errorData.retryable;
-  }
-}
