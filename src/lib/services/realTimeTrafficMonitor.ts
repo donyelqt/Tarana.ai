@@ -8,7 +8,8 @@ import {
   RouteTrafficAnalysis,
   TrafficAlert,
   RouteUpdate,
-  Coordinates
+  Coordinates,
+  TrafficIncident
 } from '@/types/route-optimization';
 import { routeTrafficAnalyzer } from './routeTrafficAnalysis';
 
@@ -275,13 +276,13 @@ class RealTimeTrafficMonitor {
   /**
    * Find new incidents that weren't in the previous analysis
    */
-  private findNewIncidents(oldAnalysis: RouteTrafficAnalysis, newAnalysis: RouteTrafficAnalysis) {
-    const oldIncidentIds = new Set();
+  private findNewIncidents(oldAnalysis: RouteTrafficAnalysis, newAnalysis: RouteTrafficAnalysis): TrafficIncident[] {
+    const oldIncidentIds = new Set<string>();
     oldAnalysis.segmentAnalysis.forEach(segment => {
       segment.incidents.forEach(incident => oldIncidentIds.add(incident.id));
     });
 
-    const newIncidents = [];
+    const newIncidents: TrafficIncident[] = [];
     newAnalysis.segmentAnalysis.forEach(segment => {
       segment.incidents.forEach(incident => {
         if (!oldIncidentIds.has(incident.id)) {
@@ -296,13 +297,13 @@ class RealTimeTrafficMonitor {
   /**
    * Find incidents that were resolved
    */
-  private findResolvedIncidents(oldAnalysis: RouteTrafficAnalysis, newAnalysis: RouteTrafficAnalysis) {
-    const newIncidentIds = new Set();
+  private findResolvedIncidents(oldAnalysis: RouteTrafficAnalysis, newAnalysis: RouteTrafficAnalysis): TrafficIncident[] {
+    const newIncidentIds = new Set<string>();
     newAnalysis.segmentAnalysis.forEach(segment => {
       segment.incidents.forEach(incident => newIncidentIds.add(incident.id));
     });
 
-    const resolvedIncidents = [];
+    const resolvedIncidents: TrafficIncident[] = [];
     oldAnalysis.segmentAnalysis.forEach(segment => {
       segment.incidents.forEach(incident => {
         if (!newIncidentIds.has(incident.id)) {
