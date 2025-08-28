@@ -3,7 +3,8 @@ import {
   RouteRequest,
   RouteCalculationResponse,
   RouteData,
-  RouteTrafficAnalysis
+  RouteTrafficAnalysis,
+  RouteRecommendation
 } from '@/types/route-optimization';
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import { routeTrafficAnalyzer } from '@/lib/services/routeTrafficAnalysis';
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     // Generate route comparison and recommendations
     let routeComparison = null;
-    let recommendations = [];
+    let recommendations: RouteRecommendation[] = [];
 
     if (alternativeRoutes.length > 0) {
       try {
