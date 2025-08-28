@@ -338,10 +338,10 @@ const RouteDetailsPanel: React.FC<RouteDetailsPanelProps> = ({
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <div className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center">
-                          <span className="text-xs font-bold text-white">{index + 2}</span>
+                          <span className="text-xs font-bold text-white">{index + 1}</span>
                         </div>
                         <div>
-                          <h4 className="font-medium text-gray-900">Route {index + 2}</h4>
+                          <h4 className="font-medium text-gray-900">Alt {index + 1}</h4>
                           <p className="text-xs text-gray-600">Alternative option</p>
                         </div>
                       </div>
