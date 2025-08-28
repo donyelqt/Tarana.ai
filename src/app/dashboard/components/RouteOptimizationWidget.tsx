@@ -461,10 +461,10 @@ const RouteOptimizationWidget: React.FC = () => {
             {renderHeader()}
             {renderError()}
             
-            {/* Responsive Grid Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              {/* Left Column: Route Input Panel */}
-              <div className="order-1 lg:order-1">
+            {/* Single Column Layout */}
+            <div className="space-y-4 sm:space-y-6">
+              {/* Route Input Panel */}
+              <div>
                 <ErrorBoundary fallback={
                   <div className="p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-red-700 text-sm">Failed to load route input panel. Please refresh the page.</p>
@@ -483,8 +483,8 @@ const RouteOptimizationWidget: React.FC = () => {
                 </ErrorBoundary>
               </div>
 
-              {/* Right Column: Interactive Map */}
-              <div className="order-2 lg:order-2">
+              {/* Interactive Map */}
+              <div>
                 <div className="h-64 sm:h-80 md:h-96 lg:h-[500px] bg-gray-100 rounded-lg overflow-hidden relative">
                   <ErrorBoundary fallback={
                     <div className="h-full flex items-center justify-center p-4 sm:p-8">
