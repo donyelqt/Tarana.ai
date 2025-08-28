@@ -210,3 +210,63 @@ export function getNextLowTrafficTime(peakHoursStr: string): string {
   
   return "Available now";
 }
+
+/**
+ * Check if a given time is during peak hours
+ */
+export function isPeakHour(date: Date): boolean {
+  const hour = date.getHours();
+  const minute = date.getMinutes();
+  const currentTime24 = hour * 100 + minute;
+  
+  // General peak hours: 7-9 AM, 12-2 PM, 5-7 PM
+  const peakPeriods = [
+    { start: 700, end: 900 },   // Morning rush
+    { start: 1200, end: 1400 }, // Lunch rush
+    { start: 1700, end: 1900 }  // Evening rush
+  ];
+  
+  return peakPeriods.some(period => 
+    currentTime24 >= period.start && currentTime24 <= period.end
+  );
+}
+
+/**
+ * Get peak hour multiplier for traffic calculations
+ */
+export function getPeakHourMultiplier(date: Date): number {
+  if (isPeakHour(date)) {
+    const hour = date.getHours();
+    // Higher multiplier during rush hours
+    if ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)) {
+      return 1.5; // 50% increase during rush hours
+    }
+    return 1.3; // 30% increase during lunch hours
+  }
+  return 1.0; // No multiplier during off-peak hours
+}
+
+/**
+ * Get next peak hour period
+ */
+export function getNextPeakHour(date: Date): Date | null {
+  const hour = date.getHours();
+  const nextPeakHour = new Date(date);
+  
+  if (hour < 7) {
+    // Next peak is morning rush
+    nextPeakHour.setHours(7, 0, 0, 0);
+  } else if (hour < 12) {
+    // Next peak is lunch rush
+    nextPeakHour.setHours(12, 0, 0, 0);
+  } else if (hour < 17) {
+    // Next peak is evening rush
+    nextPeakHour.setHours(17, 0, 0, 0);
+  } else {
+    // Next peak is tomorrow morning
+    nextPeakHour.setDate(nextPeakHour.getDate() + 1);
+    nextPeakHour.setHours(7, 0, 0, 0);
+  }
+  
+  return nextPeakHour;
+}
