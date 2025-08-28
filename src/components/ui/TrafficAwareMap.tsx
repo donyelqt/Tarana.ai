@@ -226,7 +226,7 @@ export function TrafficAwareMap({
       <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-20">
         <div className="flex flex-col items-center gap-3">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
-          <span className="text-sm text-gray-600 font-medium">Calculating traffic-aware routes...</span>
+          <span className="text-sm text-gray-600 font-medium">Analyzing traffic-aware routes...</span>
         </div>
       </div>
     );
