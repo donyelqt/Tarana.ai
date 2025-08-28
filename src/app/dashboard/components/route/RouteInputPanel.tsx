@@ -494,7 +494,7 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
           {isCalculating ? (
             <div className="flex items-center space-x-2">
               <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-2 border-white border-t-transparent"></div>
-              <span>Calculating Route...</span>
+              <span>Analyzing Route...</span>
             </div>
           ) : (
             <div className="flex items-center space-x-2">

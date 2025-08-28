@@ -470,7 +470,7 @@ export default function InteractiveRouteMap({
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
           <div className="flex items-center space-x-2 sm:space-x-3 p-3 sm:p-4 bg-background rounded-lg shadow-lg border mx-2 sm:mx-0">
             <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
-            <span className="text-xs sm:text-sm font-medium text-foreground">Calculating routes...</span>
+            <span className="text-xs sm:text-sm font-medium text-foreground">Analyzing routes...</span>
           </div>
         </div>
       )}
