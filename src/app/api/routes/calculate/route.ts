@@ -124,18 +124,18 @@ export async function POST(request: NextRequest) {
       (response as any).comparisonMetrics = routeComparison.comparisonMetrics;
     }
 
-    console.log(`🎉 API: Route calculation completed successfully for request ${requestId}`);
+    console.log(`🎉 API: Route analyzation completed successfully for request ${requestId}`);
 
     return NextResponse.json(response);
 
   } catch (error) {
-    console.error('❌ API: Route calculation failed:', error);
+    console.error('❌ API: Route analyzation failed:', error);
     
     // Return appropriate error response
     if (error instanceof Error) {
       if (error.message.includes('API key')) {
         return NextResponse.json(
-          { error: 'Route calculation service unavailable' },
+          { error: 'Route analyzation service unavailable' },
           { status: 503 }
         );
       }
