@@ -31,7 +31,7 @@ export interface BoundingBox {
 // ============================================================================
 
 export type RouteType = 'fastest' | 'shortest' | 'eco' | 'thrilling';
-export type VehicleType = 'car' | 'truck' | 'motorcycle' | 'bicycle';
+export type VehicleType = 'car' | 'truck' | 'motorcycle' | 'bicycle' | 'walk';
 
 export interface RoutePreferences {
   routeType: RouteType;

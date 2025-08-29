@@ -403,7 +403,7 @@ const RouteOptimizationWidget: React.FC = () => {
         {state.isCalculating && (
           <div className="flex items-center space-x-2 text-blue-600">
             <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
-            <span className="text-sm font-medium">Calculating...</span>
+            <span className="text-sm font-medium">Analyzing...</span>
           </div>
         )}
         

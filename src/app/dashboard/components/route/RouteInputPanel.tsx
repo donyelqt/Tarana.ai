@@ -18,6 +18,7 @@ import {
   Car, 
   Truck, 
   Bike,
+  PersonStanding,
   Search,
   LocateFixed,
   ArrowRight,
@@ -291,11 +292,17 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
     { value: 'thrilling', label: 'Scenic', description: 'Scenic route', icon: <div className="w-4 h-4 bg-purple-500 rounded-full" /> }
   ];
 
-  // Vehicle type options
+  // Vehicle type options (motorized vehicles)
   const vehicleTypeOptions: Array<{ value: VehicleType; label: string; icon: React.ReactNode }> = [
     { value: 'car', label: 'Car', icon: <Car className="w-4 h-4" /> },
     { value: 'truck', label: 'Truck', icon: <Truck className="w-4 h-4" /> },
     { value: 'motorcycle', label: 'Motorcycle', icon: <Bike className="w-4 h-4" /> }
+  ];
+
+  // Sustainable mode options
+  const sustainableModeOptions: Array<{ value: VehicleType; label: string; icon: React.ReactNode }> = [
+    { value: 'walk', label: 'Walking', icon: <PersonStanding className="w-4 h-4" /> },
+    { value: 'bicycle', label: 'Bicycle', icon: <Bike className="w-4 h-4" /> }
   ];
 
   return (
@@ -431,6 +438,31 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
                       preferences.vehicleType === option.value
                         ? 'border-blue-500 bg-blue-50 text-blue-900'
                         : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {option.icon}
+                    <span>{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Sustainable Mode */}
+            <div className="space-y-2">
+              <Label className="text-xs sm:text-sm font-medium text-green-700 flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                Sustainable Mode
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {sustainableModeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => onPreferencesChange({ vehicleType: option.value })}
+                    className={`flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg transition-colors text-xs sm:text-sm ${
+                      preferences.vehicleType === option.value
+                        ? 'border-green-500 bg-green-50 text-green-900'
+                        : 'border-gray-300 hover:bg-green-50'
                     }`}
                   >
                     {option.icon}
