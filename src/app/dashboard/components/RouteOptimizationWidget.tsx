@@ -523,7 +523,7 @@ const RouteOptimizationWidget: React.FC = () => {
 
               {/* Interactive Map */}
               <div>
-                <div className="h-64 sm:h-80 md:h-96 lg:h-[500px] bg-gray-100 rounded-lg overflow-hidden relative">
+                <div className="h-96 sm:h-[100px] md:h-[500px] lg:h-[600px] bg-gray-100 rounded-lg overflow-hidden relative">
                   <ErrorBoundary fallback={
                     <div className="h-full flex items-center justify-center p-4 sm:p-8">
                       <div className="text-center">

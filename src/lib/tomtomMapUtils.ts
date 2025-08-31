@@ -3,7 +3,7 @@
  * Provides centralized SDK management, initialization, and error handling
  */
 
-export type MapStyle = 'main' | 'satellite' | 'hybrid' | 'terrain' | 'night' | 'grayscale';
+export type MapStyle = 'main' | 'satellite';
 
 export interface TomTomMapConfig {
   apiKey: string;
@@ -33,36 +33,18 @@ export const ZOOM_LEVELS = {
   BUILDING: 18
 } as const;
 
-export const MAP_STYLES: Record<MapStyle, { name: string; description: string; tomtomStyle: string }> = {
+export const MAP_STYLES: Record<MapStyle, { name: string; description: string; tomtomStyle: string; requiresApiKey: boolean }> = {
   main: {
-    name: 'World Map',
-    description: 'Clean world map with country labels and boundaries',
-    tomtomStyle: 'main'
+    name: 'Standard',
+    description: 'Clean world map with roads and labels',
+    tomtomStyle: 'https://api.tomtom.com/style/1/style/*?map=basic_main&poi=poi_main',
+    requiresApiKey: true
   },
   satellite: {
     name: 'Satellite',
-    description: 'High-resolution satellite imagery',
-    tomtomStyle: 'https://api.tomtom.com/style/1/style/*?map=2/basic_street-satellite&poi=2/poi_dynamic-satellite'
-  },
-  hybrid: {
-    name: 'Hybrid',
-    description: 'Satellite imagery with place labels',
-    tomtomStyle: 'hybrid'
-  },
-  terrain: {
-    name: 'Terrain',
-    description: 'Physical terrain with elevation',
-    tomtomStyle: 'terrain'
-  },
-  night: {
-    name: 'Dark',
-    description: 'Dark theme world map',
-    tomtomStyle: 'night'
-  },
-  grayscale: {
-    name: 'Minimal',
-    description: 'Clean minimal world map',
-    tomtomStyle: 'grayscale_light'
+    description: 'High-resolution satellite imagery with roads',
+    tomtomStyle: 'https://api.tomtom.com/style/1/style/*?map=2/basic_street-satellite&poi=2/poi_dynamic-satellite',
+    requiresApiKey: true
   }
 };
 
@@ -284,16 +266,22 @@ class TomTomMapService {
     }
 
     try {
-      // Get the TomTom style string
+      // Get the TomTom style configuration
       const styleConfig = MAP_STYLES[config.style || 'main'];
-      let tomtomStyle = styleConfig?.tomtomStyle || 'main';
+      if (!styleConfig) {
+        throw new Error(`Invalid map style: ${config.style}`);
+      }
       
-      // For satellite style, append the API key to the URL
-      if (config.style === 'satellite' && tomtomStyle.startsWith('https://')) {
+      let tomtomStyle = styleConfig.tomtomStyle;
+      
+      // Append API key to URL-based styles
+      if (styleConfig.requiresApiKey && tomtomStyle.startsWith('https://')) {
         tomtomStyle = `${tomtomStyle}&key=${config.apiKey}`;
       }
       
-      console.log(`Initializing TomTom map with style: ${tomtomStyle}, center: ${config.center}, zoom: ${config.zoom}`);
+      console.log(`🗺️ Initializing TomTom map with style: ${config.style}`);
+      console.log(`📍 Style URL: ${tomtomStyle}`);
+      console.log(`📍 Center: [${config.center[0]}, ${config.center[1]}], Zoom: ${config.zoom}`);
       console.log('API Key available:', !!config.apiKey);
       console.log('Container element:', config.container);
 
@@ -303,7 +291,7 @@ class TomTomMapService {
         container: config.container,
         center: config.center,
         zoom: config.zoom,
-        style: tomtomStyle, // Use the requested style (satellite by default)
+        style: tomtomStyle,
         dragPan: true,
         scrollZoom: true,
         boxZoom: true,
@@ -320,26 +308,27 @@ class TomTomMapService {
         throw new Error('TomTom SDK not loaded');
       }
       
-      console.log('Creating TomTom map instance...');
+      console.log('🚀 Creating TomTom map instance...');
       const map = window.tt.map(mapOptions);
       
       if (!map) {
-        throw new Error('Failed to create map instance');
+        throw new Error('Failed to create map instance - tt.map() returned null');
       }
       
-      console.log('Map instance created, waiting for ready state...');
-      // Wait for map to be ready (simplified)
+      console.log('✅ Map instance created successfully');
+      
+      console.log('⏳ Waiting for map to be ready...');
       await this.waitForMapReady(map);
+      console.log('✅ Map is ready for use');
 
-      // Enable 3D terrain if requested
-      if (config.enableTerrain && tomtomStyle === 'terrain') {
-        this.enable3DTerrain(map).catch(error => {
-          console.warn('Failed to enable 3D terrain:', error);
-        });
+      // 3D terrain features disabled (not supported in simplified style set)
+
+      // Traffic layer configuration
+      if (config.enableTraffic) {
+        console.log('🚦 Traffic layer will be enabled');
+      } else {
+        console.log('🚫 Traffic layer disabled - clean map display');
       }
-
-      // Traffic layer disabled for clean world map view
-      console.log('Traffic layer disabled - clean map display');
 
       // Add navigation controls if enabled (with delay)
       if (config.enableControls) {
@@ -478,33 +467,185 @@ class TomTomMapService {
   }
 
   /**
-   * Change map style dynamically
+   * Test if a TomTom style URL is valid by making a test request
    */
-  public async changeMapStyle(map: any, newStyle: MapStyle, apiKey?: string): Promise<void> {
+  private async testStyleUrl(styleUrl: string): Promise<boolean> {
     try {
-      if (!map || typeof map.setStyle !== 'function') {
+      const response = await fetch(styleUrl, { method: 'HEAD' });
+      return response.ok;
+    } catch (error) {
+      console.warn('Style URL test failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Change map style dynamically with proper TomTom API handling
+   * TomTom doesn't support runtime style changes like Mapbox, so we recreate the map
+   */
+  public async changeMapStyle(map: any, newStyle: MapStyle, apiKey?: string, container?: HTMLElement): Promise<any> {
+    try {
+      if (!map) {
         throw new Error('Invalid map instance');
       }
 
-      const styleConfig = MAP_STYLES[newStyle];
-      if (!styleConfig) {
-        throw new Error(`Unknown map style: ${newStyle}`);
+      if (!apiKey) {
+        throw new Error('API key is required for style changes');
       }
 
-      let tomtomStyle = styleConfig.tomtomStyle;
+      console.log(`🎨 Attempting to change map style to: ${newStyle}`);
       
-      // For satellite style, append the API key to the URL
-      if (newStyle === 'satellite' && tomtomStyle.startsWith('https://') && apiKey) {
-        tomtomStyle = `${tomtomStyle}&key=${apiKey}`;
+      // Get current map state
+      const currentCenter = map.getCenter ? map.getCenter() : { lng: BAGUIO_CITY_COORDINATES[0], lat: BAGUIO_CITY_COORDINATES[1] };
+      const currentZoom = map.getZoom ? map.getZoom() : ZOOM_LEVELS.CITY;
+      const mapContainer = container || map.getContainer();
+      
+      if (!mapContainer) {
+        throw new Error('Map container not found');
       }
 
-      map.setStyle(tomtomStyle);
+      // Store current map state for restoration
+      const mapState = {
+        center: [currentCenter.lng || currentCenter.lon || BAGUIO_CITY_COORDINATES[0], 
+                currentCenter.lat || BAGUIO_CITY_COORDINATES[1]],
+        zoom: currentZoom || ZOOM_LEVELS.CITY,
+        bearing: map.getBearing ? map.getBearing() : 0,
+        pitch: map.getPitch ? map.getPitch() : 0
+      };
+
+      console.log('📍 Current map state:', mapState);
+
+      // Use TomTom's actual available styles with distinct visual differences
+      let tomtomStyle: string;
       
-      // Wait for style to load
-      await this.delay(1000);
+      switch (newStyle) {
+        case 'satellite':
+          tomtomStyle = `https://api.tomtom.com/style/1/style/*?map=2/basic_street-satellite&poi=2/poi_dynamic-satellite&key=${apiKey}`;
+          break;
+          
+        case 'main':
+        default:
+          tomtomStyle = `https://api.tomtom.com/style/1/style/*?map=basic_main&poi=poi_main&key=${apiKey}`;
+          break;
+      }
+
+      console.log('🔗 Style URL:', tomtomStyle);
+
+      // Test the style URL first
+      const isValidStyle = await this.testStyleUrl(tomtomStyle);
+      if (!isValidStyle) {
+        console.warn(`⚠️ Style URL may be invalid, proceeding anyway: ${tomtomStyle}`);
+      }
+
+      // Remove the old map instance
+      try {
+        if (map.remove) {
+          map.remove();
+        }
+      } catch (error) {
+        console.warn('Error removing old map:', error);
+      }
+
+      // Clear the container
+      mapContainer.innerHTML = '';
+
+      // Create new map with the new style
+      const newMapConfig: TomTomMapConfig = {
+        apiKey: apiKey,
+        container: mapContainer,
+        center: mapState.center as [number, number],
+        zoom: mapState.zoom,
+        style: newStyle,
+        enableTraffic: false, // Disable traffic for cleaner styles
+        enableControls: true,
+        enable3D: false,
+        enableTerrain: false,
+        worldView: true,
+        minZoom: ZOOM_LEVELS.WORLD,
+        maxZoom: ZOOM_LEVELS.BUILDING
+      };
+
+      // Override the style URL in the config
+      const originalCreateMap = this.createMap.bind(this);
+      const self = this;
+      
+      // Temporarily override createMap to use our custom style URL
+      this.createMap = async function(config: TomTomMapConfig) {
+        const mapOptions = {
+          key: config.apiKey,
+          container: config.container,
+          center: config.center,
+          zoom: config.zoom,
+          style: tomtomStyle, // Use our custom style URL
+          dragPan: true,
+          scrollZoom: true,
+          boxZoom: true,
+          doubleClickZoom: true,
+          keyboard: true,
+          pitch: 0,
+          bearing: 0
+        };
+
+        console.log('🚀 Creating map with custom style:', mapOptions);
+        
+        if (!window.tt || !window.tt.map) {
+          throw new Error('TomTom SDK not loaded');
+        }
+        
+        const map = window.tt.map(mapOptions);
+        
+        if (!map) {
+          throw new Error('Failed to create map instance - tt.map() returned null');
+        }
+        
+        await self.waitForMapReady(map);
+        
+        if (config.enableControls) {
+          self.addNavigationControls(map).catch(error => {
+            console.warn('Navigation controls initialization failed:', error);
+          });
+        }
+        
+        return map;
+      };
+
+      try {
+        const newMap = await this.createMap(newMapConfig);
+        
+        // Restore original createMap method
+        this.createMap = originalCreateMap;
+        
+        // Restore map state
+        if (newMap.setBearing && mapState.bearing !== 0) {
+          newMap.setBearing(mapState.bearing);
+        }
+        if (newMap.setPitch && mapState.pitch !== 0) {
+          newMap.setPitch(mapState.pitch);
+        }
+
+        console.log(`✅ Successfully changed map style to: ${newStyle}`);
+        return newMap;
+      } catch (error) {
+        // Restore original createMap method on error
+        this.createMap = originalCreateMap;
+        throw error;
+      }
+      
     } catch (error) {
-      console.error('Failed to change map style:', error);
-      throw error;
+      console.error(`❌ Failed to change map style to ${newStyle}:`, error);
+      
+      // Provide detailed error information
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      } else {
+        console.error('Non-Error object thrown:', error);
+      }
+      
+      throw new Error(`Map style change failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -516,6 +657,48 @@ class TomTomMapService {
     this.isSDKLoaded = false;
     this.loadingError = null;
     this.retryCount = 0;
+  }
+
+  /**
+   * Wait for map style change to complete
+   */
+  private async waitForStyleChange(map: any, timeout: number = 5000): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      let styleChangeHandler: () => void;
+      let timeoutId: NodeJS.Timeout;
+
+      const cleanup = () => {
+        if (styleChangeHandler && map.off) {
+          map.off('styledata', styleChangeHandler);
+        }
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      };
+
+      // Set up timeout
+      timeoutId = setTimeout(() => {
+        cleanup();
+        console.warn('Style change timeout - proceeding anyway');
+        resolve(); // Don't reject, just proceed
+      }, timeout);
+
+      // Try to listen for style change event if available
+      if (map.on && typeof map.on === 'function') {
+        styleChangeHandler = () => {
+          cleanup();
+          resolve();
+        };
+        map.on('styledata', styleChangeHandler);
+      } else {
+        // Fallback to simple delay if event system not available
+        setTimeout(() => {
+          cleanup();
+          resolve();
+        }, 1500);
+      }
+    });
   }
 
   /**
@@ -580,7 +763,7 @@ export function calculateOptimalMapView(locations: Array<{ lat: number; lng: num
 /**
  * Get optimized map configuration for world map display
  */
-export function getWorldMapConfig(apiKey: string, container: HTMLElement, style: MapStyle = 'satellite'): TomTomMapConfig {
+export function getWorldMapConfig(apiKey: string, container: HTMLElement, style: MapStyle = 'main'): TomTomMapConfig {
   return {
     apiKey,
     container,
@@ -589,8 +772,8 @@ export function getWorldMapConfig(apiKey: string, container: HTMLElement, style:
     style,
     enableTraffic: true,
     enableControls: true,
-    enable3D: style === 'terrain',
-    enableTerrain: style === 'terrain',
+    enable3D: false,
+    enableTerrain: false,
     worldView: true,
     minZoom: ZOOM_LEVELS.WORLD,
     maxZoom: ZOOM_LEVELS.BUILDING
@@ -602,4 +785,5 @@ export const createTomTomMap = (config: TomTomMapConfig) => tomtomMapService.cre
 export const loadTomTomSDK = () => tomtomMapService.loadSDK();
 export const getTomTomSDKStatus = () => tomtomMapService.getStatus();
 export const resetTomTomService = () => tomtomMapService.reset();
-export const changeMapStyle = (map: any, style: MapStyle, apiKey?: string) => tomtomMapService.changeMapStyle(map, style, apiKey);
+export const changeMapStyle = (map: any, style: MapStyle, apiKey?: string, container?: HTMLElement) => 
+  tomtomMapService.changeMapStyle(map, style, apiKey, container);

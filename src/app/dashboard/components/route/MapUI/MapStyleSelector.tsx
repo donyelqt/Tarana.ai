@@ -14,15 +14,20 @@ interface MapStyleSelectorProps {
 
 export default function MapStyleSelector({ currentMapStyle, isChangingStyle, onStyleChange }: MapStyleSelectorProps) {
   return (
-    <div className="absolute top-4 right-4 sm:right-4">
+    <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 z-20">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon" disabled={isChangingStyle}>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            disabled={isChangingStyle}
+            className="shadow-lg backdrop-blur-sm bg-white/90 hover:bg-white/95 border-gray-200/80"
+          >
             {isChangingStyle ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapIcon className="h-4 w-4" />}
             <span className="sr-only">Change Map Style</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" side="top" className="mb-2">
           <DropdownMenuRadioGroup value={currentMapStyle} onValueChange={(value) => onStyleChange(value as MapStyle)}>
             {Object.entries(MAP_STYLES).map(([styleKey, styleInfo]) => (
               <DropdownMenuRadioItem key={styleKey} value={styleKey}>
