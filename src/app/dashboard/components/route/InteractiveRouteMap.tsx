@@ -48,7 +48,7 @@ export default function InteractiveRouteMap({
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isSdkLoaded, setIsSdkLoaded] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const [currentMapStyle, setCurrentMapStyle] = useState<MapStyle>('satellite');
+  const [currentMapStyle, setCurrentMapStyle] = useState<MapStyle>('main');
   const [isChangingStyle, setIsChangingStyle] = useState(false);
 
   // Initialize map using the TomTom utility service
@@ -75,8 +75,8 @@ export default function InteractiveRouteMap({
         style: currentMapStyle,
         enableTraffic: true,
         enableControls: true,
-        enable3D: currentMapStyle === 'terrain',
-        enableTerrain: currentMapStyle === 'terrain',
+        enable3D: false,
+        enableTerrain: false,
         worldView: true, // Enable world map optimizations
         minZoom: ZOOM_LEVELS.WORLD, // Allow zooming out to world view
         maxZoom: ZOOM_LEVELS.BUILDING // Allow detailed building-level zoom
@@ -187,18 +187,36 @@ export default function InteractiveRouteMap({
 
   // Handle map style change
   const handleStyleChange = useCallback(async (newStyle: MapStyle) => {
-    if (!mapInstanceRef.current || isChangingStyle || newStyle === currentMapStyle) {
+    if (!mapInstanceRef.current || !mapRef.current || isChangingStyle || newStyle === currentMapStyle) {
       return;
     }
 
     try {
       setIsChangingStyle(true);
       const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY || '6Acdv8xeMK2MXLSy3tFQ1qk9s8ovwabD';
-      await changeMapStyle(mapInstanceRef.current, newStyle, apiKey);
+      
+      console.log(`🎨 Changing map style from ${currentMapStyle} to ${newStyle}`);
+      
+      // Use the updated changeMapStyle function that recreates the map
+      const newMapInstance = await changeMapStyle(
+        mapInstanceRef.current, 
+        newStyle, 
+        apiKey, 
+        mapRef.current
+      );
+      
+      // Update the map instance reference
+      mapInstanceRef.current = newMapInstance;
       setCurrentMapStyle(newStyle);
+      
+      console.log(`✅ Successfully changed map style to ${newStyle}`);
     } catch (error) {
       console.error('Failed to change map style:', error);
-      // Optionally show error to user
+      const errorMessage = error instanceof Error ? error.message : 
+                          typeof error === 'string' ? error : 
+                          JSON.stringify(error, null, 2);
+      console.error('Detailed error:', errorMessage);
+      setMapError(`Failed to change map style: ${errorMessage}`);
     } finally {
       setIsChangingStyle(false);
     }
