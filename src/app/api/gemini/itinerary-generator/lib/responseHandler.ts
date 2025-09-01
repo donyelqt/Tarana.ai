@@ -9,10 +9,11 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export async function generateItinerary(detailedPrompt: string, prompt: string, durationDays: number | null) {
     const generationConfig = {
         responseMimeType: "application/json",
-        temperature: 0.7, // Lowered for more predictable JSON output
+        temperature: 0.3, // Further lowered for more predictable JSON output
         topK: 1,
-        topP: 0.9,
-        maxOutputTokens: 8192
+        topP: 0.8,
+        maxOutputTokens: 8192,
+        candidateCount: 1 // Ensure single response
     };
 
     let result: any = null;
@@ -61,25 +62,31 @@ export async function handleItineraryProcessing(parsed: any, prompt: string, dur
 }
 
 export function parseAndCleanJson(text: string) {
-    let cleanedJson = text;
-    const codeBlockMatch = cleanedJson.match(/```(?:json)?\n?([\s\S]*?)\n?```/i);
-    if (codeBlockMatch) {
-        cleanedJson = codeBlockMatch[1];
+    // Import the robust parser and validator
+    const { RobustJsonParser } = require('./robustJsonParser');
+    const { ResponseValidator } = require('./responseValidator');
+    
+    try {
+        // Pre-validate the response
+        const validation = ResponseValidator.validateResponse(text);
+        
+        if (!validation.isValid) {
+            console.warn("Response validation issues:", validation.issues);
+        }
+        
+        // Use cleaned text if available, otherwise original
+        const textToProcess = validation.cleanedText || text;
+        
+        // Use the robust parser with multiple recovery strategies
+        return RobustJsonParser.parseResponse(textToProcess);
+    } catch (error) {
+        console.error("RobustJsonParser failed:", error);
+        
+        // Ultimate fallback - return minimal valid structure
+        return {
+            title: "Baguio City Itinerary",
+            subtitle: "Unable to parse response - please try again",
+            items: []
+        };
     }
-
-    const firstBrace = cleanedJson.indexOf('{');
-    const lastBrace = cleanedJson.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
-        cleanedJson = cleanedJson.slice(firstBrace, lastBrace + 1);
-    }
-
-    const parsed = JSON.parse(cleanedJson);
-    const validationResult = ItinerarySchema.safeParse(parsed);
-
-    if (!validationResult.success) {
-        console.error("Zod validation failed:", validationResult.error.issues);
-        throw new Error("Invalid itinerary structure received from AI.");
-    }
-
-    return validationResult.data;
 }
