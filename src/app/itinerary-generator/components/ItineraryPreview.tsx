@@ -2,12 +2,12 @@
 
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/core";
 import { ItineraryPreviewProps } from "../types";
 import { sampleItinerary } from "../data/itineraryData";
 import { getWeatherIconUrl, getWeatherDescription } from "../utils/weatherUtils";
 import { TrafficCone } from "lucide-react";
-import { isCurrentlyPeakHours } from "@/lib/peakHours";
+import { isCurrentlyPeakHours } from "@/lib/traffic";
 import React, { useState, useEffect } from "react";
 
 // Loading messages

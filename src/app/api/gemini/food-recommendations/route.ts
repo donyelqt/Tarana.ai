@@ -2,6 +2,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 import { FullMenu, RestaurantData } from "@/app/tarana-eats/data/taranaEatsData";
 import { ResultMatch } from "@/types/tarana-eats";
+import { RobustFoodJsonParser } from "@/lib/robustFoodJsonParser";
+import { FoodRecommendationErrorHandler, FoodErrorType } from "@/lib/foodRecommendationErrorHandler";
 
 interface EnhancedResultMatch extends ResultMatch {
   fullMenu?: FullMenu;
@@ -110,31 +112,19 @@ export async function POST(req: NextRequest) {
       const textResponse = response.text();
       console.log("Gemini Raw Response for Debugging:", textResponse); // Temporary debug log
 
-      // Try to parse the JSON response with enhanced error handling
+      // Use robust JSON parser with multiple recovery strategies
+      const parseResult = RobustFoodJsonParser.parseResponse(textResponse);
       let recommendations: { matches: EnhancedResultMatch[] };
-      try {
-        // Look for JSON in the response with multiple extraction strategies
-        let jsonString = extractJsonFromResponse(textResponse);
+
+      if (parseResult.success && parseResult.data) {
+        recommendations = parseResult.data;
         
-        if (jsonString) {
-          // Sanitize the JSON string before parsing
-          jsonString = sanitizeJsonString(jsonString);
-          recommendations = JSON.parse(jsonString);
-          
-          // Validate and enhance the response
-          if (recommendations && recommendations.matches && Array.isArray(recommendations.matches)) {
-            recommendations.matches = validateAndEnhanceRecommendations(recommendations.matches, foodData, prompt);
-          } else {
-            throw new Error("Invalid response structure");
-          }
-        } else {
-          throw new Error("No valid JSON found in response");
+        // Validate and enhance the response
+        if (recommendations.matches && Array.isArray(recommendations.matches)) {
+          recommendations.matches = validateAndEnhanceRecommendations(recommendations.matches, foodData, prompt);
         }
-      } catch (parseError) {
-        console.error("Failed to parse Gemini response:", parseError);
-        console.error("Raw response:", textResponse.substring(0, 500));
-        
-        // Enhanced fallback: Create a structured response based on the text
+      } else {
+        console.warn(`🔄 JSON parsing failed, using fallback recommendations`);
         recommendations = createFallbackRecommendations(foodData, prompt);
       }
       
@@ -160,6 +150,23 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(recommendations);
 
+    } catch (apiError) {
+      const error = FoodRecommendationErrorHandler.createError(apiError, 'gemini_api_call');
+      FoodRecommendationErrorHandler.logError(error);
+      
+      // Create a fallback response
+      const fallbackRecommendations = createFallbackRecommendations(foodData, prompt);
+      return NextResponse.json(fallbackRecommendations);
+    }
+  } catch (error) {
+    const foodError = FoodRecommendationErrorHandler.createError(error, 'food_recommendations_api');
+    FoodRecommendationErrorHandler.logError(foodError);
+    
+    const errorResponse = FoodRecommendationErrorHandler.createErrorResponse(foodError);
+    return NextResponse.json(errorResponse, { status: 500 });
+  }
+}
+
 // Validation and enhancement helper
 function validateAndEnhanceRecommendations(matches: EnhancedResultMatch[], foodData: any, prompt: string): EnhancedResultMatch[] {
   return matches.map(match => {
@@ -183,20 +190,6 @@ function validateAndEnhanceRecommendations(matches: EnhancedResultMatch[], foodD
       fullMenu: restaurant.fullMenu
     };
   });
-}
-    } catch (apiError) {
-      console.error("Error calling Gemini API:", apiError);
-      // Create a fallback response
-      const fallbackRecommendations = createFallbackRecommendations(foodData, prompt);
-      return NextResponse.json(fallbackRecommendations);
-    }
-  } catch (error) {
-    console.error("Error in food recommendations API:", error);
-    return NextResponse.json(
-      { error: "Failed to process request" },
-      { status: 500 }
-    );
-  }
 }
 
 // Optimized fallback recommendations with simplified scoring
@@ -380,83 +373,24 @@ function generateQuickReason(restaurant: any, preferences: any): string {
   return reasons.join(' • ');
 }
 
-// Extract JSON from Gemini response with multiple strategies
-function extractJsonFromResponse(textResponse: string): string | null {
-  // Strategy 1: Look for complete JSON object
-  let jsonMatch = textResponse.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    return jsonMatch[0];
-  }
-  
-  // Strategy 2: Look for JSON between code blocks
-  jsonMatch = textResponse.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    return jsonMatch[1].trim();
-  }
-  
-  // Strategy 3: Look for JSON after specific markers
-  const markers = ['RESPONSE:', 'JSON:', 'Result:', 'Output:'];
-  for (const marker of markers) {
-    const markerIndex = textResponse.indexOf(marker);
-    if (markerIndex !== -1) {
-      const afterMarker = textResponse.substring(markerIndex + marker.length);
-      const jsonMatch = afterMarker.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return jsonMatch[0];
-      }
-    }
-  }
-  
-  return null;
-}
 
-// Sanitize JSON string to fix common issues
-function sanitizeJsonString(jsonString: string): string {
-  // Remove any leading/trailing whitespace
-  jsonString = jsonString.trim();
+// Health check endpoint for monitoring
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const action = url.searchParams.get('action');
   
-  // Fix common issues with quotes in property names
-  jsonString = jsonString.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
-  
-  // Fix unescaped quotes in string values
-  jsonString = jsonString.replace(/:\s*"([^"]*?)"([^,}\]]*?)"([^"]*?)"/g, (match, p1, p2, p3) => {
-    // If p2 contains quotes, escape them
-    const escapedP2 = p2.replace(/"/g, '\\"');
-    return `: "${p1}${escapedP2}${p3}"`;
-  });
-  
-  // Fix trailing commas
-  jsonString = jsonString.replace(/,\s*([}\]])/g, '$1');
-  
-  // Fix single quotes to double quotes
-  jsonString = jsonString.replace(/'/g, '"');
-  
-  // Remove any non-JSON content after the closing brace
-  const lastBraceIndex = jsonString.lastIndexOf('}');
-  if (lastBraceIndex !== -1) {
-    jsonString = jsonString.substring(0, lastBraceIndex + 1);
+  if (action === 'health') {
+    return NextResponse.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      service: 'food-recommendations'
+    });
   }
   
-  return jsonString;
-}
-
-// Create general recommendations when no specific matches
-function createGeneralRecommendations(foodData: any, preferences: any): { matches: EnhancedResultMatch[] } {
-  const generalMatches = foodData.restaurants
-    .sort((a: any, b: any) => {
-      const aPrice = (a.priceRange.min + a.priceRange.max) / 2;
-      const bPrice = (b.priceRange.min + b.priceRange.max) / 2;
-      return aPrice - bPrice;
-    })
-    .slice(0, 3)
-    .map((restaurant: any) => ({
-      name: restaurant.name,
-      meals: preferences.pax || 2,
-      price: calculateRecommendedPrice(restaurant, preferences.pax || 2),
-      image: restaurant.image,
-      reason: `Popular choice for ${restaurant.cuisine.join(', ')}`,
-      fullMenu: restaurant.fullMenu
-    }));
+  if (action === 'stats') {
+    const stats = FoodRecommendationErrorHandler.getStats();
+    return NextResponse.json(stats);
+  }
   
-  return { matches: generalMatches };
+  return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 }

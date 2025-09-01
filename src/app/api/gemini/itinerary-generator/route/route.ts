@@ -2,18 +2,59 @@ import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { createHash } from "crypto";
 import { geminiModel, API_KEY } from "../lib/config";
-import { getPeakHoursContext } from "@/lib/peakHours";
+import { getPeakHoursContext } from "@/lib/traffic";
 import { buildDetailedPrompt } from "../lib/contextBuilder";
 import { findAndScoreActivities } from "../lib/activitySearch";
 import { generateItinerary, handleItineraryProcessing, parseAndCleanJson } from "../lib/responseHandler";
 import { ErrorHandler, ErrorType, ItineraryError } from "../lib/errorHandler";
+import { optimizedPipeline } from "@/lib/performance/optimizedPipeline";
+import { smartCacheManager } from "@/lib/performance/smartCacheManager";
 import type { WeatherCondition } from "../types/types";
 
-// Main logic for generating an itinerary, wrapped for caching
+// Optimized logic for ultra-fast itinerary generation
 const getCachedItinerary = unstable_cache(
     async (requestBody: any, hash: string) => {
         const requestId = hash.substring(0, 8);
         
+        // Check if optimized pipeline should be used
+        const useOptimized = process.env.USE_OPTIMIZED_PIPELINE !== 'false';
+        
+        if (useOptimized) {
+            console.log(`🚀 USING OPTIMIZED PIPELINE for request ${requestId}`);
+            
+            return await ErrorHandler.withRetry(async () => {
+                const { prompt, weatherData, interests, duration, budget, pax } = requestBody;
+
+                if (!geminiModel) {
+                    throw new ItineraryError(ErrorType.GENERATION, "Gemini model not available", false, requestId);
+                }
+
+                const durationDays = duration ? parseInt(duration.toString().match(/\d+/)?.[0] || '1', 10) : null;
+
+                // Use optimized pipeline for 3-5x faster generation
+                const { itinerary, metrics } = await optimizedPipeline.generateOptimized({
+                    prompt,
+                    interests: Array.isArray(interests) ? interests : [],
+                    weatherData,
+                    durationDays,
+                    budget: budget || 'mid-range',
+                    pax: pax || '2',
+                    model: geminiModel
+                });
+
+                console.log(`⚡ OPTIMIZED GENERATION: Completed in ${metrics.totalTime}ms with ${metrics.performance.efficiency}% efficiency`);
+                
+                return { 
+                    text: JSON.stringify(itinerary),
+                    metrics,
+                    optimized: true,
+                    requestId
+                };
+            }, 2, 500); // Reduced retries for faster response
+        }
+        
+        // Fallback to legacy pipeline
+        console.log(`🐌 USING LEGACY PIPELINE for request ${requestId}`);
         return await ErrorHandler.withRetry(async () => {
             const { prompt, weatherData, interests, duration, budget, pax } = requestBody;
 
@@ -53,12 +94,12 @@ const getCachedItinerary = unstable_cache(
             const peakHoursContext = getPeakHoursContext();
             let parsed = parseAndCleanJson(text);
             const finalItinerary = await handleItineraryProcessing(parsed, prompt, durationDays, peakHoursContext);
-            return { text: JSON.stringify(finalItinerary) };
+            return { text: JSON.stringify(finalItinerary), optimized: false };
         }, 3, 1000); // 3 retries with 1 second base delay
     },
     ['itinerary-requests'], // Cache key prefix
     {
-        revalidate: 30 * 60, // 30-minute cache revalidation
+        revalidate: 5 * 60, // Reduced to 5-minute cache for faster updates
         tags: ['itineraries'],
     }
 );

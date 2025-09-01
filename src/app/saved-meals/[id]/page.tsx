@@ -12,8 +12,8 @@ import { FullMenu } from '@/app/tarana-eats/data/taranaEatsData';
 import { useToast } from '@/components/ui/use-toast';
 import MealCardPopup from '../components/MealCardPopup';
 import { useSession } from 'next-auth/react'
-import { deleteMeal, saveMeal, getSavedMeals } from '@/lib/supabaseMeals'
-import { getSavedMealById } from '@/lib/supabaseMeals';
+import { deleteMeal, saveMeal, getSavedMeals } from '@/lib/data/supabaseMeals';
+import { getSavedMealById } from '@/lib/data/supabaseMeals';
 
 // Static data for fallback
 const mealDetailsData = {};

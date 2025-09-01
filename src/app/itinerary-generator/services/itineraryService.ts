@@ -1,4 +1,4 @@
-import { WeatherData } from "@/lib/utils";
+import { WeatherData } from "@/lib/core";
 import { ItineraryData, FormData } from "../types";
 import { sampleItinerary } from "../data/itineraryData";
 

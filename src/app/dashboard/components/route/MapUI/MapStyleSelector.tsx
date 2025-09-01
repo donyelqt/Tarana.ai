@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MAP_STYLES, MapStyle } from '@/lib/tomtomMapUtils';
+import { MAP_STYLES, MapStyle } from '@/lib/integrations/tomtomMapUtils';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MapIcon, Loader2 } from 'lucide-react';

@@ -6,7 +6,7 @@ import { FullMenu } from '../data/taranaEatsData';
 import { ExtendedResultMatch } from './useTaranaEatsAI';
 import { useToast } from '@/components/ui/use-toast';
 import { useSession } from 'next-auth/react'
-import { saveMeal } from '@/lib/supabaseMeals'
+import { saveMeal } from '@/lib/data/supabaseMeals';
 // Import uuid in a way that's compatible with Next.js
 import { v4 as uuidv4 } from 'uuid';
 

@@ -7,7 +7,7 @@
  */
 
 import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
-import { generateEmbedding } from "./embeddings";
+import { generateEmbedding } from '../ai/embeddings';
 
 export interface IndexedActivity extends Activity {
   id: string;

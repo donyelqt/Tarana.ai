@@ -1,5 +1,5 @@
-import { supabaseAdmin } from "./supabaseAdmin";
-import { generateEmbedding } from "./embeddings";
+import { supabaseAdmin } from '../data/supabaseAdmin';
+import { generateEmbedding } from '../ai/embeddings';
 
 /**
  * Name of the table that stores activity embeddings.

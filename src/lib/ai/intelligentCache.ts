@@ -6,8 +6,8 @@
  * @version 2.0.0
  */
 
-import type { IntelligentSearchResult, SearchContext } from "./intelligentSearch";
-import type { IndexedActivity } from "./searchIndex";
+import type { IntelligentSearchResult, SearchContext } from "../search/intelligentSearch";
+import type { IndexedActivity } from "../search/searchIndex";
 
 export interface CacheEntry<T> {
   data: T;
@@ -435,7 +435,7 @@ export class IntelligentCacheManager {
     const tags = ['search'];
     
     // Add interest-based tags
-    tags.push(...context.interests.map(interest => `interest_${interest.toLowerCase().replace(/\s+/g, '_')}`));
+    tags.push(...context.interests.map((interest: string) => `interest_${interest.toLowerCase().replace(/\s+/g, '_')}`));
     
     // Add context-based tags
     tags.push(`weather_${context.weatherCondition}`);

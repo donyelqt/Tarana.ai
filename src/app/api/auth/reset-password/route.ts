@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import { validatePasswordStrength } from '@/lib/security/inputSanitizer';
 import { applySecurityHeaders } from '@/lib/security/securityHeaders';

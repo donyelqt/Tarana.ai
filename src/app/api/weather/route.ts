@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchWeatherData } from '@/lib/utils';
+import { fetchWeatherData } from '@/lib/core/utils';
 
 // Server-side API route to fetch weather data
 // This protects the API key by keeping it server-side only

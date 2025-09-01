@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { PlusIcon, CheckIcon } from "@heroicons/react/24/solid";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/core";
 import { ResultMatch, MenuItem } from "@/types/tarana-eats";
 import { MENU_DATA } from "../data/menuData";
 import { getMenuByRestaurantName, restaurants } from "../data/taranaEatsData";

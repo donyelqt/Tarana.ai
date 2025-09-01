@@ -5,7 +5,7 @@
 
 import { tomtomTrafficService, LocationTrafficData, getTrafficSummary, getTrafficTimeRecommendation } from './tomtomTraffic';
 import { isCurrentlyPeakHours, getManilaTime } from './peakHours';
-import { getActivityCoordinates } from './baguioCoordinates';
+import { getActivityCoordinates } from '../data/baguioCoordinates';
 
 // Activity interface
 export interface Activity {

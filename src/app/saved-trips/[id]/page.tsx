@@ -10,8 +10,8 @@ import {
   formatDateRange,
   updateItinerary,
   ItineraryPeriod,
-} from "@/lib/savedItineraries";
-import { fetchWeatherFromAPI, WeatherData } from "@/lib/utils"; // Added import
+} from "@/lib/data";
+import { fetchWeatherFromAPI, WeatherData } from "@/lib/core"; // Added import
 import Image, { type StaticImageData } from "next/image"
 import PlaceDetail from "@/components/PlaceDetail"
 import { useToast } from "@/components/ui/use-toast"

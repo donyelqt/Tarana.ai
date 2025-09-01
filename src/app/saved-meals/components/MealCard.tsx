@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { useSession } from 'next-auth/react'
-import { deleteMeal } from '@/lib/supabaseMeals'
+import { deleteMeal, saveMeal } from '@/lib/data/supabaseMeals';
 
 interface MealCardProps {
   meal: SavedMeal;

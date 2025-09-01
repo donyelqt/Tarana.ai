@@ -9,9 +9,9 @@
 import { intelligentSearchEngine, type SearchContext, type IntelligentSearchResult } from './intelligentSearch';
 import { searchOptimizer, queryProcessor } from './searchOptimizer';
 import { searchIndexManager } from './searchIndex';
-import { intelligentCacheManager } from './intelligentCache';
+import { intelligentCacheManager } from '../ai/intelligentCache';
 import { sampleItineraryCombined } from '@/app/itinerary-generator/data/itineraryData';
-import { getManilaTime } from './peakHours';
+import { getManilaTime } from '../traffic/peakHours';
 import type { Activity } from '@/app/itinerary-generator/data/itineraryData';
 
 export interface IntelligentSearchConfig {
