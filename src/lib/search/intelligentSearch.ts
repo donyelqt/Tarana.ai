@@ -6,11 +6,11 @@
  * @version 2.0.0
  */
 
-import { generateEmbedding } from "./embeddings";
-import { supabaseAdmin } from "./supabaseAdmin";
-import { isCurrentlyPeakHours, getManilaTime } from "./peakHours";
-import { tomtomTrafficService } from "./tomtomTraffic";
-import { getActivityCoordinates } from "./baguioCoordinates";
+import { generateEmbedding } from '../ai/embeddings';
+import { supabaseAdmin } from '../data/supabaseAdmin';
+import { isCurrentlyPeakHours, getManilaTime } from '../traffic/peakHours';
+import { tomtomTrafficService } from '../traffic/tomtomTraffic';
+import { getActivityCoordinates } from '../data/baguioCoordinates';
 import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
 
 // Advanced search configuration

@@ -1,15 +1,15 @@
-import { searchSimilarActivities } from "@/lib/vectorSearch";
+import { searchSimilarActivities } from "@/lib/search";
 import { proposeSubqueries } from "../agent/agent";
-import { isCurrentlyPeakHours, getManilaTime } from "@/lib/peakHours";
+import { isCurrentlyPeakHours, getManilaTime } from "@/lib/traffic";
 import { WEATHER_TAG_FILTERS } from "./config";
 import { validateAndEnrichActivity } from "../utils/itineraryUtils";
-import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/trafficAwareActivitySearch";
-import { getActivityCoordinates } from "@/lib/baguioCoordinates";
-import { IntelligentSearchEngine } from "@/lib/intelligentSearch";
-import { SearchOptimizer } from "@/lib/searchOptimizer";
+import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/traffic";
+import { getActivityCoordinates } from "@/lib/data";
+import { IntelligentSearchEngine } from "@/lib/search";
+import { SearchOptimizer } from "@/lib/search";
 import type { WeatherCondition } from "../types/types";
-import type { SearchContext } from "@/lib/intelligentSearch";
-import type { SearchOptimization } from "@/lib/searchOptimizer";
+import type { SearchContext } from "@/lib/search";
+import type { SearchOptimization } from "@/lib/search";
 import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
 
 // Import sample itinerary data

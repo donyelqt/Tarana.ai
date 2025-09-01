@@ -162,8 +162,8 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
       <aside className="w-full h-full min-h-full">
         {results ? (
           <div className="bg-white rounded-2xl shadow-md p-4 sm:p-6 h-full flex flex-col">
-            <div className="mb-2 text-sm text-gray-900 font-bold">Your Food Matches</div>
-            <div className="mb-4 text-xs text-gray-700">A preview of your matched meal plans!</div>
+            <div className="mb-2 text-lg text-gray-900 font-bold">Your Food Matches</div>
+            <div className="mb-4 text-sm text-gray-700">A preview of your matched meal plans!</div>
             <div className="flex-1 overflow-y-auto">
             {results.matches.map((match, idx) => {
               const selection = savedSelections[match.name];

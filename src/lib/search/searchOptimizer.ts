@@ -6,7 +6,7 @@
  * @version 2.0.0
  */
 
-import { generateEmbedding } from "./embeddings";
+import { generateEmbedding } from '../ai/embeddings';
 import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
 import type { SearchContext } from "./intelligentSearch";
 

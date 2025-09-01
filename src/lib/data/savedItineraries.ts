@@ -20,8 +20,8 @@ export interface ItineraryData {
   items: ItineraryPeriod[];
 }
 
-import { WeatherData } from "../lib/utils"; // Added import
-import { normalizeImagePath, getFallbackImage } from "./imageUtils";
+import { WeatherData } from "../core/utils"; // Added import
+import { normalizeImagePath, getFallbackImage } from "../images/imageUtils";
 
 export interface SavedItinerary {
   id: string;

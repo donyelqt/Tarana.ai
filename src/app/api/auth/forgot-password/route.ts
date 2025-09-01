@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 import { findUserByEmailFromSupabase } from '@/lib/auth';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import { sanitizeEmail } from '@/lib/security/inputSanitizer';

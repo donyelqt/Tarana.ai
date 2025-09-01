@@ -15,7 +15,7 @@ import {
   interests 
 } from "./data/itineraryData";
 import { FormData } from "./types";
-import { WeatherData } from "@/lib/utils";
+import { WeatherData } from "@/lib/core";
 
 export default function ItineraryGenerator() {
   // Get weather data

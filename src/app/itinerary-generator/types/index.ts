@@ -1,5 +1,5 @@
 import { StaticImageData } from "next/image";
-import { WeatherData } from "@/lib/utils";
+import { WeatherData } from "@/lib/core";
 
 export interface FormData {
   budget: string;

@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { WeatherCondition } from "../types/types";
-import { getManilaTime, getPeakHoursContext } from "@/lib/peakHours";
-import { tomtomTrafficService } from "@/lib/tomtomTraffic";
-import { getActivityCoordinates } from "@/lib/baguioCoordinates";
+import { getManilaTime, getPeakHoursContext } from "@/lib/traffic";
+import { tomtomTrafficService } from "@/lib/traffic";
+import { getActivityCoordinates } from "@/lib/data";
 
 // Lightweight agentic helper: ask the model to propose up to N targeted sub-queries
 // to improve retrieval coverage (e.g., fill gaps for weather, interests, or time slots).

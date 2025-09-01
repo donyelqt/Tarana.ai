@@ -1,4 +1,4 @@
-import { WeatherData, fetchWeatherFromAPI } from "@/lib/utils";
+import { WeatherData, fetchWeatherFromAPI } from "@/lib/core";
 
 /**
  * Hook to fetch and process weather data

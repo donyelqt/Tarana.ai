@@ -16,8 +16,8 @@ import {
   Coordinates
 } from '@/types/route-optimization';
 
-import { tomtomTrafficService, LocationTrafficData } from '@/lib/tomtomTraffic';
-import { isPeakHour, getPeakHourMultiplier, getNextPeakHour } from '@/lib/peakHours';
+import { tomtomTrafficService, LocationTrafficData } from '@/lib/traffic/tomtomTraffic';
+import { isPeakHour, getPeakHourMultiplier, getNextPeakHour } from '@/lib/traffic/peakHours';
 
 interface TrafficSegmentAnalysis {
   segmentId: string;

@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { sampleItineraryCombined, taranaai } from "@/app/itinerary-generator/data/itineraryData";
 import { extractJson } from "./jsonUtils";
-import { isCurrentlyPeakHours } from "@/lib/peakHours";
+import { isCurrentlyPeakHours } from "@/lib/traffic";
 
 // Utilities for itinerary post-processing
 

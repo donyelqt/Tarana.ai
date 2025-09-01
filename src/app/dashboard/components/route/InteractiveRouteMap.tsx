@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { RouteData, RouteTrafficAnalysis, LocationPoint } from '@/types/route-optimization';
-import { createTomTomMap, getTomTomSDKStatus, resetTomTomService, changeMapStyle, type TomTomMapConfig, type MapStyle, MAP_STYLES, BAGUIO_CITY_COORDINATES, ZOOM_LEVELS } from '@/lib/tomtomMapUtils';
+import { createTomTomMap, getTomTomSDKStatus, resetTomTomService, changeMapStyle, type TomTomMapConfig, type MapStyle, MAP_STYLES, BAGUIO_CITY_COORDINATES, ZOOM_LEVELS } from '@/lib/integrations/tomtomMapUtils';
 import { MapStyleSelector, RouteSelectionPanel, TrafficLegend } from './MapUI';
 import { Loader2 } from 'lucide-react';
 

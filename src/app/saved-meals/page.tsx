@@ -2,7 +2,7 @@
 "use client";
 
 import { useSession } from 'next-auth/react'
-import { getSavedMeals } from '@/lib/supabaseMeals'
+import { getSavedMeals } from '@/lib/data/supabaseMeals';
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";

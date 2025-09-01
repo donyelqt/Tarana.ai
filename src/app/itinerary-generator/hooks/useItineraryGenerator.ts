@@ -2,8 +2,8 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { FormData, ItineraryData } from '../types';
-import { WeatherData } from '@/lib/utils';
-import { saveItinerary } from '@/lib/savedItineraries';
+import { WeatherData } from '@/lib/core/utils';
+import { saveItinerary } from '@/lib/data/savedItineraries';
 import { generateItinerary, enhanceItinerary } from '../services/itineraryService';
 import { sampleItinerary } from '../data/itineraryData';
 import { burnham } from '../../../../public';
@@ -143,4 +143,4 @@ export const useItineraryGenerator = () => {
     setGeneratedItinerary,
     setFormSnapshot
   };
-}; 
+};

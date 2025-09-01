@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { createHash } from "crypto";
 import { geminiModel, API_KEY } from "../lib/config";
-import { getPeakHoursContext } from "@/lib/peakHours";
+import { getPeakHoursContext } from "@/lib/traffic";
 import { buildDetailedPrompt } from "../lib/contextBuilder";
 import { findAndScoreActivities } from "../lib/activitySearch";
 import { generateItinerary, handleItineraryProcessing, parseAndCleanJson } from "../lib/responseHandler";

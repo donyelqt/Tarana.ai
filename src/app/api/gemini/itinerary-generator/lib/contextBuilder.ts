@@ -1,4 +1,4 @@
-import { getPeakHoursContext } from "@/lib/peakHours";
+import { getPeakHoursContext } from "@/lib/traffic";
 import { INTEREST_DETAILS, WEATHER_CONTEXTS } from "./config";
 import type { WeatherCondition } from "../types/types";
 

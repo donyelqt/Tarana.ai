@@ -4,7 +4,7 @@
  */
 
 import { agenticTrafficAnalyzer, createTrafficContext, TrafficAnalysisResult } from './agenticTrafficAnalyzer';
-import { getActivityCoordinates } from './baguioCoordinates';
+import { getActivityCoordinates } from '../data/baguioCoordinates';
 import { isCurrentlyPeakHours } from './peakHours';
 import type { Activity } from '@/app/itinerary-generator/data/itineraryData';
 

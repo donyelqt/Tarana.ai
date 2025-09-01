@@ -13,7 +13,7 @@ import {
   SearchResult,
   RouteCalculationCallbacks
 } from '@/types/route-optimization';
-import { BAGUIO_COORDINATES } from '@/lib/utils';
+import { BAGUIO_COORDINATES } from '@/lib/core/utils';
 import { Route, Navigation, MapPin, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
 import ErrorBoundary from '@/components/ui/error-boundary';
 import TrafficLegend from '@/components/ui/TrafficLegend';

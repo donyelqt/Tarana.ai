@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { upsertActivityEmbedding } from "@/lib/vectorSearch";
+import { upsertActivityEmbedding } from "@/lib/search";
 import { sampleItinerary } from "@/app/itinerary-generator/data/itineraryData";
 import { timingSafeEqual } from "crypto";
 

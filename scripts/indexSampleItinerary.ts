@@ -11,7 +11,7 @@ loadEnv({ path: ".env.local", override: true });
     pnpm tsx scripts/indexSampleItinerary.ts   # or npm run index-embeddings
 */
 
-import { upsertActivityEmbedding } from "../src/lib/vectorSearch";
+import { upsertActivityEmbedding } from "../src/lib/search/vectorSearch";
 import { sampleItinerary } from "../src/app/itinerary-generator/data/itineraryData";
 
 async function main() {
@@ -45,4 +45,4 @@ async function main() {
   process.exit(0);
 }
 
-main(); 
+main();
