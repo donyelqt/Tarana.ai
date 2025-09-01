@@ -6,16 +6,20 @@ import { getPeakHoursContext } from "@/lib/peakHours";
 import { buildDetailedPrompt } from "../lib/contextBuilder";
 import { findAndScoreActivities } from "../lib/activitySearch";
 import { generateItinerary, handleItineraryProcessing, parseAndCleanJson } from "../lib/responseHandler";
+import { ErrorHandler, ErrorType, ItineraryError } from "../lib/errorHandler";
 import type { WeatherCondition } from "../types/types";
 
 // Main logic for generating an itinerary, wrapped for caching
 const getCachedItinerary = unstable_cache(
     async (requestBody: any, hash: string) => {
-        const { prompt, weatherData, interests, duration, budget, pax } = requestBody;
+        const requestId = hash.substring(0, 8);
+        
+        return await ErrorHandler.withRetry(async () => {
+            const { prompt, weatherData, interests, duration, budget, pax } = requestBody;
 
-        if (!geminiModel) {
-            throw new Error("Gemini model not available.");
-        }
+            if (!geminiModel) {
+                throw new ItineraryError(ErrorType.GENERATION, "Gemini model not available", false, requestId);
+            }
 
         const durationDays = (() => {
             if (!duration) return null;
@@ -37,19 +41,20 @@ const getCachedItinerary = unstable_cache(
         };
         const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
 
-        const effectiveSampleItinerary = await findAndScoreActivities(prompt, interests, weatherType, durationDays, geminiModel);
-        const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, interests, durationDays, budget, pax);
-        const response = await generateItinerary(detailedPrompt, prompt, durationDays);
+            const effectiveSampleItinerary = await findAndScoreActivities(prompt, interests, weatherType, durationDays, geminiModel);
+            const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, interests, durationDays, budget, pax);
+            const response = await generateItinerary(detailedPrompt, prompt, durationDays);
 
-        const text = response.text();
-        if (!text) {
-            throw new Error("Gemini response is empty");
-        }
+            const text = response.text();
+            if (!text) {
+                throw new ItineraryError(ErrorType.GENERATION, "Gemini response is empty", true, requestId);
+            }
 
-        const peakHoursContext = getPeakHoursContext();
-        let parsed = parseAndCleanJson(text);
-        const finalItinerary = await handleItineraryProcessing(parsed, prompt, durationDays, peakHoursContext);
-        return { text: JSON.stringify(finalItinerary) };
+            const peakHoursContext = getPeakHoursContext();
+            let parsed = parseAndCleanJson(text);
+            const finalItinerary = await handleItineraryProcessing(parsed, prompt, durationDays, peakHoursContext);
+            return { text: JSON.stringify(finalItinerary) };
+        }, 3, 1000); // 3 retries with 1 second base delay
     },
     ['itinerary-requests'], // Cache key prefix
     {
@@ -81,7 +86,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(responseData);
 
     } catch (e: any) {
-        console.error("Error in itinerary generation pipeline:", e);
-        return NextResponse.json({ text: "", error: e.message || "An unknown error occurred." }, { status: 500 });
+        const requestId = createHash('sha256').update(JSON.stringify(req.body || {})).digest('hex').substring(0, 8);
+        const errorDetails = ErrorHandler.handleError(e, requestId);
+        
+        console.error("Error in itinerary generation pipeline:", errorDetails);
+        
+        return NextResponse.json({ 
+            text: "", 
+            error: errorDetails.message,
+            errorType: errorDetails.type,
+            requestId: errorDetails.requestId,
+            retryable: errorDetails.retryable
+        }, { status: 500 });
     }
 }
