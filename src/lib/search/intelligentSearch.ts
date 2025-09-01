@@ -2,7 +2,7 @@
  * Intelligent Search Engine for Itinerary Generation
  * Combines semantic search, fuzzy matching, NLP analysis, and ML-based scoring
  * 
- * @author Senior Software Engineer
+ * @author Doniele Arys Antonio
  * @version 2.0.0
  */
 
