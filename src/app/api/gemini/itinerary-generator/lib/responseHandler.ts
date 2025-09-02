@@ -12,8 +12,8 @@ export async function generateItinerary(detailedPrompt: string, prompt: string, 
         temperature: 0.3, // Further lowered for more predictable JSON output
         topK: 1,
         topP: 0.8,
-        maxOutputTokens: 8192,
-        candidateCount: 1 // Ensure single response
+        maxOutputTokens: 8192, 
+        // Ensure single response
     };
 
     let result: any = null;
