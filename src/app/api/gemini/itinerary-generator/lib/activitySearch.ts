@@ -340,7 +340,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             activity.title.toLowerCase().includes(prompt.toLowerCase()) ||
             activity.desc.toLowerCase().includes(prompt.toLowerCase()) ||
             (activity.tags || []).some((tag: string) => tag.toLowerCase().includes(prompt.toLowerCase()))
-        ).slice(0, 20);
+        ).slice(0, 100);
         
         if (basicMatches.length > 0) {
             effectiveSampleItinerary = {

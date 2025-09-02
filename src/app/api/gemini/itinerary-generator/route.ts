@@ -7,6 +7,7 @@ import { buildDetailedPrompt } from "./lib/contextBuilder";
 import { findAndScoreActivities } from "./lib/activitySearch";
 import { generateItinerary, handleItineraryProcessing, parseAndCleanJson } from "./lib/responseHandler";
 import { ErrorHandler, ErrorType, ItineraryError } from "./lib/errorHandler";
+import { GuaranteedJsonEngine } from "./lib/guaranteedJsonEngine";
 import type { WeatherCondition } from "./types/types";
 
 // Main logic for generating an itinerary, wrapped for caching
@@ -43,16 +44,24 @@ const getCachedItinerary = unstable_cache(
 
             const effectiveSampleItinerary = await findAndScoreActivities(prompt, interests, weatherType, durationDays, geminiModel);
             const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, interests, durationDays, budget, pax);
-            const response = await generateItinerary(detailedPrompt, prompt, durationDays);
-
-            const text = response.text();
-            if (!text) {
-                throw new ItineraryError(ErrorType.GENERATION, "Gemini response is empty", true, requestId);
-            }
-
+            
+            // Use Guaranteed JSON Engine for 100% reliable output
             const peakHoursContext = getPeakHoursContext();
-            let parsed = parseAndCleanJson(text);
-            const finalItinerary = await handleItineraryProcessing(parsed, prompt, durationDays, peakHoursContext);
+            const weatherContext = `Weather: ${weatherData?.weather?.[0]?.description || 'clear'}, ${weatherData?.main?.temp || 20}°C`;
+            const trafficContext = "Real-time traffic analysis integrated with peak hours filtering";
+            
+            console.log(`🛡️ MAIN ROUTE: Using GuaranteedJsonEngine for request ${requestId}`);
+            const guaranteedItinerary = await GuaranteedJsonEngine.generateGuaranteedJson(
+                detailedPrompt,
+                effectiveSampleItinerary,
+                weatherContext,
+                peakHoursContext,
+                `Duration: ${durationDays} days, Budget: ${budget}, Pax: ${pax}`,
+                requestId
+            );
+            
+            // Process the guaranteed valid itinerary
+            const finalItinerary = await handleItineraryProcessing(guaranteedItinerary, prompt, durationDays, peakHoursContext);
             return { text: JSON.stringify(finalItinerary) };
         }, 3, 1000); // 3 retries with 1 second base delay
     },
@@ -75,6 +84,18 @@ export async function POST(req: NextRequest) {
 
         if (!prompt) {
             return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
+        }
+
+        // Handle health check endpoint
+        if (req.nextUrl.searchParams.get('action') === 'health') {
+            const health = await GuaranteedJsonEngine.healthCheck();
+            return NextResponse.json(health);
+        }
+
+        // Handle metrics endpoint
+        if (req.nextUrl.searchParams.get('action') === 'metrics') {
+            const metrics = GuaranteedJsonEngine.getMetrics();
+            return NextResponse.json(metrics);
         }
 
         // Generate a stable cache key from the request body
