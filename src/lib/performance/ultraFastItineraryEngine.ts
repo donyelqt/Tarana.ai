@@ -308,10 +308,10 @@ export class UltraFastItineraryEngine {
         return false;
       }
 
-      // Ultra-fast traffic level check
+      // Ultra-fast traffic level check - allow LOW and MODERATE
       if ((activity as any).trafficAnalysis?.realTimeTraffic?.trafficLevel) {
         const trafficLevel = (activity as any).trafficAnalysis.realTimeTraffic.trafficLevel;
-        if (trafficLevel !== 'LOW') {
+        if (!['LOW', 'MODERATE'].includes(trafficLevel)) {
           return false;
         }
       }

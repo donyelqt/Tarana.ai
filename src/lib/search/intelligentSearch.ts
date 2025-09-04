@@ -16,28 +16,32 @@ import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
 // Advanced search configuration
 export interface IntelligentSearchConfig {
   semanticWeight: number;
+  vectorWeight: number;
   fuzzyWeight: number;
   contextWeight: number;
   temporalWeight: number;
   diversityWeight: number;
-  maxResults: number;
-  minSimilarityThreshold: number;
   enableFuzzyMatching: boolean;
   enableContextualAnalysis: boolean;
   enableTemporalOptimization: boolean;
+  enableDiversityBoost: boolean;
+  maxResults: number;
+  minSimilarityThreshold: number;
 }
 
 export const DEFAULT_SEARCH_CONFIG: IntelligentSearchConfig = {
-  semanticWeight: 0.4,
-  fuzzyWeight: 0.2,
-  contextWeight: 0.2,
+  semanticWeight: 0.25,
+  vectorWeight: 0.25,
+  fuzzyWeight: 0.15,
+  contextWeight: 0.15,
   temporalWeight: 0.15,
   diversityWeight: 0.05,
-  maxResults: 50,
-  minSimilarityThreshold: 0.3,
   enableFuzzyMatching: true,
   enableContextualAnalysis: true,
   enableTemporalOptimization: true,
+  enableDiversityBoost: true,
+  maxResults: 50,
+  minSimilarityThreshold: 0.1
 };
 
 export interface SearchContext {
@@ -55,6 +59,7 @@ export interface IntelligentSearchResult {
   activity: Activity;
   scores: {
     semantic: number;
+    vector: number;
     fuzzy: number;
     contextual: number;
     temporal: number;
@@ -392,7 +397,9 @@ class TemporalOptimizer {
     };
 
     const preferredKeywords = timeMap[preferredTime] || [];
-    const matches = preferredKeywords.filter((keyword: string) => activityTime.includes(keyword)).length;
+    const matches = preferredKeywords.filter((keyword: string) =>
+      activityTime.includes(keyword)
+    ).length;
     
     return matches > 0 ? Math.min(matches / preferredKeywords.length * 2, 1.0) : 0.3;
   }
@@ -530,6 +537,7 @@ export class IntelligentSearchEngine {
 
       const scores = {
         semantic: 0,
+        vector: 0,
         fuzzy: 0,
         contextual: 0,
         temporal: 0,
@@ -545,14 +553,30 @@ export class IntelligentSearchEngine {
         temporalFactors: [] as string[]
       };
 
-      // Semantic scoring
-      if (this.config.semanticWeight > 0) {
-        const semanticMatch = semanticResults.find(r => 
+      // Vector similarity scoring (dedicated vector search)
+      if (this.config.vectorWeight > 0) {
+        const vectorMatch = semanticResults.find(r => 
           r.metadata?.title === activity.title || r.activity_id === activity.title
         );
-        scores.semantic = semanticMatch ? semanticMatch.similarity : 0;
-        if (scores.semantic > 0.7) {
-          reasoning.push(`High semantic similarity: ${(scores.semantic * 100).toFixed(1)}%`);
+        scores.vector = vectorMatch ? vectorMatch.similarity : 0;
+        if (scores.vector > 0.7) {
+          reasoning.push(`High vector similarity: ${(scores.vector * 100).toFixed(1)}%`);
+        }
+      }
+
+      // Semantic scoring (content-based matching)
+      if (this.config.semanticWeight > 0) {
+        // Use title and description matching for semantic scoring
+        const titleMatch = activity.title.toLowerCase().includes(query.toLowerCase()) ? 0.8 : 0;
+        const descMatch = activity.desc.toLowerCase().includes(query.toLowerCase()) ? 0.6 : 0;
+        const tagMatch = activity.tags.some(tag => 
+          tag.toLowerCase().includes(query.toLowerCase()) || 
+          query.toLowerCase().includes(tag.toLowerCase())
+        ) ? 0.7 : 0;
+        
+        scores.semantic = Math.max(titleMatch, descMatch, tagMatch);
+        if (scores.semantic > 0.5) {
+          reasoning.push(`Content match: ${(scores.semantic * 100).toFixed(1)}%`);
         }
       }
 
@@ -600,13 +624,15 @@ export class IntelligentSearchEngine {
         }
       }
 
-      // Composite score calculation
-      scores.composite = 
+      // Calculate composite score
+      scores.composite = (
         scores.semantic * this.config.semanticWeight +
+        scores.vector * this.config.vectorWeight +
         scores.fuzzy * this.config.fuzzyWeight +
         scores.contextual * this.config.contextWeight +
         scores.temporal * this.config.temporalWeight +
-        scores.diversity * this.config.diversityWeight;
+        scores.diversity * this.config.diversityWeight
+      );
 
       // Confidence calculation
       const confidence = this.calculateConfidence(scores, reasoning.length);
@@ -638,6 +664,7 @@ export class IntelligentSearchEngine {
           activity,
           scores: {
             semantic: 0,
+            vector: 0,
             fuzzy: fuzzyScore,
             contextual: 0,
             temporal: 0,

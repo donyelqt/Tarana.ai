@@ -58,7 +58,7 @@ export async function proposeSubqueries(params: {
         });
       
       const trafficData = await Promise.all(trafficPromises);
-      const lowTrafficAreas = trafficData.filter(t => t.level === 'LOW' || t.score >= 70);
+      const lowTrafficAreas = trafficData.filter(t => ['LOW', 'MODERATE'].includes(t.level) || t.score >= 70);
       const highTrafficAreas = trafficData.filter(t => t.level === 'HIGH' || t.level === 'SEVERE');
       
       trafficContext = `
