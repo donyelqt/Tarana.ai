@@ -330,6 +330,7 @@ export class IntelligentSearchOrchestrator {
         activity,
         scores: {
           semantic: 0,
+          vector: 0,
           fuzzy: 0.5,
           contextual: 0.3,
           temporal: 0.5,

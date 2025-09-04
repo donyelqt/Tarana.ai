@@ -26,19 +26,42 @@ const trafficStyles: { [key: string]: string } = {
   High: "border-red-300 bg-red-50 text-red-600",
 };
 
-// Function to determine traffic level based on peak hours
+// Function to determine traffic level based on real-time traffic data and peak hours
 const getTrafficLevel = (activity: any): "Low" | "Moderate" | "High" => {
-  // If activity has isCurrentlyPeak flag, use that
+  // Priority 1: Use real-time traffic analysis data if available
+  if (activity.trafficAnalysis?.realTimeTraffic?.trafficLevel) {
+    const realTimeLevel = activity.trafficAnalysis.realTimeTraffic.trafficLevel;
+    switch (realTimeLevel) {
+      case 'LOW': return "Low";
+      case 'MODERATE': return "Moderate";
+      case 'HIGH': 
+      case 'SEVERE': return "High";
+      default: return "Low";
+    }
+  }
+  
+  // Priority 2: Use traffic recommendation as indicator
+  if (activity.trafficRecommendation) {
+    switch (activity.trafficRecommendation) {
+      case 'VISIT_NOW': return "Low";
+      case 'VISIT_SOON': return "Moderate";
+      case 'AVOID_NOW':
+      case 'PLAN_LATER': return "High";
+      default: return "Low";
+    }
+  }
+  
+  // Priority 3: Use isCurrentlyPeak flag if available
   if (activity.isCurrentlyPeak !== undefined) {
     return activity.isCurrentlyPeak ? "High" : "Low";
   }
   
-  // Fallback: check peak hours string if available
+  // Priority 4: Check peak hours string as fallback
   if (activity.peakHours) {
     return isCurrentlyPeakHours(activity.peakHours) ? "High" : "Low";
   }
   
-  // Default to LOW traffic since the system prioritizes low-traffic recommendations
+  // Default to Low traffic for activities without traffic data
   return "Low";
 };
 

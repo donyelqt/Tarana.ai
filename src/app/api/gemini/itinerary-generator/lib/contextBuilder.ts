@@ -157,15 +157,15 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       ${peakHoursContext}
       ${trafficAwareContext}
       
-      CRITICAL TRAFFIC-ONLY FILTERING - STRICTLY ENFORCED:
-      - ABSOLUTELY FORBIDDEN: Include ANY activity with MODERATE, HIGH, or SEVERE traffic levels
-      - ONLY LOW TRAFFIC ACTIVITIES ALLOWED: The system has pre-filtered activities to include ONLY those with LOW real-time traffic levels
-      - MANDATORY REQUIREMENT: Every single activity in the database has been validated to have LOW traffic status
-      - ZERO TOLERANCE: No exceptions for MODERATE traffic - if traffic is not LOW, the activity is automatically excluded
-      - STRICT VALIDATION: The provided database contains ONLY activities that passed strict LOW-traffic-only filtering
-      - TRAFFIC LEVEL ENFORCEMENT: Only activities with trafficLevel: 'LOW' and recommendation: 'VISIT_NOW' or 'VISIT_SOON' are included
-      - QUALITY OVER QUANTITY: Return fewer activities rather than compromising on LOW traffic requirement
-      - REAL-TIME GUARANTEE: All activities combine Manila peak hours data with live TomTom traffic validation for LOW traffic only
+      BALANCED TRAFFIC FILTERING - OPTIMIZED FOR VARIETY:
+      - ACCEPTABLE TRAFFIC LEVELS: Include activities with LOW or MODERATE traffic levels for better variety
+      - FORBIDDEN TRAFFIC LEVELS: Exclude activities with HIGH or SEVERE traffic levels only
+      - BALANCED REQUIREMENT: Activities in the database have been filtered to include LOW and MODERATE traffic levels
+      - MODERATE TRAFFIC TOLERANCE: MODERATE traffic activities are acceptable and provide more itinerary options
+      - SMART VALIDATION: The provided database contains activities that passed LOW-to-MODERATE traffic filtering
+      - TRAFFIC LEVEL ENFORCEMENT: Activities with trafficLevel: 'LOW' or 'MODERATE' and recommendation: 'VISIT_NOW', 'VISIT_SOON', or 'PLAN_LATER' are included
+      - VARIETY OVER RESTRICTION: Include sufficient activities with acceptable traffic levels (LOW/MODERATE)
+      - REAL-TIME GUARANTEE: All activities combine Manila peak hours data with live TomTom traffic validation for LOW/MODERATE traffic levels
       ${interestsContext}
       ${durationContext}
       ${budgetContext}
@@ -184,7 +184,7 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       7. **ENHANCED TRAFFIC-AWARE DESCRIPTIONS:** Every activity description MUST include comprehensive traffic timing information combining both peak hours and real-time data. Examples: "Currently LOW traffic (85% optimal) - perfect time to visit!" or "MODERATE traffic expected, best visited after 3 PM when conditions improve." For activities with real-time data, include the traffic level and recommendation score. For peak-hours-only activities, mention the optimal timing based on historical data.
       8. Adhere to the user's budget preferences by selecting only activities from the database that match the budget category.
       9. **CRITICAL: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
-      10. **ENHANCED VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database AND meets traffic criteria: not in peak hours AND not marked as 'AVOID_NOW' for real-time traffic. Prioritize activities with 'VISIT_NOW' or 'VISIT_SOON' recommendations. The database combines peak hours filtering with real-time traffic analysis. If insufficient optimal activities exist, return a shorter itinerary rather than including high-traffic activities.
+      10. **ENHANCED VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database AND meets traffic criteria: acceptable traffic levels (LOW/MODERATE) AND not marked as 'AVOID_NOW' for real-time traffic. Prioritize activities with 'VISIT_NOW' or 'VISIT_SOON' recommendations. The database combines peak hours filtering with real-time traffic analysis. Include activities with LOW or MODERATE traffic levels to provide variety and sufficient options.
       11. **OUTPUT FORMAT:** Return a JSON object that strictly follows this Zod schema:\n          \`z.object({\n            title: z.string(),\n            subtitle: z.string(),\n            items: z.array(z.object({\n              period: z.string(),\n              activities: z.array(z.object({\n                image: z.string(),\n                title: z.string(),\n                time: z.string(),\n                desc: z.string(),\n                tags: z.array(z.string()),
               })),
             })),\n          })\`

@@ -309,9 +309,10 @@ class AgenticTrafficAnalyzer {
     peakHoursStatus: any,
     context: AgenticTrafficContext
   ): 'VISIT_NOW' | 'VISIT_SOON' | 'AVOID_NOW' | 'PLAN_LATER' {
-    if (combinedScore >= 80 && !peakHoursStatus.isCurrentlyPeak && trafficData.trafficLevel === 'LOW') {
+    // Allow both LOW and MODERATE traffic for VISIT_NOW recommendations
+    if (combinedScore >= 80 && !peakHoursStatus.isCurrentlyPeak && ['LOW', 'MODERATE'].includes(trafficData.trafficLevel)) {
       return 'VISIT_NOW';
-    } else if (combinedScore >= 65 && trafficData.trafficLevel !== 'SEVERE') {
+    } else if (combinedScore >= 60 && ['LOW', 'MODERATE'].includes(trafficData.trafficLevel)) {
       return 'VISIT_SOON';
     } else if (combinedScore < 35 || trafficData.trafficLevel === 'SEVERE' || 
                (peakHoursStatus.isCurrentlyPeak && context.userPreferences?.avoidCrowds)) {

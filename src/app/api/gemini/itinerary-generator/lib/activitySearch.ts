@@ -1,42 +1,33 @@
-import { searchSimilarActivities } from "@/lib/search";
+// Removed legacy vector search import - now using unified intelligent search
 import { proposeSubqueries } from "../agent/agent";
 import { isCurrentlyPeakHours, getManilaTime } from "@/lib/traffic";
 import { WEATHER_TAG_FILTERS } from "./config";
 import { validateAndEnrichActivity } from "../utils/itineraryUtils";
 import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/traffic";
-import { getActivityCoordinates } from "@/lib/data";
 import { IntelligentSearchEngine } from "@/lib/search";
-import { SearchOptimizer } from "@/lib/search";
 import type { WeatherCondition } from "../types/types";
 import type { SearchContext } from "@/lib/search";
-import type { SearchOptimization } from "@/lib/search";
+import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
 import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
 
-// Import sample itinerary data
-import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
-
-// Initialize intelligent search components
+// Initialize unified intelligent search engine
 const intelligentSearchEngine = new IntelligentSearchEngine();
-const searchOptimizer = new SearchOptimizer();
 
 export async function findAndScoreActivities(prompt: string, interests: string[], weatherType: WeatherCondition, durationDays: number | null, model: any) {
     let effectiveSampleItinerary: any = null;
-
+    
     try {
-        // Create search context for intelligent search
+        // Create search context for unified intelligent search
         const searchContext: SearchContext = {
             interests: Array.isArray(interests) ? interests : [],
             weatherCondition: weatherType,
             timeOfDay: determineTimeOfDay(),
-            budget: 'mid-range', // Default, could be passed as parameter
-            groupSize: 2, // Default, could be passed as parameter
+            budget: 'mid-range',
+            groupSize: 2,
             duration: durationDays || 1,
             currentTime: getManilaTime(),
             userPreferences: {}
         };
-
-        // Generate search optimization
-        const searchOptimization: SearchOptimization = SearchOptimizer.generateSearchOptimization(prompt, searchContext);
         
         // Use intelligent search engine
         const availableActivities = sampleItineraryCombined.items[0].activities;
@@ -44,114 +35,118 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
         const intelligentResults = await intelligentSearchEngine.search(prompt, searchContext, availableActivities);
         console.log(`✅ INTELLIGENT SEARCH: Found ${intelligentResults.length} results with traffic-aware scoring`);
         
-        // Fallback to legacy search if intelligent search fails or returns insufficient results
-        let searchResults: any[] = [];
-        if (intelligentResults.length < 10) {
-            // Agentic planning: generate sub-queries to broaden the search and improve coverage.
+        // Enhanced intelligent search with query expansion if needed
+        let finalResults = intelligentResults;
+        if (intelligentResults.length < 15) {
+            console.log(`🔍 EXPANDING SEARCH: Only ${intelligentResults.length} results, generating sub-queries for broader coverage`);
+            
+            // Generate AI sub-queries to expand search coverage
             const subqueries = await proposeSubqueries({
                 model,
                 userPrompt: prompt,
                 interests: Array.isArray(interests) ? interests : undefined,
                 weatherType,
                 durationDays,
-                existingTitles: [], // No existing titles initially
+                existingTitles: intelligentResults.map(r => r.activity.title),
                 maxQueries: 3
             });
 
-            // Combine the original prompt with sub-queries for a single batch search.
-            const allQueries = [prompt, ...subqueries];
-            searchResults = await searchSimilarActivities(allQueries, 30);
-        }
-
-        // Process intelligent search results or fallback to legacy processing
-        let processedResults: any[] = [];
-        
-        if (intelligentResults.length >= 10) {
-            // Use intelligent search results
-            processedResults = intelligentResults.map(result => ({
-                activity_id: result.activity.title,
-                similarity: result.scores.composite,
-                metadata: {
-                    title: result.activity.title,
-                    desc: result.activity.desc,
-                    tags: result.activity.tags,
-                    time: result.activity.time,
-                    image: result.activity.image,
-                    peakHours: result.activity.peakHours
-                },
-                relevanceScore: result.scores.composite,
-                reasoning: result.reasoning,
-                confidence: result.confidence
-            }));
-        } else {
-            // Merge and dedupe legacy results by title, keeping the highest similarity score.
-            const byTitle = new Map<string, { activity_id: string; similarity: number; metadata: Record<string, any>; }>();
-            for (const s of searchResults) {
-                const title: string = s.metadata?.title || s.activity_id;
-                if (!byTitle.has(title) || byTitle.get(title)!.similarity < s.similarity) {
-                    byTitle.set(title, s);
+            // Run additional intelligent searches with sub-queries
+            const expandedResults: any[] = [];
+            for (const subquery of subqueries) {
+                const subResults = await intelligentSearchEngine.search(subquery, searchContext, availableActivities);
+                expandedResults.push(...subResults);
+            }
+            
+            // Merge and deduplicate results
+            const allResults = [...intelligentResults, ...expandedResults];
+            const uniqueResults = new Map();
+            
+            for (const result of allResults) {
+                const key = result.activity.title;
+                if (!uniqueResults.has(key) || uniqueResults.get(key).scores.composite < result.scores.composite) {
+                    uniqueResults.set(key, result);
                 }
             }
-            processedResults = Array.from(byTitle.values());
+            
+            finalResults = Array.from(uniqueResults.values())
+                .sort((a, b) => b.scores.composite - a.scores.composite)
+                .slice(0, 30);
+                
+            console.log(`✅ EXPANDED SEARCH: Final results count: ${finalResults.length}`);
         }
+
+        // Process unified intelligent search results
+        const processedResults = finalResults.map(result => ({
+            activity_id: result.activity.title,
+            similarity: result.scores.composite,
+            metadata: {
+                title: result.activity.title,
+                desc: result.activity.desc,
+                tags: result.activity.tags,
+                time: result.activity.time,
+                image: result.activity.image,
+                peakHours: result.activity.peakHours
+            },
+            relevanceScore: result.scores.composite,
+            reasoning: result.reasoning,
+            confidence: result.confidence,
+            searchScores: {
+                vector: result.scores.vector,
+                semantic: result.scores.semantic,
+                fuzzy: result.scores.fuzzy,
+                contextual: result.scores.contextual,
+                temporal: result.scores.temporal,
+                diversity: result.scores.diversity
+            }
+        }));
         
         const similar = processedResults;
 
-        // Apply intelligent filtering and optimization
-        let scoredSimilar: any[] = [];
-        
-        if (intelligentResults.length >= 10) {
-            // Use intelligent search results with built-in scoring
-            scoredSimilar = similar.map(s => ({
-                ...s,
-                interestMatch: true, // Already filtered by intelligent search
-                weatherMatch: true, // Already filtered by intelligent search
-                isCurrentlyPeak: isCurrentlyPeakHours(s.metadata?.peakHours || ""),
-                peakHours: s.metadata?.peakHours || ""
-            }));
-        } else {
-            // Apply legacy weather + interest filters
-            const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
-            const interestSet = new Set(
-                interests && Array.isArray(interests) && !interests.includes("Random") ? interests : []
-            );
+        // Apply unified intelligent filtering and optimization
+        const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
+        const interestSet = new Set(
+            interests && Array.isArray(interests) && !interests.includes("Random") ? interests : []
+        );
 
-            // Enhanced filtering with weighted relevance scoring including peak hours
-            scoredSimilar = (similar || []).map((s) => {
-                const tags = Array.isArray(s.metadata?.tags) ? s.metadata.tags : [];
-                const peakHours = s.metadata?.peakHours || "";
-                const interestMatch = interestSet.size === 0 || tags.some((t: string) => interestSet.has(t));
-                const weatherMatch = allowedWeatherTags.length === 0 || tags.some((t: string) => allowedWeatherTags.includes(t));
-                const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
-                
-                let relevanceScore = s.similarity; // Base score from vector similarity
-                
-                if (interestMatch && interestSet.size > 0) {
-                    const matchCount = tags.filter((t: string) => interestSet.has(t)).length;
-                    relevanceScore += (matchCount / interestSet.size) * 0.3; // Up to 30% boost for interest matches
-                }
-                
-                if (weatherMatch && allowedWeatherTags.length > 0) {
-                    const matchCount = tags.filter((t: string) => allowedWeatherTags.includes(t)).length;
-                    relevanceScore += (matchCount / allowedWeatherTags.length) * 0.2; // Up to 20% boost for weather matches
-                }
-                
-                if (!isCurrentlyPeak) {
-                    relevanceScore += 0.25; // 25% boost for activities not in peak hours
-                } else {
-                    relevanceScore -= 0.5; // Strong penalty for activities currently in peak hours
-                }
-                
-                return {
-                    ...s,
-                    relevanceScore,
-                    interestMatch,
-                    weatherMatch,
-                    isCurrentlyPeak,
-                    peakHours
-                };
-            });
-        }
+        const scoredSimilar = similar.map((s: any) => {
+            const tags = Array.isArray(s.metadata?.tags) ? s.metadata.tags : [];
+            const peakHours = s.metadata?.peakHours || "";
+            const interestMatch = interestSet.size === 0 || tags.some((t: string) => interestSet.has(t));
+            const weatherMatch = allowedWeatherTags.length === 0 || tags.some((t: string) => allowedWeatherTags.includes(t));
+            const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
+            
+            let relevanceScore = s.similarity;
+            
+            if (interestMatch && interestSet.size > 0) {
+                const matchCount = tags.filter((t: string) => interestSet.has(t)).length;
+                relevanceScore += (matchCount / interestSet.size) * 0.3;
+            }
+            
+            if (weatherMatch && allowedWeatherTags.length > 0) {
+                const matchCount = tags.filter((t: string) => allowedWeatherTags.includes(t)).length;
+                relevanceScore += (matchCount / allowedWeatherTags.length) * 0.2;
+            }
+            
+            if (!isCurrentlyPeak) {
+                relevanceScore += 0.25;
+            } else {
+                relevanceScore -= 0.5;
+            }
+            
+            return {
+                ...s,
+                relevanceScore,
+                interestMatch,
+                weatherMatch,
+                isCurrentlyPeak,
+                peakHours,
+                searchMethod: 'unified_intelligent_search',
+                vectorScore: s.searchScores?.vector || 0,
+                semanticScore: s.searchScores?.semantic || 0,
+                confidenceLevel: s.confidence || 0.5
+            };
+        });
 
         // STRICT peak hours filtering - absolutely no peak hour activities allowed
         const filteredSimilar = scoredSimilar
@@ -179,7 +174,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             const eveningActivities: any[] = [];
             const anytimeActivities: any[] = [];
             
-            filteredSimilar.forEach(s => {
+            filteredSimilar.forEach((s: any) => {
                 const timeStr = s.metadata?.time?.toLowerCase() || "";
                 // Final peak hours check before adding to activities
                 const peakHours = s.metadata?.peakHours || "";
@@ -324,9 +319,8 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                     }
                 ],
                 searchMetadata: {
-                    searchMethod: intelligentResults.length >= 10 ? 'intelligent' : 'semantic',
+                    searchMethod: finalResults.length >= 10 ? 'intelligent' : 'semantic',
                     totalResults: filteredSimilar.length,
-                    searchOptimization: searchOptimization,
                     processingTime: Date.now()
                 }
             } as any;
