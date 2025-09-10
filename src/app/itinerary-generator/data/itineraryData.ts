@@ -1,5 +1,6 @@
-import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botanicalbaguio, burnham, caferuins, campjohnhay, diplomat_hotel, easter_weaving_room, goodsheperdconventbaguio, goodtaste, great_wall_of_baguio, hillstation, 
+import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botanicalbaguio, burnham, caferuins, campjohnhay, chimichanga_taranagala, diplomat_hotel, easter_weaving_room, goodsheperdconventbaguio, goodtaste, great_wall_of_baguio, hillstation, 
     ili_likha_baguio, 
+    kapi_kullaaw, 
     lion_heads_baguio, 
     miradorheritageandecopark, 
     mt_kalugong, 
@@ -247,6 +248,22 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 desc: "Mt. Kalugong is a scenic limestone mountain in La Trinidad with stunning valley views and unique rock formations. Entrance Fee: 80 - 100. Est. Duration: 2 hours. Best Day to visit: Everyday.",
                 tags: ["Nature & Scenery", "Adventure", "Outdoor-Friendly"],
                 peakHours: "10 am - 12 pm / 4 pm - 6 pm",
+            },
+            {
+                image: chimichanga_taranagala, 
+                title: "Chimichanga by Jaimes Family Feast",
+                time: "11:00 AM - 8:00 PM",
+                desc: "A grill house known for its tender U.S. steaks, ribs, and generous family platters. Entrance Fee: Free. Est. Duration: 1 hour. Best Day to visit: Everyday.",
+                tags: ["Food & Culinary", "Shopping & Local Finds", "Indoor-Friendly"],
+                peakHours: "2 pm - 3 pm",
+            },
+            {
+                image: kapi_kullaaw, 
+                title: "Kapi Kullaaw",
+                time: "10:00 AM - 7:00 PM",
+                desc: "An artsy café tucked inside Ili-Likha Artists' Village, serving coffee with a creative twist. Entrance Fee: Free. Est. Duration: 1 hour 30 minutes. Best Day to visit: Weekdays.",
+                tags: ["Food & Culinary", "Culture & Arts", "Weather-Flexible", "Indoor-Friendly"],
+                peakHours: "4 pm - 6 pm",
             }
         ]
       }

@@ -156,6 +156,20 @@ export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
     lon: 120.5875,
     name: "Mt. Kalugong",
     category: "mountain"
+  },
+
+  // Food & Dining
+  "Chimichanga by Jaimes Family Feast": {
+    lat: 16.4083,
+    lon: 120.5931,
+    name: "Chimichanga by Jaimes Family Feast",
+    category: "restaurant"
+  },
+  "Kapi Kullaaw": {
+    lat: 16.41375,
+    lon: 120.59733,
+    name: "Kapi Kullaaw",
+    category: "cafe"
   }
 };
 
