@@ -46,6 +46,7 @@ export const mt_kalugong = "/images/mt_kalugong.jpg"
 export const yellow_trail = "/images/yellow_trail.png"
 export const kapi_kullaaw = "/images/kapi_kullaaw.jpg"
 export const noProfile = "/images/noProfile.png"
+export const chimichanga_taranagala = "/images/chimichanga_taranagala.jpg"
 
 
 
