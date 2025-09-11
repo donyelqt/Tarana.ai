@@ -838,7 +838,68 @@ export default function InteractiveRouteMap({
       }
     }
 
-    // Add primary route with error handling
+    // RENDER ALTERNATIVE ROUTES FIRST (so they appear BELOW primary route)
+    alternativeRoutes.forEach((route, index) => {
+      if (route.legs && Array.isArray(route.legs)) {
+        try {
+          const routeCoordinates = route.legs.flatMap(leg => 
+            leg.geometry?.coordinates?.map(coord => [coord.lng, coord.lat]) || []
+          ).filter(coord => coord.length === 2 && !isNaN(coord[0]) && !isNaN(coord[1]));
+
+          if (routeCoordinates.length > 0) {
+            const sourceId = `route-alt-${index}`;
+            const layerId = `route-alt-${index}`;
+
+            map.addSource(sourceId, {
+              type: 'geojson',
+              data: {
+                type: 'Feature',
+                properties: { routeId: route.id },
+                geometry: {
+                  type: 'LineString',
+                  coordinates: routeCoordinates
+                }
+              }
+            });
+
+            map.addLayer({
+              id: layerId,
+              type: 'line',
+              source: sourceId,
+              layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+              },
+              paint: {
+                'line-color': '#ffd700',
+                'line-width': 5,
+                'line-opacity': 0.85,
+                'line-dasharray': [3, 2]
+              }
+            });
+
+            // Add click handler for alternative routes
+            map.on('click', layerId, () => {
+              onRouteSelect?.(route.id);
+            });
+
+            map.on('mouseenter', layerId, () => {
+              const canvas = map.getCanvas();
+              if (canvas) canvas.style.cursor = 'pointer';
+            });
+
+            map.on('mouseleave', layerId, () => {
+              const canvas = map.getCanvas();
+              if (canvas) canvas.style.cursor = '';
+            });
+          }
+        } catch (error) {
+          console.warn(`Error adding alternative route ${index}:`, error);
+        }
+      }
+    });
+
+    // RENDER PRIMARY ROUTE LAST (so it appears ABOVE alternative routes)
     if (currentRoute && currentRoute.legs && Array.isArray(currentRoute.legs)) {
       try {
         const routeCoordinates = currentRoute.legs.flatMap(leg => 
@@ -922,68 +983,6 @@ export default function InteractiveRouteMap({
         console.warn('Error adding primary route:', error);
       }
     }
-
-    // Add alternative routes with error handling
-    alternativeRoutes.forEach((route, index) => {
-      if (route.legs && Array.isArray(route.legs)) {
-        try {
-          const routeCoordinates = route.legs.flatMap(leg => 
-            leg.geometry?.coordinates?.map(coord => [coord.lng, coord.lat]) || []
-          ).filter(coord => coord.length === 2 && !isNaN(coord[0]) && !isNaN(coord[1]));
-
-          if (routeCoordinates.length > 0) {
-            const sourceId = `route-alt-${index}`;
-            const layerId = `route-alt-${index}`;
-
-            map.addSource(sourceId, {
-              type: 'geojson',
-              data: {
-                type: 'Feature',
-                properties: { routeId: route.id },
-                geometry: {
-                  type: 'LineString',
-                  coordinates: routeCoordinates
-                }
-              }
-            });
-
-            map.addLayer({
-              id: layerId,
-              type: 'line',
-              source: sourceId,
-              layout: {
-                'line-join': 'round',
-                'line-cap': 'round'
-              },
-              paint: {
-                'line-color': '#ffd700',
-                'line-width': 5,
-                'line-opacity': 0.85,
-                'line-dasharray': [3, 2]
-              }
-            });
-            
-
-            // Add click handler for alternative routes
-            map.on('click', layerId, () => {
-              onRouteSelect?.(route.id);
-            });
-
-            map.on('mouseenter', layerId, () => {
-              const canvas = map.getCanvas();
-              if (canvas) canvas.style.cursor = 'pointer';
-            });
-
-            map.on('mouseleave', layerId, () => {
-              const canvas = map.getCanvas();
-              if (canvas) canvas.style.cursor = '';
-            });
-          }
-        } catch (error) {
-          console.warn(`Error adding alternative route ${index}:`, error);
-        }
-      }
-    });
 
   }, [currentRoute?.id, alternativeRoutes.map(r => r.id).join(','), origin?.lat, origin?.lng, destination?.lat, destination?.lng, waypoints.length, isMapLoaded]);
 
