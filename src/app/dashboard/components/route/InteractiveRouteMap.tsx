@@ -240,102 +240,505 @@ export default function InteractiveRouteMap({
         }
       });
       
-      // Remove existing route layers safely
-      const layersToRemove = ['route-primary'];
+      // Clean up any existing glow animations
+      if ((map as any)._primaryRouteGlowAnimation) {
+        clearInterval((map as any)._primaryRouteGlowAnimation);
+        (map as any)._primaryRouteGlowAnimation = null;
+      }
+      if ((map as any)._altRouteGlowAnimations) {
+        (map as any)._altRouteGlowAnimations.forEach((id: any) => clearInterval(id));
+        (map as any)._altRouteGlowAnimations = [];
+      }
+      
+      // Remove existing route layers safely (including glow layers)
+      // First, collect all layer IDs to remove
+      const layersToRemove = [
+        'route-primary', 
+        'route-primary-glow-outer', 
+        'route-primary-glow-middle', 
+        'route-primary-glow-inner'
+      ];
       alternativeRoutes.forEach((_, index) => {
-        layersToRemove.push(`route-alt-${index}`);
+        layersToRemove.push(
+          `route-alt-${index}`,
+          `route-alt-${index}-glow-outer`,
+          `route-alt-${index}-glow-middle`,
+          `route-alt-${index}-glow-inner`
+        );
       });
       
+      // Step 1: Remove all layers first
       layersToRemove.forEach(layerId => {
         try {
           if (map.getLayer && map.getLayer(layerId)) {
             map.removeLayer(layerId);
           }
-          if (map.getSource && map.getSource(layerId)) {
-            map.removeSource(layerId);
-          }
         } catch (error) {
           console.warn(`Failed to remove layer ${layerId}:`, error);
+        }
+      });
+      
+      // Step 2: Remove sources only after all layers are removed
+      const sourcesToRemove = ['route-primary'];
+      alternativeRoutes.forEach((_, index) => {
+        sourcesToRemove.push(`route-alt-${index}`);
+      });
+      
+      sourcesToRemove.forEach(sourceId => {
+        try {
+          if (map.getSource && map.getSource(sourceId)) {
+            map.removeSource(sourceId);
+          }
+        } catch (error) {
+          console.warn(`Failed to remove source ${sourceId}:`, error);
         }
       });
     } catch (error) {
       console.warn('Error during map cleanup:', error);
     }
 
-    // Add markers with enhanced visibility
+    // Add modern, sleek markers with glassmorphism effects
     try {
-      // Add origin marker with enhanced styling
+      // Create custom origin marker with modern styling
       if (origin && window.tt.Marker && window.tt.Popup) {
-        console.log('🟢 Adding origin marker:', origin);
+        console.log('🟢 Adding modern origin marker:', origin);
+        
+        // Create custom origin marker element
+        const originElement = document.createElement('div');
+        originElement.innerHTML = `
+          <div class="origin-marker" style="
+            position: relative;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            transform-origin: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          ">
+            <!-- Outer glow ring -->
+            <div style="
+              position: absolute;
+              top: -8px;
+              left: -8px;
+              width: 56px;
+              height: 56px;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(34, 197, 94, 0.2) 0%, rgba(34, 197, 94, 0.05) 70%, transparent 100%);
+              animation: pulse-origin 2s ease-in-out infinite;
+            "></div>
+            
+            <!-- Main marker body -->
+            <div style="
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 40px;
+              height: 40px;
+              background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+              border-radius: 50%;
+              box-shadow: 
+                0 4px 20px rgba(34, 197, 94, 0.4),
+                0 2px 8px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+              border: 2px solid rgba(255, 255, 255, 0.9);
+              backdrop-filter: blur(10px);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            ">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="white" opacity="0.9"/>
+              </svg>
+            </div>
+            
+            <!-- Inner shine effect -->
+            <div style="
+              position: absolute;
+              top: 4px;
+              left: 4px;
+              width: 32px;
+              height: 32px;
+              border-radius: 50%;
+              background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
+              pointer-events: none;
+            "></div>
+          </div>
+        `;
+        
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes pulse-origin {
+            0%, 100% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+          }
+          .origin-marker:hover {
+            transform: scale(1.1) !important;
+          }
+          .origin-marker:hover > div:first-child {
+            animation-duration: 1s !important;
+          }
+        `;
+        document.head.appendChild(style);
+        
         const originMarker = new window.tt.Marker({ 
-          color: '#10b981', // Bright green
-          scale: 1.2,
-          draggable: false
+          element: originElement,
+          anchor: 'center'
         })
           .setLngLat([origin.lng, origin.lat])
           .setPopup(new window.tt.Popup({ 
-            offset: 25,
+            offset: 35,
             closeButton: true,
-            closeOnClick: false
+            closeOnClick: false,
+            className: 'modern-popup'
           }).setHTML(`
-            <div style="padding: 8px; min-width: 150px;">
-              <div style="font-weight: bold; color: #10b981; margin-bottom: 4px;">📍 Starting Point</div>
-              <div style="font-size: 13px; color: #374151;">${origin.name || 'Origin'}</div>
-              <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${origin.address || 'Starting location'}</div>
+            <div style="
+              padding: 16px 20px;
+              min-width: 220px;
+              background: rgba(255, 255, 255, 0.95);
+              backdrop-filter: blur(20px);
+              border-radius: 16px;
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                0 8px 16px rgba(0, 0, 0, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            ">
+              <div style="
+                display: flex;
+                align-items: center;
+                margin-bottom: 12px;
+                gap: 8px;
+              ">
+                <div style="
+                  width: 8px;
+                  height: 8px;
+                  background: linear-gradient(135deg, #22c55e, #16a34a);
+                  border-radius: 50%;
+                  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+                "></div>
+                <div style="
+                  font-weight: 600;
+                  color: #1f2937;
+                  font-size: 14px;
+                  letter-spacing: -0.01em;
+                ">Starting Point</div>
+              </div>
+              <div style="
+                font-size: 15px;
+                color: #111827;
+                font-weight: 500;
+                margin-bottom: 6px;
+                line-height: 1.4;
+              ">${origin.name || 'Origin'}</div>
+              <div style="
+                font-size: 13px;
+                color: #6b7280;
+                line-height: 1.3;
+                opacity: 0.8;
+              ">${origin.address || 'Starting location'}</div>
             </div>
           `))
           .addTo(map);
       }
 
-      // Add destination marker with enhanced styling
+      // Create custom destination marker with modern styling
       if (destination && window.tt.Marker && window.tt.Popup) {
-        console.log('🔴 Adding destination marker:', destination);
+        console.log('🔴 Adding modern destination marker:', destination);
+        
+        // Create custom destination marker element
+        const destElement = document.createElement('div');
+        destElement.innerHTML = `
+          <div class="destination-marker" style="
+            position: relative;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            transform-origin: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          ">
+            <!-- Outer glow ring -->
+            <div style="
+              position: absolute;
+              top: -8px;
+              left: -8px;
+              width: 56px;
+              height: 56px;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 70%, transparent 100%);
+              animation: pulse-destination 2s ease-in-out infinite;
+            "></div>
+            
+            <!-- Main marker body -->
+            <div style="
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 40px;
+              height: 40px;
+              background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+              border-radius: 50%;
+              box-shadow: 
+                0 4px 20px rgba(239, 68, 68, 0.4),
+                0 2px 8px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+              border: 2px solid rgba(255, 255, 255, 0.9);
+              backdrop-filter: blur(10px);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            ">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="white" opacity="0.9"/>
+              </svg>
+            </div>
+            
+            <!-- Inner shine effect -->
+            <div style="
+              position: absolute;
+              top: 4px;
+              left: 4px;
+              width: 32px;
+              height: 32px;
+              border-radius: 50%;
+              background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
+              pointer-events: none;
+            "></div>
+          </div>
+        `;
+        
+        // Add CSS animations for destination
+        const destStyle = document.createElement('style');
+        destStyle.textContent = `
+          @keyframes pulse-destination {
+            0%, 100% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+          }
+          .destination-marker:hover {
+            transform: scale(1.1) !important;
+          }
+          .destination-marker:hover > div:first-child {
+            animation-duration: 1s !important;
+          }
+        `;
+        document.head.appendChild(destStyle);
+        
         const destMarker = new window.tt.Marker({ 
-          color: '#ef4444', // Bright red
-          scale: 1.2,
-          draggable: false
+          element: destElement,
+          anchor: 'center'
         })
           .setLngLat([destination.lng, destination.lat])
           .setPopup(new window.tt.Popup({ 
-            offset: 25,
+            offset: 35,
             closeButton: true,
-            closeOnClick: false
+            closeOnClick: false,
+            className: 'modern-popup'
           }).setHTML(`
-            <div style="padding: 8px; min-width: 150px;">
-              <div style="font-weight: bold; color: #ef4444; margin-bottom: 4px;">🎯 Destination</div>
-              <div style="font-size: 13px; color: #374151;">${destination.name || 'Destination'}</div>
-              <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${destination.address || 'End location'}</div>
+            <div style="
+              padding: 16px 20px;
+              min-width: 220px;
+              background: rgba(255, 255, 255, 0.95);
+              backdrop-filter: blur(20px);
+              border-radius: 16px;
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                0 8px 16px rgba(0, 0, 0, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            ">
+              <div style="
+                display: flex;
+                align-items: center;
+                margin-bottom: 12px;
+                gap: 8px;
+              ">
+                <div style="
+                  width: 8px;
+                  height: 8px;
+                  background: linear-gradient(135deg, #ef4444, #dc2626);
+                  border-radius: 50%;
+                  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+                "></div>
+                <div style="
+                  font-weight: 600;
+                  color: #1f2937;
+                  font-size: 14px;
+                  letter-spacing: -0.01em;
+                ">Destination</div>
+              </div>
+              <div style="
+                font-size: 15px;
+                color: #111827;
+                font-weight: 500;
+                margin-bottom: 6px;
+                line-height: 1.4;
+              ">${destination.name || 'Destination'}</div>
+              <div style="
+                font-size: 13px;
+                color: #6b7280;
+                line-height: 1.3;
+                opacity: 0.8;
+              ">${destination.address || 'End location'}</div>
             </div>
           `))
           .addTo(map);
       }
 
-      // Add waypoint markers with enhanced styling
+      // Create custom waypoint markers with modern styling
       waypoints.forEach((waypoint, index) => {
         if (waypoint && window.tt.Marker && window.tt.Popup) {
-          console.log(`🔵 Adding waypoint ${index + 1} marker:`, waypoint);
+          console.log(`🔵 Adding modern waypoint ${index + 1} marker:`, waypoint);
+          
+          // Create custom waypoint marker element
+          const waypointElement = document.createElement('div');
+          waypointElement.innerHTML = `
+            <div class="waypoint-marker" style="
+              position: relative;
+              width: 32px;
+              height: 32px;
+              cursor: pointer;
+              transform-origin: center;
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            ">
+              <!-- Outer glow ring -->
+              <div style="
+                position: absolute;
+                top: -6px;
+                left: -6px;
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.03) 70%, transparent 100%);
+                animation: pulse-waypoint 2.5s ease-in-out infinite;
+              "></div>
+              
+              <!-- Main marker body -->
+              <div style="
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 32px;
+                height: 32px;
+                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                border-radius: 50%;
+                box-shadow: 
+                  0 3px 15px rgba(59, 130, 246, 0.3),
+                  0 1px 6px rgba(0, 0, 0, 0.1),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                border: 2px solid rgba(255, 255, 255, 0.9);
+                backdrop-filter: blur(8px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
+                color: white;
+                font-size: 12px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              ">
+                ${index + 1}
+              </div>
+              
+              <!-- Inner shine effect -->
+              <div style="
+                position: absolute;
+                top: 3px;
+                left: 3px;
+                width: 26px;
+                height: 26px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
+                pointer-events: none;
+              "></div>
+            </div>
+          `;
+          
+          // Add CSS animations for waypoints
+          const waypointStyle = document.createElement('style');
+          waypointStyle.textContent = `
+            @keyframes pulse-waypoint {
+              0%, 100% { transform: scale(1); opacity: 0.5; }
+              50% { transform: scale(1.05); opacity: 0.25; }
+            }
+            .waypoint-marker:hover {
+              transform: scale(1.15) !important;
+            }
+            .waypoint-marker:hover > div:first-child {
+              animation-duration: 1.2s !important;
+            }
+          `;
+          document.head.appendChild(waypointStyle);
+          
           const waypointMarker = new window.tt.Marker({ 
-            color: '#3b82f6', // Bright blue
-            scale: 1.1,
-            draggable: false
+            element: waypointElement,
+            anchor: 'center'
           })
             .setLngLat([waypoint.lng, waypoint.lat])
             .setPopup(new window.tt.Popup({ 
               offset: 25,
               closeButton: true,
-              closeOnClick: false
+              closeOnClick: false,
+              className: 'modern-popup'
             }).setHTML(`
-              <div style="padding: 8px; min-width: 150px;">
-                <div style="font-weight: bold; color: #3b82f6; margin-bottom: 4px;">🚩 Waypoint ${index + 1}</div>
-                <div style="font-size: 13px; color: #374151;">${waypoint.name || `Stop ${index + 1}`}</div>
-                <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${waypoint.address || `Waypoint ${index + 1}`}</div>
+              <div style="
+                padding: 14px 18px;
+                min-width: 200px;
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(20px);
+                border-radius: 14px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 
+                  0 15px 30px rgba(0, 0, 0, 0.08),
+                  0 6px 12px rgba(0, 0, 0, 0.05),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.4);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              ">
+                <div style="
+                  display: flex;
+                  align-items: center;
+                  margin-bottom: 10px;
+                  gap: 8px;
+                ">
+                  <div style="
+                    width: 20px;
+                    height: 20px;
+                    background: linear-gradient(135deg, #3b82f6, #2563eb);
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 11px;
+                    font-weight: 700;
+                    box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
+                  ">${index + 1}</div>
+                  <div style="
+                    font-weight: 600;
+                    color: #1f2937;
+                    font-size: 13px;
+                    letter-spacing: -0.01em;
+                  ">Waypoint ${index + 1}</div>
+                </div>
+                <div style="
+                  font-size: 14px;
+                  color: #111827;
+                  font-weight: 500;
+                  margin-bottom: 5px;
+                  line-height: 1.4;
+                ">${waypoint.name || `Stop ${index + 1}`}</div>
+                <div style="
+                  font-size: 12px;
+                  color: #6b7280;
+                  line-height: 1.3;
+                  opacity: 0.8;
+                ">${waypoint.address || `Waypoint ${index + 1}`}</div>
               </div>
             `))
             .addTo(map);
         }
       });
 
-      // Auto-fit map to show all markers if any exist
+      // Auto-fit map to show all markers with enhanced padding for modern UI
       if ((origin || destination || waypoints.length > 0) && window.tt.LngLatBounds) {
         const bounds = new window.tt.LngLatBounds();
         
@@ -345,17 +748,91 @@ export default function InteractiveRouteMap({
           if (waypoint) bounds.extend([waypoint.lng, waypoint.lat]);
         });
         
-        // Fit map to bounds with padding
+        // Fit map to bounds with generous padding for modern marker visibility
         map.fitBounds(bounds, { 
-          padding: { top: 50, bottom: 50, left: 50, right: 50 },
-          maxZoom: 16
+          padding: { top: 80, bottom: 80, left: 80, right: 80 },
+          maxZoom: 15,
+          duration: 1500,
+          essential: true
         });
         
-        console.log('🗺️ Map fitted to marker bounds');
+        console.log('🗺️ Map fitted to modern marker bounds with smooth animation');
       }
       
+      // Add modern popup global styles
+      const globalPopupStyle = document.createElement('style');
+      globalPopupStyle.textContent = `
+        .mapboxgl-popup .mapboxgl-popup-content,
+        .modern-popup .mapboxgl-popup-content {
+          padding: 0 !important;
+          border-radius: 16px !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+        .mapboxgl-popup .mapboxgl-popup-tip,
+        .modern-popup .mapboxgl-popup-tip {
+          border-top-color: rgba(255, 255, 255, 0.95) !important;
+        }
+        .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
+        .modern-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+          border-bottom-color: rgba(255, 255, 255, 0.95) !important;
+          border-top-color: transparent !important;
+        }
+        
+        /* Modern close button styling */
+        .modern-popup .mapboxgl-popup-close-button {
+          position: absolute;
+          right: 8px;
+          top: 8px;
+          width: 24px;
+          height: 24px;
+          background: rgba(255, 255, 255, 0.9);
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          border-radius: 50%;
+          color: #6b7280;
+          font-size: 16px;
+          font-weight: 500;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          backdrop-filter: blur(10px);
+          transition: all 0.2s ease;
+          z-index: 10;
+          padding: 0;
+          line-height: 1;
+        }
+        
+        .modern-popup .mapboxgl-popup-close-button:hover {
+          background: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+          border-color: rgba(239, 68, 68, 0.2);
+          transform: scale(1.05);
+        }
+        
+        .modern-popup .mapboxgl-popup-close-button:active {
+          transform: scale(0.95);
+        }
+      `;
+      document.head.appendChild(globalPopupStyle);
+      
     } catch (error) {
-      console.warn('Error adding markers:', error);
+      console.warn('Error adding modern markers:', error);
+      // Fallback to simple markers if custom ones fail
+      try {
+        if (origin) {
+          new window.tt.Marker({ color: '#22c55e', scale: 1.2 })
+            .setLngLat([origin.lng, origin.lat])
+            .addTo(map);
+        }
+        if (destination) {
+          new window.tt.Marker({ color: '#ef4444', scale: 1.2 })
+            .setLngLat([destination.lng, destination.lat])
+            .addTo(map);
+        }
+      } catch (fallbackError) {
+        console.warn('Fallback marker creation also failed:', fallbackError);
+      }
     }
 
     // Add primary route with error handling
@@ -387,11 +864,33 @@ export default function InteractiveRouteMap({
               'line-cap': 'round'
             },
             paint: {
-              'line-color': '#3b82f6',
-              'line-width': 6,
-              'line-opacity': 0.8
+              'line-color': '#0099ff',
+              'line-width': 7,
+              'line-opacity': 1.0
             }
           });
+          
+          // Add enhanced animated pulsing glow effect for visibility
+          const animateRouteGlow = () => {
+            if (map.getLayer('route-primary-glow-outer')) {
+              map.setPaintProperty('route-primary-glow-outer', 'line-opacity', 
+                0.2 + 0.3 * (1 + Math.sin(Date.now() * 0.003)));
+            }
+            if (map.getLayer('route-primary-glow-middle')) {
+              map.setPaintProperty('route-primary-glow-middle', 'line-opacity', 
+                0.3 + 0.5 * (1 + Math.sin(Date.now() * 0.003 + 0.5)));
+            }
+            if (map.getLayer('route-primary-glow-inner')) {
+              map.setPaintProperty('route-primary-glow-inner', 'line-opacity', 
+                0.5 + 0.7 * (1 + Math.sin(Date.now() * 0.003 + 1)));
+            }
+          };
+          
+          // Start animation
+          const glowAnimationId = setInterval(animateRouteGlow, 50);
+          
+          // Store animation ID for cleanup
+          (map as any)._primaryRouteGlowAnimation = glowAnimationId;
 
           // Add hover interactions for primary route
           map.on('mouseenter', 'route-primary', () => {
@@ -454,12 +953,41 @@ export default function InteractiveRouteMap({
                 'line-cap': 'round'
               },
               paint: {
-                'line-color': '#6b7280',
-                'line-width': 4,
-                'line-opacity': 0.6,
-                'line-dasharray': [2, 2]
+                'line-color': '#bfc1c2',
+                'line-width': 5,
+                'line-opacity': 0.85,
+                'line-dasharray': [3, 2]
               }
             });
+            
+            // Add enhanced pulsing glow animation for alternatives - brighter for visibility
+            const animateAltRouteGlow = () => {
+              const glowOuterId = `${layerId}-glow-outer`;
+              const glowMiddleId = `${layerId}-glow-middle`;
+              const glowInnerId = `${layerId}-glow-inner`;
+              
+              if (map.getLayer(glowOuterId)) {
+                map.setPaintProperty(glowOuterId, 'line-opacity', 
+                  0.1 + 0.2 * (1 + Math.sin(Date.now() * 0.002 + index)));
+              }
+              if (map.getLayer(glowMiddleId)) {
+                map.setPaintProperty(glowMiddleId, 'line-opacity', 
+                  0.2 + 0.3 * (1 + Math.sin(Date.now() * 0.002 + index + 0.5)));
+              }
+              if (map.getLayer(glowInnerId)) {
+                map.setPaintProperty(glowInnerId, 'line-opacity', 
+                  0.3 + 0.4 * (1 + Math.sin(Date.now() * 0.002 + index + 1)));
+              }
+            };
+            
+            // Start animation with slight delay per route
+            const altGlowAnimationId = setInterval(animateAltRouteGlow, 60);
+            
+            // Store animation ID for cleanup
+            if (!(map as any)._altRouteGlowAnimations) {
+              (map as any)._altRouteGlowAnimations = [];
+            }
+            (map as any)._altRouteGlowAnimations.push(altGlowAnimationId);
 
             // Add click handler for alternative routes
             map.on('click', layerId, () => {
