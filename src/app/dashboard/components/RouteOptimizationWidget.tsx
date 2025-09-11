@@ -281,13 +281,38 @@ const RouteOptimizationWidget: React.FC = () => {
   }, []);
 
   const handleAlternativeRouteSelect = useCallback((route: RouteData) => {
-    setState(prev => ({
-      ...prev,
-      currentRoute: route,
-      alternativeRoutes: prev.alternativeRoutes.filter(r => r.id !== route.id)
-    }));
+    setState(prev => {
+      // Safety check: Don't proceed if route is already current
+      if (prev.currentRoute?.id === route.id) {
+        console.log('Route is already selected as primary');
+        return prev;
+      }
+      
+      // Preserve the original primary route by adding it to alternatives
+      const newAlternatives = [...prev.alternativeRoutes];
+      
+      // Add current primary route to alternatives if it exists and isn't already there
+      if (prev.currentRoute && !newAlternatives.find(r => r.id === prev.currentRoute!.id)) {
+        newAlternatives.push(prev.currentRoute);
+      }
+      
+      // Remove the newly selected route from alternatives to prevent duplication
+      const filteredAlternatives = newAlternatives.filter(r => r.id !== route.id);
+      
+      // Additional safety: Ensure no route appears in both current and alternatives
+      const finalAlternatives = filteredAlternatives.filter(r => r.id !== route.id);
+      
+      console.log(`🔄 Route switching: ${prev.currentRoute?.id} → ${route.id}`);
+      console.log(`📋 Alternative routes maintained: ${finalAlternatives.length}`);
+      
+      return {
+        ...prev,
+        currentRoute: route,
+        alternativeRoutes: finalAlternatives
+      };
+    });
 
-    // Update route comparison
+    // Update route comparison with new best route
     if (routeComparison) {
       setRouteComparison(prev => prev ? {
         ...prev,
@@ -540,15 +565,24 @@ const RouteOptimizationWidget: React.FC = () => {
                       destination={destination}
                       waypoints={state.selectedWaypoints}
                       onRouteSelect={(routeId: string) => {
-                        console.log('Route selected:', routeId);
-                        // Find and set the selected route as current
-                        const selectedRoute = [state.currentRoute, ...state.alternativeRoutes]
-                          .find(route => route?.id === routeId);
+                        console.log('🗺️ Map route selection triggered:', routeId);
+                        
+                        // Safety check: Don't proceed if route is already current
+                        if (state.currentRoute?.id === routeId) {
+                          console.log('Selected route is already the primary route');
+                          return;
+                        }
+                        
+                        // Find the selected route in all available routes
+                        const allRoutes = [state.currentRoute, ...state.alternativeRoutes].filter(Boolean);
+                        const selectedRoute = allRoutes.find(route => route?.id === routeId);
+                        
                         if (selectedRoute) {
-                          setState(prev => ({
-                            ...prev,
-                            currentRoute: selectedRoute
-                          }));
+                          console.log(`✅ Found route ${routeId}, switching to primary`);
+                          // Use the proper handler that preserves all routes
+                          handleAlternativeRouteSelect(selectedRoute);
+                        } else {
+                          console.warn(`❌ Route ${routeId} not found in available routes`);
                         }
                       }}
                       isLoading={state.isCalculating}
