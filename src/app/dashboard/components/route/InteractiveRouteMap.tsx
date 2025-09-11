@@ -227,6 +227,9 @@ export default function InteractiveRouteMap({
     if (!mapInstanceRef.current || !isMapLoaded) return;
 
     const map = mapInstanceRef.current;
+    
+    // Skip if we're currently changing styles to prevent flickering
+    if (isChangingStyle) return;
 
     // Clear existing markers and routes with proper error handling
     try {
@@ -953,41 +956,13 @@ export default function InteractiveRouteMap({
                 'line-cap': 'round'
               },
               paint: {
-                'line-color': '#bfc1c2',
+                'line-color': '#ffd700',
                 'line-width': 5,
                 'line-opacity': 0.85,
                 'line-dasharray': [3, 2]
               }
             });
             
-            // Add enhanced pulsing glow animation for alternatives - brighter for visibility
-            const animateAltRouteGlow = () => {
-              const glowOuterId = `${layerId}-glow-outer`;
-              const glowMiddleId = `${layerId}-glow-middle`;
-              const glowInnerId = `${layerId}-glow-inner`;
-              
-              if (map.getLayer(glowOuterId)) {
-                map.setPaintProperty(glowOuterId, 'line-opacity', 
-                  0.1 + 0.2 * (1 + Math.sin(Date.now() * 0.002 + index)));
-              }
-              if (map.getLayer(glowMiddleId)) {
-                map.setPaintProperty(glowMiddleId, 'line-opacity', 
-                  0.2 + 0.3 * (1 + Math.sin(Date.now() * 0.002 + index + 0.5)));
-              }
-              if (map.getLayer(glowInnerId)) {
-                map.setPaintProperty(glowInnerId, 'line-opacity', 
-                  0.3 + 0.4 * (1 + Math.sin(Date.now() * 0.002 + index + 1)));
-              }
-            };
-            
-            // Start animation with slight delay per route
-            const altGlowAnimationId = setInterval(animateAltRouteGlow, 60);
-            
-            // Store animation ID for cleanup
-            if (!(map as any)._altRouteGlowAnimations) {
-              (map as any)._altRouteGlowAnimations = [];
-            }
-            (map as any)._altRouteGlowAnimations.push(altGlowAnimationId);
 
             // Add click handler for alternative routes
             map.on('click', layerId, () => {
@@ -1010,20 +985,8 @@ export default function InteractiveRouteMap({
       }
     });
 
-  }, [currentRoute, alternativeRoutes, origin, destination, waypoints, isMapLoaded, onRouteSelect]);
+  }, [currentRoute?.id, alternativeRoutes.map(r => r.id).join(','), origin?.lat, origin?.lng, destination?.lat, destination?.lng, waypoints.length, isMapLoaded]);
 
-  // Re-add routes when map style changes
-  useEffect(() => {
-    if (!mapInstanceRef.current || !isMapLoaded || isChangingStyle) return;
-    
-    // Small delay to ensure style has loaded
-    const timeoutId = setTimeout(() => {
-      // Trigger route re-rendering by updating a dependency
-      // This will cause the route effect above to re-run
-    }, 1500);
-    
-    return () => clearTimeout(timeoutId);
-  }, [currentMapStyle, isMapLoaded, isChangingStyle]);
 
   const handleRouteClick = (routeId: string) => {
     onRouteSelect?.(routeId);
