@@ -170,6 +170,78 @@ export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
     lon: 120.59733,
     name: "Kapi Kullaaw",
     category: "cafe"
+  },
+  "Itaewon Cafe": {
+    lat: 16.4140,
+    lon: 120.5951,
+    name: "Itaewon Cafe",
+    category: "cafe"
+  },
+  "Agara Ramen": {
+    lat: 16.40898,
+    lon: 120.60201,
+    name: "Agara Ramen",
+    category: "restaurant"
+  },
+  "KoCo Cafe": {
+    lat: 16.4083,
+    lon: 120.5944,
+    name: "KoCo Cafe",
+    category: "cafe"
+  },
+  "Good Sheperd Cafe": {
+    lat: 16.4219,
+    lon: 120.6257,
+    name: "Good Sheperd Cafe",
+    category: "cafe"
+  },
+  "Tavern Cafe": {
+    lat: 16.3799,
+    lon: 120.6173,
+    name: "Tavern Cafe",
+    category: "cafe"
+  },
+  "Oh My Gulay": {
+    lat: 16.41182,
+    lon: 120.59811,
+    name: "Oh My Gulay",
+    category: "restaurant"
+  },
+  "Hill Station": {
+    lat: 16.40955,
+    lon: 120.60063,
+    name: "Hill Station",
+    category: "restaurant"
+  },
+  "Hiraya Cafe": {
+    lat: 16.4096,
+    lon: 120.6006,
+    name: "Hiraya Cafe",
+    category: "cafe"
+  },
+  "Uji-Matcha Cafe": {
+    lat: 16.4160,
+    lon: 120.5960,
+    name: "Uji-Matcha Cafe",
+    category: "cafe"
+  },
+  "K-Flavors Buffet": {
+    lat: 16.4070,
+    lon: 120.5923,
+    name: "K-Flavors Buffet",
+    category: "restaurant"
+  },
+  "Korean Palace Kung Jeon": {
+    lat: 16.4077,
+    lon: 120.6086,
+    name: "Korean Palace Kung Jeon",
+    category: "restaurant"
+  },
+  "Myeong Dong Jjigae Restaurant": {
+    lat: 16.4027,
+    lon: 120.5923,
+    name: "Myeong Dong Jjigae Restaurant",
+    category: "restaurant"
   }
 };
 
