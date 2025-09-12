@@ -45,7 +45,7 @@ class TrafficAwareActivitySearchService {
     const enhancedActivities: TrafficEnhancedActivity[] = [];
 
     // Process activities in batches for better performance
-    const batchSize = 5;
+    const batchSize = 100;
     for (let i = 0; i < activities.length; i += batchSize) {
       const batch = activities.slice(i, i + batchSize);
       
@@ -105,7 +105,7 @@ class TrafficAwareActivitySearchService {
 
       // Small delay between batches to respect API rate limits
       if (i + batchSize < activities.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 10));
       }
     }
 

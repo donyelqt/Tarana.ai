@@ -36,7 +36,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
         
         // Enhanced intelligent search with query expansion if needed
         let finalResults = intelligentResults;
-        if (intelligentResults.length < 15) {
+        if (intelligentResults.length < 2) {
             console.log(`🔍 EXPANDING SEARCH: Only ${intelligentResults.length} results, generating sub-queries for broader coverage`);
             
             // Generate AI sub-queries to expand search coverage
@@ -47,7 +47,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                 weatherType,
                 durationDays,
                 existingTitles: intelligentResults.map(r => r.activity.title),
-                maxQueries: 3
+                maxQueries: 2
             });
 
             // Run additional intelligent searches with sub-queries
@@ -180,14 +180,6 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             
             filteredSimilar.forEach((s: any) => {
                 const timeStr = s.metadata?.time?.toLowerCase() || "";
-                // Final peak hours check before adding to activities
-                const peakHours = s.metadata?.peakHours || "";
-                const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
-                
-                if (isCurrentlyPeak) {
-                    console.log(`SKIPPING: ${s.metadata?.title || s.activity_id} - Still in peak hours during activity creation`);
-                    return; // Skip this activity
-                }
                 
                 const rawActivity = {
                     image: s.metadata?.image || "",
@@ -195,9 +187,9 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                     time: s.metadata?.time || "",
                     desc: s.metadata?.desc || "",
                     tags: s.metadata?.tags || [],
-                    peakHours: peakHours,
+                    peakHours: s.metadata?.peakHours || "",
                     relevanceScore: s.relevanceScore,
-                    isCurrentlyPeak: false // Guaranteed false at this point
+                    isCurrentlyPeak: s.isCurrentlyPeak
                 };
                 
                 const activity = rawActivity;
@@ -292,24 +284,15 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                     {
                         period: "Anytime",
                         activities: filteredSimilar.map(s => {
-                            // Final peak hours validation for fallback activities
-                            const peakHours = s.metadata?.peakHours || "";
-                            const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
-                            
-                            if (isCurrentlyPeak) {
-                                console.log(`FALLBACK FILTER: Excluding ${s.metadata?.title || s.activity_id} - Currently in peak hours`);
-                                return null; // Will be filtered out by .filter(Boolean)
-                            }
-                            
                             const rawActivity = {
                                 image: s.metadata?.image || "",
                                 title: s.metadata?.title || s.activity_id,
                                 time: s.metadata?.time || "",
                                 desc: s.metadata?.desc || "",
                                 tags: s.metadata?.tags || [],
-                                peakHours: peakHours,
+                                peakHours: s.metadata?.peakHours || "",
                                 relevanceScore: s.relevanceScore || s.similarity,
-                                isCurrentlyPeak: false, // Guaranteed false
+                                isCurrentlyPeak: s.isCurrentlyPeak,
                                 searchReasoning: s.reasoning || [],
                                 confidence: s.confidence || 0.7
                             };

@@ -50,9 +50,9 @@ export class UltraFastItineraryEngine {
     enableParallelProcessing: true,
     enableSmartCaching: true,
     enablePrecomputation: true,
-    maxConcurrentRequests: 8,
+    maxConcurrentRequests: 100,
     cacheStrategy: 'aggressive',
-    timeoutMs: 15000
+    timeoutMs: 10
   };
 
   constructor(private options: Partial<FastGenerationOptions> = {}) {
