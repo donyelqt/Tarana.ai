@@ -6,10 +6,10 @@
  * @version 2.0.0
  */
 
-import { IntelligentSearchEngine, type SearchContext } from '../intelligentSearch';
-import { QueryProcessor, SearchOptimizer } from '../searchOptimizer';
-import { SearchIndexManager, TextProcessor } from '../searchIndex';
-import { IntelligentCacheManager } from '../intelligentCache';
+import { IntelligentSearchEngine, type SearchContext } from '../search/intelligentSearch';
+import { QueryProcessor, SearchOptimizer } from '../search/searchOptimizer';
+import { SearchIndexManager, TextProcessor } from '../search/searchIndex';
+import { IntelligentCacheManager } from '../ai/intelligentCache';
 import type { Activity } from '@/app/itinerary-generator/data/itineraryData';
 
 // Mock activities for testing
@@ -242,7 +242,7 @@ describe('IntelligentCacheManager', () => {
       const mockResults = [
         {
           activity: mockActivities[0],
-          scores: { semantic: 0.8, fuzzy: 0.7, contextual: 0.9, temporal: 0.6, diversity: 0.8, composite: 0.76 },
+          scores: { semantic: 0.8, vector: 0.7, fuzzy: 0.7, contextual: 0.9, temporal: 0.6, diversity: 0.8, composite: 0.76 },
           reasoning: ['High semantic match'],
           confidence: 0.85,
           metadata: { searchQuery: 'test', matchedTerms: [], contextFactors: [], temporalFactors: [] }
@@ -276,7 +276,7 @@ describe('IntelligentCacheManager', () => {
     it('should provide comprehensive cache statistics', () => {
       const mockResults = [{
         activity: mockActivities[0],
-        scores: { semantic: 0.8, fuzzy: 0.7, contextual: 0.9, temporal: 0.6, diversity: 0.8, composite: 0.76 },
+        scores: { semantic: 0.8, vector: 0.7, fuzzy: 0.7, contextual: 0.9, temporal: 0.6, diversity: 0.8, composite: 0.76 },
         reasoning: ['Test'],
         confidence: 0.85,
         metadata: { searchQuery: 'test', matchedTerms: [], contextFactors: [], temporalFactors: [] }
@@ -301,7 +301,7 @@ describe('IntelligentSearchEngine', () => {
 
   describe('search', () => {
     it('should perform intelligent search and return ranked results', async () => {
-      const results = await searchEngine.search('beautiful park nature', mockSearchContext, mockActivities);
+      const results = await searchEngine.search('beautiful park nature', mockSearchContext);
       
       expect(results.length).toBeGreaterThan(0);
       expect(results[0].activity).toBeDefined();
@@ -311,7 +311,7 @@ describe('IntelligentSearchEngine', () => {
     });
 
     it('should handle empty query gracefully', async () => {
-      const results = await searchEngine.search('', mockSearchContext, mockActivities);
+      const results = await searchEngine.search('', mockSearchContext);
       
       // Should still return some results (fallback behavior)
       expect(results).toBeDefined();
@@ -324,7 +324,7 @@ describe('IntelligentSearchEngine', () => {
         interests: ['Culture & Arts']
       };
 
-      const results = await searchEngine.search('museum art', cultureContext, mockActivities);
+      const results = await searchEngine.search('museum art', cultureContext);
       
       expect(results.length).toBeGreaterThan(0);
       // Should prioritize cultural activities
@@ -333,12 +333,13 @@ describe('IntelligentSearchEngine', () => {
     });
 
     it('should provide detailed scoring breakdown', async () => {
-      const results = await searchEngine.search('park', mockSearchContext, mockActivities);
+      const results = await searchEngine.search('park', mockSearchContext);
       
       expect(results.length).toBeGreaterThan(0);
       const result = results[0];
       
       expect(result.scores).toHaveProperty('semantic');
+      expect(result.scores).toHaveProperty('vector');
       expect(result.scores).toHaveProperty('fuzzy');
       expect(result.scores).toHaveProperty('contextual');
       expect(result.scores).toHaveProperty('temporal');
@@ -364,7 +365,7 @@ describe('SearchOptimizer', () => {
     it('should optimize search results with boosts', () => {
       const mockResults = [{
         activity: mockActivities[0],
-        scores: { semantic: 0.5, fuzzy: 0.3, contextual: 0.4, temporal: 0.2, diversity: 0.1, composite: 0.3 },
+        scores: { semantic: 0.5, vector: 0.4, fuzzy: 0.3, contextual: 0.4, temporal: 0.2, diversity: 0.1, composite: 0.3 },
         reasoning: ['Test reasoning'],
         confidence: 0.6,
         metadata: {
@@ -406,7 +407,7 @@ describe('Integration Tests', () => {
     const query = 'beautiful nature parks';
     
     // First search - should miss cache
-    const results1 = await searchEngine.search(query, mockSearchContext, mockActivities);
+    const results1 = await searchEngine.search(query, mockSearchContext);
     cacheManager.cacheSearchResults(query, mockSearchContext, results1);
     
     // Second search - should hit cache
@@ -430,7 +431,7 @@ describe('Integration Tests', () => {
     ];
 
     for (const query of complexQueries) {
-      const results = await searchEngine.search(query, mockSearchContext, mockActivities);
+      const results = await searchEngine.search(query, mockSearchContext);
       
       expect(results).toBeDefined();
       expect(Array.isArray(results)).toBe(true);
@@ -449,7 +450,7 @@ describe('Integration Tests', () => {
     // Simulate concurrent searches
     for (let i = 0; i < 10; i++) {
       promises.push(
-        searchEngine.search(`test query ${i}`, mockSearchContext, mockActivities)
+        searchEngine.search(`test query ${i}`, mockSearchContext)
       );
     }
     
@@ -478,7 +479,7 @@ describe('Error Handling', () => {
       { title: 'Another Valid', desc: 'Another test' }
     ];
       
-    const results = await searchEngine.search('test query', mockContext, malformedActivities as Activity[]);
+    const results = await searchEngine.search('test query', mockContext);
       
     expect(results.length).toBeGreaterThan(0);
     expect(results[0].activity.title).toBeTruthy();
@@ -491,7 +492,7 @@ describe('Error Handling', () => {
       weatherCondition: 'invalid' as any
     };
 
-    const results = await searchEngine.search('test', invalidContext, mockActivities);
+    const results = await searchEngine.search('test', invalidContext);
     
     expect(results).toBeDefined();
     expect(Array.isArray(results)).toBe(true);
@@ -499,7 +500,7 @@ describe('Error Handling', () => {
 
   it('should provide fallback results when search fails', async () => {
     // Test with empty activities array
-    const results = await searchEngine.search('test query', mockSearchContext, []);
+    const results = await searchEngine.search('test query', mockSearchContext);
     
     expect(results).toBeDefined();
     expect(Array.isArray(results)).toBe(true);

@@ -25,7 +25,7 @@ describe("generateEmbedding", () => {
   });
 
   it("returns a 768-dimension vector", async () => {
-    const { generateEmbedding } = await import("../embeddings");
+    const { generateEmbedding } = await import("../ai/embeddings");
     const vec = await generateEmbedding("hello world");
     expect(vec).toHaveLength(768);
     expect(typeof vec[0]).toBe("number");
@@ -35,7 +35,7 @@ describe("generateEmbedding", () => {
     // Unset the API key
     delete process.env.GOOGLE_GEMINI_API_KEY;
     // We need to re-import the module to re-evaluate the API key check
-    const { generateEmbedding } = await import("../embeddings");
+    const { generateEmbedding } = await import("../ai/embeddings");
     await expect(generateEmbedding("hello world")).rejects.toThrow(
       "Embedding model not initialized – missing GOOGLE_GEMINI_API_KEY"
     );
@@ -53,7 +53,7 @@ describe("generateEmbedding", () => {
         }),
       };
     });
-    const { generateEmbedding } = await import("../embeddings");
+    const { generateEmbedding } = await import("../ai/embeddings");
     await expect(generateEmbedding("hello world")).rejects.toThrow(
       "Embedding response malformed"
     );
