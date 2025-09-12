@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server';
 import { POST } from '../reset-password/route';
-import * as supabaseAdmin from '@/lib/supabaseAdmin';
+import * as supabaseAdmin from '@/lib/data/supabaseAdmin';
 import bcrypt from 'bcryptjs';
 
 // Mock dependencies
-jest.mock('@/lib/supabaseAdmin');
+jest.mock('@/lib/data/supabaseAdmin');
 jest.mock('bcryptjs');
 
 const mockSupabaseAdmin = {

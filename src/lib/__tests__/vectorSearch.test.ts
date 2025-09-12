@@ -1,4 +1,4 @@
-import { searchSimilarActivities } from "../vectorSearch";
+import { searchSimilarActivities } from "../search/vectorSearch";
 
 jest.mock("../embeddings", () => ({
   generateEmbedding: jest.fn().mockResolvedValue(Array(768).fill(0.1)),
