@@ -78,9 +78,20 @@ export default function MenuPopup({
   };
   
   const total = getTotalPrice();
-  const budgetPerPerson = match.price * match.meals;
-  const remaining = budgetPerPerson - total;
+  // match.price is already the total budget for the entire group, not per person
+  const totalBudget = match.price;
+  const remaining = totalBudget - total;
   const isOverBudget = remaining < 0;
+
+  // DEBUG LOGGING - Remove after fixing
+  console.log("🔍 MENUPOPP DEBUG:", {
+    restaurantName: match.name,
+    matchPrice: match.price,
+    totalBudget: totalBudget,
+    selectedItemsTotal: total,
+    remainingBudget: remaining,
+    groupSize: match.meals
+  });
 
   const handleSave = () => {
     if (selectedItems.length === 0) {
@@ -129,7 +140,7 @@ export default function MenuPopup({
             <div>
               <h2 className="text-xl font-bold leading-tight">{match.name}</h2>
               <p className="text-sm text-gray-500">
-                Showing menu items within your budget: ₱{match.price} per person (₱{budgetPerPerson} total for {match.meals} {match.meals === 1 ? "person" : "people"})
+                Total budget: ₱{totalBudget} for {match.meals} {match.meals === 1 ? "person" : "people"}
               </p>
             </div>
           </div>
@@ -188,7 +199,7 @@ export default function MenuPopup({
             <div>
               <div className="text-sm text-gray-500">Selected Items ({selectedItems.length})</div>
               <p className="text-lg font-bold">
-                Total: ₱{total}/₱{budgetPerPerson} Budget
+                Total: ₱{total}/₱{totalBudget} Budget
               </p>
             </div>
             <div className="text-right">

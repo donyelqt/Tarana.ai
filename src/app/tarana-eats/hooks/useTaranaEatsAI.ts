@@ -118,14 +118,29 @@ export const useTaranaEatsAI = () => {
           
           return true;
         })
-        .map(restaurant => ({
-          name: restaurant.name,
-          meals: preferences.pax || 2,
-          price: restaurant.priceRange.max,
-          image: (restaurant.image && restaurant.image !== "") ? restaurant.image : placeholderImage,
-          fullMenu: restaurant.fullMenu,
-          reason: `This restaurant offers ${restaurant.cuisine.join(', ')} cuisine and is popular for ${restaurant.popularFor.join(', ')}.`
-        }));
+        .map(restaurant => {
+          const budgetNum = preferences.budget ? parseInt(preferences.budget.replace(/[^\d]/g, '')) : null;
+          const finalPrice = budgetNum && budgetNum > 0 ? budgetNum : restaurant.priceRange.max;
+          
+          // DEBUG LOGGING - Remove after fixing
+          console.log("🔍 AI HOOK DEBUG:", {
+            restaurantName: restaurant.name,
+            userBudgetInput: preferences.budget,
+            extractedBudgetNum: budgetNum,
+            restaurantMaxPrice: restaurant.priceRange.max,
+            finalPriceUsed: finalPrice,
+            groupSize: preferences.pax || 2
+          });
+          
+          return {
+            name: restaurant.name,
+            meals: preferences.pax || 2,
+            price: finalPrice,
+            image: (restaurant.image && restaurant.image !== "") ? restaurant.image : placeholderImage,
+            fullMenu: restaurant.fullMenu,
+            reason: `This restaurant offers ${restaurant.cuisine.join(', ')} cuisine and is popular for ${restaurant.popularFor.join(', ')}.`
+          };
+        });
     } catch (err) {
       console.error('Error transforming Gemini response:', err);
       return [];
