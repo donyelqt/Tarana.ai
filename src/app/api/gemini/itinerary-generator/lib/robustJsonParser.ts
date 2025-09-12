@@ -9,7 +9,19 @@ export class RobustJsonParser {
   private static readonly FALLBACK_ITINERARY = {
     title: "Baguio City Itinerary",
     subtitle: "Generated with limited data - please try again",
-    items: []
+    items: [{
+      period: "Day 1 - Morning",
+      activities: [],
+      reason: "Tarana-AI is currently optimizing your itinerary. This time slot will be filled with personalized suggestions based on real-time traffic and weather conditions."
+    }, {
+      period: "Day 1 - Afternoon",
+      activities: [],
+      reason: "Tarana-AI is currently optimizing your itinerary. This time slot will be filled with personalized suggestions based on real-time traffic and weather conditions."
+    }, {
+      period: "Day 1 - Evening",
+      activities: [],
+      reason: "Tarana-AI is currently optimizing your itinerary. This time slot will be filled with personalized suggestions based on real-time traffic and weather conditions."
+    }]
   };
 
   /**
@@ -207,7 +219,8 @@ export class RobustJsonParser {
                 image: activity.image || "default",
                 peakHours: activity.peakHours || "N/A"
               };
-            }).filter(Boolean) : []
+            }).filter(Boolean) : [],
+            reason: typeof item.reason === 'string' ? item.reason : undefined
           };
         }).filter(Boolean);
       }

@@ -6,7 +6,7 @@
 
 import { z } from 'zod';
 import { geminiModel } from './config';
-import { StructuredOutputEngine, ItinerarySchema, type StructuredItinerary } from './structuredOutputEngine';
+import { StructuredOutputEngine, ItinerarySchema, PeriodSchema, type StructuredItinerary } from './structuredOutputEngine';
 import { EnhancedPromptEngine, JsonSyntaxValidator } from './enhancedPromptEngine';
 
 /**
@@ -267,26 +267,59 @@ export class GuaranteedJsonEngine {
     const activities = this.extractActivitiesFromSample(sampleItinerary);
     
     if (activities.length > 0) {
+      // Create a proper itinerary structure with all time periods
+      const itineraryItems = [];
+      
+      // Add morning period
+      itineraryItems.push({
+        period: "Day 1 - Morning",
+        activities: activities.slice(0, 2),
+        reason: activities.slice(0, 2).length === 0 ? 
+          "Tarana-AI suggests leaving this time slot open to avoid traffic. Perfect for a quiet local coffee before your afternoon plans." : 
+          undefined
+      });
+      
+      // Add afternoon period
+      itineraryItems.push({
+        period: "Day 1 - Afternoon",
+        activities: activities.slice(2, 4),
+        reason: activities.slice(2, 4).length === 0 ? 
+          "Tarana-AI suggests leaving this time slot open to avoid traffic. Ideal for a relaxing lunch break away from crowds." : 
+          undefined
+      });
+      
+      // Add evening period
+      itineraryItems.push({
+        period: "Day 1 - Evening",
+        activities: activities.slice(4, 6),
+        reason: activities.slice(4, 6).length === 0 ? 
+          "Tarana-AI suggests leaving this time slot open to avoid traffic. Great for a peaceful dinner experience." : 
+          undefined
+      });
+      
       return {
         title: "Baguio City Itinerary",
         subtitle: "Curated recommendations based on your preferences",
-        items: [{
-          period: "Day 1 - Morning",
-          activities: activities.slice(0, 2)
-        }, {
-          period: "Day 1 - Afternoon", 
-          activities: activities.slice(2, 4)
-        }]
+        items: itineraryItems
       };
     }
 
-    // Ultimate fallback
+    // Ultimate fallback with reason fields for empty periods
     return {
       title: "Baguio City Itinerary",
       subtitle: "Unable to generate custom itinerary - please try again",
       items: [{
         period: "Day 1 - Morning",
-        activities: []
+        activities: [],
+        reason: "Tarana-AI is currently optimizing your itinerary. This time slot will be filled with personalized suggestions based on real-time traffic and weather conditions."
+      }, {
+        period: "Day 1 - Afternoon",
+        activities: [],
+        reason: "Tarana-AI is currently optimizing your itinerary. This time slot will be filled with personalized suggestions based on real-time traffic and weather conditions."
+      }, {
+        period: "Day 1 - Evening",
+        activities: [],
+        reason: "Tarana-AI is currently optimizing your itinerary. This time slot will be filled with personalized suggestions based on real-time traffic and weather conditions."
       }]
     };
   }

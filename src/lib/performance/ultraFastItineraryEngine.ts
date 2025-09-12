@@ -126,7 +126,7 @@ export class UltraFastItineraryEngine {
 
     // Parallel execution of search operations
     const [intelligentResults, precomputedResults] = await Promise.allSettled([
-      this.searchEngine.search(prompt, searchContext, sampleItineraryCombined.items[0].activities),
+      this.searchEngine.search(prompt, searchContext),
       this.getPrecomputedResults(prompt, interests, weatherType)
     ]);
 
@@ -144,23 +144,18 @@ export class UltraFastItineraryEngine {
       activities = this.getFastFallbackActivities(prompt, interests);
     }
 
-    // Phase 2: Parallel Traffic Enhancement (300-800ms)
-    const trafficStartTime = Date.now();
-    const enhancedActivities = await this.enhanceActivitiesUltraFast(activities.slice(0, 15));
-    const trafficTime = Date.now() - trafficStartTime;
-    console.log(`🚦 ULTRA-FAST TRAFFIC: Enhanced ${enhancedActivities.length} activities in ${trafficTime}ms`);
-
-    // Phase 3: Final Filtering and Scoring (50-100ms)
-    const finalActivities = this.applyUltraFastFiltering(enhancedActivities, interests, weatherType);
+    // Traffic enhancement is handled by the main pipeline. This engine's job is just to search.
+    const trafficTime = 0; // No traffic processing in this phase
+    const finalActivities = this.applyUltraFastFiltering(activities, interests, weatherType);
 
     const totalTime = Date.now() - startTime;
     const metrics: GenerationMetrics = {
-      totalTime,
-      searchTime,
-      trafficTime,
-      aiTime: 0, // No AI calls in this phase
-      cacheHitRate: this.calculateCacheHitRate(),
-      parallelizationGain: this.calculateParallelizationGain(searchTime, trafficTime)
+        totalTime,
+        searchTime,
+        trafficTime,
+        aiTime: 0, // No AI calls in this phase
+        cacheHitRate: this.calculateCacheHitRate(),
+        parallelizationGain: 1 // No parallelization gain to calculate here
     };
 
     console.log(`🚀 ULTRA-FAST GENERATION: Completed in ${totalTime}ms (${Math.round(1000/totalTime*60)}x faster than baseline)`);
@@ -171,130 +166,14 @@ export class UltraFastItineraryEngine {
   /**
    * Ultra-fast traffic enhancement with batching and deduplication
    */
-  private async enhanceActivitiesUltraFast(activities: Activity[]): Promise<Activity[]> {
-    if (!activities.length) return [];
-
-    // Group activities by proximity to reduce API calls
-    const locationGroups = this.groupActivitiesByProximity(activities);
-    console.log(`📍 LOCATION OPTIMIZATION: Grouped ${activities.length} activities into ${locationGroups.length} location clusters`);
-
-    // Process location groups in parallel with controlled concurrency
-    const semaphore = new Semaphore(this.options.maxConcurrentRequests || 8);
-    const enhancementPromises = locationGroups.map(async (group) => {
-      return semaphore.acquire(async () => {
-        return this.enhanceLocationGroup(group);
-      });
-    });
-
-    const enhancedGroups = await Promise.allSettled(enhancementPromises);
-    
-    // Flatten results and handle failures gracefully
-    const enhancedActivities: Activity[] = [];
-    enhancedGroups.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        enhancedActivities.push(...result.value);
-      } else {
-        console.warn(`⚠️ Location group ${index} enhancement failed:`, result.reason);
-        // Add original activities as fallback
-        enhancedActivities.push(...locationGroups[index]);
-      }
-    });
-
-    return enhancedActivities;
-  }
 
   /**
    * Group activities by geographic proximity to optimize API calls
    */
-  private groupActivitiesByProximity(activities: Activity[], maxDistance: number = 0.5): Activity[][] {
-    const groups: Activity[][] = [];
-    const processed = new Set<string>();
-
-    for (const activity of activities) {
-      if (processed.has(activity.title)) continue;
-
-      const group = [activity];
-      processed.add(activity.title);
-
-      const coords = this.getCoordinatesCached(activity.title);
-      if (!coords) continue;
-
-      // Find nearby activities
-      for (const other of activities) {
-        if (processed.has(other.title)) continue;
-
-        const otherCoords = this.getCoordinatesCached(other.title);
-        if (!otherCoords) continue;
-
-        const distance = this.calculateDistance(coords.lat, coords.lon, otherCoords.lat, otherCoords.lon);
-        if (distance <= maxDistance) {
-          group.push(other);
-          processed.add(other.title);
-        }
-      }
-
-      groups.push(group);
-    }
-
-    return groups;
-  }
 
   /**
    * Enhance a group of nearby activities with single API call
    */
-  private async enhanceLocationGroup(activities: Activity[]): Promise<Activity[]> {
-    if (!activities.length) return [];
-
-    // Use representative coordinates for the group
-    const representative = activities[0];
-    const coords = this.getCoordinatesCached(representative.title);
-    
-    if (!coords) {
-      return activities.map(a => ({ ...a, trafficLevel: 'UNKNOWN' as any }));
-    }
-
-    try {
-      // Single traffic analysis for the location group
-      const trafficAnalysis = await agenticTrafficAnalyzer.analyzeActivityTraffic(
-        representative.title,
-        representative.title,
-        coords.lat,
-        coords.lon,
-        representative.peakHours || '',
-        {
-          currentTime: new Date(),
-          dayOfWeek: new Date().toLocaleDateString('en-US', { weekday: 'long' }),
-          isWeekend: [0, 6].includes(new Date().getDay()),
-          userPreferences: {
-            avoidCrowds: true,
-            flexibleTiming: true,
-            prioritizeTraffic: true
-          }
-        }
-      );
-
-      // Apply traffic data to all activities in the group
-      return activities.map(activity => ({
-        ...activity,
-        trafficAnalysis,
-        combinedTrafficScore: trafficAnalysis.combinedScore,
-        trafficRecommendation: trafficAnalysis.recommendation,
-        crowdLevel: trafficAnalysis.crowdLevel,
-        lat: coords.lat,
-        lon: coords.lon
-      }));
-
-    } catch (error) {
-      console.warn(`⚠️ Traffic enhancement failed for group:`, error);
-      return activities.map(a => ({ 
-        ...a, 
-        trafficLevel: 'UNKNOWN' as any,
-        combinedTrafficScore: 50,
-        trafficRecommendation: 'VISIT_SOON' as any,
-        crowdLevel: 'MODERATE' as any
-      }));
-    }
-  }
 
   /**
    * Ultra-fast filtering with pre-computed rules
@@ -498,13 +377,6 @@ export class UltraFastItineraryEngine {
   }
 
   /**
-   * Calculate parallelization performance gain
-   */
-  private calculateParallelizationGain(searchTime: number, trafficTime: number): number {
-    const sequentialTime = searchTime + trafficTime;
-    const parallelTime = Math.max(searchTime, trafficTime);
-    return sequentialTime / parallelTime;
-  }
 
   /**
    * Get performance statistics

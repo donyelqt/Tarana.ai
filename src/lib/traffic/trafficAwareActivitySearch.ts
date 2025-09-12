@@ -128,9 +128,13 @@ class TrafficAwareActivitySearchService {
       if (activity.trafficAnalysis?.realTimeTraffic.trafficLevel) {
         const trafficLevel = activity.trafficAnalysis.realTimeTraffic.trafficLevel;
         
-        // Exclude HIGH and SEVERE traffic, allow LOW and MODERATE
-        if (!['LOW', 'MODERATE'].includes(trafficLevel)) {
-          console.log(`🚫 TRAFFIC FILTERING: Excluding "${activity.title}" - traffic level ${trafficLevel} (ONLY LOW/MODERATE ALLOWED)`);
+        // CRITICAL TRAFFIC-ONLY FILTERING - STRICTLY ENFORCED
+        // ABSOLUTELY FORBIDDEN: ANY activity with MODERATE, HIGH, or SEVERE traffic
+        // ONLY LOW TRAFFIC ACTIVITIES ALLOWED
+        // ZERO TOLERANCE: No exceptions for MODERATE traffic
+        // QUALITY OVER QUANTITY: Return fewer activities rather than compromising
+        if (trafficLevel !== 'LOW') {
+          console.log(`🚫 STRICT TRAFFIC FILTERING: Excluding "${activity.title}" - traffic level ${trafficLevel} (ONLY LOW TRAFFIC ALLOWED)`);
           return false;
         }
       }
@@ -270,7 +274,7 @@ class TrafficAwareActivitySearchService {
       prioritizeTraffic: true,
       avoidCrowds: false, // Allow more variety
       flexibleTiming: true,
-      maxTrafficLevel: 'MODERATE' // Allow LOW and MODERATE traffic
+      maxTrafficLevel: 'LOW' // ONLY allow LOW traffic
     }
   ): Promise<{
     recommended: TrafficEnhancedActivity[];
@@ -287,12 +291,13 @@ class TrafficAwareActivitySearchService {
     const enhanced = await this.enhanceActivitiesWithTraffic(activities, options);
     const filtered = this.filterAndSortByTraffic(enhanced, options);
 
+    // Enhanced strict filtering - only VISIT_NOW activities allowed
     const recommended = filtered.filter(a => 
-      a.trafficRecommendation === 'VISIT_NOW' || a.trafficRecommendation === 'VISIT_SOON'
+      a.trafficRecommendation === 'VISIT_NOW'
     );
 
     const avoid = enhanced.filter(a => 
-      a.trafficRecommendation === 'AVOID_NOW'
+      a.trafficRecommendation !== 'VISIT_NOW'
     );
 
     const averageTrafficScore = enhanced.reduce((sum, a) => sum + a.combinedTrafficScore, 0) / enhanced.length;
