@@ -37,12 +37,12 @@ export class ParallelTrafficProcessor {
   private static instance: ParallelTrafficProcessor;
   
   private readonly defaultOptions: TrafficProcessingOptions = {
-    maxConcurrency: 6,
-    batchSize: 8,
-    proximityThreshold: 0.3, // 300 meters
+    maxConcurrency: 100,
+    batchSize: 100,
+    proximityThreshold: 0.5, // 500 meters
     enableLocationClustering: true,
     enableResultCaching: true,
-    timeoutMs: 10000
+    timeoutMs: 10
   };
 
   private activeSemaphore: Semaphore;

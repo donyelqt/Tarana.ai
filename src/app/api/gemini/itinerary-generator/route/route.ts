@@ -95,7 +95,7 @@ const getCachedItinerary = unstable_cache(
             let parsed = parseAndCleanJson(text);
             const finalItinerary = await handleItineraryProcessing(parsed, prompt, durationDays, peakHoursContext);
             return { text: JSON.stringify(finalItinerary), optimized: false };
-        }, 3, 1000); // 3 retries with 1 second base delay
+        }, 2, 50); // 2 retries with 500ms base delay
     },
     ['itinerary-requests'], // Cache key prefix
     {

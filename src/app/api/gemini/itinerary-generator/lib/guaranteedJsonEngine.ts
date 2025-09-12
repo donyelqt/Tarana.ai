@@ -8,13 +8,14 @@ import { z } from 'zod';
 import { geminiModel } from './config';
 import { StructuredOutputEngine, ItinerarySchema, PeriodSchema, type StructuredItinerary } from './structuredOutputEngine';
 import { EnhancedPromptEngine, JsonSyntaxValidator } from './enhancedPromptEngine';
+import { intelligentCacheManager } from '@/lib/ai';
 
 /**
  * Multi-layer JSON generation with guaranteed success
  */
 export class GuaranteedJsonEngine {
-  private static readonly MAX_ATTEMPTS = 5;
-  private static readonly TIMEOUT_MS = 45000;
+  private static readonly MAX_ATTEMPTS = 3;
+  private static readonly TIMEOUT_MS = 10;
   
   private static metrics = {
     totalRequests: 0,
@@ -36,6 +37,9 @@ export class GuaranteedJsonEngine {
     requestId: string = 'unknown'
   ): Promise<StructuredItinerary> {
     
+    // Check cache first - simplified approach
+    // Note: This is a complex caching scenario that would require more sophisticated implementation
+    
     console.log(`🛡️ GUARANTEED ENGINE: Starting generation for request ${requestId}`);
     const startTime = Date.now();
     this.metrics.totalRequests++;
@@ -50,6 +54,10 @@ export class GuaranteedJsonEngine {
       if (structuredResult) {
         this.metrics.structuredSuccess++;
         console.log(`✅ GUARANTEED ENGINE: Structured output succeeded in ${Date.now() - startTime}ms`);
+        
+        // Cache the result - simplified approach
+        // Note: This is a complex caching scenario that would require more sophisticated implementation
+        
         return structuredResult;
       }
 

@@ -97,9 +97,10 @@ export class OptimizedPipeline {
     const aiStartTime = Date.now();
 
     // Build detailed prompt for structured generation
+    const effectiveSampleItinerary = this.buildEffectiveSampleItinerary(enhancedActivities, request);
     const detailedPrompt = buildDetailedPrompt(
         request.prompt,
-        this.buildEffectiveSampleItinerary(enhancedActivities, request),
+        effectiveSampleItinerary,
         request.weatherData,
         request.interests,
         request.durationDays,
@@ -108,7 +109,7 @@ export class OptimizedPipeline {
     );
 
     // Generate guaranteed structured itinerary
-    const structuredItinerary = await GuaranteedJsonEngine.generateGuaranteedJson(detailedPrompt, this.buildEffectiveSampleItinerary(enhancedActivities, request), '', '');
+    const structuredItinerary = await GuaranteedJsonEngine.generateGuaranteedJson(detailedPrompt, effectiveSampleItinerary, '', '');
     const aiTime = Date.now() - aiStartTime;
 
     console.log(`🤖 STRUCTURED AI PHASE: Completed in ${aiTime}ms`);
