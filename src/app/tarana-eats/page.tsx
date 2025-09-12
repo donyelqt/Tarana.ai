@@ -76,7 +76,7 @@ export default function TaranaEatsPage() {
         .map(restaurant => ({
           name: restaurant.name,
           meals: formValues.pax || 2,
-          price: restaurant.priceRange.max,
+          price: formValues.budget ? parseInt(formValues.budget.replace(/[^\d]/g, '')) || restaurant.priceRange.max : restaurant.priceRange.max,
           image: restaurant.image && restaurant.image !== "" ? restaurant.image : "/images/placeholders/hero-placeholder.svg",
           fullMenu: restaurant.fullMenu,
           reason: `This restaurant offers ${restaurant.cuisine.join(', ')} cuisine and is popular for ${restaurant.popularFor.join(', ')}.`

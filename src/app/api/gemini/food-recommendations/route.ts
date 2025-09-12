@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
         
         // Validate and enhance the response
         if (recommendations.matches && Array.isArray(recommendations.matches)) {
-          recommendations.matches = validateAndEnhanceRecommendations(recommendations.matches, foodData, prompt);
+          recommendations.matches = validateAndEnhanceRecommendations(recommendations.matches, foodData, preferences);
         }
       } else {
         console.warn(`🔄 JSON parsing failed, using fallback recommendations`);
@@ -168,24 +168,33 @@ export async function POST(req: NextRequest) {
 }
 
 // Validation and enhancement helper
-function validateAndEnhanceRecommendations(matches: EnhancedResultMatch[], foodData: any, prompt: string): EnhancedResultMatch[] {
+function validateAndEnhanceRecommendations(matches: EnhancedResultMatch[], foodData: any, preferences: any): EnhancedResultMatch[] {
   return matches.map(match => {
     const restaurant = foodData.restaurants.find((r: RestaurantData) => r.name === match.name);
     if (!restaurant) return match;
 
-    // Ensure calculated price is within restaurant's range
-    const groupSize = match.meals || 2;
-    const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
-    const calculatedPrice = Math.round(avgPrice * groupSize);
+    // CRITICAL: Override AI's price with user's actual budget
+    let finalPrice = match.price; // Default to AI's price
     
-    // Adjust price if outside reasonable bounds
-    const minTotal = restaurant.priceRange.min * groupSize;
-    const maxTotal = restaurant.priceRange.max * groupSize;
-    const adjustedPrice = Math.max(minTotal, Math.min(maxTotal, calculatedPrice));
+    if (preferences.budget) {
+      const userBudget = parseInt(preferences.budget.replace(/[^\d]/g, ''));
+      if (userBudget && userBudget > 0) {
+        finalPrice = userBudget; // Use user's budget as total budget
+        
+        // DEBUG LOGGING - Remove after fixing
+        console.log("🔍 VALIDATION DEBUG - Overriding AI price with user budget:", {
+          restaurantName: match.name,
+          aiGeneratedPrice: match.price,
+          userBudgetInput: preferences.budget,
+          extractedUserBudget: userBudget,
+          finalPriceUsed: finalPrice
+        });
+      }
+    }
 
     return {
       ...match,
-      price: adjustedPrice,
+      price: finalPrice, // Use user budget instead of AI's price
       image: restaurant.image || match.image,
       fullMenu: restaurant.fullMenu
     };
@@ -211,7 +220,7 @@ function createFallbackRecommendations(foodData: any, prompt: string): { matches
   const matches: EnhancedResultMatch[] = topMatches.map((restaurant: any) => ({
     name: restaurant.name,
     meals: preferences.pax || 2,
-    price: calculateRecommendedPrice(restaurant, preferences.pax || 2),
+    price: calculateRecommendedPrice(restaurant, preferences.pax || 2, preferences.budget),
     image: restaurant.image,
     reason: restaurant.reason,
     fullMenu: restaurant.fullMenu
@@ -276,10 +285,40 @@ function parseBudgetRange(budgetStr: string): { min: number; max: number } {
   return { min: 601, max: 1000 };
 }
 
-// Calculate recommended price based on group size and restaurant
-function calculateRecommendedPrice(restaurant: any, groupSize: number): number {
+// Calculate recommended price based on user's budget input, fallback to restaurant pricing
+function calculateRecommendedPrice(restaurant: any, groupSize: number, userBudget?: string): number {
+  // If user provided a budget, use that as the total budget for the group
+  if (userBudget) {
+    const budgetNum = parseInt(userBudget.replace(/[^\d]/g, ''));
+    if (budgetNum && budgetNum > 0) {
+      // DEBUG LOGGING - Remove after fixing
+      console.log("🔍 API ROUTE DEBUG - Using User Budget:", {
+        restaurantName: restaurant.name,
+        userBudgetInput: userBudget,
+        extractedBudgetNum: budgetNum,
+        groupSize: groupSize,
+        finalPrice: budgetNum
+      });
+      return budgetNum; // Return user's budget as total budget for entire group
+    }
+  }
+  
+  // Fallback: use restaurant's average price × group size
   const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
-  return Math.round(avgPrice * groupSize);
+  const fallbackPrice = Math.round(avgPrice * groupSize);
+  
+  // DEBUG LOGGING - Remove after fixing
+  console.log("🔍 API ROUTE DEBUG - Using Restaurant Pricing:", {
+    restaurantName: restaurant.name,
+    userBudgetInput: userBudget,
+    restaurantMinPrice: restaurant.priceRange.min,
+    restaurantMaxPrice: restaurant.priceRange.max,
+    avgPrice: avgPrice,
+    groupSize: groupSize,
+    finalPrice: fallbackPrice
+  });
+  
+  return fallbackPrice;
 }
 
 // Pre-filter restaurants based on preferences
