@@ -1,7 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sampleItineraryCombined, taranaai } from "@/app/itinerary-generator/data/itineraryData";
+import { taranaai } from "@/app/itinerary-generator/data/itineraryData";
 import { extractJson } from "./jsonUtils";
 import { isCurrentlyPeakHours } from "@/lib/traffic";
+import { supabaseAdmin } from "@/lib/data/supabaseAdmin";
 
 // Utilities for itinerary post-processing
 
@@ -40,6 +41,128 @@ const inferSlot = (label: string) => {
   return 'Flexible';
 };
 
+
+
+export function organizeItineraryByDays(it: any, days: number | null) {
+  if (!days || !it || !Array.isArray(it.items) || days <= 0) return it;
+  // Collect all activities by inferred slot
+  const pool: Record<string, any[]> = { Morning: [], Afternoon: [], Evening: [], Flexible: [] };
+  for (const period of it.items) {
+    const slot = inferSlot(period?.period || '');
+    const acts = Array.isArray(period?.activities) ? period.activities : [];
+    for (const a of acts) {
+      if (!a?.title || a.title.toLowerCase() === 'no available activity') continue;
+      pool[slot].push(a);
+    }
+  }
+  // Prepare day buckets
+  const daysBuckets = Array.from({ length: days }, () => ({ Morning: [] as any[], Afternoon: [] as any[], Evening: [] as any[] }));
+  const distribute = (slot: 'Morning'|'Afternoon'|'Evening', items: any[]) => {
+    let di = 0;
+    for (const item of items) {
+      daysBuckets[di][slot].push(item);
+      di = (di + 1) % daysBuckets.length;
+    }
+  };
+  // Distribute fixed slots round-robin
+  distribute('Morning', pool.Morning);
+  distribute('Afternoon', pool.Afternoon);
+  distribute('Evening', pool.Evening);
+  // Place flexible items into the slot with the fewest activities per day, preferring Afternoon then Morning then Evening
+  for (const flex of pool.Flexible) {
+    let bestDay = 0; let bestSlot: 'Afternoon'|'Morning'|'Evening' = 'Afternoon'; let bestCount = Infinity;
+    for (let d = 0; d < daysBuckets.length; d++) {
+      const order: Array<'Afternoon'|'Morning'|'Evening'> = ['Afternoon','Morning','Evening'];
+      for (const s of order) {
+        const count = daysBuckets[d][s].length;
+        if (count < bestCount) { bestCount = count; bestDay = d; bestSlot = s; }
+      }
+    }
+    daysBuckets[bestDay][bestSlot].push(flex);
+  }
+  // Build new items: Day N - Morning/Afternoon/Evening, drop empty periods
+  const newItems: any[] = [];
+  for (let i = 0; i < daysBuckets.length; i++) {
+    const dayNum = i + 1;
+    const slots: Array<'Morning'|'Afternoon'|'Evening'> = ['Morning','Afternoon','Evening'];
+    for (const s of slots) {
+      const acts = daysBuckets[i][s];
+      // Always create a period for each slot, even if empty.
+      // The ensureFullItinerary function will handle filling the gaps.
+      newItems.push({ period: `Day ${dayNum} - ${s}`, activities: acts });
+    }
+  }
+  return { ...it, items: newItems };
+}
+
+/**
+ * Get the correct image URL for an activity title by searching in Supabase vector database
+ * Falls back to the vector database image if no match exists
+ */
+export async function getActivityImage(title: string, fallbackImage?: string): Promise<any> {
+  // Check if we can find the activity in Supabase vector database
+  if (!supabaseAdmin) {
+    console.error("Supabase admin client is not initialized for getActivityImage.");
+    return fallbackImage || taranaai; // Use taranaai as final fallback
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('itinerary_embeddings')
+    .select('metadata')
+    .eq('activity_id', title)
+    .single();
+
+  if (error || !data) {
+    return fallbackImage || taranaai; // Use taranaai as final fallback
+  }
+
+  // Extract image from metadata
+  const metadata = data.metadata as Record<string, any>;
+  return metadata?.image || fallbackImage || taranaai;
+}
+
+/**
+ * Validate that an activity exists in our Supabase vector database and return the validated activity
+ * with correct image URL from local imports
+ */
+
+export async function validateAndEnrichActivity(activity: any): Promise<any | null> {
+  // Check if the activity exists in our Supabase vector database
+  if (!supabaseAdmin) {
+    console.error("Supabase admin client is not initialized for validateAndEnrichActivity.");
+    return null;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('itinerary_embeddings')
+    .select('activity_id, metadata')
+    .eq('activity_id', activity.title)
+    .single();
+
+  if (error || !data) {
+    console.warn(`Activity "${activity.title}" not found in Supabase vector database, excluding from itinerary`);
+    return null;
+  }
+
+  const canonicalActivity = data.metadata;
+
+  // Check if activity is currently in peak hours
+  if (canonicalActivity.peakHours && isCurrentlyPeakHours(canonicalActivity.peakHours)) {
+    console.warn(`Activity "${activity.title}" is currently in peak hours (${canonicalActivity.peakHours}), excluding from itinerary`);
+    return null;
+  }
+  
+  // Return enriched activity with correct local image
+  return {
+    ...activity,
+    image: await getActivityImage(activity.title, activity.image),
+    // Ensure we use canonical data for consistency
+    desc: canonicalActivity.desc,
+    tags: canonicalActivity.tags,
+    peakHours: canonicalActivity.peakHours,
+    time: canonicalActivity.time
+  };
+}
 
 export async function ensureFullItinerary(
   itinerary: any,
@@ -224,103 +347,6 @@ export async function ensureFullItinerary(
   return itinerary;
 }
 
-export function organizeItineraryByDays(it: any, days: number | null) {
-  if (!days || !it || !Array.isArray(it.items) || days <= 0) return it;
-  // Collect all activities by inferred slot
-  const pool: Record<string, any[]> = { Morning: [], Afternoon: [], Evening: [], Flexible: [] };
-  for (const period of it.items) {
-    const slot = inferSlot(period?.period || '');
-    const acts = Array.isArray(period?.activities) ? period.activities : [];
-    for (const a of acts) {
-      if (!a?.title || a.title.toLowerCase() === 'no available activity') continue;
-      pool[slot].push(a);
-    }
-  }
-  // Prepare day buckets
-  const daysBuckets = Array.from({ length: days }, () => ({ Morning: [] as any[], Afternoon: [] as any[], Evening: [] as any[] }));
-  const distribute = (slot: 'Morning'|'Afternoon'|'Evening', items: any[]) => {
-    let di = 0;
-    for (const item of items) {
-      daysBuckets[di][slot].push(item);
-      di = (di + 1) % daysBuckets.length;
-    }
-  };
-  // Distribute fixed slots round-robin
-  distribute('Morning', pool.Morning);
-  distribute('Afternoon', pool.Afternoon);
-  distribute('Evening', pool.Evening);
-  // Place flexible items into the slot with the fewest activities per day, preferring Afternoon then Morning then Evening
-  for (const flex of pool.Flexible) {
-    let bestDay = 0; let bestSlot: 'Afternoon'|'Morning'|'Evening' = 'Afternoon'; let bestCount = Infinity;
-    for (let d = 0; d < daysBuckets.length; d++) {
-      const order: Array<'Afternoon'|'Morning'|'Evening'> = ['Afternoon','Morning','Evening'];
-      for (const s of order) {
-        const count = daysBuckets[d][s].length;
-        if (count < bestCount) { bestCount = count; bestDay = d; bestSlot = s; }
-      }
-    }
-    daysBuckets[bestDay][bestSlot].push(flex);
-  }
-  // Build new items: Day N - Morning/Afternoon/Evening, drop empty periods
-  const newItems: any[] = [];
-  for (let i = 0; i < daysBuckets.length; i++) {
-    const dayNum = i + 1;
-    const slots: Array<'Morning'|'Afternoon'|'Evening'> = ['Morning','Afternoon','Evening'];
-    for (const s of slots) {
-      const acts = daysBuckets[i][s];
-      // Always create a period for each slot, even if empty.
-      // The ensureFullItinerary function will handle filling the gaps.
-      newItems.push({ period: `Day ${dayNum} - ${s}`, activities: acts });
-    }
-  }
-  return { ...it, items: newItems };
-}
-
-/**
- * Get the correct image URL for an activity title by searching directly in itineraryData.ts
- * Falls back to the vector database image if no match exists
- */
-export function getActivityImage(title: string, fallbackImage?: string): any {
-  const canonicalActivity = sampleItineraryCombined.items
-    .flatMap((section: any) => section.activities)
-    .find((act: any) => act.title.toLowerCase() === title.toLowerCase());
-  
-  return canonicalActivity?.image || fallbackImage || taranaai; // Use taranaai as final fallback
-}
-
-/**
- * Validate that an activity exists in our canonical data and return the validated activity
- * with correct image URL from local imports
- */
-export function validateAndEnrichActivity(activity: any): any | null {
-  // Check if the activity exists in our canonical sample data
-  const canonicalActivity = sampleItineraryCombined.items
-    .flatMap((section: any) => section.activities)
-    .find((act: any) => act.title.toLowerCase() === activity.title?.toLowerCase());
-  
-  if (!canonicalActivity) {
-    console.warn(`Activity "${activity.title}" not found in canonical data, excluding from itinerary`);
-    return null;
-  }
-
-  // Check if activity is currently in peak hours
-  if (canonicalActivity.peakHours && isCurrentlyPeakHours(canonicalActivity.peakHours)) {
-    console.warn(`Activity "${activity.title}" is currently in peak hours (${canonicalActivity.peakHours}), excluding from itinerary`);
-    return null;
-  }
-  
-  // Return enriched activity with correct local image
-  return {
-    ...activity,
-    image: getActivityImage(activity.title, activity.image),
-    // Ensure we use canonical data for consistency
-    desc: canonicalActivity.desc,
-    tags: canonicalActivity.tags,
-    peakHours: canonicalActivity.peakHours,
-    time: canonicalActivity.time
-  };
-}
-
 export async function processItinerary(parsed: any, prompt: string, durationDays: number | null, model: any, peakHoursContext: string) {
   let processed = removeDuplicateActivities(parsed);
   processed = organizeItineraryByDays(processed, durationDays);
@@ -351,7 +377,7 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
   console.log(`Activities currently in peak hours: ${filteredActivities}`);
   console.log('=======================================');
 
-  // Final cleanup and validation pass.
+  // Final cleanup pass - only remove duplicates, preserve reasons and activities as-is
   if (processed && typeof processed === "object" && Array.isArray((processed as any).items)) {
     const seenActivities = new Set<string>();
     (processed as any).items = (processed as any).items
@@ -360,28 +386,26 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
           period.activities = [];
         }
 
-        const validatedActivities = period.activities
-          .map((act: any) => validateAndEnrichActivity(act)) // Validate every activity
-          .filter((act: any): act is any => {
-            if (!act || !act.title || act.title.toLowerCase() === "no available activity") {
-              return false; // Filter out nulls and placeholders
-            }
-            if (seenActivities.has(act.title)) {
-              return false; // Filter out duplicates
-            }
-            // Final peak hours check
-            if (act.peakHours && isCurrentlyPeakHours(act.peakHours)) {
-              console.log(`Final filter: Removing ${act.title} - currently in peak hours`);
-              return false;
-            }
-            seenActivities.add(act.title);
-            return true;
-          });
+        // Only remove duplicates, don't validate against database or check peak hours again
+        const validatedActivities = period.activities.filter((act: any) => {
+          if (!act || !act.title || act.title.toLowerCase() === "no available activity") {
+            return false; // Filter out nulls and placeholders
+          }
+          if (seenActivities.has(act.title)) {
+            return false; // Filter out duplicates
+          }
+          seenActivities.add(act.title);
+          return true;
+        });
 
         const finalPeriod = { ...period, activities: validatedActivities };
+        // Always preserve the reason field, even if activities array is empty
+        if (period.reason) {
+          finalPeriod.reason = period.reason;
+        }
 
         return finalPeriod;
-      })
+      });
   }
   
   return processed;

@@ -11,7 +11,8 @@ import { supabaseAdmin } from '../data/supabaseAdmin';
 import { isCurrentlyPeakHours, getManilaTime } from '../traffic/peakHours';
 import { tomtomTrafficService } from '../traffic/tomtomTraffic';
 import { getActivityCoordinates } from '../data/baguioCoordinates';
-import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
+import type { Activity } from '../../app/itinerary-generator/data/itineraryData';
+import { sampleItineraryCombined } from '../../app/itinerary-generator/data/itineraryData';
 
 // Advanced search configuration
 export interface IntelligentSearchConfig {
@@ -481,8 +482,7 @@ export class IntelligentSearchEngine {
 
   async search(
     query: string,
-    context: SearchContext,
-    activities: Activity[]
+    context: SearchContext
   ): Promise<IntelligentSearchResult[]> {
     const cacheKey = this.generateCacheKey(query, context);
     const cached = this.cache.get(cacheKey);
@@ -493,7 +493,7 @@ export class IntelligentSearchEngine {
 
     try {
       // Multi-stage intelligent search
-      const results = await this.performIntelligentSearch(query, context, activities);
+      const results = await this.performIntelligentSearch(query, context);
       
       // Cache results
       this.cache.set(cacheKey, results);
@@ -502,15 +502,14 @@ export class IntelligentSearchEngine {
       return results;
     } catch (error) {
       console.error('Intelligent search failed:', error);
-      // Fallback to basic search
-      return this.performBasicSearch(query, activities);
+      // If intelligent search fails, return an empty array as we rely on the database.
+      return [];
     }
   }
 
   private async performIntelligentSearch(
     query: string,
-    context: SearchContext,
-    activities: Activity[]
+    context: SearchContext
   ): Promise<IntelligentSearchResult[]> {
     const results: IntelligentSearchResult[] = [];
     const processedActivities = new Set<string>();
@@ -530,7 +529,8 @@ export class IntelligentSearchEngine {
       }
     }
 
-    // Stage 2: Process each activity with multi-dimensional scoring
+    // Stage 2: Process each activity from the database with multi-dimensional scoring
+    const activities = semanticResults.map((r: any) => r.metadata as Activity);
     for (const activity of activities) {
       if (processedActivities.has(activity.title)) continue;
       processedActivities.add(activity.title);
@@ -603,16 +603,9 @@ export class IntelligentSearchEngine {
         }
       }
 
-      // Temporal optimization
-      if (this.config.enableTemporalOptimization && this.config.temporalWeight > 0) {
-        const temporalScore = await TemporalOptimizer.calculateTemporalScore(activity, context);
-        scores.temporal = temporalScore.score;
-        metadata.temporalFactors = temporalScore.factors;
-        
-        if (scores.temporal > 0.5) {
-          reasoning.push(`Good temporal fit: ${temporalScore.factors.join(', ')}`);
-        }
-      }
+      // Temporal optimization is deferred to the main pipeline to avoid excessive API calls.
+      scores.temporal = 0.5; // Assign a neutral score
+      metadata.temporalFactors.push('Real-time traffic analysis deferred');
 
       // Diversity scoring
       if (this.config.diversityWeight > 0) {
@@ -655,36 +648,6 @@ export class IntelligentSearchEngine {
       .slice(0, this.config.maxResults);
   }
 
-  private performBasicSearch(query: string, activities: Activity[]): IntelligentSearchResult[] {
-    return activities
-      .filter(activity => activity && activity.title) // Filter out null/invalid activities
-      .map(activity => {
-        const fuzzyScore = FuzzyMatcher.calculateFuzzyScore(query, activity.title);
-        return {
-          activity,
-          scores: {
-            semantic: 0,
-            vector: 0,
-            fuzzy: fuzzyScore,
-            contextual: 0,
-            temporal: 0,
-            diversity: 0,
-            composite: fuzzyScore
-          },
-          confidence: fuzzyScore > 0.3 ? 0.6 : 0.3,
-          reasoning: [`Basic fuzzy match: ${(fuzzyScore * 100).toFixed(1)}%`],
-          metadata: {
-            searchQuery: query,
-            matchedTerms: [activity.title],
-            contextFactors: [],
-            temporalFactors: []
-          }
-        };
-      })
-      .filter(result => result.scores.composite > 0.1)
-      .sort((a, b) => b.scores.composite - a.scores.composite)
-      .slice(0, 20);
-  }
 
   private calculateConfidence(scores: any, reasoningCount: number): number {
     const scoreVariance = this.calculateVariance(Object.values(scores).slice(0, -1) as number[]);

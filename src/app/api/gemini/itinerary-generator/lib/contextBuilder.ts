@@ -97,8 +97,18 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
     const peakHoursContext = getPeakHoursContext();
     const trafficAwareContext = buildTrafficAwareContext(effectiveSampleItinerary);
     
-    const sampleItineraryContext = effectiveSampleItinerary
-      ? `EXCLUSIVE DATABASE: ${JSON.stringify(effectiveSampleItinerary)}\n\nABSOLUTE RULE: You MUST ONLY use activities from this database. This is the COMPLETE list of available activities. DO NOT create, invent, or suggest any activity not in this list. Activities are pre-filtered and ranked by relevance. Higher relevanceScore values indicate better matches.`
+    // Provide a curated list of activities with essential details to prevent hallucination.
+    const curatedActivities = effectiveSampleItinerary?.items
+      ?.flatMap((item: any) => item.activities || [])
+      .slice(0, 20) // Limit to top 20 to keep prompt size manageable
+      .map((activity: any) => ({
+        title: activity.title,
+        desc: activity.desc,
+        tags: activity.tags
+      }));
+
+    const sampleItineraryContext = curatedActivities && curatedActivities.length > 0
+      ? `EXCLUSIVE DATABASE: ${JSON.stringify({ activities: curatedActivities })}\n\nABSOLUTE RULE: You MUST ONLY use activities from this database. This is the COMPLETE list of available activities. DO NOT create, invent, or suggest any activity not in this list.`
       : "ERROR: No activities found in database. Return an error message stating insufficient data.";
 
     let interestsContext = "";
@@ -175,7 +185,7 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
 
       Rules:
       1. **Be precise and personalized.**
-      2. **MANDATORY: ONLY use activities from the provided RAG database that also exist in our canonical activity list.** You are FORBIDDEN from creating, inventing, or suggesting ANY activity that is not explicitly listed in both the RAG database and our canonical data. Every single activity in your response MUST have an exact title match in our canonical data. The system will automatically provide the correct image URLs from our local imports - do not modify image URLs. If the database is empty or insufficient, return fewer activities rather than inventing new ones.
+      2. **MANDATORY: ONLY use activities from the provided database.** You are FORBIDDEN from creating, inventing, or suggesting ANY activity that is not explicitly listed in the database. Every single activity in your response MUST have an exact title match from the database. If the database is empty or insufficient, return fewer activities rather than inventing new ones.
       3. **Prioritize activities with higher relevanceScore values** as they are more closely aligned with the user's query, interests, weather conditions, and current traffic levels. Activities with real-time traffic data should be prioritized over those with only peak hours data.
       4. Organize by Morning (8AM-12NN), Afternoon (12NN-6PM), Evening (6PM onwards), respecting the time periods already suggested in the database.
       ${durationDays ? `4.a. Ensure the itinerary spans exactly ${durationDays} day(s). Create separate day sections and, within each day, include Morning, Afternoon, and Evening periods populated only from the database.` : ""}
@@ -185,9 +195,8 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       8. Adhere to the user's budget preferences by selecting only activities from the database that match the budget category.
       9. **CRITICAL: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
       10. **ENHANCED VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database AND meets traffic criteria: acceptable traffic levels (LOW/MODERATE) AND not marked as 'AVOID_NOW' for real-time traffic. Prioritize activities with 'VISIT_NOW' or 'VISIT_SOON' recommendations. The database combines peak hours filtering with real-time traffic analysis. Include activities with LOW or MODERATE traffic levels to provide variety and sufficient options.
-      11. **OUTPUT FORMAT:** Return a JSON object that strictly follows this Zod schema:\n          \`z.object({\n            title: z.string(),\n            subtitle: z.string(),\n            items: z.array(z.object({\n              period: z.string(),\n              activities: z.array(z.object({\n                image: z.string(),\n                title: z.string(),\n                time: z.string(),\n                desc: z.string(),\n                tags: z.array(z.string()),
-              })),
-            })),\n          })\`
-      12. **FINAL CHECK:** Before outputting, verify every single activity title, image URL, and tags match exactly with the provided database entries. Each image field must contain the exact URL string from the database without any modifications.
+      11. **EMPTY PERIODS:** If you cannot find suitable activities for a time period (e.g., Morning, Afternoon, Evening) due to traffic or other constraints, you MUST return an empty activities array for that period and provide a helpful, traffic-aware reason in the optional reason field. This is a mandatory requirement. Example: reason: "This time is left open to avoid peak afternoon traffic. Perfect for a quiet local coffee before your evening plans."
+      12. **OUTPUT FORMAT:** Return a JSON object with a 'title' (string), 'subtitle' (string), and an 'items' (array). Each object in the 'items' array should contain a 'period' (string), an 'activities' (array of objects), and an optional 'reason' (string). Each activity object should contain an 'image' (string), 'title' (string), 'time' (string), 'desc' (string), and 'tags' (array of strings).
+      13. **FINAL CHECK:** Before outputting, verify every single activity title, image URL, and tags match exactly with the provided database entries. Each image field must contain the exact URL string from the database without any modifications.
     `;
 }

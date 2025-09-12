@@ -18,7 +18,8 @@ export const ActivitySchema = z.object({
 
 export const PeriodSchema = z.object({
   period: z.string().min(1, "Period name required"),
-  activities: z.array(ActivitySchema).min(0, "Activities array required")
+  activities: z.array(ActivitySchema).min(0, "Activities array required"),
+  reason: z.string().optional()
 });
 
 export const ItinerarySchema = z.object({
@@ -59,9 +60,9 @@ export class StructuredOutputEngine {
       // Generation config optimized for JSON output
       const generationConfig = {
         responseMimeType: "application/json",
-        temperature: 0.1, // Very low for consistent structure
-        topK: 1,
-        topP: 0.8,
+        temperature: 0.2, 
+        topK: 32,
+        topP: 0.9,
         maxOutputTokens: 8192,
         candidateCount: 1
       };
@@ -102,7 +103,7 @@ export class StructuredOutputEngine {
 
         } catch (error: any) {
           lastError = error;
-          console.warn(`⚠️ STRUCTURED ENGINE: Attempt ${attempt} failed:`, error.message);
+          console.warn(`⚠️ STRUCTURED ENGINE: Attempt ${attempt} failed. Error: ${error instanceof Error ? error.message : String(error)}`);
           
           if (attempt < this.MAX_RETRIES) {
             const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
@@ -201,7 +202,9 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
           time: this.ensureString(activity?.time, "9:00-10:00AM"),
           desc: this.ensureString(activity?.desc, "Enjoy this activity with optimal timing."),
           tags: this.ensureArray(activity?.tags).filter((tag: any) => typeof tag === 'string')
-        }))
+        })),
+        // Preserve the reason field if it exists
+        reason: typeof item?.reason === 'string' ? item.reason : undefined
       }))
     };
 
@@ -230,7 +233,16 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
       subtitle: "Unable to generate custom itinerary - please try again with different preferences",
       items: [{
         period: "Day 1 - Morning",
-        activities: []
+        activities: [],
+        reason: "Tarana-AI is currently optimizing your itinerary. This time slot will be filled with personalized suggestions based on real-time traffic and weather conditions."
+      }, {
+        period: "Day 1 - Afternoon",
+        activities: [],
+        reason: "Tarana-AI is currently optimizing your itinerary. This time slot will be filled with personalized suggestions based on real-time traffic and weather conditions."
+      }, {
+        period: "Day 1 - Evening",
+        activities: [],
+        reason: "Tarana-AI is currently optimizing your itinerary. This time slot will be filled with personalized suggestions based on real-time traffic and weather conditions."
       }]
     };
   }

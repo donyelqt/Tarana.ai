@@ -10,9 +10,9 @@ import { ultraFastItineraryEngine } from "./ultraFastItineraryEngine";
 import { parallelTrafficProcessor } from "./parallelTrafficProcessor";
 import { smartCacheManager } from "./smartCacheManager";
 import { buildDetailedPrompt } from "@/app/api/gemini/itinerary-generator/lib/contextBuilder";
-import { generateItinerary, handleItineraryProcessing } from "@/app/api/gemini/itinerary-generator/lib/responseHandler";
+import { handleItineraryProcessing } from "@/app/api/gemini/itinerary-generator/lib/responseHandler";
 import { getPeakHoursContext } from "@/lib/traffic";
-import { RobustJsonParser } from "@/app/api/gemini/itinerary-generator/lib/robustJsonParser";
+import { GuaranteedJsonEngine } from '@/app/api/gemini/itinerary-generator/lib/guaranteedJsonEngine';
 import type { WeatherCondition } from "@/app/api/gemini/itinerary-generator/types/types";
 
 export interface PipelineMetrics {
@@ -93,44 +93,31 @@ export class OptimizedPipeline {
 
     console.log(`🚦 TRAFFIC PHASE: Completed in ${trafficTime}ms with ${enhancedActivities.length} enhanced activities`);
 
-    // Phase 3: Parallel AI Generation + Context Building (1000-2000ms)
+    // Phase 3 & 4: Structured AI Generation & Processing (1000-2000ms)
     const aiStartTime = Date.now();
-    
-    // Build effective sample itinerary for AI context
-    const effectiveSampleItinerary = this.buildEffectiveSampleItinerary(enhancedActivities, request);
-    
-    // Build detailed prompt and generate in parallel
-    const [detailedPrompt, peakHoursContext] = await Promise.all([
-      Promise.resolve(buildDetailedPrompt(
+
+    // Build detailed prompt for structured generation
+    const detailedPrompt = buildDetailedPrompt(
         request.prompt,
-        effectiveSampleItinerary,
+        this.buildEffectiveSampleItinerary(enhancedActivities, request),
         request.weatherData,
         request.interests,
         request.durationDays,
         request.budget,
         request.pax
-      )),
-      Promise.resolve(getPeakHoursContext())
-    ]);
+    );
 
-    // Generate AI response
-    const response = await generateItinerary(detailedPrompt, request.prompt, request.durationDays);
+    // Generate guaranteed structured itinerary
+    const structuredItinerary = await GuaranteedJsonEngine.generateGuaranteedJson(detailedPrompt, this.buildEffectiveSampleItinerary(enhancedActivities, request), '', '');
     const aiTime = Date.now() - aiStartTime;
 
-    console.log(`🤖 AI PHASE: Completed in ${aiTime}ms`);
+    console.log(`🤖 STRUCTURED AI PHASE: Completed in ${aiTime}ms`);
 
-    // Phase 4: Ultra-Fast Response Processing (100-300ms)
+    // The output is already validated, so we can skip complex parsing.
+    // We still need to run the final processing steps.
     const processingStartTime = Date.now();
-    
-    const text = response.text();
-    if (!text) {
-      throw new Error("Gemini response is empty");
-    }
-
-    // Use robust JSON parser
-    const parsed = RobustJsonParser.parseResponse(text);
-    const finalItinerary = await handleItineraryProcessing(parsed, request.prompt, request.durationDays, peakHoursContext);
-    
+    const peakHoursContext = getPeakHoursContext();
+    const finalItinerary = await handleItineraryProcessing(structuredItinerary, request.prompt, request.durationDays, peakHoursContext);
     const processingTime = Date.now() - processingStartTime;
     const totalTime = Date.now() - pipelineStartTime;
 

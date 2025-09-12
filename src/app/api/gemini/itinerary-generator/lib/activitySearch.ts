@@ -2,7 +2,6 @@
 import { proposeSubqueries } from "../agent/agent";
 import { isCurrentlyPeakHours, getManilaTime } from "@/lib/traffic";
 import { WEATHER_TAG_FILTERS } from "./config";
-import { validateAndEnrichActivity } from "../utils/itineraryUtils";
 import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/traffic";
 import { IntelligentSearchEngine } from "@/lib/search";
 import type { WeatherCondition } from "../types/types";
@@ -32,7 +31,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
         // Use intelligent search engine
         const availableActivities = sampleItineraryCombined.items[0].activities;
         console.log(`\n🔍 INTELLIGENT SEARCH: Starting search for "${prompt}" with ${availableActivities.length} activities`);
-        const intelligentResults = await intelligentSearchEngine.search(prompt, searchContext, availableActivities);
+        const intelligentResults = await intelligentSearchEngine.search(prompt, searchContext);
         console.log(`✅ INTELLIGENT SEARCH: Found ${intelligentResults.length} results with traffic-aware scoring`);
         
         // Enhanced intelligent search with query expansion if needed
@@ -54,7 +53,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             // Run additional intelligent searches with sub-queries
             const expandedResults: any[] = [];
             for (const subquery of subqueries) {
-                const subResults = await intelligentSearchEngine.search(subquery, searchContext, availableActivities);
+                const subResults = await intelligentSearchEngine.search(subquery, searchContext);
                 expandedResults.push(...subResults);
             }
             
@@ -76,30 +75,35 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             console.log(`✅ EXPANDED SEARCH: Final results count: ${finalResults.length}`);
         }
 
-        // Process unified intelligent search results
-        const processedResults = finalResults.map(result => ({
-            activity_id: result.activity.title,
-            similarity: result.scores.composite,
-            metadata: {
-                title: result.activity.title,
-                desc: result.activity.desc,
-                tags: result.activity.tags,
-                time: result.activity.time,
-                image: result.activity.image,
-                peakHours: result.activity.peakHours
-            },
-            relevanceScore: result.scores.composite,
-            reasoning: result.reasoning,
-            confidence: result.confidence,
-            searchScores: {
-                vector: result.scores.vector,
-                semantic: result.scores.semantic,
-                fuzzy: result.scores.fuzzy,
-                contextual: result.scores.contextual,
-                temporal: result.scores.temporal,
-                diversity: result.scores.diversity
-            }
-        }));
+        // Process unified intelligent search results - only use activities that exist in the database
+        const databaseActivities = sampleItineraryCombined.items[0].activities;
+        const databaseTitles = new Set(databaseActivities.map((act: any) => act.title.toLowerCase()));
+        
+        const processedResults = finalResults
+            .filter(result => databaseTitles.has(result.activity.title.toLowerCase()))
+            .map(result => ({
+                activity_id: result.activity.title,
+                similarity: result.scores.composite,
+                metadata: {
+                    title: result.activity.title,
+                    desc: result.activity.desc,
+                    tags: result.activity.tags,
+                    time: result.activity.time,
+                    image: result.activity.image,
+                    peakHours: result.activity.peakHours
+                },
+                relevanceScore: result.scores.composite,
+                reasoning: result.reasoning,
+                confidence: result.confidence,
+                searchScores: {
+                    vector: result.scores.vector,
+                    semantic: result.scores.semantic,
+                    fuzzy: result.scores.fuzzy,
+                    contextual: result.scores.contextual,
+                    temporal: result.scores.temporal,
+                    diversity: result.scores.diversity
+                }
+            }));
         
         const similar = processedResults;
 
@@ -196,7 +200,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                     isCurrentlyPeak: false // Guaranteed false at this point
                 };
                 
-                const activity = validateAndEnrichActivity(rawActivity);
+                const activity = rawActivity;
                 if (!activity) return;
                 
                 if (timeStr.includes("am") || timeStr.includes("morning")) {
@@ -259,12 +263,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             console.log(`📈 TRAFFIC-AWARE ITINERARY:`, finalTrafficStats);
             console.log(`==========================================\n`);
             
-            // Validate and enrich each activity
-            const validatedActivities = finalActivities.map(activity => {
-                const validated = validateAndEnrichActivity(activity);
-                console.log(`✅ Activity validated: ${validated.title} (Peak: ${validated.peakHours || 'None'})`);
-                return validated;
-            });
+            const validatedActivities = finalActivities;
 
             if (morningActivities.length > 0) {
                 items.push({ period: "Morning", activities: morningActivities });
@@ -314,7 +313,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                                 searchReasoning: s.reasoning || [],
                                 confidence: s.confidence || 0.7
                             };
-                            return validateAndEnrichActivity(rawActivity);
+                            return rawActivity;
                         }).filter(Boolean)
                     }
                 ],
