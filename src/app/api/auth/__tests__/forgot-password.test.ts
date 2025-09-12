@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
 import { POST } from '../forgot-password/route';
-import * as supabaseAdmin from '@/lib/supabaseAdmin';
+import * as supabaseAdmin from '@/lib/data/supabaseAdmin';
 import * as auth from '@/lib/auth';
 import * as email from '@/lib/email';
 import crypto from 'crypto';
 
 // Mock dependencies
-jest.mock('@/lib/supabaseAdmin');
+jest.mock('@/lib/data/supabaseAdmin');
 jest.mock('@/lib/auth');
 jest.mock('@/lib/email');
 jest.mock('crypto');

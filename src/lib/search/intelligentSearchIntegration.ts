@@ -165,7 +165,7 @@ export class IntelligentSearchOrchestrator {
         }
 
         // Perform intelligent search
-        results = await intelligentSearchEngine.search(query, searchContext, activities);
+        results = await intelligentSearchEngine.search(query, searchContext);
         
         // Apply optimization if enabled and results found
         if (this.config.enableOptimization && optimization && results.length > 0) {
@@ -384,8 +384,7 @@ export class IntelligentSearchOrchestrator {
   }
 
   private async performSearch(query: string, context: SearchContext): Promise<IntelligentSearchResult[]> {
-    const activities = this.getActivities();
-    return intelligentSearchEngine.search(query, context, activities);
+    return intelligentSearchEngine.search(query, context);
   }
 }
 
