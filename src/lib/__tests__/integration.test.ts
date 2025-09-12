@@ -1,18 +1,18 @@
 import { NextRequest } from 'next/server';
 import { POST as forgotPasswordPOST } from '@/app/api/auth/forgot-password/route';
 import { POST as resetPasswordPOST } from '@/app/api/auth/reset-password/route';
-import * as supabaseAdmin from '@/lib/supabaseAdmin';
+import * as supabaseAdmin from '@/lib/data/supabaseAdmin';
 import * as auth from '@/lib/auth';
-import * as email from '@/lib/email';
-import * as emailConfig from '@/lib/emailConfig';
+import * as email from '@/lib/email/email';
+import * as emailConfig from '@/lib/email/emailConfig';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 // Mock all dependencies
-jest.mock('@/lib/supabaseAdmin');
+jest.mock('@/lib/data/supabaseAdmin');
 jest.mock('@/lib/auth');
-jest.mock('@/lib/email');
-jest.mock('@/lib/emailConfig');
+jest.mock('@/lib/email/email');
+jest.mock('@/lib/email/emailConfig');
 jest.mock('bcryptjs');
 jest.mock('crypto');
 

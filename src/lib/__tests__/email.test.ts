@@ -1,5 +1,5 @@
-import { sendPasswordResetEmail } from '../email';
-import * as emailConfig from '../emailConfig';
+import { sendPasswordResetEmail } from '../email/email';
+import * as emailConfig from '../email/emailConfig';
 
 // Mock nodemailer
 const mockSendMail = jest.fn();
@@ -57,6 +57,12 @@ describe('Email Service', () => {
         port: 587,
         secure: false,
         auth: { user: 'apikey', pass: 'SG.test_key' },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 60000,
+        socketTimeout: 60000,
+        greetingTimeout: 30000,
+        debug: false,
+        logger: false,
       };
       const mockEmailConfig = {
         host: 'smtp.sendgrid.net',
@@ -96,6 +102,12 @@ describe('Email Service', () => {
         port: 587,
         secure: false,
         auth: { user: 'apikey', pass: 'SG.test_key' },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 60000,
+        socketTimeout: 60000,
+        greetingTimeout: 30000,
+        debug: false,
+        logger: false,
       };
       const mockEmailConfig = {
         host: 'smtp.sendgrid.net',
@@ -140,6 +152,12 @@ describe('Email Service', () => {
         port: 587,
         secure: false,
         auth: { user: 'apikey', pass: 'SG.test_key' },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 60000,
+        socketTimeout: 60000,
+        greetingTimeout: 30000,
+        debug: false,
+        logger: false,
       };
       const mockEmailConfig = {
         host: 'smtp.sendgrid.net',
@@ -172,6 +190,12 @@ describe('Email Service', () => {
         port: 587,
         secure: false,
         auth: { user: 'apikey', pass: 'SG.test_key' },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 60000,
+        socketTimeout: 60000,
+        greetingTimeout: 30000,
+        debug: false,
+        logger: false,
       };
       const mockEmailConfig = {
         host: 'smtp.sendgrid.net',
@@ -205,6 +229,12 @@ describe('Email Service', () => {
         port: 587,
         secure: false,
         auth: { user: 'test@gmail.com', pass: 'password' },
+        tls: { rejectUnauthorized: false },
+        connectionTimeout: 30000,
+        socketTimeout: 30000,
+        greetingTimeout: 10000,
+        debug: false,
+        logger: false,
       };
       const mockEmailConfig = {
         host: 'smtp.gmail.com',

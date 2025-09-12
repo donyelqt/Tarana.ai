@@ -1,4 +1,4 @@
-import { validateEmailConfig, getEmailTransportConfig } from '../emailConfig';
+import { validateEmailConfig, getEmailTransportConfig } from '../email/emailConfig';
 
 // Mock environment variables
 const mockEnv = (vars: Record<string, string | undefined>) => {
