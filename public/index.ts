@@ -47,6 +47,16 @@ export const yellow_trail = "/images/yellow_trail.png"
 export const kapi_kullaaw = "/images/kapi_kullaaw.jpg"
 export const noProfile = "/images/noProfile.png"
 export const chimichanga_taranagala = "/images/chimichanga_taranagala.jpg"
-
+export const itaewon = "/images/itaewon.jpg"
+export const agara_ramen = "/images/agara_ramen.jpg"
+export const koco_cafe = "/images/koco_cafe.jpg"
+export const goodsheperd_cafe_taranagala = "/images/goodsheperd_cafe_taranagala.jpg"
+export const tavern_cafe = "/images/tavern_cafe.jpg"
+export const ohmygulay_taranagala = "/images/ohmygulay_taranagala.jpg"
+export const hiraya_cafe = "/images/hiraya_cafe.jpg"
+export const ujimatcha_taranagala = "/images/ujimatcha_taranagala.jpg"
+export const kflavors_taranagala = "/images/kflavors_taranagala"
+export const kj_korean_palace_baguio_taranagala = "/images/kj_korean_palace_baguio_taranagala.jpg"
+export const MyeongDongJjigae_taranagala = "/images/MyeongDongJjigae_taranagala.jpg"
 
 
