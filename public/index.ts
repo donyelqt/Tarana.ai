@@ -55,7 +55,7 @@ export const tavern_cafe = "/images/tavern_cafe.jpg"
 export const ohmygulay_taranagala = "/images/ohmygulay_taranagala.jpg"
 export const hiraya_cafe = "/images/hiraya_cafe.jpg"
 export const ujimatcha_taranagala = "/images/ujimatcha_taranagala.jpg"
-export const kflavors_taranagala = "/images/kflavors_taranagala"
+export const kflavors_taranagala = "/images/kflavors_taranagala.jpg"
 export const kj_korean_palace_baguio_taranagala = "/images/kj_korean_palace_baguio_taranagala.jpg"
 export const MyeongDongJjigae_taranagala = "/images/MyeongDongJjigae_taranagala.jpg"
 

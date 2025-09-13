@@ -69,15 +69,15 @@ export const TRAFFIC_COLORS: Record<TrafficLevel, TrafficColorScheme> = {
 export const TRAFFIC_LEVEL_INFO: Record<TrafficLevel, TrafficLevelInfo> = {
   VERY_LOW: {
     level: 'VERY_LOW',
-    label: 'Optimal Flow',
+    label: 'Low',
     description: 'Excellent traffic conditions, faster than normal',
     speedReduction: '0% (optimal)',
-    colors: TRAFFIC_COLORS.VERY_LOW,
+    colors: TRAFFIC_COLORS.LOW,
     icon: '🟢'
   },
   LOW: {
     level: 'LOW',
-    label: 'Free Flow',
+    label: 'Low',
     description: 'Traffic moving at normal speeds',
     speedReduction: '0-15% slower',
     colors: TRAFFIC_COLORS.LOW,
@@ -111,22 +111,28 @@ export const TRAFFIC_LEVEL_INFO: Record<TrafficLevel, TrafficLevelInfo> = {
 
 /**
  * Get traffic color based on congestion score (0-100)
+ * Aligned with industry standard thresholds
  */
 export function getTrafficColorFromScore(congestionScore: number): TrafficColorScheme {
-  if (congestionScore >= 80) return TRAFFIC_COLORS.SEVERE;
-  if (congestionScore >= 60) return TRAFFIC_COLORS.HIGH;
-  if (congestionScore >= 30) return TRAFFIC_COLORS.MODERATE;
+  if (congestionScore >= 75) return TRAFFIC_COLORS.SEVERE;
+  if (congestionScore >= 50) return TRAFFIC_COLORS.HIGH;
+  if (congestionScore >= 25) return TRAFFIC_COLORS.MODERATE;
   if (congestionScore >= 15) return TRAFFIC_COLORS.LOW;
   return TRAFFIC_COLORS.VERY_LOW;
 }
 
 /**
- * Get traffic level from congestion score
+ * Get traffic level from congestion score (0-100 scale)
+ * Industry standard thresholds:
+ * - 0-24: VERY_LOW/LOW (Free flow)
+ * - 25-49: MODERATE (Light congestion)
+ * - 50-74: HIGH (Heavy congestion)
+ * - 75-100: SEVERE (Stop-and-go traffic)
  */
 export function getTrafficLevelFromScore(congestionScore: number): TrafficLevel {
-  if (congestionScore >= 80) return 'SEVERE';
-  if (congestionScore >= 60) return 'HIGH';
-  if (congestionScore >= 30) return 'MODERATE';
+  if (congestionScore >= 75) return 'SEVERE';
+  if (congestionScore >= 50) return 'HIGH';
+  if (congestionScore >= 25) return 'MODERATE';
   if (congestionScore >= 15) return 'LOW';
   return 'VERY_LOW';
 }
@@ -252,3 +258,13 @@ export function getTrafficIntensity(trafficLevel: TrafficLevel): number {
     default: return 0;
   }
 }
+
+/**
+ * Filtered traffic levels for legend display (combines VERY_LOW and LOW into just LOW)
+ */
+export const LEGEND_TRAFFIC_LEVELS = [
+  TRAFFIC_LEVEL_INFO.LOW,
+  TRAFFIC_LEVEL_INFO.MODERATE,
+  TRAFFIC_LEVEL_INFO.HIGH,
+  TRAFFIC_LEVEL_INFO.SEVERE
+];

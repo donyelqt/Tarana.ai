@@ -105,7 +105,8 @@ export class OptimizedPipeline {
         request.interests,
         request.durationDays,
         request.budget,
-        request.pax
+        request.pax,
+        true // CRITICAL: Restrict AI to only use filtered activities
     );
 
     // Generate guaranteed structured itinerary
@@ -192,7 +193,7 @@ export class OptimizedPipeline {
       subtitle: `Activities optimized using enterprise-grade algorithms with real-time traffic data`,
       items: items.length > 0 ? items : [{
         period: "Anytime",
-        activities: activities.slice(0, 12)
+        activities: activities.slice(0, 15)
       }],
       searchMetadata: {
         searchMethod: 'optimized',
