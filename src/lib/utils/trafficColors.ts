@@ -26,6 +26,13 @@ export interface TrafficLevelInfo {
  * Traffic color mapping based on industry standards
  */
 export const TRAFFIC_COLORS: Record<TrafficLevel, TrafficColorScheme> = {
+  VERY_LOW: {
+    color: '#10b981', // Emerald
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: '#10b981',
+    textColor: '#047857',
+    opacity: 0.8
+  },
   LOW: {
     color: '#22c55e', // Green
     backgroundColor: 'rgba(34, 197, 94, 0.1)',
@@ -60,6 +67,14 @@ export const TRAFFIC_COLORS: Record<TrafficLevel, TrafficColorScheme> = {
  * Detailed traffic level information for user awareness
  */
 export const TRAFFIC_LEVEL_INFO: Record<TrafficLevel, TrafficLevelInfo> = {
+  VERY_LOW: {
+    level: 'VERY_LOW',
+    label: 'Optimal Flow',
+    description: 'Excellent traffic conditions, faster than normal',
+    speedReduction: '0% (optimal)',
+    colors: TRAFFIC_COLORS.VERY_LOW,
+    icon: '🟢'
+  },
   LOW: {
     level: 'LOW',
     label: 'Free Flow',
@@ -101,7 +116,8 @@ export function getTrafficColorFromScore(congestionScore: number): TrafficColorS
   if (congestionScore >= 80) return TRAFFIC_COLORS.SEVERE;
   if (congestionScore >= 60) return TRAFFIC_COLORS.HIGH;
   if (congestionScore >= 30) return TRAFFIC_COLORS.MODERATE;
-  return TRAFFIC_COLORS.LOW;
+  if (congestionScore >= 15) return TRAFFIC_COLORS.LOW;
+  return TRAFFIC_COLORS.VERY_LOW;
 }
 
 /**
@@ -111,7 +127,8 @@ export function getTrafficLevelFromScore(congestionScore: number): TrafficLevel 
   if (congestionScore >= 80) return 'SEVERE';
   if (congestionScore >= 60) return 'HIGH';
   if (congestionScore >= 30) return 'MODERATE';
-  return 'LOW';
+  if (congestionScore >= 15) return 'LOW';
+  return 'VERY_LOW';
 }
 
 /**
@@ -141,6 +158,8 @@ export function getTrafficLevelClasses(trafficLevel: TrafficLevel): string {
   const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
   
   switch (trafficLevel) {
+    case 'VERY_LOW':
+      return `${baseClasses} bg-emerald-100 text-emerald-800 border border-emerald-200`;
     case 'LOW':
       return `${baseClasses} bg-green-100 text-green-800 border border-green-200`;
     case 'MODERATE':
@@ -163,6 +182,12 @@ export function getTrafficRecommendation(trafficLevel: TrafficLevel): {
   priority: 'low' | 'medium' | 'high' | 'critical';
 } {
   switch (trafficLevel) {
+    case 'VERY_LOW':
+      return {
+        message: 'Excellent travel conditions',
+        action: 'Perfect time to travel',
+        priority: 'low'
+      };
     case 'LOW':
       return {
         message: 'Optimal travel conditions',
@@ -219,6 +244,7 @@ export function formatTrafficDelay(delaySeconds: number): string {
  */
 export function getTrafficIntensity(trafficLevel: TrafficLevel): number {
   switch (trafficLevel) {
+    case 'VERY_LOW': return 5;
     case 'LOW': return 20;
     case 'MODERATE': return 50;
     case 'HIGH': return 75;
