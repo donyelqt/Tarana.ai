@@ -1,10 +1,15 @@
-import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botanicalbaguio, burnham, caferuins, campjohnhay, chimichanga_taranagala, diplomat_hotel, easter_weaving_room, goodsheperdconventbaguio, goodtaste, great_wall_of_baguio, hillstation, 
+import { agara_ramen, baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botanicalbaguio, burnham, caferuins, campjohnhay, chimichanga_taranagala, diplomat_hotel, easter_weaving_room, goodsheperd_cafe_taranagala, goodsheperdconventbaguio, goodtaste, great_wall_of_baguio, hillstation, 
+    hiraya_cafe, 
     ili_likha_baguio, 
+    itaewon, 
     kapi_kullaaw, 
+    kflavors_taranagala, 
+    kj_korean_palace_baguio_taranagala, 
+    koco_cafe, 
     lion_heads_baguio, 
     miradorheritageandecopark, 
     mt_kalugong, 
-    mtulap, nightmarket, pma, smbaguio, tamawan, taranaai, the_mansion_baguio, treetopcampjohnhay, valley_of_colors, viewspark, 
+    mtulap, MyeongDongJjigae_taranagala, nightmarket, ohmygulay_taranagala, pma, smbaguio, tamawan, taranaai, tavern_cafe, the_mansion_baguio, treetopcampjohnhay, ujimatcha_taranagala, valley_of_colors, viewspark, 
     vizcossessionroad,
     wrightpark,
     yellow_trail} from "../../../../public";
@@ -44,6 +49,12 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
   tags: string[];
   peakHours?: string;
   relevanceScore?: number; // Optional relevance score from RAG results
+  trafficAnalysis?: any; // Traffic analysis data from TomTom API
+  combinedTrafficScore?: number; // Traffic score for recommendation
+  trafficRecommendation?: 'VISIT_NOW' | 'VISIT_SOON' | 'AVOID_NOW' | 'PLAN_LATER'; // Traffic-based recommendation
+  crowdLevel?: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH'; // Crowd level assessment
+  lat?: number; // Latitude coordinate
+  lon?: number; // Longitude coordinate
 }
   
   export interface ItinerarySection {
@@ -266,7 +277,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "4 pm - 6 pm",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: itaewon, 
                 title: "Itaewon Cafe",
                 time: "9:00 AM - 11:00 PM",
                 desc: "A Korean-themed café with minimalist interiors and K-drama vibes perfect for café hoppers. Entrance Fee: Free. Est. Duration: 1 hour 30 minutes. Best Day to visit: Weekdays.",
@@ -274,7 +285,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "4 pm - 7 pm",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: agara_ramen, 
                 title: "Agara Ramen",
                 time: "11:00 AM - 10:00 PM",
                 desc: "A crowd-favorite ramen shop serving rich, flavorful bowls of authentic Japanese comfort food. Entrance Fee: Free. Est. Duration: 2 hours. Best Day to visit: Weekdays.",
@@ -282,7 +293,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "6 pm - 8 pm",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: koco_cafe, 
                 title: "KoCo Cafe",
                 time: "7:00 AM - 10:00 PM",
                 desc: "A stylish and Instagram-worthy café loved for its cozy vibes and quality coffee. Entrance Fee: Free. Est. Duration: 1 hour 30 minutes. Best Day to visit: Weekdays.",
@@ -290,7 +301,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "3 pm - 5 pm",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: goodsheperd_cafe_taranagala, 
                 title: "Good Sheperd Cafe",
                 time: "6:00 AM - 7:30 PM",
                 desc: "A quaint café near the famous convent, known for local delicacies and scenic views. Entrance Fee: Free. Est. Duration: 1 hour. Best Day to visit: Weekdays.",
@@ -298,7 +309,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "4 pm - 6 pm",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: tavern_cafe, 
                 title: "Tavern Cafe",
                 time: "9:00 AM - 10:00 PM",
                 desc: "A casual dining café that offers a mix of comfort food and relaxed ambiance. Entrance Fee: Free. Est. Duration: 1 hour. Best Day to visit: Weekdays.",
@@ -306,7 +317,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "4 pm - 6 pm",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: ohmygulay_taranagala, 
                 title: "Oh My Gulay",
                 time: "11:00 AM - 8:00 PM",
                 desc: "A whimsical vegetarian restaurant and art space serving creative plant-based dishes. Entrance Fee: Free. Est. Duration: 1 hour. Best Day to visit: Weekdays.",
@@ -314,7 +325,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "2 pm - 5 pm",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: hillstation, 
                 title: "Hill Station",
                 time: "7:00 AM - 10:00 PM",
                 desc: "An elegant colonial-style restaurant offering fusion dishes and cozy mountain charm. Entrance Fee: Free. Est. Duration: 1 hour. Best Day to visit: Weekdays.",
@@ -322,7 +333,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "7 am - 9 am",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: hiraya_cafe, 
                 title: "Hiraya Cafe",
                 time: "9:00 AM - 8:00 PM",
                 desc: "A tranquil café with dreamy aesthetics, perfect for quiet reflection or creative work. Entrance Fee: Free. Est. Duration: 1 hour 30 minutes. Best Day to visit: Weekdays.",
@@ -330,7 +341,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "9 am - 11 am",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: ujimatcha_taranagala, 
                 title: "Uji-Matcha Cafe",
                 time: "7:30 AM - 11:30 PM",
                 desc: "A Japanese-inspired café specializing in matcha drinks and desserts. Entrance Fee: Free. Est. Duration: 1 hour 30 minutes. Best Day to visit: Weekdays.",
@@ -338,7 +349,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "4 pm - 7 pm",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: kflavors_taranagala, 
                 title: "K-Flavors Buffet",
                 time: "10:00 AM - 12:00 AM",
                 desc: "An affordable Korean buffet offering unlimited meats and side dishes in a lively setting. Entrance Fee: Free. Est. Duration: 2 hours 30 minutes. Best Day to visit: Weekdays.",
@@ -346,7 +357,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "12 pm - 5 pm",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: kj_korean_palace_baguio_taranagala, 
                 title: "Korean Palace Kung Jeon",
                 time: "10:00 AM - 10:00 PM",
                 desc: "A popular Korean barbecue buffet with a wide variety of meats and banchan. Entrance Fee: Free. Est. Duration: 2 hours 30 minutes. Best Day to visit: Weekdays.",
@@ -354,7 +365,7 @@ import { baguio_cathedral, baguio_panorama, baguio_public_market, bencab, botani
                 peakHours: "12 pm - 5 pm",
             },
             {
-                image: "/images/placeholders/food-placeholder.jpg", 
+                image: MyeongDongJjigae_taranagala, 
                 title: "Myeong Dong Jjigae Restaurant",
                 time: "10:30 AM - 9:00 PM",
                 desc: "A Korean buffet restaurant known for its unlimited jjigae, barbecue, and hotpot options. Entrance Fee: Free. Est. Duration: 2 hours 30 minutes. Best Day to visit: Weekdays.",

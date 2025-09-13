@@ -311,9 +311,9 @@ export class ParallelTrafficProcessor {
   private createFallbackCluster(cluster: Activity[]): Activity[] {
     return cluster.map(activity => ({
       ...activity,
-      combinedTrafficScore: 60,
-      trafficRecommendation: 'VISIT_SOON' as any,
-      crowdLevel: 'MODERATE' as any,
+      combinedTrafficScore: 75,
+      trafficRecommendation: 'VISIT_NOW' as any,
+      crowdLevel: 'LOW' as any,
       lat: this.getCoordinatesCached(activity.title)?.lat || 0,
       lon: this.getCoordinatesCached(activity.title)?.lon || 0
     }));

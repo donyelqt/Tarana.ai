@@ -18,7 +18,7 @@ export interface Activity {
   lon?: number;
   trafficData?: {
     congestionScore: number;
-    trafficLevel: 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
+    trafficLevel: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
     recommendationScore: number;
     lastUpdated: Date;
   };
@@ -309,12 +309,12 @@ class AgenticTrafficAnalyzer {
     peakHoursStatus: any,
     context: AgenticTrafficContext
   ): 'VISIT_NOW' | 'VISIT_SOON' | 'AVOID_NOW' | 'PLAN_LATER' {
-    // Allow both LOW and MODERATE traffic for VISIT_NOW recommendations
-    if (combinedScore >= 80 && !peakHoursStatus.isCurrentlyPeak && ['LOW', 'MODERATE'].includes(trafficData.trafficLevel)) {
+    // Allow VERY_LOW, LOW and MODERATE traffic for VISIT_NOW recommendations
+    if (combinedScore >= 80 && !peakHoursStatus.isCurrentlyPeak && ['VERY_LOW', 'LOW', 'MODERATE'].includes(trafficData.trafficLevel)) {
       return 'VISIT_NOW';
-    } else if (combinedScore >= 60 && ['LOW', 'MODERATE'].includes(trafficData.trafficLevel)) {
+    } else if (combinedScore >= 60 && ['VERY_LOW', 'LOW', 'MODERATE'].includes(trafficData.trafficLevel)) {
       return 'VISIT_SOON';
-    } else if (combinedScore < 35 || trafficData.trafficLevel === 'SEVERE' || 
+    } else if (combinedScore < 35 || ['HIGH', 'SEVERE'].includes(trafficData.trafficLevel) || 
                (peakHoursStatus.isCurrentlyPeak && context.userPreferences?.avoidCrowds)) {
       return 'AVOID_NOW';
     } else {

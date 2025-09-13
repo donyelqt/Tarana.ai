@@ -22,6 +22,7 @@ function buildTrafficAwareContext(effectiveSampleItinerary: any): string {
 
   // Analyze traffic distribution
   const trafficLevels = {
+    VERY_LOW: activitiesWithTraffic.filter((a: any) => a.trafficAnalysis?.realTimeTraffic?.trafficLevel === 'VERY_LOW').length,
     LOW: activitiesWithTraffic.filter((a: any) => a.trafficAnalysis?.realTimeTraffic?.trafficLevel === 'LOW').length,
     MODERATE: activitiesWithTraffic.filter((a: any) => a.trafficAnalysis?.realTimeTraffic?.trafficLevel === 'MODERATE').length,
     HIGH: activitiesWithTraffic.filter((a: any) => a.trafficAnalysis?.realTimeTraffic?.trafficLevel === 'HIGH').length,
@@ -35,7 +36,7 @@ function buildTrafficAwareContext(effectiveSampleItinerary: any): string {
 
   const trafficSummary = `\n🚦 REAL-TIME TRAFFIC INTEGRATION:
 - ${activitiesWithTraffic.length}/${allActivities.length} activities enhanced with live TomTom traffic data
-- Traffic Distribution: ${trafficLevels.LOW} LOW, ${trafficLevels.MODERATE} MODERATE, ${trafficLevels.HIGH} HIGH, ${trafficLevels.SEVERE} SEVERE
+- Traffic Distribution: ${trafficLevels.VERY_LOW} VERY_LOW, ${trafficLevels.LOW} LOW, ${trafficLevels.MODERATE} MODERATE, ${trafficLevels.HIGH} HIGH, ${trafficLevels.SEVERE} SEVERE
 - ${optimalActivities} activities currently optimal for visiting
 - All activities combine real-time traffic data with historical peak hours analysis`;
 
@@ -168,13 +169,13 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       ${trafficAwareContext}
       
       BALANCED TRAFFIC FILTERING - OPTIMIZED FOR VARIETY:
-      - ACCEPTABLE TRAFFIC LEVELS: Include activities with LOW or MODERATE traffic levels for better variety
+      - ACCEPTABLE TRAFFIC LEVELS: Include activities with VERY_LOW, LOW or MODERATE traffic levels for better variety
       - FORBIDDEN TRAFFIC LEVELS: Exclude activities with HIGH or SEVERE traffic levels only
-      - BALANCED REQUIREMENT: Activities in the database have been filtered to include LOW and MODERATE traffic levels
+      - BALANCED REQUIREMENT: Activities in the database have been filtered to include VERY_LOW, LOW and MODERATE traffic levels
       - MODERATE TRAFFIC TOLERANCE: MODERATE traffic activities are acceptable and provide more itinerary options
-      - SMART VALIDATION: The provided database contains activities that passed LOW-to-MODERATE traffic filtering
-      - TRAFFIC LEVEL ENFORCEMENT: Activities with trafficLevel: 'LOW' or 'MODERATE' and recommendation: 'VISIT_NOW', 'VISIT_SOON', or 'PLAN_LATER' are included
-      - VARIETY OVER RESTRICTION: Include sufficient activities with acceptable traffic levels (LOW/MODERATE)
+      - SMART VALIDATION: The provided database contains activities that passed VERY_LOW-to-MODERATE traffic filtering
+      - TRAFFIC LEVEL ENFORCEMENT: Activities with trafficLevel: 'VERY_LOW', 'LOW' or 'MODERATE' and recommendation: 'VISIT_NOW', 'VISIT_SOON', or 'PLAN_LATER' are included
+      - VARIETY OVER RESTRICTION: Include sufficient activities with acceptable traffic levels (VERY_LOW/LOW/MODERATE)
       - REAL-TIME GUARANTEE: All activities combine Manila peak hours data with live TomTom traffic validation for LOW/MODERATE traffic levels
       ${interestsContext}
       ${durationContext}
@@ -194,7 +195,7 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       7. **ENHANCED TRAFFIC-AWARE DESCRIPTIONS:** Every activity description MUST include comprehensive traffic timing information combining both peak hours and real-time data. Examples: "Currently LOW traffic (85% optimal) - perfect time to visit!" or "MODERATE traffic expected, best visited after 3 PM when conditions improve." For activities with real-time data, include the traffic level and recommendation score. For peak-hours-only activities, mention the optimal timing based on historical data.
       8. Adhere to the user's budget preferences by selecting only activities from the database that match the budget category.
       9. **CRITICAL: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
-      10. **ENHANCED VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database AND meets traffic criteria: acceptable traffic levels (LOW/MODERATE) AND not marked as 'AVOID_NOW' for real-time traffic. Prioritize activities with 'VISIT_NOW' or 'VISIT_SOON' recommendations. The database combines peak hours filtering with real-time traffic analysis. Include activities with LOW or MODERATE traffic levels to provide variety and sufficient options.
+      10. **ENHANCED VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database AND meets traffic criteria: acceptable traffic levels (VERY_LOW/LOW/MODERATE) AND not marked as 'AVOID_NOW' for real-time traffic. Prioritize activities with 'VISIT_NOW' or 'VISIT_SOON' recommendations. The database combines peak hours filtering with real-time traffic analysis. Include activities with VERY_LOW, LOW or MODERATE traffic levels to provide variety and sufficient options.
       11. **EMPTY PERIODS:** If you cannot find suitable activities for a time period (e.g., Morning, Afternoon, Evening) due to traffic or other constraints, you MUST return an empty activities array for that period and provide a helpful, traffic-aware reason in the optional reason field. This is a mandatory requirement. Example: reason: "This time is left open to avoid peak afternoon traffic. Perfect for a quiet local coffee before your evening plans."
       12. **OUTPUT FORMAT:** Return a JSON object with a 'title' (string), 'subtitle' (string), and an 'items' (array). Each object in the 'items' array should contain a 'period' (string), an 'activities' (array of objects), and an optional 'reason' (string). Each activity object should contain an 'image' (string), 'title' (string), 'time' (string), 'desc' (string), and 'tags' (array of strings).
       13. **FINAL CHECK:** Before outputting, verify every single activity title, image URL, and tags match exactly with the provided database entries. Each image field must contain the exact URL string from the database without any modifications.

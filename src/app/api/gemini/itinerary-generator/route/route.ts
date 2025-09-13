@@ -31,7 +31,7 @@ const getCachedItinerary = unstable_cache(
 
                 const durationDays = duration ? parseInt(duration.toString().match(/\d+/)?.[0] || '1', 10) : null;
 
-                // Use optimized pipeline for 3-5x faster generation
+// Use optimized pipeline for 3-5x faster generation
                 const { itinerary, metrics } = await optimizedPipeline.generateOptimized({
                     prompt,
                     interests: Array.isArray(interests) ? interests : [],
@@ -42,6 +42,7 @@ const getCachedItinerary = unstable_cache(
                     model: geminiModel
                 });
 
+                console.log(`✅ OPTIMIZED PIPELINE: Enhanced activities with real-time traffic data`);
                 console.log(`⚡ OPTIMIZED GENERATION: Completed in ${metrics.totalTime}ms with ${metrics.performance.efficiency}% efficiency`);
                 
                 return { 
@@ -93,7 +94,9 @@ const getCachedItinerary = unstable_cache(
 
             const peakHoursContext = getPeakHoursContext();
             let parsed = parseAndCleanJson(text);
-            const finalItinerary = await handleItineraryProcessing(parsed, prompt, durationDays, peakHoursContext);
+            const finalActivities = parsed.slice(0, Math.min(15, parsed.length));
+            console.log(`🎯 FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`);
+            const finalItinerary = await handleItineraryProcessing(finalActivities, prompt, durationDays, peakHoursContext);
             return { text: JSON.stringify(finalItinerary), optimized: false };
         }, 2, 50); // 2 retries with 500ms base delay
     },
