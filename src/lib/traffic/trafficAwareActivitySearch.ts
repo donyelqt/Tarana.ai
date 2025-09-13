@@ -19,7 +19,7 @@ export interface TrafficAwareSearchOptions {
   prioritizeTraffic: boolean;
   avoidCrowds: boolean;
   flexibleTiming: boolean;
-  maxTrafficLevel: 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
+  maxTrafficLevel: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
   weatherCondition?: string;
 }
 
@@ -33,7 +33,7 @@ class TrafficAwareActivitySearchService {
       prioritizeTraffic: true,
       avoidCrowds: false, // Allow more variety
       flexibleTiming: true,
-      maxTrafficLevel: 'MODERATE' // Allow LOW and MODERATE traffic
+      maxTrafficLevel: 'MODERATE' // Allow VERY_LOW, LOW and MODERATE traffic
     }
   ): Promise<TrafficEnhancedActivity[]> {
     const context = createTrafficContext({
@@ -124,17 +124,17 @@ class TrafficAwareActivitySearchService {
 
     // BALANCED filtering: Allow LOW and MODERATE traffic activities
     let filtered = activities.filter(activity => {
-      // Accept LOW and MODERATE traffic levels
+      // Accept VERY_LOW, LOW and MODERATE traffic levels
       if (activity.trafficAnalysis?.realTimeTraffic.trafficLevel) {
         const trafficLevel = activity.trafficAnalysis.realTimeTraffic.trafficLevel;
         
         // CRITICAL TRAFFIC-ONLY FILTERING - STRICTLY ENFORCED
-        // ABSOLUTELY FORBIDDEN: ANY activity with MODERATE, HIGH, or SEVERE traffic
-        // ONLY LOW TRAFFIC ACTIVITIES ALLOWED
-        // ZERO TOLERANCE: No exceptions for MODERATE traffic
+        // ABSOLUTELY FORBIDDEN: ANY activity with HIGH or SEVERE traffic
+        // ONLY VERY_LOW, LOW and MODERATE traffic ACTIVITIES ALLOWED
+        // ZERO TOLERANCE: No exceptions for HIGH or SEVERE traffic
         // QUALITY OVER QUANTITY: Return fewer activities rather than compromising
-        if (trafficLevel !== 'LOW') {
-          console.log(`🚫 STRICT TRAFFIC FILTERING: Excluding "${activity.title}" - traffic level ${trafficLevel} (ONLY LOW TRAFFIC ALLOWED)`);
+        if (!['VERY_LOW', 'LOW', 'MODERATE'].includes(trafficLevel)) {
+          console.log(`🚫 STRICT TRAFFIC FILTERING: Excluding "${activity.title}" - traffic level ${trafficLevel} (ONLY VERY_LOW, LOW and MODERATE TRAFFIC ALLOWED)`);
           return false;
         }
       }
@@ -274,7 +274,7 @@ class TrafficAwareActivitySearchService {
       prioritizeTraffic: true,
       avoidCrowds: false, // Allow more variety
       flexibleTiming: true,
-      maxTrafficLevel: 'LOW' // ONLY allow LOW traffic
+      maxTrafficLevel: 'MODERATE' // Allow VERY_LOW, LOW and MODERATE traffic
     }
   ): Promise<{
     recommended: TrafficEnhancedActivity[];
@@ -330,7 +330,7 @@ export function createDefaultTrafficOptions(): TrafficAwareSearchOptions {
     prioritizeTraffic: true,
     avoidCrowds: false, // Allow more variety
     flexibleTiming: true,
-    maxTrafficLevel: 'MODERATE', // Allow LOW and MODERATE traffic
+    maxTrafficLevel: 'MODERATE', // Allow VERY_LOW, LOW and MODERATE traffic
     weatherCondition: undefined
   };
 }

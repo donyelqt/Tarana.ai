@@ -49,6 +49,12 @@ import { agara_ramen, baguio_cathedral, baguio_panorama, baguio_public_market, b
   tags: string[];
   peakHours?: string;
   relevanceScore?: number; // Optional relevance score from RAG results
+  trafficAnalysis?: any; // Traffic analysis data from TomTom API
+  combinedTrafficScore?: number; // Traffic score for recommendation
+  trafficRecommendation?: 'VISIT_NOW' | 'VISIT_SOON' | 'AVOID_NOW' | 'PLAN_LATER'; // Traffic-based recommendation
+  crowdLevel?: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH'; // Crowd level assessment
+  lat?: number; // Latitude coordinate
+  lon?: number; // Longitude coordinate
 }
   
   export interface ItinerarySection {

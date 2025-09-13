@@ -236,7 +236,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             console.log(`=======================================\n`);
 
             // Final activity selection and validation
-            const finalActivities = trafficEnhancedActivities.slice(0, Math.min(12, trafficEnhancedActivities.length));
+            const finalActivities = trafficEnhancedActivities.slice(0, Math.min(15, trafficEnhancedActivities.length));
             console.log(`🎯 FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`);
             
             // Log real-time traffic integration success for final activities
@@ -255,7 +255,23 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             console.log(`📈 TRAFFIC-AWARE ITINERARY:`, finalTrafficStats);
             console.log(`==========================================\n`);
             
-            const validatedActivities = finalActivities;
+            // Add traffic tags to activities based on traffic level
+            const validatedActivities = finalActivities.map(activity => {
+              const trafficLevel = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
+              const tags = [...(activity.tags || [])];
+              
+              // Add traffic tags
+              if (trafficLevel === 'VERY_LOW' || trafficLevel === 'LOW') {
+                tags.push('low-traffic');
+              } else if (trafficLevel === 'MODERATE') {
+                tags.push('moderate-traffic');
+              }
+              
+              return {
+                ...activity,
+                tags
+              };
+            });
 
             if (morningActivities.length > 0) {
                 items.push({ period: "Morning", activities: morningActivities });

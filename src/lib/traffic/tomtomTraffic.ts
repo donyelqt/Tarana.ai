@@ -26,7 +26,7 @@ export interface LocationTrafficData {
   lat: number;
   lon: number;
   incidents: TrafficIncident[];
-  trafficLevel: 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
+  trafficLevel: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
   congestionScore: number; // 0-100 (0 = no congestion, 100 = severe congestion)
   recommendationScore: number; // 0-100 (0 = avoid, 100 = perfect time to visit)
   lastUpdated: Date;
@@ -327,7 +327,7 @@ class TomTomTrafficService {
   /**
    * Determine traffic level based on congestion score and incidents
    */
-  private getTrafficLevel(congestionScore: number, incidents: TrafficIncident[]): 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE' {
+  private getTrafficLevel(congestionScore: number, incidents: TrafficIncident[]): 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE' {
     // Check for severe incidents first
     const severeIncidents = incidents.filter(i => i.magnitudeOfDelay >= 4);
     if (severeIncidents.length > 0) {
@@ -342,9 +342,12 @@ class TomTomTrafficService {
     } else if (congestionScore >= 50) {
       console.log(`🟡 TomTom: MODERATE traffic level (score: ${congestionScore})`);
       return 'MODERATE';
-    } else {
+    } else if (congestionScore >= 20) {
       console.log(`🟢 TomTom: LOW traffic level (score: ${congestionScore})`);
       return 'LOW';
+    } else {
+      console.log(`🔵 TomTom: VERY LOW traffic level (score: ${congestionScore})`);
+      return 'VERY_LOW';
     }
   }
 
@@ -353,7 +356,7 @@ class TomTomTrafficService {
    */
   private calculateRecommendationScore(
     congestionScore: number, 
-    trafficLevel: 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE',
+    trafficLevel: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE',
     incidents: TrafficIncident[]
   ): number {
     let score = 100 - congestionScore; // Inverse of congestion
@@ -373,6 +376,9 @@ class TomTomTrafficService {
         break;
       case 'MODERATE':
         score -= 10;
+        break;
+      case 'VERY_LOW':
+        score += 20;
         break;
       case 'LOW':
         score += 10;
@@ -395,9 +401,9 @@ class TomTomTrafficService {
       lat,
       lon,
       incidents: [],
-      trafficLevel: 'MODERATE',
-      congestionScore: 40,
-      recommendationScore: 60,
+      trafficLevel: 'LOW',
+      congestionScore: 25,
+      recommendationScore: 75,
       lastUpdated: new Date()
     };
   }
@@ -432,6 +438,7 @@ export function getTrafficSummary(trafficData: LocationTrafficData): string {
   const { trafficLevel, congestionScore, incidents } = trafficData;
   
   const levelEmojis = {
+    VERY_LOW: '🔵',
     LOW: '🟢',
     MODERATE: '🟡', 
     HIGH: '🔴',
