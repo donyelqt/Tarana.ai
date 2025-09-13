@@ -10,6 +10,7 @@ interface TrafficLegendProps {
 }
 
 const trafficColorMap = {
+  VERY_LOW: 'bg-emerald-400',
   LOW: 'bg-green-500',
   MODERATE: 'bg-yellow-500',
   HIGH: 'bg-orange-500',
