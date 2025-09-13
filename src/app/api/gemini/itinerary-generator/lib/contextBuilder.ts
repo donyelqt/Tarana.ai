@@ -6,21 +6,9 @@ import type { WeatherCondition } from "../types/types";
  * Build traffic-aware context for AI prompts
  * Combines peak hours data with real-time traffic insights
  */
-function buildTrafficAwareContext(effectiveSampleItinerary: any): string {
-  if (!effectiveSampleItinerary?.items) {
-    return "\n🚦 TRAFFIC STATUS: No activity data available for traffic analysis.";
-  }
-
-  const allActivities = effectiveSampleItinerary.items.flatMap((item: any) => item.activities || []);
-  const activitiesWithTraffic = allActivities.filter((activity: any) => activity.trafficAnalysis);
+export function buildTrafficAwareContext(activities: any[], restrictToProvided: boolean = true): string {
+  const activitiesWithTraffic = activities.filter((activity: any) => activity.trafficAnalysis);
   
-  console.log(`🚦 Traffic Context: Analyzing ${activitiesWithTraffic.length}/${allActivities.length} activities with traffic data`);
-  
-  if (activitiesWithTraffic.length === 0) {
-    return `\n🚦 TRAFFIC STATUS: All ${allActivities.length} activities are using peak hours data only (real-time traffic data unavailable).`;
-  }
-
-  // Analyze traffic distribution
   const trafficLevels = {
     VERY_LOW: activitiesWithTraffic.filter((a: any) => a.trafficAnalysis?.realTimeTraffic?.trafficLevel === 'VERY_LOW').length,
     LOW: activitiesWithTraffic.filter((a: any) => a.trafficAnalysis?.realTimeTraffic?.trafficLevel === 'LOW').length,
@@ -29,37 +17,39 @@ function buildTrafficAwareContext(effectiveSampleItinerary: any): string {
     SEVERE: activitiesWithTraffic.filter((a: any) => a.trafficAnalysis?.realTimeTraffic?.trafficLevel === 'SEVERE').length
   };
 
-  const optimalActivities = activitiesWithTraffic.filter((a: any) => 
-    a.trafficAnalysis?.recommendation === 'VISIT_NOW' || 
-    a.trafficAnalysis?.recommendation === 'VISIT_SOON'
-  ).length;
+  const trafficSummary = [
+    `🚦 Traffic Context: Analyzing ${activities.length}/${activities.length} activities with traffic data`,
+    `Current Traffic Status Summary:`,
+    `  VERY_LOW: ${trafficLevels.VERY_LOW}`,
+    `  LOW: ${trafficLevels.LOW}`,
+    `  MODERATE: ${trafficLevels.MODERATE}`,
+    `  HIGH: ${trafficLevels.HIGH}`,
+    `  SEVERE: ${trafficLevels.SEVERE}`,
+    `⚠️ IMPORTANT: All activities have been pre-filtered to exclude HIGH and SEVERE traffic locations.`,
+    `Only recommend activities with VERY_LOW, LOW, or MODERATE traffic levels.`,
+    `Focus on positive traffic messaging since high-traffic activities are already excluded.`
+  ];
 
-  const trafficSummary = `\n🚦 REAL-TIME TRAFFIC INTEGRATION:
-- ${activitiesWithTraffic.length}/${allActivities.length} activities enhanced with live TomTom traffic data
-- Traffic Distribution: ${trafficLevels.VERY_LOW} VERY_LOW, ${trafficLevels.LOW} LOW, ${trafficLevels.MODERATE} MODERATE, ${trafficLevels.HIGH} HIGH, ${trafficLevels.SEVERE} SEVERE
-- ${optimalActivities} activities currently optimal for visiting
-- All activities combine real-time traffic data with historical peak hours analysis`;
+  const restrictionNote = restrictToProvided ? 
+    `\n    🛡️ RESTRICTION ENFORCED: You may ONLY recommend activities from the ${activities.length} pre-filtered activities above.` :
+    '';
 
-  // Add individual activity traffic insights
-  const activityInsights = activitiesWithTraffic
-    .slice(0, 5) // Show top 5 for brevity
-    .map((activity: any) => {
-      const traffic = activity.trafficAnalysis;
-      if (!traffic) return null;
-      
-      const realTime = traffic.realTimeTraffic ? 
-        `${traffic.realTimeTraffic.trafficLevel} traffic (${Math.round(traffic.realTimeTraffic.recommendationScore)}% optimal)` : 
-        'Peak hours only';
-      
-      return `  • ${activity.title}: ${realTime} - ${traffic.recommendation}`;
-    })
-    .filter(Boolean)
-    .join('\n');
-
-  return trafficSummary + (activityInsights ? `\n\nTop Activity Traffic Status:\n${activityInsights}` : '');
+  return `
+    ${trafficSummary.join('\n    ')}
+    ${restrictionNote}
+  `;
 }
 
-export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: any, weatherData: any, interests: string[], durationDays: number | null, budget: string, pax: string) {
+export function buildDetailedPrompt(
+  prompt: string,
+  sampleItinerary: any,
+  weatherData: any,
+  interests: string[],
+  durationDays: number | null,
+  budget?: string,
+  pax?: string,
+  restrictToSampleActivities: boolean = true
+): string {
     const weatherId = weatherData?.weather?.[0]?.id || 0;
     const weatherDescription = weatherData?.weather?.[0]?.description || "";
     const temperature = weatherData?.main?.temp || 20;
@@ -96,12 +86,12 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
     })();
 
     const peakHoursContext = getPeakHoursContext();
-    const trafficAwareContext = buildTrafficAwareContext(effectiveSampleItinerary);
+    const trafficContext = buildTrafficAwareContext(sampleItinerary?.items?.flatMap((item: any) => item.activities || []), restrictToSampleActivities);
     
     // Provide a curated list of activities with essential details to prevent hallucination.
-    const curatedActivities = effectiveSampleItinerary?.items
+    const curatedActivities = sampleItinerary?.items
       ?.flatMap((item: any) => item.activities || [])
-      .slice(0, 20) // Limit to top 20 to keep prompt size manageable
+      .slice(0, 25) // Increased from 20 to 25 to ensure more activities are available
       .map((activity: any) => ({
         title: activity.title,
         desc: activity.desc,
@@ -132,8 +122,8 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
     if (durationDays) {
       durationContext = `
         This is a ${durationDays}-day trip, so pace the itinerary accordingly:
-        ${durationDays === 1 ? "Focus on must-see highlights and efficient time management. Select 2-3 activities per time period (morning, afternoon, evening) from the sample database." : ""}
-        ${durationDays === 2 ? "Balance major attractions with some deeper local experiences. Select 2-3 activities per time period per day from the sample database." : ""}
+        ${durationDays === 1 ? "Focus on must-see highlights and efficient time management. Select 2 activities per time period (morning, afternoon, evening) from the sample database." : ""}
+        ${durationDays === 2 ? "Balance major attractions with some deeper local experiences. Select 2 activities per time period per day from the sample database." : ""}
         ${durationDays === 3 ? "Include major attractions and allow time to explore local neighborhoods. Select 2 activities per time period per day from the sample database, allowing for more relaxed pacing." : ""}
         ${durationDays >= 4 ? "Include major attractions, local experiences, and some day trips to nearby areas. Select 1-2 activities per time period per day from the sample database, allowing for a very relaxed pace." : ""}
       `;
@@ -166,17 +156,16 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       ${sampleItineraryContext}
       ${weatherContext}
       ${peakHoursContext}
-      ${trafficAwareContext}
+      ${trafficContext}
       
-      BALANCED TRAFFIC FILTERING - OPTIMIZED FOR VARIETY:
-      - ACCEPTABLE TRAFFIC LEVELS: Include activities with VERY_LOW, LOW or MODERATE traffic levels for better variety
-      - FORBIDDEN TRAFFIC LEVELS: Exclude activities with HIGH or SEVERE traffic levels only
-      - BALANCED REQUIREMENT: Activities in the database have been filtered to include VERY_LOW, LOW and MODERATE traffic levels
-      - MODERATE TRAFFIC TOLERANCE: MODERATE traffic activities are acceptable and provide more itinerary options
-      - SMART VALIDATION: The provided database contains activities that passed VERY_LOW-to-MODERATE traffic filtering
-      - TRAFFIC LEVEL ENFORCEMENT: Activities with trafficLevel: 'VERY_LOW', 'LOW' or 'MODERATE' and recommendation: 'VISIT_NOW', 'VISIT_SOON', or 'PLAN_LATER' are included
-      - VARIETY OVER RESTRICTION: Include sufficient activities with acceptable traffic levels (VERY_LOW/LOW/MODERATE)
-      - REAL-TIME GUARANTEE: All activities combine Manila peak hours data with live TomTom traffic validation for LOW/MODERATE traffic levels
+      STRICT TRAFFIC FILTERING - ENTERPRISE GRADE ENFORCEMENT:
+      - CRITICAL REQUIREMENT: The activity database has been PRE-FILTERED to contain ONLY activities with VERY_LOW, LOW, and MODERATE traffic levels
+      - ZERO HIGH TRAFFIC: All HIGH and SEVERE traffic activities have been AUTOMATICALLY EXCLUDED from the database before reaching you
+      - MANDATORY RESTRICTION: You MUST ONLY recommend activities from the provided sample itinerary below - NO EXCEPTIONS
+      - FORBIDDEN: Do NOT generate activities outside the provided sample itinerary, even if they seem relevant
+      - TRUST THE DATABASE: The provided sample itinerary contains ONLY traffic-safe activities that have passed strict filtering
+      - ENTERPRISE STANDARD: This is a production system with zero tolerance for HIGH traffic activities
+      - COMPLIANCE CHECK: Every activity you recommend MUST exist in the sample itinerary provided below
       ${interestsContext}
       ${durationContext}
       ${budgetContext}
@@ -192,10 +181,10 @@ export function buildDetailedPrompt(prompt: string, effectiveSampleItinerary: an
       ${durationDays ? `4.a. Ensure the itinerary spans exactly ${durationDays} day(s). Create separate day sections and, within each day, include Morning, Afternoon, and Evening periods populated only from the database.` : ""}
       5. Pace the itinerary based on trip duration, ensuring a balanced schedule.
       6. For each activity, include: **image** (MUST be the exact image URL from the database - do not modify or substitute), **title** (exact title from the database), **time** slot (e.g., "9:00-10:30AM"), a **brief** description that mentions optimal visit times to avoid crowds, and **tags** (exact tags from the database).
-      7. **ENHANCED TRAFFIC-AWARE DESCRIPTIONS:** Every activity description MUST include comprehensive traffic timing information combining both peak hours and real-time data. Examples: "Currently LOW traffic (85% optimal) - perfect time to visit!" or "MODERATE traffic expected, best visited after 3 PM when conditions improve." For activities with real-time data, include the traffic level and recommendation score. For peak-hours-only activities, mention the optimal timing based on historical data.
+        **ENHANCED TRAFFIC-AWARE DESCRIPTIONS:** Every activity description MUST include traffic timing information. Since all activities in the database have acceptable traffic levels (VERY_LOW/LOW/MODERATE), focus on positive messaging. Examples: "Currently experiencing LOW traffic (85% optimal) - perfect time for a crowd-free visit!" or "MODERATE traffic levels - ideal timing for your visit with good accessibility." Always emphasize optimal timing and crowd-free experiences since HIGH traffic activities have been pre-excluded.
       8. Adhere to the user's budget preferences by selecting only activities from the database that match the budget category.
       9. **CRITICAL: DO NOT REPEAT activities across different days.** Each activity should only be recommended once in the entire itinerary.
-      10. **ENHANCED VALIDATION REQUIREMENT:** Before including any activity, verify it exists in the provided database AND meets traffic criteria: acceptable traffic levels (VERY_LOW/LOW/MODERATE) AND not marked as 'AVOID_NOW' for real-time traffic. Prioritize activities with 'VISIT_NOW' or 'VISIT_SOON' recommendations. The database combines peak hours filtering with real-time traffic analysis. Include activities with VERY_LOW, LOW or MODERATE traffic levels to provide variety and sufficient options.
+      10. **PRE-FILTERED DATABASE VALIDATION:** All activities in the provided database have been automatically filtered to exclude HIGH and SEVERE traffic levels. You do NOT need to check traffic levels as this has been done systematically. Simply verify the activity exists in the database and use it confidently. The database contains ONLY traffic-validated activities that are safe to recommend. Activities marked as 'AVOID_NOW' have been automatically excluded.
       11. **EMPTY PERIODS:** If you cannot find suitable activities for a time period (e.g., Morning, Afternoon, Evening) due to traffic or other constraints, you MUST return an empty activities array for that period and provide a helpful, traffic-aware reason in the optional reason field. This is a mandatory requirement. Example: reason: "This time is left open to avoid peak afternoon traffic. Perfect for a quiet local coffee before your evening plans."
       12. **OUTPUT FORMAT:** Return a JSON object with a 'title' (string), 'subtitle' (string), and an 'items' (array). Each object in the 'items' array should contain a 'period' (string), an 'activities' (array of objects), and an optional 'reason' (string). Each activity object should contain an 'image' (string), 'title' (string), 'time' (string), 'desc' (string), and 'tags' (array of strings).
       13. **FINAL CHECK:** Before outputting, verify every single activity title, image URL, and tags match exactly with the provided database entries. Each image field must contain the exact URL string from the database without any modifications.

@@ -55,43 +55,51 @@ export function organizeItineraryByDays(it: any, days: number | null) {
       pool[slot].push(a);
     }
   }
+  
+  // CRITICAL FIX: Ensure we don't lose activities by collecting all activities first
+  const allActivities = [...pool.Morning, ...pool.Afternoon, ...pool.Evening, ...pool.Flexible];
+  
   // Prepare day buckets
   const daysBuckets = Array.from({ length: days }, () => ({ Morning: [] as any[], Afternoon: [] as any[], Evening: [] as any[] }));
-  const distribute = (slot: 'Morning'|'Afternoon'|'Evening', items: any[]) => {
-    let di = 0;
-    for (const item of items) {
-      daysBuckets[di][slot].push(item);
-      di = (di + 1) % daysBuckets.length;
-    }
-  };
-  // Distribute fixed slots round-robin
-  distribute('Morning', pool.Morning);
-  distribute('Afternoon', pool.Afternoon);
-  distribute('Evening', pool.Evening);
-  // Place flexible items into the slot with the fewest activities per day, preferring Afternoon then Morning then Evening
-  for (const flex of pool.Flexible) {
-    let bestDay = 0; let bestSlot: 'Afternoon'|'Morning'|'Evening' = 'Afternoon'; let bestCount = Infinity;
-    for (let d = 0; d < daysBuckets.length; d++) {
-      const order: Array<'Afternoon'|'Morning'|'Evening'> = ['Afternoon','Morning','Evening'];
-      for (const s of order) {
-        const count = daysBuckets[d][s].length;
-        if (count < bestCount) { bestCount = count; bestDay = d; bestSlot = s; }
-      }
-    }
-    daysBuckets[bestDay][bestSlot].push(flex);
-  }
-  // Build new items: Day N - Morning/Afternoon/Evening, drop empty periods
+  
+  // Distribute activities across days ensuring all activities are used
+  // Morning activities distribution
+  pool.Morning.forEach((activity, index) => {
+    const dayIndex = index % days;
+    daysBuckets[dayIndex].Morning.push(activity);
+  });
+  
+  // Afternoon activities distribution
+  pool.Afternoon.forEach((activity, index) => {
+    const dayIndex = index % days;
+    daysBuckets[dayIndex].Afternoon.push(activity);
+  });
+  
+  // Evening activities distribution
+  pool.Evening.forEach((activity, index) => {
+    const dayIndex = index % days;
+    daysBuckets[dayIndex].Evening.push(activity);
+  });
+  
+  // Flexible activities distribution - distribute evenly across all time slots
+  pool.Flexible.forEach((activity, index) => {
+    const dayIndex = index % days;
+    const slotIndex = Math.floor(index / days) % 3;
+    const slots: Array<'Morning'|'Afternoon'|'Evening'> = ['Morning','Afternoon','Evening'];
+    const slot = slots[slotIndex];
+    daysBuckets[dayIndex][slot].push(activity);
+  });
+  
+  // Build new items: Day N - Morning/Afternoon/Evening
   const newItems: any[] = [];
   for (let i = 0; i < daysBuckets.length; i++) {
     const dayNum = i + 1;
     const slots: Array<'Morning'|'Afternoon'|'Evening'> = ['Morning','Afternoon','Evening'];
     for (const s of slots) {
-      const acts = daysBuckets[i][s];
-      // Always create a period for each slot, even if empty.
-      // The ensureFullItinerary function will handle filling the gaps.
-      newItems.push({ period: `Day ${dayNum} - ${s}`, activities: acts });
+      newItems.push({ period: `Day ${dayNum} - ${s}`, activities: daysBuckets[i][s] });
     }
   }
+  
   return { ...it, items: newItems };
 }
 
@@ -268,7 +276,7 @@ export async function ensureFullItinerary(
 
       EXAMPLE ENHANCED REASONS:
       {
-        "Day 2 - Afternoon": "Popular shopping areas like Session Road and Baguio Night Market are currently experiencing peak foot traffic. This afternoon break allows you to explore these areas later when crowds thin out (typically after 3 PM). Perfect time to rest at your hotel or discover a quiet local café.",
+        "Day 2 - Afternoon": "Popular shopping areas like Session Road and Baguio Night Market are currently experiencing peak foot traffic. This afternoon break allows you to explore these areas later when they're less crowded. Perfect time to rest at your hotel or discover a quiet local café.",
         "Day 3 - Morning": "Major viewpoints like Mines View Park are currently in their morning rush (6-8 AM peak hours). This flexible morning lets you visit these scenic spots after 9 AM when parking is easier and crowds are lighter. Use this time for a leisurely breakfast at a local restaurant.",
         "Day 3 - Evening": "Evening traffic to popular dinner spots peaks around 6-7 PM. This open slot allows you to dine later when restaurants are less crowded and you can enjoy a more relaxed atmosphere. Consider exploring nearby walking areas or local night markets that open later."
       }

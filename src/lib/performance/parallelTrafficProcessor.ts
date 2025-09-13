@@ -42,7 +42,7 @@ export class ParallelTrafficProcessor {
     proximityThreshold: 0.5, // 500 meters
     enableLocationClustering: true,
     enableResultCaching: true,
-    timeoutMs: 10
+    timeoutMs: 15000 // Increased to 15 seconds to prevent premature timeouts
   };
 
   private activeSemaphore: Semaphore;
@@ -62,7 +62,7 @@ export class ParallelTrafficProcessor {
   }
 
   /**
-   * Process activities with ultra-fast parallel traffic analysis
+   * Process activities with ultra-fast parallel traffic analysis and strict filtering
    */
   async processActivitiesUltraFast(activities: Activity[]): Promise<{
     enhancedActivities: Activity[];
@@ -107,10 +107,16 @@ export class ParallelTrafficProcessor {
     // Phase 4: Combine cached and processed results (50ms)
     const allEnhanced = [...cached, ...enhancedClusters.flat()];
     
+    // Phase 5: Wait for real-time traffic data to complete before filtering
+    await this.waitForTrafficDataCompletion();
+    
+    // Phase 6: CRITICAL TRAFFIC FILTERING - Only allow VERY_LOW, LOW, and MODERATE traffic
+    const filteredActivities = this.applyStrictTrafficFiltering(allEnhanced);
+    
     const totalTime = Date.now() - startTime;
     const metrics: TrafficProcessingMetrics = {
       totalActivities: activities.length,
-      processedActivities: allEnhanced.length,
+      processedActivities: filteredActivities.length,
       apiCallsReduced,
       processingTime: totalTime,
       cacheHits,
@@ -118,8 +124,9 @@ export class ParallelTrafficProcessor {
     };
 
     console.log(`🎯 PARALLEL TRAFFIC: Completed in ${totalTime}ms with ${Math.round(apiCallsReduced/activities.length*100)}% API reduction`);
+    console.log(`🚦 TRAFFIC FILTERING: ${allEnhanced.length} → ${filteredActivities.length} activities after strict filtering`);
 
-    return { enhancedActivities: allEnhanced, metrics };
+    return { enhancedActivities: filteredActivities, metrics };
   }
 
   /**
@@ -306,17 +313,33 @@ export class ParallelTrafficProcessor {
   }
 
   /**
-   * Create fallback cluster with estimated traffic data
+   * Create fallback cluster with conservative traffic data - mark as HIGH to exclude
    */
   private createFallbackCluster(cluster: Activity[]): Activity[] {
+    console.log(`⚠️ FALLBACK CLUSTER: Marking ${cluster.length} activities as HIGH traffic due to timeout`);
     return cluster.map(activity => ({
       ...activity,
-      combinedTrafficScore: 75,
-      trafficRecommendation: 'VISIT_NOW' as any,
-      crowdLevel: 'LOW' as any,
+      trafficAnalysis: {
+        realTimeTraffic: {
+          trafficLevel: 'HIGH', // Conservative: exclude if we can't get real data
+          congestionScore: 100,
+          recommendationScore: 0
+        }
+      },
+      combinedTrafficScore: 25,
+      trafficRecommendation: 'AVOID_NOW' as any,
+      crowdLevel: 'HIGH' as any,
       lat: this.getCoordinatesCached(activity.title)?.lat || 0,
       lon: this.getCoordinatesCached(activity.title)?.lon || 0
     }));
+  }
+
+  /**
+   * Wait for traffic data completion with timeout
+   */
+  private async waitForTrafficDataCompletion(): Promise<void> {
+    // Small delay to ensure all async traffic analysis completes
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
   /**
@@ -370,6 +393,74 @@ export class ParallelTrafficProcessor {
       cacheHits: 0,
       clustersCreated: 0
     };
+  }
+
+  /**
+   * Apply strict traffic filtering - only allow VERY_LOW, LOW, and MODERATE traffic
+   */
+  private applyStrictTrafficFiltering(activities: any[]): any[] {
+    console.log(`\n🚦 STRICT TRAFFIC FILTERING: Starting with ${activities.length} activities`);
+    
+    const filtered = activities.filter(activity => {
+      const trafficLevel = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
+      const crowdLevel = activity.crowdLevel;
+      const recommendation = activity.trafficRecommendation;
+      
+      // CRITICAL: Only allow VERY_LOW, LOW, and MODERATE traffic levels
+      if (trafficLevel && !['VERY_LOW', 'LOW', 'MODERATE'].includes(trafficLevel)) {
+        console.log(`🚫 EXCLUDING HIGH TRAFFIC: "${activity.title}" - Traffic Level: ${trafficLevel} (FORBIDDEN)`);
+        return false;
+      }
+      
+      // CRITICAL: Exclude activities with UNKNOWN traffic (fallback case)
+      if (!trafficLevel || trafficLevel === 'UNKNOWN') {
+        console.log(`🚫 EXCLUDING UNKNOWN TRAFFIC: "${activity.title}" - Traffic Level: ${trafficLevel || 'UNKNOWN'} (CONSERVATIVE EXCLUSION)`);
+        return false;
+      }
+      
+      // Exclude HIGH crowd levels
+      if (crowdLevel === 'HIGH' || crowdLevel === 'VERY_HIGH') {
+        console.log(`🚫 EXCLUDING HIGH CROWDS: "${activity.title}" - Crowd Level: ${crowdLevel}`);
+        return false;
+      }
+      
+      // Exclude AVOID_NOW recommendations
+      if (recommendation === 'AVOID_NOW') {
+        console.log(`🚫 EXCLUDING AVOID_NOW: "${activity.title}" - Recommendation: ${recommendation}`);
+        return false;
+      }
+      
+      // Add traffic tags for frontend display
+      const tags = [...(activity.tags || [])];
+      if (trafficLevel === 'VERY_LOW' || trafficLevel === 'LOW') {
+        if (!tags.includes('low-traffic')) {
+          tags.push('low-traffic');
+        }
+      } else if (trafficLevel === 'MODERATE') {
+        if (!tags.includes('moderate-traffic')) {
+          tags.push('moderate-traffic');
+        }
+      }
+      
+      activity.tags = tags;
+      
+      console.log(`✅ TRAFFIC APPROVED: "${activity.title}" - Traffic: ${trafficLevel}, Crowd: ${crowdLevel || 'UNKNOWN'}, Recommendation: ${recommendation || 'UNKNOWN'}`);
+      return true;
+    });
+    
+    console.log(`🚫 EXCLUDED ACTIVITIES: ${activities.length - filtered.length}`);
+    activities.forEach(activity => {
+      const trafficLevel = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
+      const isExcluded = !filtered.find(f => f.title === activity.title);
+      if (isExcluded) {
+        console.log(`   - ${activity.title}: ${trafficLevel || 'UNKNOWN'} traffic`);
+      }
+    });
+    
+    console.log(`🎯 STRICT FILTERING COMPLETE: ${filtered.length}/${activities.length} activities passed`);
+    console.log(`===============================================\n`);
+    
+    return filtered;
   }
 
   /**

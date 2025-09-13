@@ -97,7 +97,7 @@ export async function proposeSubqueries(params: {
       contents: [{ role: "user", parts: [{ text: guidance + "\n\nUser prompt: " + userPrompt }] }],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 8192
+        maxOutputTokens: 1092
       }
     });
     const text = resp.response?.text() ?? "";

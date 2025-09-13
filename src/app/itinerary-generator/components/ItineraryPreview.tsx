@@ -28,40 +28,54 @@ const trafficStyles: { [key: string]: string } = {
 
 // Function to determine traffic level based on real-time traffic data and peak hours
 const getTrafficLevel = (activity: any): "Low" | "Moderate" | "High" => {
-  // Priority 1: Use real-time traffic analysis data if available
+  // Priority 1: Parse from description text, as it's the most visible source of truth.
+  if (activity.desc) {
+    const desc = activity.desc.toLowerCase();
+    if (desc.includes('moderate traffic')) {
+      return "Moderate";
+    }
+    if (desc.includes('high traffic') || desc.includes('severe traffic')) {
+      return "High";
+    }
+    if (desc.includes('low traffic') || desc.includes('very_low traffic')) {
+      return "Low";
+    }
+  }
+
+  // Priority 2: Use real-time traffic analysis data if available
   if (activity.trafficAnalysis?.realTimeTraffic?.trafficLevel) {
     const realTimeLevel = activity.trafficAnalysis.realTimeTraffic.trafficLevel;
     switch (realTimeLevel) {
       case 'LOW': return "Low";
       case 'MODERATE': return "Moderate";
-      case 'HIGH': 
+      case 'HIGH':
       case 'SEVERE': return "High";
-      default: return "Low";
+      default: break; // Fall through to other checks if level is unknown
     }
   }
-  
-  // Priority 2: Use traffic recommendation as indicator
+
+  // Priority 3: Use traffic recommendation as an indicator
   if (activity.trafficRecommendation) {
     switch (activity.trafficRecommendation) {
       case 'VISIT_NOW': return "Low";
       case 'VISIT_SOON': return "Moderate";
       case 'AVOID_NOW':
       case 'PLAN_LATER': return "High";
-      default: return "Low";
+      default: break; // Fall through
     }
   }
-  
-  // Priority 3: Use isCurrentlyPeak flag if available
+
+  // Priority 4: Use isCurrentlyPeak flag if available
   if (activity.isCurrentlyPeak !== undefined) {
     return activity.isCurrentlyPeak ? "High" : "Low";
   }
-  
-  // Priority 4: Check peak hours string as fallback
+
+  // Priority 5: Check peak hours string as a fallback
   if (activity.peakHours) {
     return isCurrentlyPeakHours(activity.peakHours) ? "High" : "Low";
   }
-  
-  // Default to Low traffic for activities without traffic data
+
+  // Default to Low traffic for activities without any traffic data
   return "Low";
 };
 
