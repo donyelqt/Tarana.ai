@@ -106,7 +106,7 @@ export interface RouteData {
 // TRAFFIC ANALYSIS TYPES
 // ============================================================================
 
-export type TrafficLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
+export type TrafficLevel = 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
 
 export interface TrafficIncident {
   id: string;
