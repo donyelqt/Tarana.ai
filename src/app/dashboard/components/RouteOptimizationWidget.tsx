@@ -592,17 +592,6 @@ const RouteOptimizationWidget: React.FC = () => {
               </div>
             </div>
 
-            {/* Traffic Legend - Show when route exists */}
-            {state.trafficConditions && (
-              <div className="mt-4 sm:mt-6">
-                <TrafficLegend 
-                  compact={true}
-                  currentTrafficLevel={getTrafficLevelFromScore(state.trafficConditions.congestionScore)}
-                  estimatedDelay={state.trafficConditions.estimatedDelay}
-                  className="mb-4"
-                />
-              </div>
-            )}
 
             {/* Route Details Panel - Full Width Below Grid */}
             {(state.currentRoute || state.alternativeRoutes.length > 0) && (

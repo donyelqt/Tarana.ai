@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { TRAFFIC_LEVEL_INFO, formatTrafficDelay, getTrafficRecommendation } from '@/lib/utils/trafficColors';
+import { TRAFFIC_LEVEL_INFO, LEGEND_TRAFFIC_LEVELS, formatTrafficDelay, getTrafficRecommendation } from '@/lib/utils/trafficColors';
 import { TrafficLevel } from '@/types/route-optimization';
 
 interface TrafficLegendProps {
@@ -22,7 +22,7 @@ export function TrafficLegend({
   currentTrafficLevel,
   estimatedDelay
 }: TrafficLegendProps) {
-  const trafficLevels = Object.values(TRAFFIC_LEVEL_INFO);
+  const trafficLevels = LEGEND_TRAFFIC_LEVELS;
 
   if (compact) {
     return (

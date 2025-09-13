@@ -16,7 +16,8 @@ import {
   getTrafficColorFromScore,
   getTrafficLevelFromScore,
   TRAFFIC_COLORS,
-  TRAFFIC_LEVEL_INFO
+  TRAFFIC_LEVEL_INFO,
+  LEGEND_TRAFFIC_LEVELS
 } from '@/lib/utils/trafficColors';
 
 interface TrafficAwareMapProps {
@@ -176,47 +177,7 @@ export function TrafficAwareMap({
   }, [origin, destination, waypoints, isMapLoaded, mapInstance]);
 
   const renderTrafficLegend = () => {
-    if (!showTrafficLegend) return null;
-
-    return (
-      <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg border p-3 z-10 max-w-xs">
-        <h4 className="text-sm font-semibold text-gray-900 mb-2">Traffic Legend</h4>
-        <div className="space-y-2">
-          {Object.entries(TRAFFIC_LEVEL_INFO).map(([level, info]) => (
-            <div key={level} className="flex items-center gap-2 text-xs">
-              <div
-                className="w-3 h-3 rounded-full border"
-                style={{ 
-                  backgroundColor: info.colors.color,
-                  borderColor: info.colors.borderColor
-                }}
-              />
-              <span className="font-medium">{info.label}</span>
-              <span className="text-gray-500">({info.speedReduction})</span>
-            </div>
-          ))}
-        </div>
-        
-        {trafficAnalysis && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-600">Current Route:</span>
-              <div className="flex items-center gap-1">
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{ 
-                    backgroundColor: getTrafficColorFromScore(trafficAnalysis.congestionScore).color 
-                  }}
-                />
-                <span className="font-medium">
-                  {getTrafficLevelFromScore(trafficAnalysis.congestionScore)}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
+    return null;
   };
 
   const renderLoadingOverlay = () => {
