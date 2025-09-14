@@ -9,11 +9,11 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export async function generateItinerary(detailedPrompt: string, prompt: string, durationDays: number | null) {
     const generationConfig = {
         responseMimeType: "application/json",
-        temperature: 0.3, // Further lowered for more predictable JSON output
+        temperature: 0.7, // Further lowered for more predictable JSON output
         topK: 1,
-        topP: 0.8,
-        maxOutputTokens: 8192,
-        candidateCount: 1 // Ensure single response
+        topP: 0.9,
+        maxOutputTokens: 8192, 
+        // Ensure single response
     };
 
     let result: any = null;
