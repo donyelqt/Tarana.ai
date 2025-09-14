@@ -177,7 +177,7 @@ export default function ItineraryPreview({
                 {getWeatherDescription(weatherData)}
               </div>
               <div className="text-xs text-gray-200 italic mt-1">
-                Itinerary adapted to current weather and traffic conditions
+                Itinerary adapted to current weather, crowd, and traffic conditions
               </div>
             </div>
           </div>
