@@ -4,7 +4,7 @@ import type { WeatherCondition } from "../types/types";
 // Global initialization for Gemini model to avoid re-creating the client on every request.
 export const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 export const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
-export const geminiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" }) : null;
+export const geminiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }) : null;
 
 
 // Pre-computed weather context lookup for faster processing

@@ -236,7 +236,7 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             console.log(`=======================================\n`);
 
             // Final activity selection and validation
-            const finalActivities = trafficEnhancedActivities.slice(0, Math.min(15, trafficEnhancedActivities.length));
+            const finalActivities = trafficEnhancedActivities.slice(0, Math.min(20, trafficEnhancedActivities.length));
             console.log(`🎯 FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`);
             
             // Log real-time traffic integration success for final activities
