@@ -216,7 +216,7 @@ export class UltraFastItineraryEngine {
     const filterTime = Date.now() - startTime;
     console.log(`⚡ ULTRA-FAST FILTERING: Processed ${activities.length} → ${filtered.length} activities in ${filterTime}ms`);
 
-    return filtered.slice(0, 20); // Increased from 12 to 15 for better coverage
+    return filtered.slice(0, 40); // Increased from 12 to 15 for better coverage
   }
 
   /**
