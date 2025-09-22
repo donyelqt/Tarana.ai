@@ -15,6 +15,7 @@ import { ujiMatchaCafeMenu } from "./menus/ujiMatchaCafe";
 import { kFlavorsBuffetMenu } from "./menus/kFlavorsBuffet";
 import { itaewonCafeMenu } from "./menus/itaewonCafe";
 import { chimichangaJaimesFamilyFeastMenu } from "./menus/chimichangaJaimesFamilyFeast";
+import { kapiKullaawMenu } from "./menus/kapiKullaaw";
 
 export const restaurants: RestaurantData[] = [
   {
@@ -136,6 +137,24 @@ export const restaurants: RestaurantData[] = [
     about: "Jaime's Family Feast offers a delicious fusion of Mexican and Filipino cuisine, proudly serving bestsellers like chimichanga, birria tacos, and nacho fiesta alongside Filipino favorites such as bagnet kare-kare and crispy 6-piece fried chicken. Located near Children's Park, it's the perfect spot to enjoy flavorful comfort food with family and friends.",
     hours: "Breakfast, Snacks, Dinner",
   },
+  {
+    name: "Kapi Kullaaw",
+    cuisine: ["Cafe", "Coffee", "Snacks"],
+    priceRange: {
+      min: 95,
+      max: 250,
+    },
+    location: "Ili-likha Artist Village, Baguio City",
+    popularFor: ["Local Coffee Beans", "Frappes", "Cozy Ambiance"],
+    menuItems: [],
+    fullMenu: kapiKullaawMenu,
+    image: "/images/kapi-kullaaw.jpg", // Assuming a placeholder image path
+    tags: ["Cafe", "Coffee", "Art", "Baguio"],
+    dietaryOptions: ["Vegan", "Vegetarian", "Halal"],
+    about:
+      "A cozy café nestled within the Ili-likha Artist Village in Baguio City. Known for its thoughtfully curated coffee selection and vibrant, creative atmosphere, it's the perfect hideaway for art lovers, coffee enthusiasts, and curious wonderers alike. Kapi Kullaaw isn't just a cafe, it's a space to slow down, soak in inspiration, and connect with the creative spirits of Baguio.",
+    hours: "Not specified", // You can update this if you have the hours
+  },
 ];
 
 // Create a record of all restaurant menus for easy lookup
@@ -147,4 +166,5 @@ export const allRestaurantMenus: Record<string, FullMenu> = {
   "Myeong Dong Jjigae Restaurant": myeongDongJjigaeMenu,
   "Itaewon Cafe": itaewonCafeMenu,
   "Chimichanga by Jaimes Family Feast": chimichangaJaimesFamilyFeastMenu,
+  "Kapi Kullaaw": kapiKullaawMenu,
 };
