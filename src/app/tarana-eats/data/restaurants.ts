@@ -14,6 +14,7 @@ import { ohMyGulayMenu } from "./menus/ohMyGulay";
 import { ujiMatchaCafeMenu } from "./menus/ujiMatchaCafe";
 import { kFlavorsBuffetMenu } from "./menus/kFlavorsBuffet";
 import { itaewonCafeMenu } from "./menus/itaewonCafe";
+import { chimichangaJaimesFamilyFeastMenu } from "./menus/chimichangaJaimesFamilyFeast";
 
 export const restaurants: RestaurantData[] = [
   {
@@ -63,7 +64,7 @@ export const restaurants: RestaurantData[] = [
     fullMenu: ujiMatchaCafeMenu,
     image: "/images/ujimatcha.jpg",
     tags: ["Cafe", "Matcha", "Japanese", "Baguio"],
-    dietaryOptions: [],
+    dietaryOptions: ["Vegetarian", "Halal"],
     about: "A specialty cafe offering authentic Japanese matcha drinks and desserts.",
     hours: "10:00 AM - 8:00 PM",
   },
@@ -118,6 +119,23 @@ export const restaurants: RestaurantData[] = [
     about: "Itaewon Café is a Korean-inspired spot in Baguio known for its minimalist interiors, cozy atmosphere, and aesthetic appeal. It serves a mix of Korean street food, specialty drinks, and artisanal coffee that attracts students, couples, and K-culture fans. With warm lighting and IG-worthy corners, it's a favorite hangout for those seeking a quiet yet stylish café experience.",
     hours: "11:00 AM - 9:00 PM",
   },
+  {
+    name: "Chimichanga by Jaimes Family Feast",
+    cuisine: ["Mexican", "Filipino"],
+    priceRange: {
+      min: 50,
+      max: 738,
+    },
+    location: "Near Children's Park",
+    popularFor: ["Chimichanga", "Birria Tacos", "Nacho Fiesta", "Bagnet Kare-Kare"],
+    menuItems: [],
+    fullMenu: chimichangaJaimesFamilyFeastMenu,
+    image: "/images/chimichanga.jpg",
+    tags: ["Mexican", "Filipino", "Fusion", "Baguio"],
+    dietaryOptions: ["Vegetarian", "Vegan", "Halal"],
+    about: "Jaime's Family Feast offers a delicious fusion of Mexican and Filipino cuisine, proudly serving bestsellers like chimichanga, birria tacos, and nacho fiesta alongside Filipino favorites such as bagnet kare-kare and crispy 6-piece fried chicken. Located near Children's Park, it's the perfect spot to enjoy flavorful comfort food with family and friends.",
+    hours: "Breakfast, Snacks, Dinner",
+  },
 ];
 
 // Create a record of all restaurant menus for easy lookup
@@ -128,4 +146,5 @@ export const allRestaurantMenus: Record<string, FullMenu> = {
   "K-Flavors Buffet": kFlavorsBuffetMenu,
   "Myeong Dong Jjigae Restaurant": myeongDongJjigaeMenu,
   "Itaewon Cafe": itaewonCafeMenu,
+  "Chimichanga by Jaimes Family Feast": chimichangaJaimesFamilyFeastMenu,
 };

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { PlusIcon, CheckIcon } from "@heroicons/react/24/solid";
 import { cn } from "@/lib/core";
 import { ResultMatch, MenuItem } from "@/types/tarana-eats";
-import { MENU_DATA } from "../data/menuData";
 import { getMenuByRestaurantName, restaurants } from "../data/taranaEatsData";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -31,10 +30,11 @@ export default function MenuPopup({
         .filter(Boolean);
     }
     // Try to get from MENU_DATA
-    const menuItems = MENU_DATA[match.name];
-    if (menuItems && menuItems.length > 0) {
-      return menuItems;
-    }
+   // const menuItems = MENU_DATA[match.name];
+    //if (menuItems && menuItems.length > 0) {
+      //return menuItems;
+    //}
+    
     // Fallback: get menu by restaurant name
     const fullMenu = getMenuByRestaurantName(match.name, restaurants);
     return Object.values(fullMenu).flat().filter(Boolean);
