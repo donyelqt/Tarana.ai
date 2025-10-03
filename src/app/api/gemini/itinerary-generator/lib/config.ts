@@ -5,7 +5,7 @@ import type { WeatherCondition } from "../types/types";
 export const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 export const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
-const DEFAULT_MODEL_ID = "gemini-2.5-pro";
+const DEFAULT_MODEL_ID = "gemini";
 const configuredModelId = process.env.GOOGLE_GEMINI_MODEL?.trim();
 const MODEL_ID = configuredModelId && configuredModelId.length > 0 ? configuredModelId : DEFAULT_MODEL_ID;
 
