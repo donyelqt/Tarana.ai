@@ -58,5 +58,5 @@ export const ujimatcha_taranagala = "/images/ujimatcha_taranagala.jpg"
 export const kflavors_taranagala = "/images/kflavors_taranagala.JPG"
 export const kj_korean_palace_baguio_taranagala = "/images/kj_korean_palace_baguio_taranagala.jpg"
 export const MyeongDongJjigae_taranagala = "/images/MyeongDongJjigae_taranagala.jpg"
-
+export const comingsoon = "/images/comingsoon.png"
 
