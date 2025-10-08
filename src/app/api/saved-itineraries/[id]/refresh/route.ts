@@ -17,6 +17,13 @@ import {
 } from '@/lib/services/itineraryRefreshService';
 
 // ============================================================================
+// ROUTE SEGMENT CONFIG (Next.js 13+ App Router)
+// ============================================================================
+export const maxDuration = 60; // 60 seconds (requires Vercel Pro plan)
+export const dynamic = 'force-dynamic'; // Disable caching for fresh data
+export const runtime = 'nodejs'; // Use Node.js runtime (default)
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
