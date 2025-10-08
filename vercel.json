@@ -1,14 +1,11 @@
 {
   "functions": {
-    "api/saved-itineraries/[id]/refresh.ts": {
+    "api/saved-itineraries/*/refresh": {
       "maxDuration": 60
     },
-    "api/gemini/itinerary-generator/route.ts": {
+    "api/gemini/itinerary-generator": {
       "maxDuration": 60
     }
-  },
-  "env": {
-    "NODE_ENV": "production"
   },
   "headers": [
     {
