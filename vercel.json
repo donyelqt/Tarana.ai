@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/evaluate-refreshes",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}
