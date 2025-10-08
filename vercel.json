@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/saved-itineraries/*/refresh": {
-      "maxDuration": 60
-    },
-    "api/gemini/itinerary-generator": {
-      "maxDuration": 60
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
