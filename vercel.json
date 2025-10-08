@@ -1,0 +1,24 @@
+{
+  "functions": {
+    "api/saved-itineraries/[id]/refresh.ts": {
+      "maxDuration": 60
+    },
+    "api/gemini/itinerary-generator/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ]
+}

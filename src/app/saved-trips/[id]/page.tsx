@@ -91,8 +91,19 @@ const SavedItineraryDetail = () => {
       if (!force) {
         const evalResponse = await fetch(`/api/saved-itineraries/${id}/refresh`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
         });
+
+        if (!evalResponse.ok) {
+          const errorData = await evalResponse.json().catch(() => ({ error: 'Evaluation failed' }));
+          console.error('❌ Evaluation failed:', errorData);
+          modernToast.error("Evaluation Failed", errorData.error || "Please try again");
+          setIsRefreshing(false);
+          return;
+        }
 
         const evalResult = await evalResponse.json();
         
@@ -118,16 +129,26 @@ const SavedItineraryDetail = () => {
       }
       
       // Step 2: Regenerate itinerary (if forced or changes detected)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s client timeout
+      
       const response = await fetch(`/api/saved-itineraries/${id}/refresh`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ force: true })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        body: JSON.stringify({ force: true }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       const result = await response.json();
       
       if (result.success) {
         // ✅ CRITICAL: Always refetch from database to ensure UI reflects latest state
+        console.log('🔄 Refetching updated itinerary from database...');
         await refetchItinerary();
         
         // Show change summary if available
@@ -136,7 +157,7 @@ const SavedItineraryDetail = () => {
           setShowChangeSummary(true);
         }
         
-        // Modern success notification with enhanced styling
+        // Modern success notification
         modernToast.success(
           "Refresh Complete",
           "Optimized with live data"
@@ -144,15 +165,33 @@ const SavedItineraryDetail = () => {
         
         console.log('✅ Refresh completed successfully - UI updated with latest data');
       } else {
+        // Handle API error response
+        const errorMessage = result.error || result.message || "Update failed";
+        console.error('❌ Refresh failed:', result);
         modernToast.error(
-          "Update Failed"
+          "Update Failed",
+          errorMessage.substring(0, 50) // Limit error message length
         );
       }
     } catch (error) {
-      console.error('Error refreshing itinerary:', error);
-      modernToast.connectionError(
-        "Connection Error"
-      );
+      console.error('❌ Error refreshing itinerary:', error);
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        modernToast.error(
+          "Request Timeout",
+          "Taking too long - try again"
+        );
+      } else if (error instanceof TypeError && error.message.includes('fetch')) {
+        modernToast.connectionError(
+          "Connection Error",
+          "Check your internet"
+        );
+      } else {
+        modernToast.error(
+          "Update Failed",
+          "Please try again"
+        );
+      }
     } finally {
       setIsRefreshing(false);
     }
