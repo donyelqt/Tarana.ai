@@ -1,6 +1,6 @@
-# 🚀 Quick Start - Itinerary Refresh System
+# 🚀 Quick Start - Manual Itinerary Refresh System
 
-## ⚡ 5-Minute Setup Guide
+## ⚡ 3-Minute Setup Guide (Manual Refresh Only)
 
 ### Step 1: Database Migration (2 minutes)
 
@@ -23,24 +23,9 @@ AND column_name IN ('refresh_metadata', 'traffic_snapshot', 'activity_coordinate
 
 ---
 
-### Step 2: Environment Variables (1 minute)
+### Step 2: Setup Complete! (Manual Refresh Only)
 
-Add to Vercel environment variables:
-
-```bash
-CRON_SECRET=<generate-with-command-below>
-```
-
-**Generate CRON_SECRET:**
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-**Add to Vercel:**
-1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables
-2. Add `CRON_SECRET` with the generated value
-3. Select "Production" environment
-4. Click "Save"
+No additional environment variables needed for manual refresh functionality.
 
 ---
 
@@ -131,22 +116,16 @@ git push origin main
 ### Backend
 - [ ] Database migration successful
 - [ ] New columns visible in `itineraries` table
-- [ ] CRON_SECRET added to Vercel
-- [ ] Cron job visible in Vercel dashboard
 
 ### Frontend
 - [ ] Code changes applied
 - [ ] No TypeScript errors
-- [ ] Buttons render correctly
+- [ ] Refresh button renders correctly
 
 ### Testing
 ```bash
-# Test evaluation endpoint
+# Test manual refresh endpoint
 curl https://your-domain.vercel.app/api/saved-itineraries/[ID]/refresh
-
-# Test cron job (manual trigger)
-curl -X POST https://your-domain.vercel.app/api/cron/evaluate-refreshes \
-  -H "Authorization: Bearer YOUR_CRON_SECRET"
 ```
 
 ---
@@ -202,20 +181,17 @@ ORDER BY refresh_metadata->>'lastRefreshedAt' DESC;
 
 ## 🐛 Troubleshooting
 
-### Issue: "Unauthorized" error
-**Fix:** Verify CRON_SECRET is set in Vercel environment variables
-
 ### Issue: Database columns not found
 **Fix:** Re-run migration script
 
 ### Issue: Frontend errors
 **Fix:** Check TypeScript compilation: `npm run build`
 
-### Issue: Cron job not running
+### Issue: Refresh button not working
 **Fix:** 
-1. Check `vercel.json` is in project root
-2. Redeploy: `vercel deploy --prod`
-3. Verify in Vercel dashboard → Settings → Cron Jobs
+1. Check API endpoints are deployed correctly
+2. Verify environment variables (weather/traffic APIs)
+3. Check browser console for errors
 
 ---
 
@@ -230,13 +206,13 @@ For detailed information, see:
 
 ## 🎉 You're Done!
 
-The system is now live and will:
-- ✅ Automatically evaluate itineraries every 6 hours
-- ✅ Detect significant weather/traffic changes
-- ✅ Allow users to manually refresh
+The manual refresh system is now live and will:
+- ✅ Detect significant weather/traffic changes when users click refresh
+- ✅ Allow users to manually refresh itineraries
 - ✅ Track all refresh activity in database
+- ✅ Provide modern toast notifications
 
-**Total Setup Time:** ~5 minutes
+**Total Setup Time:** ~3 minutes
 
 **System Status:** 🟢 Production Ready
 
@@ -252,12 +228,13 @@ The system is now live and will:
    - Edit `/src/lib/services/itineraryRefreshService.ts`
    - Adjust `DEFAULT_CONFIG` values
 
-3. **Customize Schedule:**
-   - Edit `vercel.json`
-   - Change cron schedule (currently every 6 hours)
+3. **Add User Notifications:**
+   - Extend toast notifications for custom messaging
+   - Add email notifications if needed
 
-4. **Add Notifications:**
-   - Extend `notifyUsersOfRefreshNeeds()` in refreshScheduler.ts
+4. **Customize Refresh Logic:**
+   - Modify evaluation criteria in refresh API
+   - Adjust traffic/weather thresholds
    - Integrate with email service
 
 ---

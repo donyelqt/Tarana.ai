@@ -15,6 +15,7 @@ import { WeatherData } from "@/lib/core";
 import Image, { type StaticImageData } from "next/image"
 import PlaceDetail from "@/components/PlaceDetail"
 import { useToast } from "@/components/ui/use-toast"
+import { useModernToast } from "@/hooks/useModernToast"
 // import usePuter from "../../../hooks/usePuter";
 // import { puterConfig } from "../../../config/puter";
 
@@ -39,6 +40,7 @@ const SavedItineraryDetail = () => {
   const [changeSummary, setChangeSummary] = useState<string>('')
   const [refreshEvaluation, setRefreshEvaluation] = useState<any>(null)
   const { toast } = useToast()
+  const modernToast = useModernToast()
   // Load the Puter SDK once
   // const puter = usePuter(); // removed – using backend Gemini API instead
 
@@ -97,19 +99,19 @@ const SavedItineraryDetail = () => {
         // If changes detected, automatically trigger regeneration
         if (evalResult.evaluation && evalResult.evaluation.needsRefresh) {
           console.log('🔄 Changes detected, automatically regenerating itinerary...');
-          toast({ 
-            title: "Changes Detected 🔍", 
-            description: "Regenerating itinerary with current conditions...",
-          });
+          modernToast.processing(
+            "Analyzing Changes",
+            "Updating with live data..."
+          );
           
           // Automatically proceed to POST (regeneration)
           force = true;
         } else {
           // No changes needed
-          toast({ 
-            title: "No Update Needed ✅", 
-            description: evalResult.message || "Your itinerary is still optimal."
-          });
+          modernToast.optimized(
+            "Already Optimized",
+            "No changes needed"
+          );
           setIsRefreshing(false);
           return;
         }
@@ -134,26 +136,23 @@ const SavedItineraryDetail = () => {
           setShowChangeSummary(true);
         }
         
-        // Success notification
-        toast({ 
-          title: "Itinerary Updated ✨", 
-          description: result.message || "Your itinerary has been refreshed with current conditions."
-        });
+        // Modern success notification with enhanced styling
+        modernToast.success(
+          "Refresh Complete",
+          "Optimized with live data"
+        );
         
         console.log('✅ Refresh completed successfully - UI updated with latest data');
       } else {
-        toast({ 
-          title: "Update Failed ❌", 
-          description: result.message || "Failed to update itinerary."
-        });
+        modernToast.error(
+          "Update Failed"
+        );
       }
     } catch (error) {
       console.error('Error refreshing itinerary:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to refresh itinerary. Please try again.", 
-        variant: "destructive" 
-      });
+      modernToast.connectionError(
+        "Connection Error"
+      );
     } finally {
       setIsRefreshing(false);
     }
