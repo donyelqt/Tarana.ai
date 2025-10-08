@@ -66,43 +66,85 @@ const SavedItineraryDetail = () => {
     setShowDetailModal(true)
   }
 
+  // Helper function to refetch fresh itinerary data from database
+  const refetchItinerary = async () => {
+    try {
+      const all = await getSavedItineraries();
+      const found = Array.isArray(all) ? all.find((i: SavedItinerary) => i.id === id) : null;
+      if (found) {
+        setItinerary(found);
+        console.log('✅ UI State refreshed with latest database data');
+      }
+    } catch (error) {
+      console.error('❌ Error refetching itinerary:', error);
+    }
+  };
+
   const handleRefreshItinerary = async (force: boolean = false) => {
     if (!itinerary) return;
     setIsRefreshing(true);
     
     try {
+      // Step 1: Evaluate if refresh is needed (unless forced)
+      if (!force) {
+        const evalResponse = await fetch(`/api/saved-itineraries/${id}/refresh`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        const evalResult = await evalResponse.json();
+        
+        // If changes detected, automatically trigger regeneration
+        if (evalResult.evaluation && evalResult.evaluation.needsRefresh) {
+          console.log('🔄 Changes detected, automatically regenerating itinerary...');
+          toast({ 
+            title: "Changes Detected 🔍", 
+            description: "Regenerating itinerary with current conditions...",
+          });
+          
+          // Automatically proceed to POST (regeneration)
+          force = true;
+        } else {
+          // No changes needed
+          toast({ 
+            title: "No Update Needed ✅", 
+            description: evalResult.message || "Your itinerary is still optimal."
+          });
+          setIsRefreshing(false);
+          return;
+        }
+      }
+      
+      // Step 2: Regenerate itinerary (if forced or changes detected)
       const response = await fetch(`/api/saved-itineraries/${id}/refresh`, {
-        method: force ? 'POST' : 'GET',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: force ? JSON.stringify({ force: true }) : undefined
+        body: JSON.stringify({ force: true })
       });
 
       const result = await response.json();
       
-      if (result.success && result.updatedItinerary) {
-        setItinerary(result.updatedItinerary);
+      if (result.success) {
+        // ✅ CRITICAL: Always refetch from database to ensure UI reflects latest state
+        await refetchItinerary();
+        
+        // Show change summary if available
         if (result.changeSummary) {
           setChangeSummary(result.changeSummary);
           setShowChangeSummary(true);
         }
+        
+        // Success notification
         toast({ 
           title: "Itinerary Updated ✨", 
-          description: result.message 
+          description: result.message || "Your itinerary has been refreshed with current conditions."
         });
-      } else if (result.evaluation && !force) {
-        setRefreshEvaluation(result.evaluation);
-        if (result.evaluation.needsRefresh) {
-          setChangeSummary(result.evaluation.changeSummary || 'Significant changes detected');
-          setShowChangeSummary(true);
-        }
-        toast({ 
-          title: result.evaluation.needsRefresh ? "Changes Detected" : "No Update Needed", 
-          description: result.message 
-        });
+        
+        console.log('✅ Refresh completed successfully - UI updated with latest data');
       } else {
         toast({ 
-          title: "No Update Needed", 
-          description: result.message 
+          title: "Update Failed ❌", 
+          description: result.message || "Failed to update itinerary."
         });
       }
     } catch (error) {
