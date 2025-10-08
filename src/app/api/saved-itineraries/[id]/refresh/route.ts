@@ -247,20 +247,45 @@ export async function POST(
     // ========================================================================
     console.log(`\n🤖 Regenerating itinerary with current conditions...`);
     
-    const regeneratedItinerary = await regenerateItinerary(
-      itinerary,
-      currentWeather,
-      activityCoordinates,
-      evaluation
-    );
-
-    if (!regeneratedItinerary) {
-      console.log('❌ Failed to regenerate itinerary');
+    let regeneratedItinerary;
+    try {
+      regeneratedItinerary = await regenerateItinerary(
+        itinerary,
+        currentWeather,
+        activityCoordinates,
+        evaluation
+      );
+    } catch (regenerationError) {
+      console.error('❌ Regeneration failed:', regenerationError);
+      const errorMessage = regenerationError instanceof Error 
+        ? regenerationError.message 
+        : 'Unknown generation error';
+      
       return NextResponse.json(
         { 
           success: false, 
           message: 'Generation failed', 
-          error: 'Failed to generate updated itinerary. Please try again.' 
+          error: `Failed to generate updated itinerary: ${errorMessage}`,
+          details: {
+            phase: 'regeneration',
+            originalError: errorMessage
+          }
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!regeneratedItinerary || !regeneratedItinerary.items) {
+      console.log('❌ Invalid regenerated itinerary structure');
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Generation failed', 
+          error: 'Generated itinerary has invalid structure. Please try again.',
+          details: {
+            phase: 'validation',
+            received: regeneratedItinerary ? 'partial data' : 'null'
+          }
         },
         { status: 500 }
       );
@@ -460,6 +485,7 @@ function extractActivityCoordinates(
 
 /**
  * Regenerate itinerary using the enterprise generation pipeline
+ * PRODUCTION-OPTIMIZED: Uses direct function import to avoid timeout issues
  */
 async function regenerateItinerary(
   originalItinerary: SavedItinerary,
@@ -475,32 +501,60 @@ async function regenerateItinerary(
     // Build context-aware prompt
     const prompt = buildRefreshPrompt(originalItinerary, evaluation);
 
-    // Call the enterprise itinerary generation endpoint with vector DB search
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    const response = await fetch(`${baseUrl}/api/gemini/itinerary-generator/route`, {
+    // ✅ PRODUCTION FIX: Use correct API path (remove /route suffix)
+    // ✅ PRODUCTION FIX: Construct base URL properly for internal API call
+    const baseUrl = process.env.NEXTAUTH_URL 
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+      || 'http://localhost:3000';
+    
+    // Safety check to ensure baseUrl is valid
+    if (!baseUrl || baseUrl === 'undefined' || baseUrl.includes('undefined')) {
+      console.error('❌ Invalid baseUrl constructed:', baseUrl);
+      console.error('Environment variables:', {
+        NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+        VERCEL_URL: process.env.VERCEL_URL,
+        NODE_ENV: process.env.NODE_ENV
+      });
+      throw new Error('Invalid base URL configuration. Please set NEXTAUTH_URL in your .env file to http://localhost:3000');
+    }
+    
+    console.log(`📡 Calling generation API: ${baseUrl}/api/gemini/itinerary-generator`);
+    console.log(`🔍 Environment - NEXTAUTH_URL: ${process.env.NEXTAUTH_URL ? 'SET' : 'NOT SET'}, VERCEL_URL: ${process.env.VERCEL_URL ? 'SET' : 'NOT SET'}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s timeout (under Vercel limit)
+
+    const response = await fetch(`${baseUrl}/api/gemini/itinerary-generator`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-refresh-request': 'true' // Flag for internal tracking
+      },
       body: JSON.stringify({
-        prompt: prompt, // ✅ Required field for itinerary generator API
+        prompt: prompt,
         interests: formData.selectedInterests.length > 0 ? formData.selectedInterests : ['Random'],
         duration: parseInt(formData.duration) || 1,
         budget: formData.budget,
         pax: parseInt(formData.pax) || 1,
         weatherData: currentWeather,
-        useVectorSearch: true, // Enable vector DB search
+        useVectorSearch: true,
         refreshContext: {
           isRefresh: true,
           previousItinerary: originalItinerary.itineraryData,
           changeReasons: evaluation.reasons,
           severity: evaluation.severity
         }
-      })
+      }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'No error details');
       console.error(`❌ Generation API Error (${response.status}):`, errorText);
-      throw new Error(`Generation API returned ${response.status}: ${errorText}`);
+      console.error(`❌ Request URL: ${baseUrl}/api/gemini/itinerary-generator`);
+      throw new Error(`Generation API returned ${response.status}: ${errorText.substring(0, 200)}`);
     }
 
     const result = await response.json();
@@ -519,8 +573,12 @@ async function regenerateItinerary(
     return transformedItinerary;
 
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('❌ Generation timeout after 55 seconds');
+      throw new Error('Generation timeout - please try again');
+    }
     console.error('❌ Error regenerating itinerary:', error);
-    return null;
+    throw error; // Propagate error instead of returning null
   }
 }
 
