@@ -22,6 +22,7 @@ export interface ItineraryData {
 
 import { WeatherData } from "../core/utils"; // Added import
 import { normalizeImagePath, getFallbackImage } from "../images/imageUtils";
+import { RefreshMetadata, TrafficSnapshot } from "../services/itineraryRefreshService";
 
 export interface SavedItinerary {
   id: string;
@@ -40,14 +41,33 @@ export interface SavedItinerary {
   itineraryData: ItineraryData;
   weatherData?: WeatherData; // Added optional weatherData property
   createdAt: string;
+  // Enhanced refresh metadata
+  refreshMetadata?: RefreshMetadata;
+  trafficSnapshot?: TrafficSnapshot;
+  activityCoordinates?: Array<{ lat: number; lon: number; name: string }>;
 }
 
 import { supabase } from "./supabaseClient"; // Import Supabase client
-import { getSession } from 'next-auth/react'; // To get current user session
-
-// Function to get the current user's ID from the session
+import { getServerSession } from 'next-auth'; // Server-side session
+import { getSession } from 'next-auth/react'; // Client-side session
+import { authOptions } from '../auth/auth';
 async function getCurrentUserId(): Promise<string | null> {
-  const session = await getSession();
+  let session;
+  
+  // Detect if we're in server or client context
+  if (typeof window === 'undefined') {
+    // Server-side: Use getServerSession
+    try {
+      session = await getServerSession(authOptions);
+    } catch (error) {
+      console.log('Server session not available, trying client session');
+      return null;
+    }
+  } else {
+    // Client-side: Use getSession
+    session = await getSession();
+  }
+  
   if (session && session.user && session.user.id) {
     return session.user.id;
   }
@@ -172,6 +192,9 @@ export const updateItinerary = async (id: string, updatedData: Partial<Omit<Save
   if (updatedData.formData) updatePayload.form_data = updatedData.formData;
   if (updatedData.itineraryData) updatePayload.itinerary_data = updatedData.itineraryData;
   if (updatedData.weatherData) updatePayload.weather_data = updatedData.weatherData;
+  if (updatedData.refreshMetadata) updatePayload.refresh_metadata = updatedData.refreshMetadata;
+  if (updatedData.trafficSnapshot) updatePayload.traffic_snapshot = updatedData.trafficSnapshot;
+  if (updatedData.activityCoordinates) updatePayload.activity_coordinates = updatedData.activityCoordinates;
   // Do not allow updating user_id or created_at directly
 
   if (Object.keys(updatePayload).length === 0) {

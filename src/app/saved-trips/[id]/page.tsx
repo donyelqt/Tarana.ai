@@ -11,7 +11,7 @@ import {
   updateItinerary,
   ItineraryPeriod,
 } from "@/lib/data";
-import { fetchWeatherFromAPI, WeatherData } from "@/lib/core"; // Added import
+import { WeatherData } from "@/lib/core";
 import Image, { type StaticImageData } from "next/image"
 import PlaceDetail from "@/components/PlaceDetail"
 import { useToast } from "@/components/ui/use-toast"
@@ -31,11 +31,13 @@ const SavedItineraryDetail = () => {
   const params = useParams()
   const { id } = params as { id: string }
   const [itinerary, setItinerary] = useState<SavedItinerary | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_weatherData, setWeatherData] = useState<WeatherData | null>(null); // Prefixed to silence unused var lint
+  // Removed unused weatherData state
   const [selectedActivity, setSelectedActivity] = useState<Record<string, unknown> | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showChangeSummary, setShowChangeSummary] = useState(false)
+  const [changeSummary, setChangeSummary] = useState<string>('')
+  const [refreshEvaluation, setRefreshEvaluation] = useState<any>(null)
   const { toast } = useToast()
   // Load the Puter SDK once
   // const puter = usePuter(); // removed – using backend Gemini API instead
@@ -64,163 +66,56 @@ const SavedItineraryDetail = () => {
     setShowDetailModal(true)
   }
 
-  const handleRefreshItinerary = async () => {
-    if (!itinerary) return
+  const handleRefreshItinerary = async (force: boolean = false) => {
+    if (!itinerary) return;
+    setIsRefreshing(true);
     
-    setIsRefreshing(true)
     try {
-      // Fetch current weather data
-      const currentWeatherData = await fetchWeatherFromAPI(); // Corrected function call
-      
-      if (!currentWeatherData) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch current weather data. Please try again.",
-          variant: "destructive"
-        })
-        return
-      }
-      
-      // Check if weather has significantly changed
-      const hasWeatherChanged = checkWeatherChange(currentWeatherData, itinerary)
-      
-      if (!hasWeatherChanged) {
-        toast({
-          title: "No Update Needed",
-          description: "Weather conditions haven't changed significantly. Your itinerary is still optimal.",
-        })
-        return
-      }
-      
-      // Construct a prompt for Gemini API
-      const { formData } = itinerary
-      const prompt = `Update the ${formData.duration}-day itinerary for Baguio City, Philippines based on the current weather conditions.`
-      
-      // Call Gemini API through backend route
-      const response = await fetch("/api/gemini", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          weatherData: currentWeatherData,
-          interests: formData.selectedInterests.length > 0 ? formData.selectedInterests : ["Random"],
-          duration: formData.duration,
-          budget: formData.budget,
-          pax: formData.pax,
-          sampleItinerary: itinerary.itineraryData,
-        }),
+      const response = await fetch(`/api/saved-itineraries/${id}/refresh`, {
+        method: force ? 'POST' : 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        body: force ? JSON.stringify({ force: true }) : undefined
       });
 
-      const { text, error } = await response.json();
-
-      if (error || !text) {
-        throw new Error(error || "Empty response from Gemini API");
-      }
-
-      let newItineraryData;
-      try {
-        newItineraryData = JSON.parse(text);
-      } catch (e) {
-        console.error("Failed to parse Gemini API response:", e);
-        throw new Error("Failed to parse JSON from Gemini API");
-      }
+      const result = await response.json();
       
-      // Check if the API returned a valid itinerary structure.
-      // A simple check for now, could be more robust (e.g. checking for specific properties like 'title' or 'items')
-      if (!newItineraryData || typeof newItineraryData !== 'object' || !newItineraryData.items) {
-        console.error("Invalid or empty itinerary data from API:", newItineraryData);
-        throw new Error("Received invalid or empty itinerary data from API");
-      }
-      
-      // The newItineraryData is already the parsed JSON object.
-      // Assign to parsedData to maintain consistency with the subsequent code.
-      const parsedData = newItineraryData;
-      
-      // Update the itinerary with new data
-      const updatedItineraryResult = await updateItinerary(id, {
-        itineraryData: parsedData,
-        weatherData: currentWeatherData as WeatherData // Ensure weatherData is correctly typed
-      });
-      
-      // updateItinerary now returns the updated itinerary or null
-      if (updatedItineraryResult) {
-        setItinerary(updatedItineraryResult);
-        toast({
-          title: "Itinerary Updated",
-          description: "Your itinerary has been refreshed with the latest weather data.",
-          variant: "success"
+      if (result.success && result.updatedItinerary) {
+        setItinerary(result.updatedItinerary);
+        if (result.changeSummary) {
+          setChangeSummary(result.changeSummary);
+          setShowChangeSummary(true);
+        }
+        toast({ 
+          title: "Itinerary Updated ✨", 
+          description: result.message 
+        });
+      } else if (result.evaluation && !force) {
+        setRefreshEvaluation(result.evaluation);
+        if (result.evaluation.needsRefresh) {
+          setChangeSummary(result.evaluation.changeSummary || 'Significant changes detected');
+          setShowChangeSummary(true);
+        }
+        toast({ 
+          title: result.evaluation.needsRefresh ? "Changes Detected" : "No Update Needed", 
+          description: result.message 
         });
       } else {
-        // Handle case where updateItinerary might return null (e.g., if not found or error)
-        toast({
-          title: "Error",
-          description: "Failed to update the itinerary in the database.",
-          variant: "destructive"
+        toast({ 
+          title: "No Update Needed", 
+          description: result.message 
         });
       }
     } catch (error) {
-      console.error("Error refreshing itinerary:", error)
-      toast({
-        title: "Error",
-        description: "Failed to refresh itinerary. Please try again.",
-        variant: "destructive"
-      })
+      console.error('Error refreshing itinerary:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to refresh itinerary. Please try again.", 
+        variant: "destructive" 
+      });
     } finally {
-      setIsRefreshing(false)
+      setIsRefreshing(false);
     }
-  }
-  
-  // Helper function to check if weather has significantly changed
-  const checkWeatherChange = (currentWeather: WeatherData, savedItinerary: SavedItinerary): boolean => {
-    // If no previous weather data exists, or its main property is missing, consider it changed.
-    if (!savedItinerary.weatherData || !savedItinerary.weatherData.main) {
-      console.warn("Previous weather data is missing or incomplete (no main property). Assuming weather has changed.");
-      return true;
-    }
-    
-    const previousWeather = savedItinerary.weatherData;
-
-    // If current weather data is null or its main property is missing (should ideally be caught earlier, but good for safety here)
-    if (!currentWeather || !currentWeather.main) {
-      console.warn("Current weather data is null or incomplete (no main property). Assuming weather has changed for safety.");
-      return true; 
-    }
-    
-    // Check for significant temperature change (more than 5 degrees)
-    const tempDifference = Math.abs(currentWeather.main.temp - previousWeather.main.temp);
-    if (tempDifference > 5) return true;
-    
-    // Check for weather condition change (e.g., from clear to rainy)
-    // Ensure weather array and its first element exist for both previous and current weather data
-    if (!previousWeather.weather || previousWeather.weather.length === 0 || 
-        !currentWeather.weather || currentWeather.weather.length === 0 ||
-        !previousWeather.weather[0] || !currentWeather.weather[0] ||
-        !previousWeather.weather[0].main || !currentWeather.weather[0].main) {
-      console.warn("Weather condition data (weather array or main condition) is missing or incomplete. Assuming weather has changed.");
-      return true;
-    }
-
-    const previousCondition = previousWeather.weather[0].main.toLowerCase();
-    const currentCondition = currentWeather.weather[0].main.toLowerCase();
-    
-    // If the main weather condition has changed
-    if (previousCondition !== currentCondition) {
-      // Consider significant changes in weather type
-      const significantChanges = [
-        // From good to bad weather
-        (previousCondition === 'clear' && ['rain', 'thunderstorm', 'snow', 'drizzle'].includes(currentCondition)),
-        // From bad to good weather
-        (['rain', 'thunderstorm', 'snow', 'drizzle'].includes(previousCondition) && currentCondition === 'clear'),
-        // Any change involving extreme weather
-        ['thunderstorm', 'tornado', 'squall'].includes(previousCondition) || 
-        ['thunderstorm', 'tornado', 'squall'].includes(currentCondition)
-      ];
-      
-      return significantChanges.some(change => change === true);
-    }
-    
-    return false;
-  }
+  };
 
   // Helper function to parse duration string (e.g., "1 Day", "2 Days") and calculate end date
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -404,7 +299,7 @@ const SavedItineraryDetail = () => {
               {`Saved Itineraries > ${itinerary.title}`}
             </div>
             <Button 
-              onClick={handleRefreshItinerary} 
+              onClick={() => handleRefreshItinerary(false)} 
               disabled={isRefreshing}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
             >
@@ -421,7 +316,7 @@ const SavedItineraryDetail = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  Refresh Itinerary
+                  Smart Refresh
                 </>
               )}
             </Button>
