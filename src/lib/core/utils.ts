@@ -67,7 +67,12 @@ export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, 
   try {
     // Add a timestamp to prevent caching issues
     const timestamp = new Date().getTime();
-    const response = await fetch(`/api/weather?lat=${lat}&lon=${lon}&_t=${timestamp}`, {
+    // Use absolute URL in server context, relative in client
+    const baseUrl = typeof window === 'undefined' 
+      ? (process.env.NEXTAUTH_URL || 'http://localhost:3000')
+      : '';
+    
+    const response = await fetch(`${baseUrl}/api/weather?lat=${lat}&lon=${lon}&_t=${timestamp}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
