@@ -5,7 +5,6 @@
  * @route POST /api/saved-itineraries/[id]/refresh
  * @author Tarana.ai Engineering Team
  */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
@@ -15,6 +14,7 @@ import {
   itineraryRefreshService, 
   ChangeDetectionResult 
 } from '@/lib/services/itineraryRefreshService';
+import { parallelTrafficProcessor } from '@/lib/performance/parallelTrafficProcessor';
 
 // ============================================================================
 // ROUTE SEGMENT CONFIG (Next.js 13+ App Router)
@@ -299,6 +299,26 @@ export async function POST(
     }
 
     console.log('✅ Itinerary regenerated successfully');
+    
+    // ✅ DEBUG: Log traffic metadata preservation
+    const activitiesWithTraffic = regeneratedItinerary.items
+      .flatMap((item: any) => item.activities || [])
+      .filter((activity: any) => activity.trafficAnalysis || activity.trafficLevel);
+    
+    console.log(`📊 Traffic Metadata Check:`);
+    console.log(`   Total activities: ${regeneratedItinerary.items.flatMap((item: any) => item.activities || []).length}`);
+    console.log(`   Activities with traffic data: ${activitiesWithTraffic.length}`);
+    
+    if (activitiesWithTraffic.length > 0) {
+      console.log(`   Sample traffic data:`, {
+        title: activitiesWithTraffic[0].title,
+        trafficLevel: activitiesWithTraffic[0].trafficAnalysis?.realTimeTraffic?.trafficLevel || activitiesWithTraffic[0].trafficLevel,
+        tags: activitiesWithTraffic[0].tags,
+        hasTrafficAnalysis: !!activitiesWithTraffic[0].trafficAnalysis
+      });
+    } else {
+      console.warn(`⚠️ WARNING: No activities have traffic metadata after regeneration!`);
+    }
 
     // ========================================================================
     // 9. CREATE TRAFFIC SNAPSHOT
@@ -316,6 +336,8 @@ export async function POST(
     // ========================================================================
     console.log(`\n💾 Updating itinerary in database...`);
     
+    const enrichedItineraryData = await enrichItineraryWithTraffic(regeneratedItinerary);
+
     const updatedItinerary = await updateItinerary(id, {
       // ✅ Preserve original form data (essential for UI display)
       title: itinerary.title,
@@ -324,7 +346,7 @@ export async function POST(
       tags: itinerary.tags,
       formData: itinerary.formData, // ✅ CRITICAL: Preserve original form data
       // Update with new generated data
-      itineraryData: regeneratedItinerary,
+      itineraryData: enrichedItineraryData,
       weatherData: currentWeather,
       trafficSnapshot,
       refreshMetadata: {
@@ -417,17 +439,45 @@ function transformItineraryStructure(apiResponse: any): any {
     }
     
     // Ensure each item has the required fields
+    // ✅ CRITICAL: Preserve ALL traffic metadata for UI display
     const transformedItems = itineraryData.items.map((item: any) => ({
       period: item.period || "Unknown Period",
-      activities: (item.activities || []).map((activity: any) => ({
-        title: activity.title || "Activity",
-        time: activity.time || "TBD",
-        desc: activity.desc || activity.description || "No description available",
-        tags: Array.isArray(activity.tags) ? activity.tags : ["General"],
-        image: typeof activity.image === 'string' 
-          ? activity.image 
-          : (activity.image?.src || activity.image || "/images/default.jpg")
-      }))
+      activities: (item.activities || []).map((activity: any) => {
+        const trafficAnalysis = activity.trafficAnalysis;
+        const trafficLevel = trafficAnalysis?.realTimeTraffic?.trafficLevel || activity.trafficLevel;
+        const trafficRecommendation = activity.trafficRecommendation || trafficAnalysis?.trafficRecommendation;
+        const baseTags = Array.isArray(activity.tags) ? [...activity.tags] : ["General"];
+
+        if (trafficLevel && !baseTags.includes('low-traffic') && !baseTags.includes('moderate-traffic')) {
+          if (trafficLevel === 'VERY_LOW' || trafficLevel === 'LOW') {
+            baseTags.push('low-traffic');
+          } else if (trafficLevel === 'MODERATE') {
+            baseTags.push('moderate-traffic');
+          }
+        }
+
+        const description = harmonizeTrafficDescription(
+          activity.desc || activity.description || "No description available",
+          trafficLevel,
+          trafficRecommendation
+        );
+
+        return {
+          title: activity.title || "Activity",
+          time: activity.time || "TBD",
+          desc: description,
+          tags: baseTags,
+          image: typeof activity.image === 'string'
+            ? activity.image
+            : (activity.image?.src || activity.image || "/images/default.jpg"),
+          trafficAnalysis,
+          trafficData: activity.trafficData,
+          trafficLevel,
+          trafficRecommendation: trafficRecommendation,
+          lat: activity.lat,
+          lon: activity.lon
+        };
+      })
     }));
     
     return {
@@ -443,6 +493,202 @@ function transformItineraryStructure(apiResponse: any): any {
       subtitle: "Updated with current conditions",
       items: []
     };
+  }
+}
+
+const normalizeTitle = (title: string) =>
+  title
+    ?.toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '')
+    .trim();
+
+const buildTrafficNarrative = (
+  trafficLevel?: string,
+  trafficRecommendation?: string
+) => {
+  if (!trafficLevel) {
+    return '';
+  }
+
+  const level = trafficLevel.toUpperCase();
+  const recommendation = (trafficRecommendation || '').toUpperCase();
+
+  const recommendationSuffix = (() => {
+    if (recommendation === 'VISIT_NOW') {
+      return 'Plan to head there right away for the best experience.';
+    }
+    if (recommendation === 'VISIT_SOON') {
+      return 'It is a great window to go in the next hour or so.';
+    }
+    if (recommendation === 'PLAN_AHEAD') {
+      return 'A bit of planning will help you glide through smoothly.';
+    }
+    return '';
+  })();
+
+  const base = (() => {
+    switch (level) {
+      case 'VERY_LOW':
+        return 'Real-time conditions are very low, so expect a quick trip with almost no congestion.';
+      case 'LOW':
+        return 'Real-time conditions are low, keeping the route relaxed and crowd levels light.';
+      case 'MODERATE':
+        return 'Traffic is moderate right now—allow a small buffer, but it remains comfortably manageable.';
+      default:
+        return '';
+    }
+  })();
+
+  if (!base) {
+    return '';
+  }
+
+  return recommendationSuffix ? `${base} ${recommendationSuffix}` : base;
+};
+
+const harmonizeTrafficDescription = (
+  description: string,
+  trafficLevel?: string,
+  trafficRecommendation?: string
+) => {
+  if (!trafficLevel) {
+    return description;
+  }
+
+  const narrative = buildTrafficNarrative(trafficLevel, trafficRecommendation);
+  if (!narrative) {
+    return description;
+  }
+
+  const baseText = (() => {
+    if (!description) {
+      return '';
+    }
+
+    const sentences = description
+      .split(/(?<=[.!?])\s+/)
+      .filter(sentence => !/(traffic|crowd|queue|congestion|rush hour|busy)/i.test(sentence));
+
+    const sanitized = sentences.join(' ').trim();
+    return sanitized;
+  })();
+
+  if (!baseText) {
+    return narrative;
+  }
+
+  const normalizedBase = baseText.endsWith('.') ? baseText : `${baseText}.`;
+  return `${normalizedBase} ${narrative}`.trim();
+};
+
+async function enrichItineraryWithTraffic(itinerary: any) {
+  if (!itinerary?.items || itinerary.items.length === 0) {
+    return itinerary;
+  }
+
+  try {
+    const uniqueActivities = new Map<string, any>();
+    const trafficInput: any[] = [];
+
+    itinerary.items.forEach((period: any) => {
+      (period.activities || []).forEach((activity: any) => {
+        const key = normalizeTitle(activity?.title || '');
+        if (!key || uniqueActivities.has(key)) {
+          return;
+        }
+
+        uniqueActivities.set(key, activity);
+        trafficInput.push({
+          title: activity.title,
+          desc: activity.desc,
+          tags: Array.isArray(activity.tags) ? activity.tags : [],
+          image: typeof activity.image === 'string' ? activity.image : activity.image?.src || '',
+          time: activity.time,
+          peakHours: activity.peakHours || '',
+        });
+      });
+    });
+
+    if (trafficInput.length === 0) {
+      console.log('ℹ️ enrichItineraryWithTraffic: No activities to enrich');
+      return itinerary;
+    }
+
+    console.log(`🚦 Enriching itinerary with traffic metadata for ${trafficInput.length} unique activities`);
+    const { enhancedActivities } = await parallelTrafficProcessor.processActivitiesUltraFast(trafficInput as any);
+
+    const metadataMap = new Map<string, any>();
+    enhancedActivities.forEach((activity: any) => {
+      const key = normalizeTitle(activity?.title || '');
+      if (key) {
+        metadataMap.set(key, activity);
+      }
+    });
+
+    itinerary.items = itinerary.items.map((period: any) => {
+      const activities = (period.activities || []).map((activity: any) => {
+        const key = normalizeTitle(activity?.title || '');
+        const metadata = key ? metadataMap.get(key) : undefined;
+
+        if (!metadata) {
+          return activity;
+        }
+
+        const trafficLevel = metadata.trafficAnalysis?.realTimeTraffic?.trafficLevel
+          ?? activity.trafficAnalysis?.realTimeTraffic?.trafficLevel
+          ?? activity.trafficLevel;
+
+        const trafficRecommendation = metadata.trafficRecommendation
+          ?? activity.trafficRecommendation
+          ?? metadata.trafficAnalysis?.trafficRecommendation;
+
+        const mergedTags = new Set<string>([
+          ...(Array.isArray(activity.tags) ? activity.tags : []),
+          ...(Array.isArray(metadata.tags) ? metadata.tags : []),
+        ]);
+
+        if (trafficLevel === 'VERY_LOW' || trafficLevel === 'LOW') {
+          mergedTags.add('low-traffic');
+          mergedTags.delete('moderate-traffic');
+        } else if (trafficLevel === 'MODERATE') {
+          mergedTags.add('moderate-traffic');
+          mergedTags.delete('low-traffic');
+        } else {
+          mergedTags.delete('low-traffic');
+          mergedTags.delete('moderate-traffic');
+        }
+
+        const description = harmonizeTrafficDescription(
+          activity.desc || activity.description || metadata.desc || '',
+          trafficLevel,
+          trafficRecommendation
+        );
+
+        return {
+          ...activity,
+          trafficAnalysis: metadata.trafficAnalysis,
+          trafficRecommendation,
+          combinedTrafficScore: metadata.combinedTrafficScore ?? activity.combinedTrafficScore,
+          crowdLevel: metadata.crowdLevel ?? activity.crowdLevel,
+          lat: metadata.lat ?? activity.lat,
+          lon: metadata.lon ?? activity.lon,
+          trafficLevel,
+          desc: description,
+          tags: Array.from(mergedTags),
+        };
+      });
+
+      return {
+        ...period,
+        activities,
+      };
+    });
+
+    return itinerary;
+  } catch (error) {
+    console.error('❌ Failed to enrich itinerary with traffic metadata:', error);
+    return itinerary;
   }
 }
 

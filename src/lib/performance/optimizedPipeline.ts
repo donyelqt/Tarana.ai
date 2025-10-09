@@ -89,6 +89,81 @@ export class OptimizedPipeline {
     // Phase 2: Parallel Traffic Enhancement (300-800ms)
     const trafficStartTime = Date.now();
     const { enhancedActivities, metrics: trafficMetrics } = await parallelTrafficProcessor.processActivitiesUltraFast(activities);
+    const normalizeTitle = (title: string) =>
+      title
+        ?.toLowerCase()
+        .normalize('NFKD')
+        .replace(/[^a-z0-9]+/g, '')
+        .trim();
+    const trafficMetadata = new Map<string, {
+      originalTitle: string;
+      trafficAnalysis?: any;
+      trafficRecommendation?: string;
+      combinedTrafficScore?: number;
+      crowdLevel?: string;
+      lat?: number;
+      lon?: number;
+      trafficLevel?: string;
+      tags: string[];
+    }>();
+
+    enhancedActivities.forEach(activity => {
+      if (!activity?.title) {
+        return;
+      }
+
+      const key = normalizeTitle(activity.title);
+      if (!key) {
+        return;
+      }
+
+      trafficMetadata.set(key, {
+        originalTitle: activity.title,
+        trafficAnalysis: activity.trafficAnalysis,
+        trafficRecommendation: activity.trafficRecommendation,
+        combinedTrafficScore: activity.combinedTrafficScore,
+        crowdLevel: activity.crowdLevel,
+        lat: activity.lat,
+        lon: activity.lon,
+        trafficLevel: activity.trafficAnalysis?.realTimeTraffic?.trafficLevel || (activity as any).trafficLevel,
+        tags: Array.isArray(activity.tags) ? [...activity.tags] : [],
+      });
+    });
+    const metadataEntries = Array.from(trafficMetadata.entries());
+    const findMetadataForTitle = (title: string) => {
+      const normalized = normalizeTitle(title);
+      if (!normalized) {
+        return undefined;
+      }
+
+      let metadata = trafficMetadata.get(normalized);
+      if (metadata) {
+        return metadata;
+      }
+
+      metadata = metadataEntries.find(([storedKey]) =>
+        storedKey.includes(normalized) || normalized.includes(storedKey)
+      )?.[1];
+      if (metadata) {
+        return metadata;
+      }
+
+      metadata = metadataEntries.find(([, value]) => {
+        const originalNormalized = normalizeTitle(value.originalTitle || '');
+        return originalNormalized && (originalNormalized.includes(normalized) || normalized.includes(originalNormalized));
+      })?.[1];
+      if (metadata) {
+        return metadata;
+      }
+
+      metadata = metadataEntries.find(([, value]) => {
+        const original = value.originalTitle?.toLowerCase() || '';
+        const current = title.toLowerCase();
+        return original.includes(current) || current.includes(original);
+      })?.[1];
+
+      return metadata;
+    };
     const trafficTime = Date.now() - trafficStartTime;
 
     console.log(`🚦 TRAFFIC PHASE: Completed in ${trafficTime}ms with ${enhancedActivities.length} enhanced activities`);
@@ -120,6 +195,53 @@ export class OptimizedPipeline {
     const processingStartTime = Date.now();
     const peakHoursContext = getPeakHoursContext();
     const finalItinerary = await handleItineraryProcessing(structuredItinerary, request.prompt, request.durationDays, peakHoursContext);
+
+    if (finalItinerary?.items) {
+      finalItinerary.items = finalItinerary.items.map((period: any) => {
+        const updatedActivities = (period.activities || []).map((activity: any) => {
+          const title = activity?.title;
+          if (!title) {
+            return activity;
+          }
+
+          const metadata = findMetadataForTitle(title);
+          if (!metadata) {
+            return activity;
+          }
+
+          const trafficLevel = metadata.trafficAnalysis?.realTimeTraffic?.trafficLevel
+            ?? metadata.trafficLevel
+            ?? activity.trafficLevel;
+          const mergedTags = new Set<string>([
+            ...(Array.isArray(activity.tags) ? activity.tags : []),
+            ...(metadata.tags || []),
+          ]);
+
+          if (trafficLevel === 'VERY_LOW' || trafficLevel === 'LOW') {
+            mergedTags.add('low-traffic');
+          } else if (trafficLevel === 'MODERATE') {
+            mergedTags.add('moderate-traffic');
+          }
+
+          return {
+            ...activity,
+            trafficAnalysis: metadata.trafficAnalysis,
+            trafficRecommendation: metadata.trafficRecommendation ?? activity.trafficRecommendation,
+            combinedTrafficScore: metadata.combinedTrafficScore ?? activity.combinedTrafficScore,
+            crowdLevel: metadata.crowdLevel ?? activity.crowdLevel,
+            lat: metadata.lat ?? activity.lat,
+            lon: metadata.lon ?? activity.lon,
+            trafficLevel,
+            tags: Array.from(mergedTags),
+          };
+        });
+
+        return {
+          ...period,
+          activities: updatedActivities,
+        };
+      });
+    }
     const processingTime = Date.now() - processingStartTime;
     const totalTime = Date.now() - pipelineStartTime;
 

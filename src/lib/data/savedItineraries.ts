@@ -7,6 +7,21 @@ export interface ItineraryActivity {
   time: string;
   desc: string;
   tags: string[];
+  // ✅ CRITICAL: Traffic metadata fields for smart refresh
+  trafficAnalysis?: {
+    realTimeTraffic?: {
+      trafficLevel?: string;
+      congestionScore?: number;
+      recommendationScore?: number;
+    };
+    lat?: number;
+    lon?: number;
+  };
+  trafficData?: any;
+  trafficLevel?: string;
+  trafficRecommendation?: string;
+  lat?: number;
+  lon?: number;
 }
 
 export interface ItineraryPeriod {
