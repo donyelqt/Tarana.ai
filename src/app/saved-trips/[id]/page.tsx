@@ -371,17 +371,17 @@ const SavedItineraryDetail = () => {
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
       <Sidebar />
-      <main className="md:pl-72 flex-1 p-8 md:p-8 pt-8">
-        <div className="max-w-6xl mx-auto">
+      <main className="md:pl-72 flex-1 px-4 sm:px-6 md:px-8 py-6 md:py-8">
+        <div className="max-w-6xl mx-auto w-full">
           {/* Header */}
-          <div className="mb-6 flex justify-between items-center">
-            <div className="bg-white w-[60vw] rounded-xl px-6 py-3 inline-block font-bold text-xl md:text-2xl text-gray-900 shadow-none border border-gray-200">
+          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="bg-white w-full md:w-auto rounded-xl px-5 sm:px-6 py-3 inline-flex flex-col sm:flex-row sm:items-center gap-1 font-bold text-lg sm:text-xl md:text-2xl text-gray-900 shadow-none border border-gray-200">
               {`Saved Itineraries > ${itinerary.title}`}
             </div>
             <Button 
               onClick={() => handleRefreshItinerary(false)} 
               disabled={isRefreshing}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 w-full sm:w-auto justify-center"
             >
               {isRefreshing ? (
                 <>
@@ -402,8 +402,8 @@ const SavedItineraryDetail = () => {
             </Button>
           </div>
           {/* Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="flex items-center gap-3 bg-white rounded-2xl p-4 shadow border border-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="flex items-center gap-3 bg-white rounded-2xl p-4 shadow border border-gray-100 min-h-[92px]">
               <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-full">
                 <span className="text-blue-500 text-lg">📅</span>
               </div>
@@ -412,7 +412,7 @@ const SavedItineraryDetail = () => {
                 <span className="font-semibold text-gray-800 text-base">{formatDateRange(dates.start, dates.end)}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3 bg-white rounded-2xl p-4 shadow border border-gray-100">
+            <div className="flex items-center gap-3 bg-white rounded-2xl p-4 shadow border border-gray-100 min-h-[92px]">
               <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-full">
                 <span className="text-blue-500 text-lg">👥</span>
               </div>
@@ -502,13 +502,11 @@ const SavedItineraryDetail = () => {
                             </span>
                           </div>
                           {/* Image */}
-                          <div className="relative w-full md:w-60 h-40 md:h-auto md:mt-8 md:mb-8 md:ml-8 flex-shrink-0">
+                          <div className="relative w-full md:w-60 h-48 sm:h-56 md:h-auto md:mt-8 md:mb-8 md:ml-8 flex-shrink-0">
                             {imageSrcToUse ? (
                               <Image
                                 src={imageSrcToUse}
-                                alt={
-                                  (activity.title as string) || "Activity image"
-                                }
+                                alt={(activity.title as string) || "Activity image"}
                                 fill
                                 className="object-center rounded-2xl md:rounded-l-2xl"
                               />
