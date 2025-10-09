@@ -538,15 +538,30 @@ const SavedItineraryDetail = () => {
                             </div>
                             <div className="flex flex-wrap gap-2 mb-2">
                               {((activity.tags as string[]) || []).map(
-                                (tag, i) => (
-                                  <span
-                                    key={i}
-                                    className="flex items-center gap-1 bg-gray-100 px-3 py-1 rounded-full text-xs text-gray-600"
-                                  >
-                                    <span>{interestIcons[tag] || ""}</span>
-                                    {tag}
-                                  </span>
-                                ),
+                                (tag, i) => {
+                                  // ✅ CRITICAL: Special styling for traffic tags
+                                  const isLowTraffic = tag === 'low-traffic';
+                                  const isModerateTraffic = tag === 'moderate-traffic';
+                                  const isTrafficTag = isLowTraffic || isModerateTraffic;
+                                  
+                                  return (
+                                    <span
+                                      key={i}
+                                      className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
+                                        isLowTraffic 
+                                          ? 'bg-green-100 text-green-700 border border-green-300' 
+                                          : isModerateTraffic 
+                                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                                          : 'bg-gray-100 text-gray-600'
+                                      }`}
+                                    >
+                                      {isLowTraffic && <span>🟢</span>}
+                                      {isModerateTraffic && <span>🟡</span>}
+                                      {!isTrafficTag && <span>{interestIcons[tag] || ""}</span>}
+                                      {tag}
+                                    </span>
+                                  );
+                                }
                               )}
                             </div>
                             <div className="flex items-center justify-end mt-auto gap-6">
