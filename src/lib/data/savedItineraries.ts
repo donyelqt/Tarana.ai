@@ -197,6 +197,18 @@ export const updateItinerary = async (id: string, updatedData: Partial<Omit<Save
     throw new Error('User must be logged in to update an itinerary');
   }
 
+  // 🔍 CRITICAL DEBUG: Log incoming data
+  console.log('\n🔍 updateItinerary() - INCOMING DATA:');
+  console.log('   ID:', id);
+  console.log('   trafficSnapshot:', updatedData.trafficSnapshot ? 'EXISTS' : 'NULL/UNDEFINED');
+  console.log('   refreshMetadata:', updatedData.refreshMetadata ? 'EXISTS' : 'NULL/UNDEFINED');
+  console.log('   activityCoordinates:', updatedData.activityCoordinates ? `EXISTS (${updatedData.activityCoordinates.length})` : 'NULL/UNDEFINED');
+  
+  if (updatedData.refreshMetadata) {
+    console.log('   refreshMetadata.trafficSnapshot:', updatedData.refreshMetadata.trafficSnapshot ? 'EXISTS' : 'NULL/UNDEFINED');
+    console.log('   refreshMetadata.refreshCount:', updatedData.refreshMetadata.refreshCount);
+  }
+
   // Prepare data for Supabase, ensuring correct field names and types
   const updatePayload: { [key: string]: any } = {};
   if (updatedData.title) updatePayload.title = updatedData.title;
@@ -207,10 +219,26 @@ export const updateItinerary = async (id: string, updatedData: Partial<Omit<Save
   if (updatedData.formData) updatePayload.form_data = updatedData.formData;
   if (updatedData.itineraryData) updatePayload.itinerary_data = updatedData.itineraryData;
   if (updatedData.weatherData) updatePayload.weather_data = updatedData.weatherData;
-  if (updatedData.refreshMetadata) updatePayload.refresh_metadata = updatedData.refreshMetadata;
-  if (updatedData.trafficSnapshot) updatePayload.traffic_snapshot = updatedData.trafficSnapshot;
-  if (updatedData.activityCoordinates) updatePayload.activity_coordinates = updatedData.activityCoordinates;
+  
+  // ✅ CRITICAL FIX: Use explicit undefined check instead of truthy check
+  // This allows null, empty objects, and empty arrays to be set
+  if (updatedData.refreshMetadata !== undefined) {
+    updatePayload.refresh_metadata = updatedData.refreshMetadata;
+  }
+  if (updatedData.trafficSnapshot !== undefined) {
+    updatePayload.traffic_snapshot = updatedData.trafficSnapshot;
+  }
+  if (updatedData.activityCoordinates !== undefined) {
+    updatePayload.activity_coordinates = updatedData.activityCoordinates;
+  }
   // Do not allow updating user_id or created_at directly
+  
+  // 🔍 CRITICAL DEBUG: Log what will be sent to database
+  console.log('\n📤 updateItinerary() - PAYLOAD TO DATABASE:');
+  console.log('   Keys being updated:', Object.keys(updatePayload));
+  console.log('   refresh_metadata:', updatePayload.refresh_metadata ? 'SET' : 'NOT SET');
+  console.log('   traffic_snapshot:', updatePayload.traffic_snapshot ? 'SET' : 'NOT SET');
+  console.log('   activity_coordinates:', updatePayload.activity_coordinates ? 'SET' : 'NOT SET');
 
   if (Object.keys(updatePayload).length === 0) {
     console.log("No data provided for update.");
@@ -235,12 +263,29 @@ export const updateItinerary = async (id: string, updatedData: Partial<Omit<Save
       .single();
 
     if (error) {
-      console.error('Error updating itinerary in Supabase:', error);
+      console.error('\n❌ updateItinerary() - SUPABASE ERROR:', error);
+      console.error('   Error code:', error.code);
+      console.error('   Error message:', error.message);
+      console.error('   Error details:', error.details);
       return null;
     }
+    
+    // 🔍 CRITICAL DEBUG: Log what database returned
+    console.log('\n✅ updateItinerary() - DATABASE RESPONSE:');
+    console.log('   Update successful');
+    console.log('   refresh_metadata in response:', data.refresh_metadata ? 'EXISTS' : 'NULL');
+    console.log('   traffic_snapshot in response:', data.traffic_snapshot ? 'EXISTS' : 'NULL');
+    console.log('   activity_coordinates in response:', data.activity_coordinates ? 'EXISTS' : 'NULL');
+    
+    if (data.refresh_metadata) {
+      console.log('   refresh_metadata.refreshCount:', (data.refresh_metadata as any).refreshCount);
+      console.log('   refresh_metadata.trafficSnapshot:', (data.refresh_metadata as any).trafficSnapshot ? 'EXISTS' : 'NULL');
+    }
+    
     return data as SavedItinerary;
   } catch (error) {
-    console.error('Error updating itinerary:', error);
+    console.error('\n❌ updateItinerary() - EXCEPTION:', error);
+    console.error('   Error type:', error instanceof Error ? error.constructor.name : typeof error);
     throw new Error('Failed to update itinerary');
   }
 };

@@ -332,11 +332,19 @@ export async function POST(
     console.log(`✅ Traffic snapshot created`);
 
     // ========================================================================
-    // 10. UPDATE DATABASE
+    // 10. ENRICH WITH TRAFFIC & UPDATE DATABASE
     // ========================================================================
-    console.log(`\n💾 Updating itinerary in database...`);
+    console.log(`\n💾 Preparing database update...`);
     
     const enrichedItineraryData = await enrichItineraryWithTraffic(regeneratedItinerary);
+    
+    // 🔍 CRITICAL DEBUG: Log data before database update
+    console.log('\n📝 DATA BEING SENT TO DATABASE:');
+    console.log('   trafficSnapshot:', trafficSnapshot ? 'EXISTS' : 'NULL/UNDEFINED', 
+                trafficSnapshot ? `(${JSON.stringify(trafficSnapshot).substring(0, 100)}...)` : '');
+    console.log('   activityCoordinates:', activityCoordinates ? `EXISTS (${activityCoordinates.length} coords)` : 'NULL/UNDEFINED');
+    console.log('   refreshMetadata.trafficSnapshot:', trafficSnapshot ? 'EXISTS' : 'NULL/UNDEFINED');
+    console.log('   refreshMetadata.refreshCount:', ((itinerary.refreshMetadata?.refreshCount || 0) + 1));
 
     const updatedItinerary = await updateItinerary(id, {
       // ✅ Preserve original form data (essential for UI display)
@@ -357,7 +365,7 @@ export async function POST(
         weatherSnapshot: currentWeather,
         trafficSnapshot,
         refreshCount: ((itinerary.refreshMetadata?.refreshCount || 0) + 1),
-        autoRefreshEnabled: itinerary.refreshMetadata?.autoRefreshEnabled ?? true
+        autoRefreshEnabled: itinerary.refreshMetadata?.autoRefreshEnabled ?? false
       },
       activityCoordinates
     });
