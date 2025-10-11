@@ -12,10 +12,12 @@ import {
   ItineraryPeriod,
 } from "@/lib/data";
 import { WeatherData } from "@/lib/core";
-import Image, { type StaticImageData } from "next/image"
+import Image from "next/image"
 import PlaceDetail from "@/components/PlaceDetail"
 import { useToast } from "@/components/ui/use-toast"
 import { useModernToast } from "@/hooks/useModernToast"
+import { getFallbackImage, isValidImagePath } from "@/lib/images/imageUtils"
+
 // import usePuter from "../../../hooks/usePuter";
 // import { puterConfig } from "../../../config/puter";
 
@@ -66,6 +68,35 @@ const SavedItineraryDetail = () => {
     e.preventDefault()
     setSelectedActivity(activity)
     setShowDetailModal(true)
+  }
+
+  const getActivityImageSrc = (activity: Record<string, unknown>): string => {
+    const tags = Array.isArray(activity.tags) ? (activity.tags as string[]) : []
+    const fallback = getFallbackImage(tags)
+
+    const rawImage = (activity as { image?: unknown }).image
+    let candidate: string | undefined
+
+    if (typeof rawImage === "string" && rawImage.trim() !== "") {
+      candidate = rawImage.trim()
+    } else if (rawImage && typeof (rawImage as { src?: string }).src === "string") {
+      candidate = (rawImage as { src: string }).src.trim()
+    } else if (typeof (activity as { imageUrl?: string }).imageUrl === "string") {
+      candidate = (activity as { imageUrl: string }).imageUrl.trim()
+    }
+
+    if (!candidate) {
+      return fallback
+    }
+
+    const normalized =
+      candidate.startsWith("http://") ||
+      candidate.startsWith("https://") ||
+      candidate.startsWith("/")
+        ? candidate
+        : `/${candidate.replace(/^\/+/, "")}`
+
+    return isValidImagePath(normalized) ? normalized : fallback
   }
 
   // Helper function to refetch fresh itinerary data from database
@@ -316,7 +347,7 @@ const SavedItineraryDetail = () => {
         lat,
         lng: lon,
       },
-      images: [(activity.image as {src: string}).src], // Use the activity image
+      images: [getActivityImageSrc(activity)],
       amenities: [
         { icon: "🍽️", name: "Restaurant" },
         { icon: "🚻", name: "Restrooms" },
@@ -494,23 +525,7 @@ const SavedItineraryDetail = () => {
                   {day
                     .flatMap(period => period.activities)
                     .map((activity, idx) => {
-                      let imageSrcToUse: string | null = null
-                      if (activity.image) {
-                        if (typeof activity.image === "string") {
-                          if (activity.image.trim() !== "")
-                            imageSrcToUse = activity.image
-                        } else {
-                          // Assumed to be StaticImageData
-                          const staticImage = activity.image as StaticImageData
-                          if (
-                            staticImage.src &&
-                            typeof staticImage.src === "string" &&
-                            staticImage.src.trim() !== ""
-                          ) {
-                            imageSrcToUse = staticImage.src
-                          }
-                        }
-                      }
+                      const imageSrcToUse = getActivityImageSrc(activity)
                       return (
                         <div
                           key={idx}
