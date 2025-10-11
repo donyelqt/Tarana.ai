@@ -10,6 +10,7 @@ import {
   formatDateRange,
   updateItinerary,
   ItineraryPeriod,
+  ItineraryActivity,
 } from "@/lib/data";
 import { WeatherData } from "@/lib/core";
 import Image from "next/image"
@@ -35,7 +36,7 @@ const SavedItineraryDetail = () => {
   const { id } = params as { id: string }
   const [itinerary, setItinerary] = useState<SavedItinerary | null>(null);
   // Removed unused weatherData state
-  const [selectedActivity, setSelectedActivity] = useState<Record<string, unknown> | null>(null)
+  const [selectedActivity, setSelectedActivity] = useState<ItineraryActivity | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showChangeSummary, setShowChangeSummary] = useState(false)
@@ -58,31 +59,32 @@ const SavedItineraryDetail = () => {
     }
   }, [id]);
 
-  const handleViewOnMap = (activity: any, e: React.MouseEvent) => {
+  const handleViewOnMap = (activity: ItineraryActivity, e: React.MouseEvent) => {
     e.preventDefault()
     setSelectedActivity(activity)
     setShowDetailModal(true)
   }
 
-  const handleViewReviews = (activity: any, e: React.MouseEvent) => {
+  const handleViewReviews = (activity: ItineraryActivity, e: React.MouseEvent) => {
     e.preventDefault()
     setSelectedActivity(activity)
     setShowDetailModal(true)
   }
 
-  const getActivityImageSrc = (activity: Record<string, unknown>): string => {
-    const tags = Array.isArray(activity.tags) ? (activity.tags as string[]) : []
+  const getActivityImageSrc = (activity: ItineraryActivity): string => {
+    const tags = Array.isArray(activity.tags) ? activity.tags : []
     const fallback = getFallbackImage(tags)
 
-    const rawImage = (activity as { image?: unknown }).image
+    const rawImage = activity.image
     let candidate: string | undefined
 
     if (typeof rawImage === "string" && rawImage.trim() !== "") {
       candidate = rawImage.trim()
-    } else if (rawImage && typeof (rawImage as { src?: string }).src === "string") {
-      candidate = (rawImage as { src: string }).src.trim()
-    } else if (typeof (activity as { imageUrl?: string }).imageUrl === "string") {
-      candidate = (activity as { imageUrl: string }).imageUrl.trim()
+    } else if (rawImage && typeof rawImage === "object" && "src" in rawImage) {
+      const src = (rawImage as { src: string }).src
+      if (typeof src === "string") {
+        candidate = src.trim()
+      }
     }
 
     if (!candidate) {
@@ -314,34 +316,17 @@ const SavedItineraryDetail = () => {
   const { selectedInterests, pax, dates, budget } = formData
 
   // Transform activity data for PlaceDetail component
-  const transformActivityToPlace = (activity: Record<string, unknown>) => {
-    const extractCoordinate = (value: unknown): number | undefined => {
-      if (typeof value === "number" && Number.isFinite(value)) {
-        return value
-      }
-
-      if (typeof value === "string") {
-        const parsed = parseFloat(value)
-        return Number.isFinite(parsed) ? parsed : undefined
-      }
-
-      return undefined
-    }
-
-    const rawLat = (activity as { lat?: unknown; latitude?: unknown }).lat ?? (activity as { latitude?: unknown }).latitude
-    const rawLon = (activity as { lon?: unknown; lng?: unknown; longitude?: unknown }).lon
-      ?? (activity as { lng?: unknown }).lng
-      ?? (activity as { longitude?: unknown }).longitude
-
-    const lat = extractCoordinate(rawLat) ?? 16.4023
-    const lon = extractCoordinate(rawLon) ?? 120.596
+  const transformActivityToPlace = (activity: ItineraryActivity) => {
+    // Default Baguio coordinates
+    const lat = activity.lat ?? 16.4023
+    const lon = activity.lon ?? 120.596
 
     return {
-      id: (activity.title as string).toLowerCase().replace(/\s+/g, '-'),
-      name: activity.title as string,
+      id: activity.title.toLowerCase().replace(/\s+/g, '-'),
+      name: activity.title,
       rating: 4.2, // Default rating
       totalReviews: 120, // Default review count
-      description: activity.desc as string,
+      description: activity.desc,
       address: `Baguio City, Philippines`,
       location: {
         lat,
@@ -542,7 +527,7 @@ const SavedItineraryDetail = () => {
                             {imageSrcToUse ? (
                               <Image
                                 src={imageSrcToUse}
-                                alt={(activity.title as string) || "Activity image"}
+                                alt={activity.title || "Activity image"}
                                 fill
                                 className="object-center rounded-2xl md:rounded-l-2xl"
                               />
@@ -559,32 +544,32 @@ const SavedItineraryDetail = () => {
                             {/* Time for mobile */}
                             <div className="flex md:hidden mb-1">
                               <span className="text-blue-700 font-semibold text-sm">
-                                {activity.time as string}
+                                {activity.time}
                               </span>
                             </div>
                             <div className="flex flex-col md:flex-row md:items-center md:gap-4 mb-1">
                               <span className="font-bold text-lg text-gray-900 md:ml-0 ml-1">
-                                {activity.title as string}
+                                {activity.title}
                               </span>
                             </div>
                             <div className="text-gray-700 text-sm mb-2">
-                              {activity.desc as string}
+                              {activity.desc}
                             </div>
                             <div className="flex flex-wrap gap-2 mb-2">
-                              {((activity.tags as string[]) || []).map(
+                              {(activity.tags || []).map(
                                 (tag, i) => {
                                   // ✅ CRITICAL: Special styling for traffic tags
                                   const isLowTraffic = tag === 'low-traffic';
                                   const isModerateTraffic = tag === 'moderate-traffic';
                                   const isTrafficTag = isLowTraffic || isModerateTraffic;
-                                  
+
                                   return (
                                     <span
                                       key={i}
                                       className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                                        isLowTraffic 
-                                          ? 'bg-green-100 text-green-700 border border-green-300' 
-                                          : isModerateTraffic 
+                                        isLowTraffic
+                                          ? 'bg-green-100 text-green-700 border border-green-300'
+                                          : isModerateTraffic
                                           ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
                                           : 'bg-gray-100 text-gray-600'
                                       }`}
@@ -602,7 +587,7 @@ const SavedItineraryDetail = () => {
                               <a
                                 href="#"
                                 className="flex items-center gap-1 text-yellow-500 text-sm font-medium hover:underline"
-                                onClick={e => handleViewReviews(activity, e)}
+                                onClick={(e) => handleViewReviews(activity, e)}
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -617,7 +602,7 @@ const SavedItineraryDetail = () => {
                               <a
                                 href="#"
                                 className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:underline"
-                                onClick={e => handleViewOnMap(activity, e)}
+                                onClick={(e) => handleViewOnMap(activity, e)}
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -646,10 +631,10 @@ const SavedItineraryDetail = () => {
                         </div>
                       )
                     })}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
         </div>
       </main>
 
@@ -658,7 +643,7 @@ const SavedItineraryDetail = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center z-10">
-              <h2 className="text-xl font-bold">{selectedActivity.title as string}</h2>
+              <h2 className="text-xl font-bold">{selectedActivity.title}</h2>
               <button 
                 onClick={() => setShowDetailModal(false)}
                 className="text-gray-500 hover:text-gray-700"
