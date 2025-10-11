@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Button } from "./ui/button"
+import {
+  BAGUIO_CITY_COORDINATES,
+  ZOOM_LEVELS,
+  createTomTomMap,
+  loadTomTomSDK,
+} from "@/lib/integrations/tomtomMapUtils"
 
 interface MapViewProps {
   title: string
@@ -10,84 +16,178 @@ interface MapViewProps {
   lng?: number
 }
 
-const MapView = ({ title, address, lat = 16.4023, lng = 120.5960 }: MapViewProps) => {
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  interface Window {
+    tt: any
+  }
+}
+
+const DEFAULT_LAT = BAGUIO_CITY_COORDINATES[1]
+const DEFAULT_LNG = BAGUIO_CITY_COORDINATES[0]
+
+const MapView = ({
+  title,
+  address,
+  lat = DEFAULT_LAT,
+  lng = DEFAULT_LNG,
+}: MapViewProps) => {
   const mapRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<{
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    map: any
+  } | null>(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const windowResizeHandlerRef = useRef<(() => void) | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Load HERE Maps API script
-    const loadHereMapsAPI = () => {
-      const hereMapsScript = document.createElement('script')
-      hereMapsScript.src = `https://js.api.here.com/v3/3.1/mapsjs.bundle.js`
-      hereMapsScript.async = true
-      hereMapsScript.defer = true
-      hereMapsScript.onload = initializeMap
-      hereMapsScript.onerror = () => setError("Failed to load HERE Maps API")
-      document.head.appendChild(hereMapsScript)
-
-      return () => {
-        document.head.removeChild(hereMapsScript)
-      }
+    if (typeof window === "undefined") {
+      return
     }
 
-    const initializeMap = () => {
-      if (!mapRef.current) return
+    let isActive = true
+    const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY
+
+    const initializeTomTomMap = async () => {
+      if (!mapRef.current) {
+        return
+      }
+
+      if (!apiKey) {
+        setError("TomTom API key is not configured")
+        return
+      }
+
+      setError(null)
+      setIsLoaded(false)
+
+      // Clean up any existing map before re-initializing
+      if (mapInstanceRef.current?.map) {
+        try {
+          mapInstanceRef.current.map.remove()
+        } catch (cleanupError) {
+          console.warn("Failed to remove previous TomTom map instance", cleanupError)
+        }
+      }
+      mapInstanceRef.current = null
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect()
+        resizeObserverRef.current = null
+      }
+      if (windowResizeHandlerRef.current) {
+        window.removeEventListener("resize", windowResizeHandlerRef.current)
+        windowResizeHandlerRef.current = null
+      }
+
       try {
-        // @ts-expect-error - HERE Maps API is loaded dynamically
-        const H = window.H
-        if (!H) {
-          setError("HERE Maps API not available")
+        await loadTomTomSDK()
+
+        const map = await createTomTomMap({
+          apiKey,
+          container: mapRef.current,
+          center: [lng, lat],
+          zoom: ZOOM_LEVELS.STREET,
+          style: "main",
+          enableControls: true,
+          enableTraffic: true,
+          minZoom: ZOOM_LEVELS.CITY,
+          maxZoom: ZOOM_LEVELS.BUILDING,
+        })
+        if (!isActive) {
+          map.remove()
           return
         }
-        // Create platform
-        const platform = new H.service.Platform({
-          apikey: process.env.NEXT_PUBLIC_HERE_MAPS_API_KEY
-        })
-        const defaultLayers = platform.createDefaultLayers()
-        // Create map instance
-        const map = new H.Map(
-          mapRef.current,
-          defaultLayers.vector.normal.map,
-          {
-            center: { lat, lng },
-            zoom: 15,
-            pixelRatio: window.devicePixelRatio || 1
+
+        const requestMapResize = () => {
+          requestAnimationFrame(() => {
+            try {
+              map.resize()
+            } catch (resizeError) {
+              console.warn("TomTom map resize failed", resizeError)
+            }
+          })
+        }
+
+        new window.tt.Marker().setLngLat([lng, lat]).addTo(map)
+        const popupContent = `<div class="tomtom-popup"><strong>${title}</strong><br/>${address}</div>`
+        new window.tt
+          .Popup({ offset: 35 })
+          .setLngLat([lng, lat])
+          .setHTML(popupContent)
+          .addTo(map)
+
+        mapInstanceRef.current = { map }
+        requestMapResize()
+
+        if (typeof ResizeObserver !== "undefined" && mapRef.current) {
+          const observer = new ResizeObserver(() => {
+            if (mapInstanceRef.current?.map) {
+              requestMapResize()
+            }
+          })
+          observer.observe(mapRef.current)
+          resizeObserverRef.current = observer
+        }
+
+        const handleWindowResize = () => {
+          if (mapInstanceRef.current?.map) {
+            requestMapResize()
           }
-        )
-        // Enable map events
-        new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
-        // Add UI controls
-        H.ui.UI.createDefault(map, defaultLayers)
-        // Add marker
-        const marker = new H.map.Marker({ lat, lng })
-        map.addObject(marker)
-        // Add info bubble
-        const bubble = new H.ui.InfoBubble({ lat, lng }, {
-          content: `<div><strong>${title}</strong><br>${address}</div>`
-        })
-        map.getUi().addBubble(bubble)
+        }
+
+        window.addEventListener("resize", handleWindowResize, { passive: true })
+        windowResizeHandlerRef.current = handleWindowResize
+
         setIsLoaded(true)
-      } catch (err) {
-        console.error("Error initializing HERE map:", err)
-        setError("Failed to initialize HERE map")
+      } catch (mapError) {
+        console.error("Failed to initialize TomTom map", mapError)
+        const message =
+          mapError instanceof Error ? mapError.message : "Unknown TomTom map error"
       }
     }
 
-    const cleanup = loadHereMapsAPI()
-    return cleanup
+    initializeTomTomMap()
+
+    return () => {
+      isActive = false
+      if (mapInstanceRef.current?.map) {
+        try {
+          mapInstanceRef.current.map.remove()
+        } catch (mapRemovalError) {
+          console.warn("Failed to remove TomTom map", mapRemovalError)
+        }
+      }
+      mapInstanceRef.current = null
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect()
+        resizeObserverRef.current = null
+      }
+      if (windowResizeHandlerRef.current) {
+        window.removeEventListener("resize", windowResizeHandlerRef.current)
+        windowResizeHandlerRef.current = null
+      }
+    }
   }, [title, address, lat, lng])
+
+  const handleOpenInTomTom = () => {
+    const zoom = 16
+    const url = `https://mydrive.tomtom.com/en_gb/#mode=drive&zoom=${zoom}&center=${lat},${lng}`
+    window.open(url, "_blank")
+  }
 
   return (
     <div className="bg-white rounded-2xl p-6 mb-8 shadow border border-gray-100">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Location/Map</h2>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="text-blue-600 border-blue-600 hover:bg-blue-50"
-          onClick={() => window.open(`https://www.here.com/search/?q=${lat},${lng}`, '_blank')}
+          onClick={handleOpenInTomTom}
+          disabled={!!error}
         >
-          View on HERE Maps
+          View in TomTom Maps
         </Button>
       </div>
       {error && (
@@ -95,14 +195,15 @@ const MapView = ({ title, address, lat = 16.4023, lng = 120.5960 }: MapViewProps
           {error}
         </div>
       )}
-      <div 
-        ref={mapRef} 
-        className="w-full h-[300px] rounded-lg bg-gray-100"
-        style={{ opacity: isLoaded ? 1 : 0.7 }}
-      >
+      <div className="relative rounded-xl bg-gray-100 overflow-hidden">
+        <div
+          ref={mapRef}
+          className="w-full h-[260px] sm:h-[320px] lg:h-[360px] transition-opacity duration-300 ease-in-out"
+          style={{ opacity: isLoaded && !error ? 1 : 0 }}
+        />
         {!isLoaded && !error && (
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-9 w-9 border-2 border-blue-200 border-t-blue-500"></div>
           </div>
         )}
       </div>
