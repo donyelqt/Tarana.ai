@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:env": "nodemon --watch .env --watch .env.local --ext env --exec \"next dev\"",
     "build": "next build",
     "build:no-lint": "NEXT_DISABLE_ESLINT=1 next build",
     "start": "next start",
@@ -61,6 +62,7 @@
     "tailwindcss": "^3.4.17",
     "ts-jest": "^29.1.0",
     "tsx": "^4.7.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "nodemon": "^3.1.0"
   }
 }
