@@ -377,12 +377,22 @@ export async function POST(
     console.log(`✅ Itinerary updated in database`);
 
     // ========================================================================
-    // 11. SUCCESS RESPONSE
+    // 11. SUCCESS RESPONSE & METRICS
     // ========================================================================
     const duration = Date.now() - startTime;
     console.log(`\n${'='.repeat(80)}`);
     console.log(`✅ REFRESH COMPLETED SUCCESSFULLY - Duration: ${duration}ms`);
-    console.log(`${'='.repeat(80)}\n`);
+    console.log(`${'='.repeat(80)}`);
+    
+    // 📊 Production Metrics
+    console.log('\n📊 REFRESH METRICS:');
+    console.log(`   Total Duration: ${duration}ms`);
+    console.log(`   Severity: ${evaluation.severity}`);
+    console.log(`   Confidence: ${evaluation.confidence}%`);
+    console.log(`   Reasons: ${evaluation.reasons.join(', ')}`);
+    console.log(`   Activities Count: ${updatedItinerary.itineraryData?.items?.flatMap((i: any) => i.activities || []).length || 0}`);
+    console.log(`   Refresh Count: ${updatedItinerary.refreshMetadata?.refreshCount || 0}`);
+    console.log('');
 
     return NextResponse.json({
       success: true,
@@ -392,13 +402,35 @@ export async function POST(
     });
 
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error('\n❌ REFRESH ERROR:', error);
+    console.error(`Duration before failure: ${duration}ms`);
+    console.error('Error type:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace available');
+    
+    // Determine error category for better client handling
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const isTimeout = errorMessage.includes('timeout') || errorMessage.includes('AbortError');
+    const isNetworkError = errorMessage.includes('fetch') || errorMessage.includes('ECONNREFUSED');
+    const isGenerationError = errorMessage.includes('Generation') || errorMessage.includes('Gemini');
+    
+    console.error('\n🔍 ERROR CLASSIFICATION:', {
+      isTimeout,
+      isNetworkError,
+      isGenerationError,
+      message: errorMessage.substring(0, 100)
+    });
     
     return NextResponse.json(
       { 
         success: false, 
         message: 'Refresh failed', 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+        error: errorMessage,
+        details: {
+          duration: `${duration}ms`,
+          category: isTimeout ? 'timeout' : isNetworkError ? 'network' : isGenerationError ? 'generation' : 'unknown',
+          timestamp: new Date().toISOString()
+        }
       },
       { status: 500 }
     );
@@ -582,8 +614,16 @@ const harmonizeTrafficDescription = (
   return `${normalizedBase} ${narrative}`.trim();
 };
 
+/**
+ * Enrich itinerary with real-time traffic metadata
+ * ✅ Production-optimized with comprehensive error handling and logging
+ */
 async function enrichItineraryWithTraffic(itinerary: any) {
+  const enrichmentStartTime = Date.now();
+  console.log('\n🚗 TRAFFIC ENRICHMENT: Starting...');
+  
   if (!itinerary?.items || itinerary.items.length === 0) {
+    console.log('⚠️ TRAFFIC ENRICHMENT: No items to enrich');
     return itinerary;
   }
 
@@ -615,8 +655,11 @@ async function enrichItineraryWithTraffic(itinerary: any) {
       return itinerary;
     }
 
-    console.log(`🚦 Enriching itinerary with traffic metadata for ${trafficInput.length} unique activities`);
+    console.log(`🚦 Enriching ${trafficInput.length} unique activities with real-time traffic data...`);
+    const trafficProcessStartTime = Date.now();
     const { enhancedActivities } = await parallelTrafficProcessor.processActivitiesUltraFast(trafficInput as any);
+    const trafficProcessDuration = Date.now() - trafficProcessStartTime;
+    console.log(`✅ Traffic processing completed in ${trafficProcessDuration}ms`);
 
     const metadataMap = new Map<string, any>();
     enhancedActivities.forEach((activity: any) => {
@@ -685,9 +728,22 @@ async function enrichItineraryWithTraffic(itinerary: any) {
       };
     });
 
+    const enrichmentDuration = Date.now() - enrichmentStartTime;
+    console.log(`✅ TRAFFIC ENRICHMENT: Completed in ${enrichmentDuration}ms`);
+    console.log(`📊 Traffic Enhancement Stats:`, {
+      totalActivities: itinerary.items.flatMap((p: any) => p.activities || []).length,
+      uniqueProcessed: trafficInput.length,
+      enhancedCount: enhancedActivities.length,
+      metadataMapSize: metadataMap.size,
+      duration: `${enrichmentDuration}ms`
+    });
+    
     return itinerary;
   } catch (error) {
-    console.error('❌ Failed to enrich itinerary with traffic metadata:', error);
+    const enrichmentDuration = Date.now() - enrichmentStartTime;
+    console.error(`❌ TRAFFIC ENRICHMENT FAILED after ${enrichmentDuration}ms:`, error);
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+    // Return original itinerary without traffic enrichment rather than failing
     return itinerary;
   }
 }
@@ -754,21 +810,40 @@ async function regenerateItinerary(
     // Build context-aware prompt
     const prompt = buildRefreshPrompt(originalItinerary, evaluation);
 
-    // ✅ PRODUCTION FIX: Use correct API path (remove /route suffix)
-    // ✅ PRODUCTION FIX: Construct base URL properly for internal API call
-    const baseUrl = process.env.NEXTAUTH_URL 
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-      || 'http://localhost:3000';
+    // ✅ PRODUCTION FIX: Robust base URL construction with multiple fallbacks
+    const getBaseUrl = (): string => {
+      // Priority 1: Explicit NEXTAUTH_URL (recommended for production)
+      if (process.env.NEXTAUTH_URL) {
+        return process.env.NEXTAUTH_URL;
+      }
+      
+      // Priority 2: Vercel deployment URL
+      if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`;
+      }
+      
+      // Priority 3: Vercel branch deployment URL
+      if (process.env.VERCEL === '1' && process.env.VERCEL_BRANCH_URL) {
+        return `https://${process.env.VERCEL_BRANCH_URL}`;
+      }
+      
+      // Priority 4: Development fallback
+      return 'http://localhost:3000';
+    };
     
-    // Safety check to ensure baseUrl is valid
-    if (!baseUrl || baseUrl === 'undefined' || baseUrl.includes('undefined')) {
+    const baseUrl = getBaseUrl();
+    
+    // Enhanced safety validation
+    if (!baseUrl || baseUrl === 'undefined' || baseUrl.includes('undefined') || baseUrl === 'null') {
       console.error('❌ Invalid baseUrl constructed:', baseUrl);
       console.error('Environment variables:', {
-        NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-        VERCEL_URL: process.env.VERCEL_URL,
-        NODE_ENV: process.env.NODE_ENV
+        NEXTAUTH_URL: process.env.NEXTAUTH_URL ? 'SET' : 'NOT SET',
+        VERCEL_URL: process.env.VERCEL_URL ? 'SET' : 'NOT SET',
+        VERCEL_BRANCH_URL: process.env.VERCEL_BRANCH_URL ? 'SET' : 'NOT SET',
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL: process.env.VERCEL
       });
-      throw new Error('Invalid base URL configuration. Please set NEXTAUTH_URL in your .env file to http://localhost:3000');
+      throw new Error('Critical: Base URL cannot be determined. Set NEXTAUTH_URL environment variable.');
     }
     
     console.log(`📡 Calling generation API: ${baseUrl}/api/gemini/itinerary-generator`);
@@ -777,11 +852,20 @@ async function regenerateItinerary(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s timeout (under Vercel limit)
 
+    console.log('📤 Refresh Request Payload:', {
+      prompt: prompt.substring(0, 100) + '...',
+      interests: formData.selectedInterests,
+      duration: parseInt(formData.duration) || 1,
+      weatherCondition: currentWeather?.weather?.[0]?.main,
+      isRefresh: true
+    });
+
     const response = await fetch(`${baseUrl}/api/gemini/itinerary-generator`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'x-refresh-request': 'true' // Flag for internal tracking
+        'x-refresh-request': 'true', // Flag for cache bypass
+        'x-bypass-cache': 'true' // Additional cache bypass flag
       },
       body: JSON.stringify({
         prompt: prompt,
@@ -814,10 +898,20 @@ async function regenerateItinerary(
     
     if (result.error) {
       console.error('❌ Generation API Error:', result.error);
+      console.error('Error details:', {
+        errorType: result.errorType,
+        requestId: result.requestId,
+        retryable: result.retryable
+      });
       throw new Error(result.error);
     }
 
     console.log('✅ Itinerary generated successfully');
+    console.log('📊 Generation Stats:', {
+      hasText: !!result.text,
+      resultType: typeof result,
+      keys: Object.keys(result)
+    });
     
     // ✅ CRITICAL: Transform to frontend-compatible structure
     const transformedItinerary = transformItineraryStructure(result);
