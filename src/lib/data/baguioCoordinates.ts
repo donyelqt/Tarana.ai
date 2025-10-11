@@ -14,146 +14,146 @@ export interface ActivityCoordinates {
 export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
   // Core Tourist Attractions
   "Burnham Park": {
-    lat: 16.40801,
-    lon: 120.595985,
+    lat: 16.4093,
+    lon: 120.5950,
     name: "Burnham Park",
     category: "park"
   },
   "Mines View Park": {
-    lat: 16.419701,
-    lon: 120.627499,
+    lat: 16.4013,
+    lon: 120.6003,
     name: "Mines View Park",
     category: "viewpoint"
   },
   "Baguio Cathedral": {
-    lat: 16.412901,
-    lon: 120.598497,
+    lat: 16.4075,
+    lon: 120.5923,
     name: "Baguio Cathedral",
     category: "religious"
   },
   "Botanical Garden": {
-    lat: 16.414116,
-    lon: 120.613781,
+    lat: 16.4141,
+    lon: 120.6132,
     name: "Botanical Garden",
     category: "nature"
   },
   "The Mansion": {
-    lat: 16.412356,
-    lon: 120.621452,
+    lat: 16.4124,
+    lon: 120.6215,
     name: "The Mansion",
     category: "historical"
   },
   "Wright Park": {
-    lat: 16.415139,
-    lon: 120.61859,
+    lat: 16.4151,
+    lon: 120.6186,
     name: "Wright Park",
     category: "park"
   },
   "Camp John Hay": {
-    lat: 16.399407,
-    lon: 120.615699,
+    lat: 16.3994,
+    lon: 120.6157,
     name: "Camp John Hay",
     category: "recreational"
   },
   "Bencab Museum": {
-    lat: 16.410572,
-    lon: 120.550296,
+    lat: 16.3805,
+    lon: 120.6259,
     name: "Bencab Museum",
     category: "museum"
   },
   "Tam-Awan Village": {
-    lat: 16.429956,
-    lon: 120.576908,
+    lat: 16.4300,
+    lon: 120.5769,
     name: "Tam-Awan Village",
     category: "cultural"
   },
 
   // Shopping & Markets
   "Baguio Night Market": {
-    lat: 16.412099,
-    lon: 120.59605,
+    lat: 16.4121,
+    lon: 120.5961,
     name: "Baguio Night Market",
     category: "market"
   },
   "SM City Baguio": {
-    lat: 16.408943,
-    lon: 120.599174,
+    lat: 16.4092,
+    lon: 120.5998,
     name: "SM City Baguio",
     category: "mall"
   },
   "Baguio Public Market": {
     lat: 16.4153,
-    lon: 120.595686,
+    lon: 120.5957,
     name: "Baguio Public Market",
     category: "market"
   },
   "Good Shepherd Convent": {
-    lat: 16.422087,
-    lon: 120.626227,
+    lat: 16.4063,
+    lon: 120.6025,
     name: "Good Shepherd Convent",
     category: "religious"
   },
 
   // Nature & Adventure Sites
   "Mirador Heritage and Eco Park": {
-    lat: 16.408916,
-    lon: 120.581238,
+    lat: 16.4089,
+    lon: 120.5812,
     name: "Mirador Heritage and Eco Park",
     category: "nature"
   },
   "Diplomat Hotel": {
-    lat: 16.405921,
-    lon: 120.585076,
+    lat: 16.4059,
+    lon: 120.5851,
     name: "Diplomat Hotel",
     category: "historical"
   },
   "Lions Head": {
-    lat: 16.358905,
-    lon: 120.60392,
+    lat: 16.3603,
+    lon: 120.6128,
     name: "Lions Head",
     category: "viewpoint"
   },
   "Ili-Likha Artists Village": {
-    lat: 16.413788,
-    lon: 120.59738,
+    lat: 16.4138,
+    lon: 120.5974,
     name: "Ili-Likha Artists Village",
     category: "cultural"
   },
   "Philippine Military Academy": {
-    lat: 16.360855,
-    lon: 120.619666,
+    lat: 16.3609,
+    lon: 120.6197,
     name: "Philippine Military Academy",
     category: "educational"
   },
   "Great wall of Baguio": {
-    lat: 16.369751,
-    lon: 120.611562,
+    lat: 16.3698,
+    lon: 120.6116,
     name: "Great wall of Baguio",
     category: "viewpoint"
   },
   "Camp John Hay Yellow Trail": {
-    lat: 16.399407,
-    lon: 120.615699,
+    lat: 16.3994,
+    lon: 120.6157,
     name: "Camp John Hay Yellow Trail",
     category: "trail"
   },
 
   // La Trinidad Area (Near Baguio)
   "Valley of Colors": {
-    lat: 16.4333,
-    lon: 120.597199,
+    lat: 16.4583,
+    lon: 120.5908,
     name: "Valley of Colors",
     category: "cultural"
   },
   "Easter Weaving Room": {
-    lat: 16.422626,
-    lon: 120.590118,
+    lat: 16.4226,
+    lon: 120.5901,
     name: "Easter Weaving Room",
     category: "cultural"
   },
   "Mt. Kalugong": {
-    lat: 16.455,
-    lon: 120.5875,
+    lat: 16.4603,
+    lon: 120.5956,
     name: "Mt. Kalugong",
     category: "mountain"
   },
@@ -166,8 +166,8 @@ export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
     category: "restaurant"
   },
   "Kapi Kullaaw": {
-    lat: 16.41375,
-    lon: 120.59733,
+    lat: 16.4138,
+    lon: 120.5973,
     name: "Kapi Kullaaw",
     category: "cafe"
   },
@@ -178,8 +178,8 @@ export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
     category: "cafe"
   },
   "Agara Ramen": {
-    lat: 16.40898,
-    lon: 120.60201,
+    lat: 16.4090,
+    lon: 120.6020,
     name: "Agara Ramen",
     category: "restaurant"
   },
@@ -190,8 +190,8 @@ export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
     category: "cafe"
   },
   "Good Sheperd Cafe": {
-    lat: 16.4219,
-    lon: 120.6257,
+    lat: 16.4063,
+    lon: 120.6025,
     name: "Good Sheperd Cafe",
     category: "cafe"
   },
@@ -202,14 +202,14 @@ export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
     category: "cafe"
   },
   "Oh My Gulay": {
-    lat: 16.41182,
-    lon: 120.59811,
+    lat: 16.4118,
+    lon: 120.5981,
     name: "Oh My Gulay",
     category: "restaurant"
   },
   "Hill Station": {
-    lat: 16.40955,
-    lon: 120.60063,
+    lat: 16.4096,
+    lon: 120.6006,
     name: "Hill Station",
     category: "restaurant"
   },
@@ -337,9 +337,9 @@ export function getBaguioCityCenter(): ActivityCoordinates {
  * Validate if coordinates are within Baguio City bounds
  */
 export function isWithinBaguioBounds(lat: number, lon: number): boolean {
-  // Baguio City approximate bounds
+  // Baguio City and La Trinidad approximate bounds
   const bounds = {
-    north: 16.45,
+    north: 16.47,  // Extended to include La Trinidad (Mt. Kalugong, Valley of Colors)
     south: 16.35,
     east: 120.65,
     west: 120.55
