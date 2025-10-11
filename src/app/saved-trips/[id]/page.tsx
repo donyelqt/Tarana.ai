@@ -284,6 +284,27 @@ const SavedItineraryDetail = () => {
 
   // Transform activity data for PlaceDetail component
   const transformActivityToPlace = (activity: Record<string, unknown>) => {
+    const extractCoordinate = (value: unknown): number | undefined => {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return value
+      }
+
+      if (typeof value === "string") {
+        const parsed = parseFloat(value)
+        return Number.isFinite(parsed) ? parsed : undefined
+      }
+
+      return undefined
+    }
+
+    const rawLat = (activity as { lat?: unknown; latitude?: unknown }).lat ?? (activity as { latitude?: unknown }).latitude
+    const rawLon = (activity as { lon?: unknown; lng?: unknown; longitude?: unknown }).lon
+      ?? (activity as { lng?: unknown }).lng
+      ?? (activity as { longitude?: unknown }).longitude
+
+    const lat = extractCoordinate(rawLat) ?? 16.4023
+    const lon = extractCoordinate(rawLon) ?? 120.596
+
     return {
       id: (activity.title as string).toLowerCase().replace(/\s+/g, '-'),
       name: activity.title as string,
@@ -292,8 +313,8 @@ const SavedItineraryDetail = () => {
       description: activity.desc as string,
       address: `Baguio City, Philippines`,
       location: {
-        lat: 16.4023, // Default to Baguio coordinates
-        lng: 120.5960,
+        lat,
+        lng: lon,
       },
       images: [(activity.image as {src: string}).src], // Use the activity image
       amenities: [
