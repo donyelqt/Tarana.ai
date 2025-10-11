@@ -37,6 +37,10 @@ const MapView = ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     map: any
   } | null>(null)
+  const markerInstanceRef = useRef<{
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    marker: any
+  } | null>(null)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const windowResizeHandlerRef = useRef<(() => void) | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
@@ -73,6 +77,33 @@ const MapView = ({
   // Toggle fullscreen mode for mobile
   const toggleFullscreen = useCallback(() => {
     setIsFullscreen(prev => !prev)
+  }, [])
+
+  const buildMarkerElement = useCallback(() => {
+    if (typeof document === "undefined") return null
+
+    const wrapper = document.createElement("div")
+    wrapper.className = "group relative flex h-14 w-14 items-center justify-center transition-all duration-500 ease-out hover:scale-110 active:scale-95 cursor-pointer"
+    wrapper.style.filter = "drop-shadow(0 20px 40px rgba(59, 130, 246, 0.35))"
+
+    const halo = document.createElement("span")
+    halo.className = "absolute inset-[-20px] rounded-full bg-gradient-to-br from-blue-400/30 to-indigo-400/20 blur-3xl animate-pulse"
+    wrapper.appendChild(halo)
+
+    const outerRing = document.createElement("span")
+    outerRing.className = "absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 opacity-90"
+    wrapper.appendChild(outerRing)
+
+    const core = document.createElement("span")
+    core.className = "relative flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[inset_0_2px_8px_rgba(0,0,0,0.1)] transition-transform duration-300 group-hover:scale-105"
+    wrapper.appendChild(core)
+
+    const icon = document.createElement("span")
+    icon.className = "relative h-6 w-6 transition-colors duration-300"
+    icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="text-blue-600 transition-all duration-300 group-hover:text-indigo-600"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" /></svg>`
+    core.appendChild(icon)
+
+    return wrapper
   }, [])
 
   // Close fullscreen on escape key
@@ -117,6 +148,14 @@ const MapView = ({
         }
       }
       mapInstanceRef.current = null
+      if (markerInstanceRef.current?.marker) {
+        try {
+          markerInstanceRef.current.marker.remove()
+        } catch (markerCleanupError) {
+          console.warn("Failed to remove previous TomTom marker", markerCleanupError)
+        }
+      }
+      markerInstanceRef.current = null
       if (resizeObserverRef.current) {
         resizeObserverRef.current.disconnect()
         resizeObserverRef.current = null
@@ -154,11 +193,15 @@ const MapView = ({
             }
           })
         }
+        const markerElement = buildMarkerElement()
+        if (markerElement) {
+          const marker = new window.tt.Marker({ element: markerElement }).setLngLat([lng, lat]).addTo(map)
+          markerInstanceRef.current = { marker }
+        }
 
-        new window.tt.Marker().setLngLat([lng, lat]).addTo(map)
-        const popupContent = `<div class="tomtom-popup"><strong>${title}</strong><br/>${address}</div>`
+        const popupContent = `<div class="flex flex-col gap-2 rounded-2xl bg-white/95 px-5 py-4 text-left shadow-[0_20px_50px_rgba(0,0,0,0.12)] backdrop-blur-2xl border border-gray-100/50"><span class="text-[10px] font-semibold uppercase tracking-widest text-blue-600">Location</span><span class="text-base font-bold text-gray-900 leading-tight">${title}</span><span class="text-xs text-gray-500 leading-relaxed">${address}</span></div>`
         new window.tt
-          .Popup({ offset: 35 })
+          .Popup({ offset: 42, className: "tomtom-popup-modern" })
           .setLngLat([lng, lat])
           .setHTML(popupContent)
           .addTo(map)
@@ -205,6 +248,14 @@ const MapView = ({
         }
       }
       mapInstanceRef.current = null
+      if (markerInstanceRef.current?.marker) {
+        try {
+          markerInstanceRef.current.marker.remove()
+        } catch (markerRemovalError) {
+          console.warn("Failed to remove TomTom marker", markerRemovalError)
+        }
+      }
+      markerInstanceRef.current = null
       if (resizeObserverRef.current) {
         resizeObserverRef.current.disconnect()
         resizeObserverRef.current = null
@@ -225,72 +276,68 @@ const MapView = ({
   return (
     <>
       {/* Main Map Container */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-sm hover:shadow-md transition-shadow duration-300 border border-gray-100">
+      <div className="group relative mb-8 overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
         {/* Header - Mobile Optimized */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" 
-              />
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" 
-              />
-            </svg>
-            Location/Map
+        <div className="flex flex-col gap-4 px-6 pt-6 pb-5 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100/80">
+          <h2 className="flex items-center gap-3 text-lg font-bold tracking-tight text-gray-900 sm:text-xl">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-5 w-5 text-white" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" 
+                />
+              </svg>
+            </div>
+            <span>Location Map</span>
           </h2>
-          
+
           {/* Action Button - Mobile Optimized */}
           <Button
-            variant="outline"
-            className="w-full sm:w-auto px-3 py-2 text-sm text-blue-600 border-blue-600 hover:bg-blue-50 hover:border-blue-700 transition-all duration-200 font-medium"
+            variant="ghost"
+            className="w-full rounded-full border border-blue-500/40 bg-white/60 px-4 py-2 text-sm font-medium text-blue-600 shadow-[0_18px_35px_-20px_rgba(59,130,246,0.85)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white sm:w-auto"
             onClick={handleOpenInTomTom}
             disabled={!!error}
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-4 w-4 sm:mr-2" 
-              fill="none" 
-              viewBox="0 0 24 24" 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 sm:mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
               />
             </svg>
-            <span className="hidden sm:inline">View in TomTom</span>
+            <span className="hidden sm:inline">Open in TomTom</span>
             <span className="sm:hidden">Open</span>
           </Button>
         </div>
-        
+
         {/* Error State - Enhanced Mobile UI */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 p-3 sm:p-4 rounded-xl mb-4 flex items-start gap-3 animate-in fade-in duration-300">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-5 w-5 flex-shrink-0 mt-0.5" 
-              viewBox="0 0 20 20" 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 flex-shrink-0 mt-0.5"
+              viewBox="0 0 20 20"
               fill="currentColor"
             >
-              <path 
-                fillRule="evenodd" 
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" 
-                clipRule="evenodd" 
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
               />
             </svg>
             <div className="flex-1">
@@ -298,36 +345,48 @@ const MapView = ({
             </div>
           </div>
         )}
-        
+
         {/* Map Container - Responsive with Touch Optimization */}
-        <div className="relative rounded-xl sm:rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden shadow-inner">
+        <div className="relative mx-3 mt-2 mb-6 overflow-hidden rounded-[26px] border border-slate-200/30 bg-gradient-to-br from-slate-100/70 via-white/60 to-slate-100/30">
           <div
             ref={mapRef}
-            className="w-full transition-all duration-500 ease-out touch-pan-x touch-pan-y"
-            style={{ 
+            className="w-full touch-pan-x touch-pan-y transition-all duration-700 ease-out"
+            style={{
               height: `${mapHeight}px`,
               opacity: isLoaded && !error ? 1 : 0,
-              transform: isLoaded && !error ? 'scale(1)' : 'scale(0.98)'
+              transform: isLoaded && !error ? 'scale(1)' : 'scale(0.98)',
             }}
           />
-          
+
           {/* Loading State - Enhanced Animation */}
           {!isLoaded && !error && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-blue-50 to-indigo-50 backdrop-blur-sm">
-              <div className="relative">
-                <div className="animate-spin rounded-full h-12 w-12 border-3 border-blue-200 border-t-blue-600 shadow-lg"></div>
-                <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-2 border-blue-400 opacity-20"></div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-gradient-to-br from-white/80 via-blue-50/70 to-white/60 backdrop-blur-xl">
+              <div className="flex w-40 flex-col gap-3">
+                <div className="h-3 rounded-full bg-gradient-to-r from-blue-200/70 via-blue-100/40 to-transparent animate-[pulse_1.6s_infinite]" />
+                <div className="h-3 w-3/4 rounded-full bg-gradient-to-r from-blue-200/70 via-blue-100/40 to-transparent animate-[pulse_1.6s_infinite] delay-150" />
+                <div className="h-3 w-2/3 rounded-full bg-gradient-to-r from-blue-200/70 via-blue-100/40 to-transparent animate-[pulse_1.6s_infinite] delay-300" />
               </div>
-              <p className="text-sm font-medium text-gray-600 animate-pulse">Loading map...</p>
+              <p className="text-xs uppercase tracking-[0.35em] text-slate-500/80">Initializing map</p>
             </div>
           )}
-          
+
           {/* Map Controls Hint - Mobile Only */}
           {isLoaded && !error && isMobile && (
-            <div className="absolute bottom-3 left-3 right-3 bg-white/90 backdrop-blur-md rounded-lg px-3 py-2 text-xs text-gray-600 shadow-lg border border-gray-200 animate-in slide-in-from-bottom duration-500">
+            <div className="absolute bottom-3 left-3 right-3 rounded-2xl border border-white/40 bg-white/70 px-3 py-2 text-xs text-gray-600 shadow-[0_16px_40px_-25px_rgba(15,23,42,0.55)] backdrop-blur-md animate-in slide-in-from-bottom duration-500">
               <p className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 text-blue-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"
+                  />
                 </svg>
                 <span className="font-medium">Pinch to zoom • Drag to pan</span>
               </p>
@@ -336,10 +395,10 @@ const MapView = ({
         </div>
         
         {/* Address - Enhanced Typography */}
-        <div className="mt-4 flex items-start gap-2 text-sm text-gray-600">
+        <div className="mx-6 mb-6 flex items-start gap-3 rounded-2xl border border-white/60 bg-white/70 px-4 py-3 text-sm text-slate-600 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.35)]">
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
-            className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" 
+            className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-400" 
             fill="none" 
             viewBox="0 0 24 24" 
             stroke="currentColor"
@@ -351,7 +410,7 @@ const MapView = ({
               d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" 
             />
           </svg>
-          <p className="leading-relaxed">{address}</p>
+          <p className="leading-relaxed text-slate-500">{address}</p>
         </div>
       </div>
 

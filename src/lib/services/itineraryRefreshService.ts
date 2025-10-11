@@ -97,7 +97,7 @@ export interface RefreshConfiguration {
 const DEFAULT_CONFIG: RefreshConfiguration = {
   temperatureThreshold: 5, // 5°C change triggers refresh
   congestionThreshold: 30, // 30% increase in congestion
-  enableAutoRefresh: true,
+  enableAutoRefresh: false, // Manual-only: disable proactive auto refresh
   evaluationIntervalHours: 6, // Check every 6 hours
   maxRefreshesPerDay: 4, // Max 4 refreshes per day
   weatherConditionPriority: [
