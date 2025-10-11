@@ -85,6 +85,14 @@ export async function POST(req: NextRequest) {
         if (!prompt) {
             return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
         }
+        
+        // ✅ CRITICAL: Check if this is a refresh request (bypass cache)
+        const isRefreshRequest = req.headers.get('x-refresh-request') === 'true' || 
+                                 req.headers.get('x-bypass-cache') === 'true';
+        
+        if (isRefreshRequest) {
+            console.log('🔄 REFRESH REQUEST DETECTED - Bypassing cache for fresh generation');
+        }
 
         // Handle health check endpoint
         if (req.nextUrl.searchParams.get('action') === 'health') {
@@ -100,9 +108,68 @@ export async function POST(req: NextRequest) {
 
         // Generate a stable cache key from the request body
         const hash = createHash('sha256').update(JSON.stringify(requestBody)).digest('hex');
+        
+        let responseData;
+        
+        // ✅ CACHE BYPASS: For refresh requests, skip cache and generate fresh
+        if (isRefreshRequest) {
+            console.log('⏩ Executing fresh generation (cache bypassed)');
+            const requestId = hash.substring(0, 8);
+            
+            // Generate fresh itinerary without cache
+            responseData = await ErrorHandler.withRetry(async () => {
+                const { prompt, weatherData, interests, duration, budget, pax } = requestBody;
 
-        // Call the cached function with a stable key
-        const responseData = await getCachedItinerary(requestBody, hash);
+                if (!geminiModel) {
+                    throw new ItineraryError(ErrorType.GENERATION, "Gemini model not available", false, requestId);
+                }
+
+                const durationDays = (() => {
+                    if (!duration) return null;
+                    const match = duration.toString().match(/\d+/);
+                    return match ? parseInt(match[0], 10) : null;
+                })();
+
+                const weatherId = weatherData?.weather?.[0]?.id || 0;
+                const temperature = weatherData?.main?.temp || 20;
+                const getWeatherType = (id: number, temp: number): WeatherCondition => {
+                    if (id >= 200 && id <= 232) return 'thunderstorm';
+                    if ((id >= 300 && id <= 321) || (id >= 500 && id <= 531)) return 'rainy';
+                    if (id >= 600 && id <= 622) return 'snow';
+                    if (id >= 701 && id <= 781) return 'foggy';
+                    if (id === 800) return 'clear';
+                    if (id >= 801 && id <= 804) return 'cloudy';
+                    if (temp < 15) return 'cold';
+                    return 'default';
+                };
+                const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
+
+                const effectiveSampleItinerary = await findAndScoreActivities(prompt, interests, weatherType, durationDays, geminiModel);
+                const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, interests, durationDays, budget, pax);
+                
+                const peakHoursContext = getPeakHoursContext();
+                const weatherContext = `Weather: ${weatherData?.weather?.[0]?.description || 'clear'}, ${weatherData?.main?.temp || 20}°C`;
+                const trafficContext = "Real-time traffic analysis integrated with peak hours filtering";
+                
+                console.log(`🛡️ REFRESH MODE: Using GuaranteedJsonEngine for request ${requestId}`);
+                const guaranteedItinerary = await GuaranteedJsonEngine.generateGuaranteedJson(
+                    detailedPrompt,
+                    effectiveSampleItinerary,
+                    weatherContext,
+                    peakHoursContext,
+                    `Duration: ${durationDays} days, Budget: ${budget}, Pax: ${pax}`,
+                    requestId
+                );
+                
+                const finalItinerary = await handleItineraryProcessing(guaranteedItinerary, prompt, durationDays, peakHoursContext);
+                return { text: JSON.stringify(finalItinerary) };
+            }, 3, 1000);
+            
+            console.log('✅ Fresh generation completed (refresh mode)');
+        } else {
+            // Normal flow: Use cached function
+            responseData = await getCachedItinerary(requestBody, hash);
+        }
 
         return NextResponse.json(responseData);
 
