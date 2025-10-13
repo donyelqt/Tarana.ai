@@ -63,80 +63,159 @@ const Reviews = ({
     currentPage * reviewsPerPage
   )
 
+  // Check if reviews are unavailable
+  const reviewsUnavailable = !reviews || reviews.length === 0
+
   return (
-    <div className="bg-white rounded-2xl p-6 mb-8 shadow border border-gray-100">
-      {/* Rating Overview */}
-      <div className="flex flex-col md:flex-row gap-6 mb-8 pb-8 border-b border-gray-200">
-        <div className="flex flex-col items-center justify-center bg-blue-500 text-white p-4 rounded-lg w-24 h-24">
-          <span className="text-2xl font-bold">{overallRating.toFixed(1)}</span>
-          <span className="text-xs">Very good</span>
-          <span className="text-xs">{totalReviews} reviews</span>
+    <>
+      <style jsx>{`
+        @keyframes starGlow {
+          0%, 100% {
+            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6)) drop-shadow(0 0 16px rgba(59, 130, 246, 0.4));
+          }
+          50% {
+            filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.8)) drop-shadow(0 0 24px rgba(59, 130, 246, 0.6));
+          }
+        }
+      `}</style>
+      <div className="bg-white rounded-2xl p-6 mb-8 shadow border border-gray-100">
+      {/* Rating Overview - Only show when reviews are available */}
+      {!reviewsUnavailable && (
+        <div className="flex flex-col md:flex-row gap-6 mb-8 pb-8 border-b border-gray-200">
+          <div className="flex flex-col items-center justify-center bg-blue-500 text-white p-4 rounded-lg w-24 h-24">
+            <span className="text-2xl font-bold">{overallRating.toFixed(1)}</span>
+            <span className="text-xs">Very good</span>
+            <span className="text-xs">{totalReviews} reviews</span>
+          </div>
+          
+          <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+            {["Food", "Service", "Value", "Atmosphere"].map((category) => (
+              <div key={category} className="flex flex-col items-center">
+                <StarRating rating={4} />
+                <span className="text-xs text-gray-500 mt-1">{category}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        
-        <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
-          {["Food", "Service", "Value", "Atmosphere"].map((category) => (
-            <div key={category} className="flex flex-col items-center">
-              <StarRating rating={4} />
-              <span className="text-xs text-gray-500 mt-1">{category}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
       
-      {/* Amenities */}
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Amenities</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4">
-          {amenities.map((amenity, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <span className="text-lg">{amenity.icon}</span>
-              <span className="text-sm">{amenity.name}</span>
-            </div>
-          ))}
+      {/* Amenities - Only show when reviews are available */}
+      {!reviewsUnavailable && (
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold mb-4">Amenities</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4">
+            {amenities.map((amenity, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <span className="text-lg">{amenity.icon}</span>
+                <span className="text-sm">{amenity.name}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       
       {/* Reviews */}
       <div>
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-semibold">Reviews</h3>
-          <Button className="bg-blue-500 hover:bg-blue-600">
-            Write a review
-          </Button>
+          {!reviewsUnavailable && (
+            <Button className="bg-blue-500 hover:bg-blue-600">
+              Write a review
+            </Button>
+          )}
         </div>
         
-        <div className="space-y-6">
-          {paginatedReviews.map((review) => (
-            <div key={review.id} className="pb-6 border-b border-gray-100 last:border-0">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-                  <Image 
-                    src={review.avatar} 
-                    alt={review.author} 
-                    width={40} 
-                    height={40} 
-                    className="object-cover"
-                  />
-                </div>
-                
-                <div className="flex-1">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-2">
-                    <span className="font-semibold">{review.author}</span>
-                    <div className="flex items-center gap-2">
-                      <StarRating rating={review.rating} />
-                      <span className="text-xs text-gray-500">{review.date}</span>
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-gray-700">{review.content}</p>
+        {reviewsUnavailable ? (
+          /* Modern Empty State Placeholder */
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 border border-slate-200/60 px-8 py-16 text-center">
+            {/* Decorative Background Elements */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-400/5 rounded-full blur-3xl" />
+              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-400/5 rounded-full blur-3xl" />
+            </div>
+            
+            {/* Content */}
+            <div className="relative z-10 flex flex-col items-center justify-center space-y-6">
+              {/* Icon Container with Glassmorphic Effect */}
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-indigo-500/30 rounded-full blur-xl animate-pulse" />
+                <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_rgba(59,130,246,0.25)] border border-white/60">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-12 w-12 text-blue-500"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                    style={{
+                      filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6)) drop-shadow(0 0 16px rgba(59, 130, 246, 0.4))',
+                      animation: 'starGlow 2s ease-in-out infinite'
+                    }}
+                  >
+                    <path
+                      d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                    />
+                  </svg>
                 </div>
               </div>
+              
+              {/* Text Content */}
+              <div className="space-y-3 max-w-md">
+                <h3 className="text-2xl font-bold text-slate-800 tracking-tight">
+                  Reviews Unavailable
+                </h3>
+                <p className="text-base text-slate-600 leading-relaxed font-medium">
+                  We're working on gathering authentic reviews for this location
+                </p>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Check back soon for verified visitor experiences and ratings
+                </p>
+              </div>
+              
+              {/* Status Badge */}
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/80 backdrop-blur-sm px-6 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] border border-slate-200/60">
+                <div className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </div>
+                <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Coming Soon
+                </span>
+              </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {paginatedReviews.map((review) => (
+              <div key={review.id} className="pb-6 border-b border-gray-100 last:border-0">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                    <Image 
+                      src={review.avatar} 
+                      alt={review.author} 
+                      width={40} 
+                      height={40} 
+                      className="object-cover"
+                    />
+                  </div>
+                  
+                  <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-2">
+                      <span className="font-semibold">{review.author}</span>
+                      <div className="flex items-center gap-2">
+                        <StarRating rating={review.rating} />
+                        <span className="text-xs text-gray-500">{review.date}</span>
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-gray-700">{review.content}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         
         {/* Pagination */}
-        {totalPages > 1 && (
+        {!reviewsUnavailable && totalPages > 1 && (
           <div className="flex justify-center items-center gap-2 mt-6">
             <Button
               variant="outline"
@@ -166,6 +245,7 @@ const Reviews = ({
         )}
       </div>
     </div>
+    </>
   )
 }
 
