@@ -341,48 +341,7 @@ const SavedItineraryDetail = () => {
         { icon: "🚭", name: "Non-smoking sections" },
         { icon: "🌡️", name: "Air-conditioned" },
       ],
-      reviews: [
-        {
-          id: "1",
-          author: "J.J. Mendoza",
-          avatar: "/images/avatar-1.png",
-          rating: 5,
-          date: "2 months ago",
-          content: "I couldn't believe how delicious the food was! The service was impeccable and the ambiance was perfect for our family dinner. Will definitely come back again.",
-        },
-        {
-          id: "2",
-          author: "Maria Santos",
-          avatar: "/images/avatar-2.png",
-          rating: 4,
-          date: "3 months ago",
-          content: "Great place for authentic Filipino cuisine. The portions are generous and prices are reasonable. The only downside was the waiting time during peak hours.",
-        },
-        {
-          id: "3",
-          author: "David Chen",
-          avatar: "/images/avatar-3.png",
-          rating: 4,
-          date: "4 months ago",
-          content: "Visited during our trip to Baguio and was not disappointed. The food was fresh and flavorful. Would recommend trying their specialty dishes.",
-        },
-        {
-          id: "4",
-          author: "Sarah Johnson",
-          avatar: "/images/avatar-4.png",
-          rating: 5,
-          date: "5 months ago",
-          content: "One of the best dining experiences in Baguio! The staff was friendly and attentive. The food came quickly and exceeded our expectations.",
-        },
-        {
-          id: "5",
-          author: "Michael Lee",
-          avatar: "/images/avatar-5.png",
-          rating: 3,
-          date: "6 months ago",
-          content: "The food was good but the place was quite crowded. Had to wait for about 30 minutes to get a table. The prices are reasonable though.",
-        },
-      ],
+      reviews: [], // Empty array - reviews unavailable for saved itineraries
     }
   }
 
