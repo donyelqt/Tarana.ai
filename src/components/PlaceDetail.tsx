@@ -39,9 +39,9 @@ const PlaceDetail = ({ place }: PlaceDetailProps) => {
   const hasReviews = place.reviews && place.reviews.length > 0
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-0">
+    <div className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-0">
       {/* Header */}
-      <div className="group relative mb-6 sm:mb-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-4 sm:p-6">
+      <div className="group relative mb-4 sm:mb-6 lg:mb-8 overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-3 sm:p-4 lg:p-6">
         <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
           {/* Logo */}
           <div className="w-full md:w-1/3 flex justify-center items-center">
@@ -133,7 +133,7 @@ const PlaceDetail = ({ place }: PlaceDetailProps) => {
       </div>
       
       {/* Tabs */}
-      <div className="flex border-b border-gray-200/60 mb-4 sm:mb-6 bg-white/50 backdrop-blur-sm rounded-t-2xl overflow-x-auto scrollbar-hide touch-pan-x">
+      <div className="flex border-b border-gray-200/60 mb-4 sm:mb-6 bg-white/50 backdrop-blur-sm rounded-t-xl sm:rounded-t-2xl overflow-x-auto scrollbar-hide touch-pan-x -mx-2 px-2 sm:mx-0 sm:px-0">
         <button
           className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold text-xs sm:text-sm transition-all duration-300 touch-manipulation active:scale-95 ${activeTab === 'description' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50/50'}`}
           onClick={() => setActiveTab('description')}
@@ -156,7 +156,7 @@ const PlaceDetail = ({ place }: PlaceDetailProps) => {
       
       {/* Tab Content */}
       {activeTab === 'description' && (
-        <div className="group relative mb-6 sm:mb-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-4 sm:p-6">
+        <div className="group relative mb-4 sm:mb-6 lg:mb-8 overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-3 sm:p-4 lg:p-6">
           <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Description</h2>
           <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{place.description}</p>
         </div>

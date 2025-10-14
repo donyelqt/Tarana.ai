@@ -78,7 +78,7 @@ const Reviews = ({
           }
         }
       `}</style>
-      <div className="group relative mb-6 sm:mb-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-4 sm:p-6">
+      <div className="group relative mb-4 sm:mb-6 lg:mb-8 overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-3 sm:p-4 lg:p-6">
       {/* Rating Overview - Only show when reviews are available */}
       {!reviewsUnavailable && (
         <div className="flex flex-col md:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-gray-200">
