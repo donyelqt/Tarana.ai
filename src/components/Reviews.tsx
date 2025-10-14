@@ -78,21 +78,21 @@ const Reviews = ({
           }
         }
       `}</style>
-      <div className="group relative mb-8 overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-6">
+      <div className="group relative mb-6 sm:mb-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-4 sm:p-6">
       {/* Rating Overview - Only show when reviews are available */}
       {!reviewsUnavailable && (
-        <div className="flex flex-col md:flex-row gap-6 mb-8 pb-8 border-b border-gray-200">
-          <div className="flex flex-col items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-4 rounded-2xl w-24 h-24 shadow-lg shadow-blue-500/30">
-            <span className="text-2xl font-bold">{overallRating.toFixed(1)}</span>
+        <div className="flex flex-col md:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-gray-200">
+          <div className="flex flex-col items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-3 sm:p-4 rounded-2xl w-20 h-20 sm:w-24 sm:h-24 shadow-lg shadow-blue-500/30 mx-auto md:mx-0">
+            <span className="text-xl sm:text-2xl font-bold">{overallRating.toFixed(1)}</span>
             <span className="text-xs">Very good</span>
             <span className="text-xs">{totalReviews} reviews</span>
           </div>
           
-          <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {["Food", "Service", "Value", "Atmosphere"].map((category) => (
               <div key={category} className="flex flex-col items-center">
                 <StarRating rating={4} />
-                <span className="text-xs text-gray-500 mt-1">{category}</span>
+                <span className="text-[10px] sm:text-xs text-gray-500 mt-1">{category}</span>
               </div>
             ))}
           </div>
@@ -101,13 +101,13 @@ const Reviews = ({
       
       {/* Amenities - Only show when reviews are available */}
       {!reviewsUnavailable && (
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-4">Amenities</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4">
+        <div className="mb-6 sm:mb-8">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Amenities</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 sm:gap-y-4">
             {amenities.map((amenity, index) => (
               <div key={index} className="flex items-center gap-2">
                 <span className="text-lg">{amenity.icon}</span>
-                <span className="text-sm">{amenity.name}</span>
+                <span className="text-xs sm:text-sm">{amenity.name}</span>
               </div>
             ))}
           </div>
@@ -116,10 +116,10 @@ const Reviews = ({
       
       {/* Reviews */}
       <div>
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold">Reviews</h3>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
+          <h3 className="text-base sm:text-lg font-semibold">Reviews</h3>
           {!reviewsUnavailable && (
-            <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 rounded-xl">
+            <Button className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 active:scale-95 sm:hover:-translate-y-0.5 rounded-xl text-sm py-2.5 sm:py-2 touch-manipulation">
               Write a review
             </Button>
           )}
@@ -127,7 +127,7 @@ const Reviews = ({
         
         {reviewsUnavailable ? (
           /* Modern Empty State Placeholder */
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 border border-slate-200/60 px-8 py-16 text-center">
+          <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 border border-slate-200/60 px-4 sm:px-8 py-12 sm:py-16 text-center">
             {/* Decorative Background Elements */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
               <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-400/5 rounded-full blur-3xl" />
@@ -139,10 +139,10 @@ const Reviews = ({
               {/* Icon Container with Glassmorphic Effect */}
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-indigo-500/30 rounded-full blur-xl animate-pulse" />
-                <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_rgba(59,130,246,0.25)] border border-white/60">
+                <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_rgba(59,130,246,0.25)] border border-white/60">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-12 w-12 text-blue-500"
+                    className="h-10 w-10 sm:h-12 sm:w-12 text-blue-500"
                     fill="currentColor"
                     viewBox="0 0 24 24"
                     style={{
@@ -158,11 +158,11 @@ const Reviews = ({
               </div>
               
               {/* Text Content */}
-              <div className="space-y-3 max-w-md">
-                <h3 className="text-2xl font-bold text-slate-800 tracking-tight">
+              <div className="space-y-2 sm:space-y-3 max-w-md px-2">
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
                   Reviews Unavailable
                 </h3>
-                <p className="text-base text-slate-600 leading-relaxed font-medium">
+                <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
                   We're working on gathering authentic reviews for this location
                 </p>
                 <p className="text-sm text-slate-500 leading-relaxed">
@@ -183,15 +183,15 @@ const Reviews = ({
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {paginatedReviews.map((review) => (
-              <div key={review.id} className="pb-6 border-b border-gray-200/60 last:border-0 transition-all duration-200 hover:bg-gray-50/50 rounded-xl px-2">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 border-2 border-white shadow-sm">
+              <div key={review.id} className="pb-4 sm:pb-6 border-b border-gray-200/60 last:border-0 transition-all duration-200 hover:bg-gray-50/50 rounded-xl px-1 sm:px-2">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 border-2 border-white shadow-sm">
                     <Image 
                       src={review.avatar} 
                       alt={review.author} 
-                      width={40} 
+                      width={40}
                       height={40} 
                       className="object-cover"
                     />
@@ -206,7 +206,7 @@ const Reviews = ({
                       </div>
                     </div>
                     
-                    <p className="text-sm text-gray-700">{review.content}</p>
+                    <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">{review.content}</p>
                   </div>
                 </div>
               </div>
@@ -216,10 +216,10 @@ const Reviews = ({
         
         {/* Pagination */}
         {!reviewsUnavailable && totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-6">
+          <div className="flex justify-center items-center gap-2 mt-4 sm:mt-6">
             <Button
               variant="outline"
-              className="rounded-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50"
+              className="rounded-xl transition-all duration-300 active:scale-95 sm:hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 touch-manipulation min-w-[40px] sm:min-w-[44px]"
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
             >
@@ -228,13 +228,13 @@ const Reviews = ({
               </svg>
             </Button>
             
-            <span className="text-sm">
+            <span className="text-xs sm:text-sm px-2">
               {currentPage} of {totalPages}
             </span>
             
             <Button
               variant="outline"
-              className="rounded-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50"
+              className="rounded-xl transition-all duration-300 active:scale-95 sm:hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 touch-manipulation min-w-[40px] sm:min-w-[44px]"
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
             >
