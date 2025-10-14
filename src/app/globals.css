@@ -309,3 +309,16 @@ body {
     box-shadow: 0 0 16px rgba(248, 113, 113, 0.6), 0 0 24px rgba(248, 113, 113, 0.3);
   }
 }
+
+/* Traffic glow utility classes */
+.animate-glow-green {
+  animation: glow-green 2s ease-in-out infinite;
+}
+
+.animate-glow-yellow {
+  animation: glow-yellow 2s ease-in-out infinite;
+}
+
+.animate-glow-red {
+  animation: glow-red 2s ease-in-out infinite;
+}

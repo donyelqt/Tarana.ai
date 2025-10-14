@@ -5,15 +5,9 @@ import { Button } from "@/components/ui/button"
 import { MapPin, Clock, TrafficCone } from "lucide-react"
 
 const trafficStyles: { [key: string]: string } = {
-  Low: "border-green-300 bg-green-50 text-green-600",
-  Moderate: "border-yellow-300 bg-yellow-50 text-yellow-600",
-  High: "border-red-300 bg-red-50 text-red-600",
-}
-
-const trafficAnimations: { [key: string]: string } = {
-  Low: "glow-green 2s ease-in-out infinite",
-  Moderate: "glow-yellow 2s ease-in-out infinite",
-  High: "glow-red 2s ease-in-out infinite",
+  Low: "border-green-300 bg-green-50 text-green-600 animate-glow-green",
+  Moderate: "border-yellow-300 bg-yellow-50 text-yellow-600 animate-glow-yellow",
+  High: "border-red-300 bg-red-50 text-red-600 animate-glow-red",
 }
 
 interface SpotlightCardProps {
@@ -44,9 +38,6 @@ const SpotlightCard = ({ name, image, distance, time, traffic, ctaText }: Spotli
       </div>
       <div
         className={`text-sm font-medium px-3 py-1 rounded-lg self-start mb-4 border flex items-center transition-all duration-300 hover:scale-105 ${trafficStyles[traffic]}`}
-        style={{
-          animation: trafficAnimations[traffic]
-        }}
       >
         <TrafficCone size={14} className="mr-2" />
         {traffic} Traffic
