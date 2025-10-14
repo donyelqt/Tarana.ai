@@ -281,3 +281,22 @@ body {
 .animate-fade-in-out {
   animation: fadeInOut 2.5s infinite ease-in-out;
 }
+
+/* Traffic tag glow animations */
+@keyframes glow-green {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(74, 222, 128, 0.4), 0 0 12px rgba(74, 222, 128, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(74, 222, 128, 0.6), 0 0 24px rgba(74, 222, 128, 0.3);
+  }
+}
+
+@keyframes glow-yellow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.4), 0 0 12px rgba(251, 191, 36, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.6), 0 0 24px rgba(251, 191, 36, 0.3);
+  }
+}

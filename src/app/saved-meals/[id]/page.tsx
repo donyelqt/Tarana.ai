@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Clock, Trash2, Coffee, MapPin, User, Utensils, Croissant, Wine } from 'lucide-react';
+import { Clock, Trash2, Coffee, MapPin, User, Utensils, Croissant, Wine, Map, Star } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { useParams, useRouter } from 'next/navigation';
 import { savedMeals } from '../data';
@@ -273,6 +273,27 @@ const SavedMealPage = () => {
                   <p className="text-gray-700 italic">"{mealDetails.reason}"</p>
                 </div>
               )}
+              
+              {/* Action Buttons with Glowing Effect */}
+              <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                <Button 
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/50 active:scale-95 sm:hover:-translate-y-0.5 rounded-xl py-2.5 sm:py-2 text-sm font-medium touch-manipulation relative overflow-hidden group"
+                  onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mealDetails.location)}`, '_blank')}
+                >
+                  <span className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></span>
+                  <Map className="w-4 h-4 mr-2" />
+                  View on Map
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex-1 border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50 hover:from-yellow-100 hover:to-amber-100 text-yellow-700 hover:text-yellow-800 transition-all duration-300 hover:border-yellow-500 active:scale-95 sm:hover:-translate-y-0.5 rounded-xl shadow-sm hover:shadow-md hover:shadow-yellow-400/30 py-2.5 sm:py-2 text-sm font-medium touch-manipulation relative overflow-hidden group"
+                  onClick={() => toast({ title: "Reviews", description: "Reviews feature coming soon!", variant: "default" })}
+                >
+                  <span className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-amber-300 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></span>
+                  <Star className="w-4 h-4 mr-2" />
+                  Reviews
+                </Button>
+              </div>
             </div>
           </div>
           <div className="w-full h-64 xl:h-auto rounded-3xl overflow-hidden relative shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60">

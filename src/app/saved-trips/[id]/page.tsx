@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Sidebar from "../../../components/Sidebar"
 import { Button } from "@/components/ui/button"
-import { Calendar, Users, Wallet, Mountain, Utensils, Palette, ShoppingBag, Compass } from "lucide-react"
+import { Calendar, Users, Wallet, Mountain, Utensils, Palette, ShoppingBag, Compass, TrafficCone } from "lucide-react"
 import {
   getSavedItineraries,
   SavedItinerary,
@@ -512,80 +512,113 @@ const SavedItineraryDetail = () => {
                                 {activity.title}
                               </span>
                             </div>
-                            <div className="text-gray-700 text-sm mb-2">
-                              {activity.desc}
-                            </div>
-                            <div className="flex flex-wrap gap-2 mb-2">
-                              {(activity.tags || []).map(
+                            <p className="text-gray-600 text-sm leading-relaxed">{activity.desc}</p>
+                            
+                            {/* Tags - Non-traffic tags only */}
+                            <div className="flex flex-wrap gap-2">
+                              {activity.tags.slice(0, 4).filter((tag) => {
+                                // Filter out traffic tags from main display
+                                return tag !== 'low-traffic' && tag !== 'moderate-traffic';
+                              }).map(
                                 (tag, i) => {
-                                  // ✅ CRITICAL: Special styling for traffic tags
-                                  const isLowTraffic = tag === 'low-traffic';
-                                  const isModerateTraffic = tag === 'moderate-traffic';
-                                  const isTrafficTag = isLowTraffic || isModerateTraffic;
-
                                   return (
                                     <span
                                       key={i}
-                                      className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                                        isLowTraffic
-                                          ? 'bg-green-100 text-green-700 border border-green-300'
-                                          : isModerateTraffic
-                                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
-                                          : 'bg-gray-100 text-gray-600'
-                                      }`}
+                                      className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
                                     >
-                                      {isLowTraffic && <span>🟢</span>}
-                                      {isModerateTraffic && <span>🟡</span>}
-                                      {!isTrafficTag && <span className="text-blue-500">{interestIcons[tag] || null}</span>}
+                                      <span className="text-blue-500">{interestIcons[tag] || null}</span>
                                       {tag}
                                     </span>
                                   );
                                 }
                               )}
                             </div>
-                            <div className="flex items-center justify-end mt-auto gap-6">
-                              <a
-                                href="#"
-                                className="flex items-center gap-1 text-yellow-500 text-sm font-medium hover:underline"
-                                onClick={(e) => handleViewReviews(activity, e)}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                  className="w-4 h-4"
+                            
+                            {/* Bottom row: Traffic tags on left, action buttons on right */}
+                            <div className="flex items-center justify-between mt-auto gap-3 flex-wrap">
+                              {/* Traffic Tags - Left Side */}
+                              <div className="flex items-center gap-2">
+                                {activity.tags.map((tag, i) => {
+                                  const isLowTraffic = tag === 'low-traffic';
+                                  const isModerateTraffic = tag === 'moderate-traffic';
+                                  const isTrafficTag = isLowTraffic || isModerateTraffic;
+                                  
+                                  if (!isTrafficTag) return null;
+                                  
+                                  // Format traffic text (e.g., "low-traffic" -> "Low Traffic")
+                                  const trafficText = tag
+                                    .split('-')
+                                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                    .join(' ');
+                                  
+                                  return (
+                                    <span
+                                      key={i}
+                                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-300 hover:scale-105 ${
+                                        isLowTraffic
+                                          ? 'bg-green-100 text-green-700 border-green-300'
+                                          : 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                                      }`}
+                                      style={{
+                                        animation: isLowTraffic 
+                                          ? 'glow-green 2s ease-in-out infinite' 
+                                          : 'glow-yellow 2s ease-in-out infinite'
+                                      }}
+                                    >
+                                      <TrafficCone size={12} />
+                                      {trafficText}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                              
+                              {/* Action Buttons - Right Side */}
+                              <div className="flex items-center gap-3">
+                                <a
+                                  href="#"
+                                  className="relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-300 overflow-hidden group border border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50 hover:from-yellow-100 hover:to-amber-100 text-yellow-700 hover:text-yellow-800 hover:border-yellow-500 shadow-sm hover:shadow-md hover:shadow-yellow-400/30 active:scale-95 sm:hover:-translate-y-0.5 touch-manipulation"
+                                  onClick={(e) => handleViewReviews(activity, e)}
                                 >
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z" />
-                                </svg>
-                                Reviews
-                              </a>
-                              <a
-                                href="#"
-                                className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:underline"
-                                onClick={(e) => handleViewOnMap(activity, e)}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  className="w-4 h-4"
+                                  <span className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-amber-300 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></span>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                    className="w-3.5 h-3.5 relative z-10"
+                                  >
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.05 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z" />
+                                  </svg>
+                                  <span className="relative z-10">Reviews</span>
+                                </a>
+                                <a
+                                  href="#"
+                                  className="relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-300 overflow-hidden group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/50 active:scale-95 sm:hover:-translate-y-0.5 touch-manipulation"
+                                  onClick={(e) => handleViewOnMap(activity, e)}
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"
-                                  />
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                  />
-                                </svg>
-                                View on Map
-                              </a>
+                                  <span className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></span>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    className="w-3.5 h-3.5 relative z-10"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                  </svg>
+                                  <span className="relative z-10">View on Map</span>
+                                </a>
+                              </div>
                             </div>
                           </div>
                         </div>
