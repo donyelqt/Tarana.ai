@@ -322,9 +322,9 @@ const MapView = ({
         }
       `}</style>
       {/* Main Map Container */}
-      <div className="group relative mb-8 overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
+      <div className="group relative mb-4 sm:mb-6 lg:mb-8 overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
         {/* Header - Mobile Optimized */}
-        <div className="flex flex-col gap-4 px-6 pt-6 pb-5 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100/80">
+        <div className="flex flex-col gap-3 sm:gap-4 px-3 sm:px-4 lg:px-6 pt-4 sm:pt-5 lg:pt-6 pb-3 sm:pb-4 lg:pb-5 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100/80">
           <h2 className="flex items-center gap-3 text-lg font-bold tracking-tight text-gray-900 sm:text-xl">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
               <svg 
@@ -393,7 +393,7 @@ const MapView = ({
         )}
 
         {/* Map Container - Responsive with Touch Optimization */}
-        <div className="relative mx-3 mt-2 mb-6 overflow-hidden rounded-[26px] border border-slate-200/30 bg-gradient-to-br from-slate-100/70 via-white/60 to-slate-100/30">
+        <div className="relative mx-2 sm:mx-3 mt-2 mb-4 sm:mb-6 overflow-hidden rounded-[20px] sm:rounded-[26px] border border-slate-200/30 bg-gradient-to-br from-slate-100/70 via-white/60 to-slate-100/30">
           <div
             ref={mapRef}
             className="w-full touch-pan-x touch-pan-y transition-all duration-700 ease-out"
@@ -441,7 +441,7 @@ const MapView = ({
         </div>
         
         {/* Address - Enhanced Typography */}
-        <div className="mx-6 mb-6 flex items-start gap-3 rounded-2xl border border-white/60 bg-white/70 px-4 py-3 text-sm text-slate-600 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.35)]">
+        <div className="mx-2 sm:mx-3 lg:mx-6 mb-3 sm:mb-4 lg:mb-6 flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-600 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.35)]">
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
             className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-400" 
