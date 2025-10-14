@@ -556,14 +556,9 @@ const SavedItineraryDetail = () => {
                                       key={i}
                                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-300 hover:scale-105 ${
                                         isLowTraffic
-                                          ? 'bg-green-100 text-green-700 border-green-300'
-                                          : 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                                          ? 'bg-green-100 text-green-700 border-green-300 animate-glow-green'
+                                          : 'bg-yellow-100 text-yellow-700 border-yellow-300 animate-glow-yellow'
                                       }`}
-                                      style={{
-                                        animation: isLowTraffic 
-                                          ? 'glow-green 2s ease-in-out infinite' 
-                                          : 'glow-yellow 2s ease-in-out infinite'
-                                      }}
                                     >
                                       <TrafficCone size={12} />
                                       {trafficText}
