@@ -10,6 +10,12 @@ const trafficStyles: { [key: string]: string } = {
   High: "border-red-300 bg-red-50 text-red-600",
 }
 
+const trafficAnimations: { [key: string]: string } = {
+  Low: "glow-green 2s ease-in-out infinite",
+  Moderate: "glow-yellow 2s ease-in-out infinite",
+  High: "glow-red 2s ease-in-out infinite",
+}
+
 interface SpotlightCardProps {
   name: string;
   image: string;
@@ -37,7 +43,11 @@ const SpotlightCard = ({ name, image, distance, time, traffic, ctaText }: Spotli
         </div>
       </div>
       <div
-        className={`text-sm font-medium px-3 py-1 rounded-lg self-start mb-4 border flex items-center ${trafficStyles[traffic]}`}>
+        className={`text-sm font-medium px-3 py-1 rounded-lg self-start mb-4 border flex items-center transition-all duration-300 hover:scale-105 ${trafficStyles[traffic]}`}
+        style={{
+          animation: trafficAnimations[traffic]
+        }}
+      >
         <TrafficCone size={14} className="mr-2" />
         {traffic} Traffic
       </div>
