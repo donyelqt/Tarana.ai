@@ -275,6 +275,52 @@ const MapView = ({
 
   return (
     <>
+      {/* Custom Popup Close Button Styling */}
+      <style jsx global>{`
+        .tomtom-popup-modern .mapboxgl-popup-close-button {
+          width: 26px;
+          height: 26px;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+          border: 1.5px solid #e2e8f0;
+          border-radius: 8px;
+          color: #64748b;
+          font-size: 16px;
+          font-weight: 600;
+          line-height: 1 !important;
+          padding: 0 !important;
+          margin: 6px 6px 0 0;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+          text-align: center !important;
+          vertical-align: middle !important;
+        }
+        
+        .tomtom-popup-modern .mapboxgl-popup-close-button:hover {
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          border-color: #dc2626;
+          color: #ffffff;
+          transform: scale(1.05) rotate(90deg);
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+        
+        .tomtom-popup-modern .mapboxgl-popup-close-button:active {
+          transform: scale(0.95) rotate(90deg);
+          box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);
+        }
+        
+        .tomtom-popup-modern .mapboxgl-popup-content {
+          padding: 0;
+          border-radius: 16px;
+        }
+        
+        .tomtom-popup-modern .mapboxgl-popup-tip {
+          border-top-color: rgba(255, 255, 255, 0.95);
+        }
+      `}</style>
       {/* Main Map Container */}
       <div className="group relative mb-8 overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
         {/* Header - Mobile Optimized */}
@@ -296,7 +342,7 @@ const MapView = ({
                 />
               </svg>
             </div>
-            <span>Location Map</span>
+            <span>Map Overview</span>
           </h2>
 
           {/* Action Button - Mobile Optimized */}

@@ -246,7 +246,7 @@ const SavedMealPage = () => {
         
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
           <div className="xl:col-span-2 flex flex-col gap-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-6">
+            <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 flex items-center gap-6 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
               <div className="w-24 h-24 rounded-full bg-[#7d5a44] flex-shrink-0 flex items-center justify-center text-white text-center font-bold text-lg leading-tight">
                 {mealDetails.cafeName?.substring(0, 2)}
               </div>
@@ -262,7 +262,7 @@ const SavedMealPage = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
               <h2 className="text-xl font-bold text-gray-800 mb-2">About</h2>
               <p className="text-gray-600 text-base leading-relaxed">{mealDetails.about}</p>
               
@@ -275,18 +275,18 @@ const SavedMealPage = () => {
               )}
             </div>
           </div>
-          <div className="w-full h-64 xl:h-auto rounded-2xl overflow-hidden relative">
+          <div className="w-full h-64 xl:h-auto rounded-3xl overflow-hidden relative shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60">
                         <Image src={mealDetails.image} alt={mealDetails.name || 'Meal Image'} fill className="object-cover" />
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
+        <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 mb-8 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Saved Meals</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Custom Meal 1 - Combined tarana-eats meals */}
             {mealDetails.savedMeals && mealDetails.savedMeals.length > 0 && (
               <div 
-                className={`bg-white rounded-xl p-6 border w-full ${
+                className={`bg-white rounded-2xl p-6 border w-full shadow-md transition-all duration-300 hover:shadow-lg ${
                   selectedMealId === 'custom-meal-1' 
                     ? 'border-blue-500 ring-2 ring-blue-200' 
                     : 'border-gray-200'
@@ -330,10 +330,10 @@ const SavedMealPage = () => {
                       goodFor: mealDetails.savedMeals.reduce((sum: number, meal: any) => 
                         Math.max(sum, meal.goodFor || 1), 1)
                     })}
-                    className={`flex-1 py-3 h-auto rounded-lg ${
+                    className={`flex-1 py-3 h-auto rounded-xl transition-all duration-300 hover:-translate-y-0.5 ${
                       selectedMealId === 'custom-meal-1' 
-                        ? 'bg-green-600 hover:bg-green-700 text-white font-semibold'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white font-semibold'
+                        ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold shadow-lg shadow-green-500/30'
+                        : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold shadow-lg shadow-blue-500/30'
                     }`}
                   >
                     {selectedMealId === 'custom-meal-1' ? 'Selected Meal' : 'View Meal Card'}
@@ -341,7 +341,7 @@ const SavedMealPage = () => {
                   <Button 
                     onClick={handleDeleteMeal}
                     variant="outline" 
-                    className="py-3 h-auto rounded-lg border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 font-semibold px-4"
+                    className="py-3 h-auto rounded-xl border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 font-semibold px-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
                   >
                     <Trash2 size={18} />
                   </Button>
@@ -361,7 +361,7 @@ const SavedMealPage = () => {
                 return (
                   <div 
                     key={individualMeal.id} 
-                    className={`bg-white rounded-xl p-6 border w-full ${
+                    className={`bg-white rounded-2xl p-6 border w-full shadow-md transition-all duration-300 hover:shadow-lg ${
                       isSelected 
                         ? 'border-blue-500 ring-2 ring-blue-200' 
                         : 'border-gray-200'
@@ -391,10 +391,10 @@ const SavedMealPage = () => {
                     <div className="flex items-center gap-3 mt-4">
                       <Button 
                         onClick={() => handleShowMealCard(individualMeal)}
-                        className={`flex-1 py-3 h-auto rounded-lg ${
-                          isSelected 
-                            ? 'bg-green-600 hover:bg-green-700 text-white font-semibold'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white font-semibold'
+                        className={`flex-1 py-3 h-auto rounded-xl transition-all duration-300 hover:-translate-y-0.5 ${
+                            isSelected 
+                            ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold shadow-lg shadow-green-500/30'
+                            : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold shadow-lg shadow-blue-500/30'
                         }`}
                       >
                         {isSelected ? 'Selected Meal' : 'View Meal Card'}
@@ -402,7 +402,7 @@ const SavedMealPage = () => {
                       <Button 
                         onClick={() => handleDeleteIndividualMeal(individualMeal.id)}
                         variant="outline" 
-                        className="py-3 h-auto rounded-lg border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 font-semibold px-4"
+                        className="py-3 h-auto rounded-xl border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 font-semibold px-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
                       >
                         <Trash2 size={18} />
                       </Button>
@@ -415,7 +415,7 @@ const SavedMealPage = () => {
         </div>
 
         {/* Full Menu Section - Always displayed */}
-        <div className="bg-white rounded-2xl py-4 px-6 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-3xl py-4 px-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
           <div className="flex justify-between items-center flex-wrap gap-4">
             <h2 className="text-2xl font-bold text-gray-900">Full Menu</h2>
             <div className="flex items-center gap-4 flex-wrap">
@@ -424,7 +424,7 @@ const SavedMealPage = () => {
                   key={type}
                   variant={activeMenu === type ? "default" : "outline"}
                   onClick={() => setActiveMenu(type)}
-                  className={`rounded-lg px-6 py-2 text-base font-medium transition-all duration-200 ${
+                  className={`rounded-xl px-6 py-2 text-base font-medium transition-all duration-300 hover:-translate-y-0.5 ${
                     activeMenu === type 
                     ? 'bg-blue-600 text-white border-blue-600' 
                     : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100 hover:text-gray-700'
@@ -438,11 +438,11 @@ const SavedMealPage = () => {
           </div>
         </div>
         
-        <div className="mt-6 rounded-2xl">
+        <div className="mt-6 rounded-3xl">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredMenuItems.length > 0 ? (
               filteredMenuItems.map((item: any, idx: number) => (
-                <div key={idx} className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col">
+                <div key={idx} className="bg-white rounded-3xl border border-gray-200/60 overflow-hidden flex flex-col shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
                   <div className="relative w-full h-56">
                     <Image 
                       src={item.image} 
@@ -468,7 +468,7 @@ const SavedMealPage = () => {
                     </div>
                     <Button 
                       onClick={() => handleSaveIndividualMeal(item)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 h-auto rounded-lg mt-auto"
+                      className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 h-auto rounded-xl mt-auto shadow-lg shadow-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
                     >
                       Save to My Meals
                     </Button>
