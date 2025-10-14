@@ -32,10 +32,11 @@ interface PlaceDetailProps {
       content: string
     }>
   }
+  initialTab?: 'description' | 'map' | 'reviews'
 }
 
-const PlaceDetail = ({ place }: PlaceDetailProps) => {
-  const [activeTab, setActiveTab] = useState<'description' | 'map' | 'reviews'>('description')
+const PlaceDetail = ({ place, initialTab = 'description' }: PlaceDetailProps) => {
+  const [activeTab, setActiveTab] = useState<'description' | 'map' | 'reviews'>(initialTab)
   const hasReviews = place.reviews && place.reviews.length > 0
 
   return (

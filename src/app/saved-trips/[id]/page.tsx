@@ -43,6 +43,7 @@ const SavedItineraryDetail = () => {
   const [showChangeSummary, setShowChangeSummary] = useState(false)
   const [changeSummary, setChangeSummary] = useState<string>('')
   const [refreshEvaluation, setRefreshEvaluation] = useState<any>(null)
+  const [initialTab, setInitialTab] = useState<'description' | 'map' | 'reviews'>('reviews')
   const { toast } = useToast()
   const modernToast = useModernToast()
   // Load the Puter SDK once
@@ -63,14 +64,17 @@ const SavedItineraryDetail = () => {
   const handleViewOnMap = (activity: ItineraryActivity, e: React.MouseEvent) => {
     e.preventDefault()
     setSelectedActivity(activity)
+    setInitialTab('map')
     setShowDetailModal(true)
   }
 
   const handleViewReviews = (activity: ItineraryActivity, e: React.MouseEvent) => {
     e.preventDefault()
     setSelectedActivity(activity)
+    setInitialTab('reviews')
     setShowDetailModal(true)
   }
+
 
   const getActivityImageSrc = (activity: ItineraryActivity): string => {
     const tags = Array.isArray(activity.tags) ? activity.tags : []
@@ -365,6 +369,7 @@ const SavedItineraryDetail = () => {
     }
   }
 
+  // Render Main View
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
       <Sidebar />
@@ -568,10 +573,11 @@ const SavedItineraryDetail = () => {
                               </div>
                               
                               {/* Action Buttons - Right Side */}
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {/* Reviews Button */}
                                 <a
                                   href="#"
-                                  className="relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-300 overflow-hidden group border border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50 hover:from-yellow-100 hover:to-amber-100 text-yellow-700 hover:text-yellow-800 hover:border-yellow-500 shadow-sm hover:shadow-md hover:shadow-yellow-400/30 active:scale-95 sm:hover:-translate-y-0.5 touch-manipulation"
+                                  className="relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 overflow-hidden group border border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50 hover:from-yellow-100 hover:to-amber-100 text-yellow-700 hover:text-yellow-800 hover:border-yellow-500 shadow-sm hover:shadow-md hover:shadow-yellow-400/30 active:scale-95 sm:hover:-translate-y-0.5 touch-manipulation"
                                   onClick={(e) => handleViewReviews(activity, e)}
                                 >
                                   <span className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-amber-300 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></span>
@@ -585,9 +591,10 @@ const SavedItineraryDetail = () => {
                                   </svg>
                                   <span className="relative z-10">Reviews</span>
                                 </a>
+                                {/* Map Button */}
                                 <a
                                   href="#"
-                                  className="relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-300 overflow-hidden group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/50 active:scale-95 sm:hover:-translate-y-0.5 touch-manipulation"
+                                  className="relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 overflow-hidden group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/50 active:scale-95 sm:hover:-translate-y-0.5 touch-manipulation"
                                   onClick={(e) => handleViewOnMap(activity, e)}
                                 >
                                   <span className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></span>
@@ -611,7 +618,7 @@ const SavedItineraryDetail = () => {
                                       d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                                     />
                                   </svg>
-                                  <span className="relative z-10">View on Map</span>
+                                  <span className="relative z-10">Map</span>
                                 </a>
                               </div>
                             </div>
@@ -643,7 +650,8 @@ const SavedItineraryDetail = () => {
             </div>
             <div className="p-6">
               <PlaceDetail 
-                place={transformActivityToPlace(selectedActivity)} 
+                place={transformActivityToPlace(selectedActivity)}
+                initialTab={initialTab}
               />
             </div>
           </div>
