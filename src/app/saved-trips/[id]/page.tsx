@@ -371,13 +371,13 @@ const SavedItineraryDetail = () => {
         <div className="max-w-6xl mx-auto w-full">
           {/* Header */}
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="bg-white w-full md:w-auto rounded-xl px-5 sm:px-6 py-3 inline-flex flex-col sm:flex-row sm:items-center gap-1 font-bold text-lg sm:text-xl md:text-2xl text-gray-900 shadow-none border border-gray-200">
+            <div className="bg-white w-full md:w-auto rounded-3xl px-5 sm:px-6 py-3 inline-flex flex-col sm:flex-row sm:items-center gap-1 font-bold text-lg sm:text-xl md:text-2xl text-gray-900 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
               {`Saved Itineraries > ${itinerary.title}`}
             </div>
             <Button 
               onClick={() => handleRefreshItinerary(false)} 
               disabled={isRefreshing}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 w-full sm:w-auto justify-center"
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 w-full sm:w-auto justify-center shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
             >
               {isRefreshing ? (
                 <>
@@ -399,7 +399,7 @@ const SavedItineraryDetail = () => {
           </div>
           {/* Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <div className="flex items-center gap-3 bg-white rounded-2xl p-4 shadow border border-gray-100 min-h-[92px]">
+            <div className="flex items-center gap-3 bg-white rounded-3xl p-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 min-h-[92px] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
               <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-full">
                 <span className="text-blue-500 text-lg">📅</span>
               </div>
@@ -408,7 +408,7 @@ const SavedItineraryDetail = () => {
                 <span className="font-semibold text-gray-800 text-base">{formatDateRange(dates.start, dates.end)}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3 bg-white rounded-2xl p-4 shadow border border-gray-100 min-h-[92px]">
+            <div className="flex items-center gap-3 bg-white rounded-3xl p-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 min-h-[92px] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
               <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-full">
                 <span className="text-blue-500 text-lg">👥</span>
               </div>
@@ -417,7 +417,7 @@ const SavedItineraryDetail = () => {
                 <span className="font-semibold text-gray-800 text-base">{pax || "-"} Person</span>
               </div>
             </div>
-            <div className="flex items-center gap-3 bg-white rounded-2xl p-4 shadow border border-gray-100">
+            <div className="flex items-center gap-3 bg-white rounded-3xl p-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
               <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-full">
                 <span className="text-blue-500 text-lg">💰</span>
               </div>
@@ -428,7 +428,7 @@ const SavedItineraryDetail = () => {
             </div>
           </div>
           {/* Travel Interests */}
-          <div className="bg-white rounded-2xl p-6 mb-8 shadow border border-gray-100">
+          <div className="bg-white rounded-3xl p-6 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
             <span className="text-xs text-gray-500 font-medium block mb-3">Travel Interests</span>
             <div className="flex flex-wrap gap-3">
               {(selectedInterests.length > 0 ? selectedInterests : itinerary.tags).map((interest) => (
@@ -457,7 +457,7 @@ const SavedItineraryDetail = () => {
             return (
               <div key={dayIdx} className="mb-10">
                 <div className="mb-4 flex items-center gap-3">
-                  <div className="bg-white rounded-xl px-6 py-2 font-semibold text-gray-900 text-base border border-gray-200 shadow-sm">
+                  <div className="bg-white rounded-2xl px-6 py-3 font-semibold text-gray-900 text-base border border-gray-200/60 shadow-[0_4px_20px_rgb(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
                     Day {dayIdx + 1}&nbsp;
                     <span className="text-gray-500 text-base font-medium">
                       {" "}
@@ -473,7 +473,7 @@ const SavedItineraryDetail = () => {
                       return (
                         <div
                           key={idx}
-                          className="flex flex-col md:flex-row bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100"
+                          className="flex flex-col md:flex-row bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-0.5"
                         >
                           {/* Time column for desktop */}
                           <div className="hidden md:flex flex-col justify-center items-center w-40 bg-blue-50 border-r border-gray-100">
@@ -600,7 +600,7 @@ const SavedItineraryDetail = () => {
       {/* Restaurant Detail Modal */}
       {showDetailModal && selectedActivity && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-[0_20px_60px_rgb(0,0,0,0.15)] border border-gray-200/60 animate-in zoom-in-95 duration-300">
             <div className="sticky top-0 bg-white p-4 border-b border-gray-200 flex justify-between items-center z-10">
               <h2 className="text-xl font-bold">{selectedActivity.title}</h2>
               <button 

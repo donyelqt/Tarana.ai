@@ -78,11 +78,11 @@ const Reviews = ({
           }
         }
       `}</style>
-      <div className="bg-white rounded-2xl p-6 mb-8 shadow border border-gray-100">
+      <div className="group relative mb-8 overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-6">
       {/* Rating Overview - Only show when reviews are available */}
       {!reviewsUnavailable && (
         <div className="flex flex-col md:flex-row gap-6 mb-8 pb-8 border-b border-gray-200">
-          <div className="flex flex-col items-center justify-center bg-blue-500 text-white p-4 rounded-lg w-24 h-24">
+          <div className="flex flex-col items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-4 rounded-2xl w-24 h-24 shadow-lg shadow-blue-500/30">
             <span className="text-2xl font-bold">{overallRating.toFixed(1)}</span>
             <span className="text-xs">Very good</span>
             <span className="text-xs">{totalReviews} reviews</span>
@@ -119,7 +119,7 @@ const Reviews = ({
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-semibold">Reviews</h3>
           {!reviewsUnavailable && (
-            <Button className="bg-blue-500 hover:bg-blue-600">
+            <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 rounded-xl">
               Write a review
             </Button>
           )}
@@ -185,9 +185,9 @@ const Reviews = ({
         ) : (
           <div className="space-y-6">
             {paginatedReviews.map((review) => (
-              <div key={review.id} className="pb-6 border-b border-gray-100 last:border-0">
+              <div key={review.id} className="pb-6 border-b border-gray-200/60 last:border-0 transition-all duration-200 hover:bg-gray-50/50 rounded-xl px-2">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 border-2 border-white shadow-sm">
                     <Image 
                       src={review.avatar} 
                       alt={review.author} 
@@ -219,7 +219,7 @@ const Reviews = ({
           <div className="flex justify-center items-center gap-2 mt-6">
             <Button
               variant="outline"
-         
+              className="rounded-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50"
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
             >
@@ -234,6 +234,7 @@ const Reviews = ({
             
             <Button
               variant="outline"
+              className="rounded-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50"
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
             >

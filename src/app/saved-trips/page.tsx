@@ -92,10 +92,10 @@ const SavedTrips = () => {
       <main className="md:pl-64 flex-1">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl bg-white p-3 rounded-xl md:text-3xl font-bold border text-gray-900 mb-6">Saved Itineraries</h1>
+          <h1 className="text-2xl bg-white p-4 rounded-3xl md:text-3xl font-bold border border-gray-200/60 text-gray-900 mb-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">Saved Itineraries</h1>
 
           {/* Search Bar */}
-          <div className="relative max-w-full bg-white rounded-lg">
+          <div className="relative max-w-full bg-white rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.04)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -106,7 +106,7 @@ const SavedTrips = () => {
               placeholder="Search Itineraries..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="pl-10 pr-4 py-3 w-full border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent"
             />
           </div>
         </div>
@@ -114,7 +114,7 @@ const SavedTrips = () => {
         {/* Itineraries Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredItineraries.map((itinerary) => (
-            <div key={itinerary.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
+            <div key={itinerary.id} className="group relative overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-1">
               {/* Image */}
               <div className="relative h-48 w-full">
                 <Image
@@ -177,7 +177,7 @@ const SavedTrips = () => {
                 {/* Action Buttons */}
                 <div className="flex gap-2">
                   <Button
-                    className="flex-1 bg-[#0066FF] hover:bg-[#0052cc] text-white font-medium py-2 px-4 rounded-xl transition-colors"
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
                     onClick={() => router.push(`/saved-trips/${itinerary.id}`)}
                   >
                     View Itinerary
@@ -191,7 +191,7 @@ const SavedTrips = () => {
                   <Button
                     onClick={(e) =>  handleDeleteClick(itinerary, e)}
                     variant="outline"
-                    className="py-3 h-auto rounded-lg border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 font-semibold px-4"
+                    className="py-3 h-auto rounded-xl border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 font-semibold px-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
                   >
                     <Trash2 size={18} />
                   </Button>
@@ -212,7 +212,7 @@ const SavedTrips = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-2">No itineraries found</h3>
             <p className="text-gray-500 mb-4">Try adjusting your search or create a new itinerary.</p>
             <Button
-              className="bg-[#0066FF] hover:bg-[#0052cc] text-white"
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
               onClick={() => router.push('/itinerary-generator')}
             >
               Create New Itinerary
@@ -223,12 +223,12 @@ const SavedTrips = () => {
         {/* Delete Confirmation Modal */}
         {showDeleteModal && itineraryToDelete && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-            <div className="bg-white rounded-xl shadow-lg p-8 max-w-sm w-full">
+            <div className="bg-white rounded-3xl shadow-[0_20px_60px_rgb(0,0,0,0.15)] border border-gray-200/60 p-8 max-w-sm w-full animate-in zoom-in-95 duration-300">
               <h2 className="text-lg font-bold mb-4 text-gray-900">Delete Itinerary</h2>
               <p className="mb-6 text-gray-700">Are you sure you want to delete itinerary <span className="font-semibold">#{itineraryToDelete.id}</span>? This action cannot be undone.</p>
               <div className="flex justify-end gap-2">
-                <Button className="bg-gray-200 hover:bg-gray-300 text-black" onClick={handleCancelDelete}>Cancel</Button>
-                <Button className="bg-gradient-to-b from-blue-700 to-blue-500 hover:bg-opacity-90 text-white" onClick={handleConfirmDelete}>Delete</Button>
+                <Button className="bg-gray-200 hover:bg-gray-300 text-black rounded-xl transition-all duration-300 hover:-translate-y-0.5" onClick={handleCancelDelete}>Cancel</Button>
+                <Button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl transition-all duration-300 hover:-translate-y-0.5 shadow-lg shadow-red-500/30" onClick={handleConfirmDelete}>Delete</Button>
               </div>
             </div>
           </div>

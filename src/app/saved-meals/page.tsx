@@ -72,7 +72,7 @@ const SavedMealsPage = () => {
               </p>
             </div>
             <Button 
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center"
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-2 px-4 rounded-xl flex items-center shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
               onClick={handleGenerateMeals}
             >
               <Plus size={20} className="mr-2" />
@@ -81,7 +81,7 @@ const SavedMealsPage = () => {
           </div>
 
           {/* Filters */}
-          <div className="mb-8 p-4 bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="mb-8 p-6 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -129,7 +129,7 @@ const SavedMealsPage = () => {
           </div>
 
           {/* Meals Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {savedMeals.map((meal) => (
               <MealCard key={meal.id} meal={meal} onDelete={loadSavedMeals} />
             ))}
