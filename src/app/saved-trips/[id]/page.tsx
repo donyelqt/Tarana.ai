@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Sidebar from "../../../components/Sidebar"
 import { Button } from "@/components/ui/button"
+import { Calendar, Users, Wallet, Mountain, Utensils, Palette, ShoppingBag, Compass } from "lucide-react"
 import {
   getSavedItineraries,
   SavedItinerary,
@@ -22,12 +23,12 @@ import { getFallbackImage, isValidImagePath } from "@/lib/images/imageUtils"
 // import usePuter from "../../../hooks/usePuter";
 // import { puterConfig } from "../../../config/puter";
 
-const interestIcons: Record<string, string> = {
-  "Nature & Scenery": "🌿",
-  "Food & Culinary": "🍽️",
-  "Culture & Arts": "🎨",
-  "Shopping & Local Finds": "🛍️",
-  "Adventure": "⚡",
+const interestIcons: Record<string, React.ReactElement> = {
+  "Nature & Scenery": <Mountain className="w-4 h-4" />,
+  "Food & Culinary": <Utensils className="w-4 h-4" />,
+  "Culture & Arts": <Palette className="w-4 h-4" />,
+  "Shopping & Local Finds": <ShoppingBag className="w-4 h-4" />,
+  "Adventure": <Compass className="w-4 h-4" />,
 }
 
 const SavedItineraryDetail = () => {
@@ -401,7 +402,7 @@ const SavedItineraryDetail = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div className="flex items-center gap-3 bg-white rounded-3xl p-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 min-h-[92px] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
               <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-full">
-                <span className="text-blue-500 text-lg">📅</span>
+                <Calendar className="text-blue-500 w-5 h-5" />
               </div>
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500 font-medium">Duration</span>
@@ -410,7 +411,7 @@ const SavedItineraryDetail = () => {
             </div>
             <div className="flex items-center gap-3 bg-white rounded-3xl p-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 min-h-[92px] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
               <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-full">
-                <span className="text-blue-500 text-lg">👥</span>
+                <Users className="text-blue-500 w-5 h-5" />
               </div>
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500 font-medium">Number of Person</span>
@@ -419,7 +420,7 @@ const SavedItineraryDetail = () => {
             </div>
             <div className="flex items-center gap-3 bg-white rounded-3xl p-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
               <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-full">
-                <span className="text-blue-500 text-lg">💰</span>
+                <Wallet className="text-blue-500 w-5 h-5" />
               </div>
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500 font-medium">Budget</span>
@@ -438,7 +439,7 @@ const SavedItineraryDetail = () => {
                   type="button"
                   tabIndex={-1}
                 >
-                  <span>{interestIcons[interest] || ""}</span>
+                  <span className="text-blue-500">{interestIcons[interest] || null}</span>
                   {interest}
                 </button>
               ))}
@@ -535,7 +536,7 @@ const SavedItineraryDetail = () => {
                                     >
                                       {isLowTraffic && <span>🟢</span>}
                                       {isModerateTraffic && <span>🟡</span>}
-                                      {!isTrafficTag && <span>{interestIcons[tag] || ""}</span>}
+                                      {!isTrafficTag && <span className="text-blue-500">{interestIcons[tag] || null}</span>}
                                       {tag}
                                     </span>
                                   );
