@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Clock, Trash2, Coffee, MapPin, User, Utensils, Croissant, Wine, Map, Star } from 'lucide-react';
@@ -14,6 +14,8 @@ import MealCardPopup from '../components/MealCardPopup';
 import { useSession } from 'next-auth/react'
 import { deleteMeal, saveMeal, getSavedMeals } from '@/lib/data/supabaseMeals';
 import { getSavedMealById } from '@/lib/data/supabaseMeals';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { MealDetailSkeleton } from '@/components/ui/MealDetailSkeleton';
 
 // Static data for fallback
 const mealDetailsData = {};
@@ -32,9 +34,8 @@ const MealIcon = ({ type, className }: { type: string, className?: string }) => 
 const SavedMealPage = () => {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const mealId = params.id as string;
-  const [mealDetails, setMealDetails] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [activeMenu, setActiveMenu] = useState('Breakfast');
   const [selectedMealId, setSelectedMealId] = useState<string | null>(null);
   const [isPopupVisible, setIsPopupVisible] = useState(false);
@@ -42,41 +43,32 @@ const SavedMealPage = () => {
   const { toast } = useToast();
   const { data: session } = useSession();
   
-  useEffect(() => {
-    const fetchMeal = async () => {
-      if (!mealId) {
-        setLoading(false);
-        return;
+  // React Query - Cached meal details
+  const { data: mealDetails, isLoading, error } = useQuery({
+    queryKey: ['saved-meal', mealId],
+    queryFn: async () => {
+      if (!mealId) return null;
+      const meal = await getSavedMealById(mealId);
+      if (meal && meal.menuItems && meal.menuItems.length > 0) {
+        setActiveMenu(meal.menuItems[0].type);
       }
-      try {
-        const meal = await getSavedMealById(mealId);
-        if (!meal) {
-          router.push('/saved-meals');
-          return;
-        }
-        setMealDetails(meal);
-        if (meal.menuItems && meal.menuItems.length > 0) {
-          setActiveMenu(meal.menuItems[0].type);
-        }
-        document.title = `Tarana.ai | ${meal.cafeName || 'Meal'}`;
-      } catch (error) {
-        console.error("Error fetching meal details:", error);
-        router.push('/saved-meals');
-      } finally {
-        setLoading(false);
+      if (meal?.cafeName) {
+        document.title = `Tarana.ai | ${meal.cafeName}`;
       }
-    };
+      return meal;
+    },
+    enabled: !!mealId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-    fetchMeal();
-
-    if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
-      const mealParam = searchParams.get('meal');
-      if (mealParam) {
-        setSelectedMealId(mealParam);
-      }
+  // Handle URL query parameter
+  if (typeof window !== 'undefined' && !selectedMealId) {
+    const searchParams = new URLSearchParams(window.location.search);
+    const mealParam = searchParams.get('meal');
+    if (mealParam) {
+      setSelectedMealId(mealParam);
     }
-  }, [mealId, router]);
+  }
 
   const handleShowMealCard = (savedMeal: any) => {
     setSelectedMealForPopup(savedMeal);
@@ -102,6 +94,10 @@ const SavedMealPage = () => {
     try {
       const success = await deleteMeal(session.user.id, mealId);
       if (success) {
+        // Invalidate cache
+        await queryClient.invalidateQueries({ queryKey: ['saved-meals'] });
+        await queryClient.invalidateQueries({ queryKey: ['saved-meal', mealId] });
+        
         toast({
           title: "Success",
           description: "Meal deleted successfully!",
@@ -128,16 +124,14 @@ const SavedMealPage = () => {
     try {
       const success = await deleteMeal(session.user.id, individualMealId);
       if (success) {
+        // Invalidate cache to trigger refetch
+        await queryClient.invalidateQueries({ queryKey: ['saved-meal', mealId] });
+        
         toast({
           title: "Success",
           description: "Individual meal deleted successfully!",
           variant: "success",
         });
-        // Refresh the page data
-        const updatedMeal = await getSavedMealById(mealId);
-        if (updatedMeal) {
-          setMealDetails(updatedMeal);
-        }
       } else {
         throw new Error('Failed to delete individual meal');
       }
@@ -190,11 +184,9 @@ const SavedMealPage = () => {
       }]);
 
       if (savedId) {
-        // Refresh the page data to show the newly saved meal
-        const updatedMeal = await getSavedMealById(mealId);
-        if (updatedMeal) {
-          setMealDetails(updatedMeal);
-        }
+        // Invalidate cache to trigger refetch and show the newly saved meal
+        await queryClient.invalidateQueries({ queryKey: ['saved-meal', mealId] });
+        await queryClient.invalidateQueries({ queryKey: ['saved-meals'] });
         
         toast({
           title: "Success",
@@ -214,12 +206,56 @@ const SavedMealPage = () => {
     }
   };
 
-  if (loading || !mealDetails) {
+  // Loading state - Show skeleton
+  if (isLoading) {
+    return (
+      <>
+        <Sidebar />
+        <MealDetailSkeleton />
+      </>
+    );
+  }
+
+  // Error state
+  if (error) {
     return (
       <div className="min-h-screen bg-[#f7f9fb] flex">
         <Sidebar />
         <main className="flex-1 md:pl-72 p-8 flex items-center justify-center">
-          <p className="text-lg text-gray-500">Loading meal details...</p>
+          <div className="text-center max-w-md">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+              <Trash2 className="w-8 h-8 text-red-600" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2 text-gray-900">Error Loading Meal</h2>
+            <p className="mb-6 text-gray-500">Something went wrong. Please try again.</p>
+            <div className="flex gap-3 justify-center">
+              <Button onClick={() => router.push("/saved-meals")} variant="outline">
+                Back to Saved Meals
+              </Button>
+              <Button onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Not found state
+  if (!mealDetails) {
+    return (
+      <div className="min-h-screen bg-[#f7f9fb] flex">
+        <Sidebar />
+        <main className="flex-1 md:pl-72 p-8 flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+              <Utensils className="w-8 h-8 text-blue-600" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2 text-gray-900">Meal Not Found</h2>
+            <p className="mb-6 text-gray-500">We couldn&apos;t find this meal. It may have been deleted.</p>
+            <Button onClick={() => router.push("/saved-meals")}>Back to Saved Meals</Button>
+          </div>
         </main>
       </div>
     );

@@ -3,7 +3,8 @@
 
 import { useSession } from 'next-auth/react'
 import { getSavedMeals } from '@/lib/data/supabaseMeals';
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Sidebar from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,44 +15,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Utensils } from 'lucide-react';
 import { savedMeals as initialSavedMeals, SavedMeal } from "./data";
 import MealCard from "./components/MealCard";
 import { useRouter } from 'next/navigation';
 
 const SavedMealsPage = () => {
-  const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
 
-  const loadSavedMeals = async () => {
-    if (!session?.user?.id) return;
-    try {
-      const meals = await getSavedMeals(session.user.id);
-      setSavedMeals(meals);
-    } catch (error) {
-      console.error("Error loading saved meals:", error);
-      setSavedMeals([]);
+  // React Query - Cached meals list
+  const { data: savedMeals = [], isLoading } = useQuery({
+    queryKey: ['saved-meals', session?.user?.id],
+    queryFn: async () => {
+      if (!session?.user?.id) return [];
+      return await getSavedMeals(session.user.id);
+    },
+    enabled: !!session?.user?.id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Filtered meals based on search (memoized for performance)
+  const filteredMeals = useMemo(() => {
+    if (searchQuery.trim() === "") {
+      return savedMeals;
     }
-  };
+    return savedMeals.filter((meal) =>
+      meal.cafeName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [savedMeals, searchQuery]);
 
-  useEffect(() => {
-    loadSavedMeals();
-  }, [session?.user?.id]);
-
-  const handleSearch = async (query: string) => {
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (!session?.user?.id) return;
-    if (query.trim() === "") {
-      getSavedMeals(session.user.id).then(setSavedMeals).catch(() => setSavedMeals([]));
-    } else {
-      const allMeals = await getSavedMeals(session.user.id);
-      const filtered = allMeals.filter(
-        (meal) => meal.cafeName.toLowerCase().includes(query.toLowerCase())
-      );
-      setSavedMeals(filtered);
-    }
   }
 
   const handleGenerateMeals = () => {
@@ -128,12 +125,60 @@ const SavedMealsPage = () => {
             </div>
           </div>
 
+          {/* Loading State */}
+          {isLoading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] animate-pulse">
+                  <div className="h-48 w-full bg-gray-200"></div>
+                  <div className="p-5">
+                    <div className="h-6 w-3/4 bg-gray-300 rounded mb-3"></div>
+                    <div className="h-4 w-1/2 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 w-2/3 bg-gray-200 rounded mb-4"></div>
+                    <div className="flex justify-between items-center">
+                      <div className="h-6 w-20 bg-gray-300 rounded"></div>
+                      <div className="h-8 w-24 bg-gray-200 rounded-lg"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Meals Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {savedMeals.map((meal) => (
-              <MealCard key={meal.id} meal={meal} onDelete={loadSavedMeals} />
-            ))}
-          </div>
+          {!isLoading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredMeals.map((meal) => (
+                <MealCard key={meal.id} meal={meal} />
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && filteredMeals.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+                <Utensils className="w-10 h-10 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {searchQuery ? 'No meals found' : 'No saved meals yet'}
+              </h3>
+              <p className="text-gray-500 mb-6">
+                {searchQuery
+                  ? 'Try adjusting your search query'
+                  : 'Start by generating meal recommendations'}
+              </p>
+              {!searchQuery && (
+                <Button
+                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
+                  onClick={handleGenerateMeals}
+                >
+                  <Plus size={20} className="mr-2" />
+                  Generate Meals
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </main>
     </div>
