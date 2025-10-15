@@ -67,18 +67,7 @@ const Reviews = ({
   const reviewsUnavailable = !reviews || reviews.length === 0
 
   return (
-    <>
-      <style jsx>{`
-        @keyframes starGlow {
-          0%, 100% {
-            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6)) drop-shadow(0 0 16px rgba(59, 130, 246, 0.4));
-          }
-          50% {
-            filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.8)) drop-shadow(0 0 24px rgba(59, 130, 246, 0.6));
-          }
-        }
-      `}</style>
-      <div className="group relative mb-4 sm:mb-6 lg:mb-8 overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-3 sm:p-4 lg:p-6">
+    <div className="group relative mb-4 sm:mb-6 lg:mb-8 overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-3 sm:p-4 lg:p-6">
       {/* Rating Overview - Only show when reviews are available */}
       {!reviewsUnavailable && (
         <div className="flex flex-col md:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-gray-200">
@@ -142,13 +131,9 @@ const Reviews = ({
                 <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_rgba(59,130,246,0.25)] border border-white/60">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-10 w-10 sm:h-12 sm:w-12 text-blue-500"
+                    className="h-10 w-10 sm:h-12 sm:w-12 text-blue-500 animate-star-glow"
                     fill="currentColor"
                     viewBox="0 0 24 24"
-                    style={{
-                      filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6)) drop-shadow(0 0 16px rgba(59, 130, 246, 0.4))',
-                      animation: 'starGlow 2s ease-in-out infinite'
-                    }}
                   >
                     <path
                       d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
@@ -246,7 +231,6 @@ const Reviews = ({
         )}
       </div>
     </div>
-    </>
   )
 }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import Image from "next/image"
 import Sidebar from "../../components/Sidebar"
 import { Button } from "@/components/ui/button"
@@ -9,46 +9,38 @@ import { getSavedItineraries, SavedItinerary, deleteItinerary } from "@/lib/data
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import { Trash2 } from "lucide-react"
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 
 
 const SavedTrips = () => {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState("")
-  const [savedItineraries, setSavedItineraries] = useState<SavedItinerary[]>([])
-  const [filteredItineraries, setFilteredItineraries] = useState<SavedItinerary[]>([])
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [itineraryToDelete, setItineraryToDelete] = useState<SavedItinerary | null>(null)
   const { toast } = useToast()
 
-  useEffect(() => {
-    // Load saved itineraries from supabase
-    const fetchItineraries = async () => {
-      const loadedItineraries = await getSavedItineraries();
-      // Ensure loadedItineraries is an array
-      if (Array.isArray(loadedItineraries)) {
-        setSavedItineraries(loadedItineraries);
-        setFilteredItineraries(loadedItineraries);
-      } else {
-        // Handle cases where getSavedItineraries might not return an array (e.g. error or empty)
-        setSavedItineraries([]);
-        setFilteredItineraries([]);
-      }
-    };
-    fetchItineraries();
-  }, []);
+  // React Query - Cached itineraries list
+  const { data: savedItineraries = [], isLoading } = useQuery({
+    queryKey: ['itineraries'],
+    queryFn: getSavedItineraries,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+
+  // Filtered itineraries based on search (memoized for performance)
+  const filteredItineraries = useMemo(() => {
+    if (searchQuery.trim() === "") {
+      return savedItineraries
+    }
+    return savedItineraries.filter(itinerary =>
+      itinerary.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      itinerary.id.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }, [savedItineraries, searchQuery])
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
-    if (query.trim() === "") {
-      setFilteredItineraries(savedItineraries)
-    } else {
-      const filtered = savedItineraries.filter(itinerary =>
-        itinerary.title.toLowerCase().includes(query.toLowerCase()) ||
-        itinerary.id.toLowerCase().includes(query.toLowerCase())
-      )
-      setFilteredItineraries(filtered)
-    }
   }
 
   const handleDeleteClick = (itinerary: SavedItinerary, e: React.MouseEvent) => {
@@ -57,16 +49,18 @@ const SavedTrips = () => {
     setShowDeleteModal(true)
   }
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!itineraryToDelete) return
     try {
-      deleteItinerary(itineraryToDelete.id)
-      const updatedItineraries = savedItineraries.filter(itinerary => itinerary.id !== itineraryToDelete.id)
-      setSavedItineraries(updatedItineraries)
-      setFilteredItineraries(filteredItineraries.filter(itinerary => itinerary.id !== itineraryToDelete.id))
+      await deleteItinerary(itineraryToDelete.id)
+      
+      // Invalidate cache to trigger refetch
+      queryClient.invalidateQueries({ queryKey: ['itineraries'] })
+      queryClient.invalidateQueries({ queryKey: ['itinerary', itineraryToDelete.id] })
+      
       toast({
         title: "Success",
-        description: `Itinerary #${itineraryToDelete.id} deleted successfully!`,
+        description: `Itinerary "${itineraryToDelete.title}" deleted successfully!`,
         variant: "success"
       })
     } catch (error) {
@@ -111,9 +105,30 @@ const SavedTrips = () => {
           </div>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] animate-pulse">
+                <div className="h-48 w-full bg-gray-200"></div>
+                <div className="p-6">
+                  <div className="h-6 w-3/4 bg-gray-200 rounded mb-3"></div>
+                  <div className="h-4 w-1/2 bg-gray-100 rounded mb-4"></div>
+                  <div className="space-y-2">
+                    <div className="h-4 w-full bg-gray-100 rounded"></div>
+                    <div className="h-4 w-5/6 bg-gray-100 rounded"></div>
+                  </div>
+                  <div className="mt-4 h-10 bg-gray-200 rounded-xl"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Itineraries Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItineraries.map((itinerary) => (
+        {!isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredItineraries.map((itinerary) => (
             <div key={itinerary.id} className="group relative overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-1">
               {/* Image */}
               <div className="relative h-48 w-full">
@@ -199,10 +214,11 @@ const SavedTrips = () => {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
 
         {/* Empty State */}
-        {filteredItineraries.length === 0 && (
+        {!isLoading && filteredItineraries.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
               <svg className="w-16 h-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
