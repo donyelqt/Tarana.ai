@@ -396,11 +396,11 @@ const MapView = ({
         <div className="relative mx-2 sm:mx-3 mt-2 mb-4 sm:mb-6 overflow-hidden rounded-[20px] sm:rounded-[26px] border border-slate-200/30 bg-gradient-to-br from-slate-100/70 via-white/60 to-slate-100/30">
           <div
             ref={mapRef}
-            className="w-full touch-pan-x touch-pan-y transition-all duration-700 ease-out"
+            className={`w-full touch-pan-x touch-pan-y transition-all duration-700 ease-out ${
+              isLoaded && !error ? 'map-loaded' : 'map-loading'
+            }`}
             style={{
               height: `${mapHeight}px`,
-              opacity: isLoaded && !error ? 1 : 0,
-              transform: isLoaded && !error ? 'scale(1)' : 'scale(0.98)',
             }}
           />
 
@@ -508,12 +508,7 @@ const MapView = ({
 
           {/* Fullscreen Map */}
           <div 
-            className="w-full h-full"
-            style={{
-              WebkitTouchCallout: 'none',
-              WebkitUserSelect: 'none',
-              userSelect: 'none'
-            }}
+            className="w-full h-full no-touch-select"
           >
             {/* Map will be re-rendered here or use portal */}
             <div className="w-full h-full flex items-center justify-center text-white">

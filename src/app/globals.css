@@ -322,3 +322,34 @@ body {
 .animate-glow-red {
   animation: glow-red 2s ease-in-out infinite;
 }
+
+/* Star glow animation for Reviews component */
+@keyframes starGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6)) drop-shadow(0 0 16px rgba(59, 130, 246, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.8)) drop-shadow(0 0 24px rgba(59, 130, 246, 0.6));
+  }
+}
+
+.animate-star-glow {
+  animation: starGlow 2s ease-in-out infinite;
+}
+
+/* Map component utilities */
+.map-loading {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+.map-loaded {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.no-touch-select {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}

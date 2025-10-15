@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Sidebar from "../../../components/Sidebar"
 import { Button } from "@/components/ui/button"
 import { Calendar, Users, Wallet, Mountain, Utensils, Palette, ShoppingBag, Compass, TrafficCone } from "lucide-react"
@@ -19,6 +20,7 @@ import PlaceDetail from "@/components/PlaceDetail"
 import { useToast } from "@/components/ui/use-toast"
 import { useModernToast } from "@/hooks/useModernToast"
 import { getFallbackImage, isValidImagePath } from "@/lib/images/imageUtils"
+import { ItinerarySkeleton } from "@/components/ui/ItinerarySkeleton"
 
 // import usePuter from "../../../hooks/usePuter";
 // import { puterConfig } from "../../../config/puter";
@@ -34,9 +36,21 @@ const interestIcons: Record<string, React.ReactElement> = {
 const SavedItineraryDetail = () => {
   const router = useRouter()
   const params = useParams()
+  const queryClient = useQueryClient()
   const { id } = params as { id: string }
-  const [itinerary, setItinerary] = useState<SavedItinerary | null>(null);
-  // Removed unused weatherData state
+  
+  // React Query - Automatic caching & instant navigation
+  const { data: itinerary, isLoading, error } = useQuery({
+    queryKey: ['itinerary', id],
+    queryFn: async () => {
+      const all = await getSavedItineraries();
+      const found = Array.isArray(all) ? all.find((i: SavedItinerary) => i.id === id) : null;
+      return found;
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+  
   const [selectedActivity, setSelectedActivity] = useState<ItineraryActivity | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -46,20 +60,6 @@ const SavedItineraryDetail = () => {
   const [initialTab, setInitialTab] = useState<'description' | 'map' | 'reviews'>('reviews')
   const { toast } = useToast()
   const modernToast = useModernToast()
-  // Load the Puter SDK once
-  // const puter = usePuter(); // removed – using backend Gemini API instead
-
-  useEffect(() => {
-    const fetchItinerary = async () => {
-      const all = await getSavedItineraries();
-      // Ensure 'all' is an array before calling find
-      const found = Array.isArray(all) ? all.find((i: SavedItinerary) => i.id === id) : null;
-      setItinerary(found || null);
-    };
-    if (id) {
-      fetchItinerary();
-    }
-  }, [id]);
 
   const handleViewOnMap = (activity: ItineraryActivity, e: React.MouseEvent) => {
     e.preventDefault()
@@ -109,12 +109,10 @@ const SavedItineraryDetail = () => {
   // Helper function to refetch fresh itinerary data from database
   const refetchItinerary = async () => {
     try {
-      const all = await getSavedItineraries();
-      const found = Array.isArray(all) ? all.find((i: SavedItinerary) => i.id === id) : null;
-      if (found) {
-        setItinerary(found);
-        console.log('✅ UI State refreshed with latest database data');
-      }
+      // Invalidate React Query cache to trigger refetch
+      await queryClient.invalidateQueries({ queryKey: ['itinerary', id] });
+      await queryClient.invalidateQueries({ queryKey: ['itineraries'] });
+      console.log('✅ UI State refreshed with latest database data');
     } catch (error) {
       console.error('❌ Error refetching itinerary:', error);
     }
@@ -290,13 +288,55 @@ const SavedItineraryDetail = () => {
     return `${startDate.toLocaleDateString('en-US', options)} - ${endDate.toLocaleDateString('en-US', options)}`;
   };
 
+  // Loading state - Show skeleton
+  if (isLoading) {
+    return (
+      <>
+        <Sidebar />
+        <ItinerarySkeleton />
+      </>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
+        <Sidebar />
+        <div className="text-center max-w-md mx-auto p-8 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+            <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold mb-2 text-gray-900">Error Loading Itinerary</h2>
+          <p className="mb-6 text-gray-500">Something went wrong. Please try again.</p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => router.push("/saved-trips")} variant="outline">
+              Back to Saved Trips
+            </Button>
+            <Button onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Not found state
   if (!itinerary) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
         <Sidebar />
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Itinerary Not Found</h2>
-          <p className="mb-4 text-gray-500">We couldn&apos;t find this itinerary. It may have been deleted.</p>
+        <div className="text-center max-w-md mx-auto p-8 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+            <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold mb-2 text-gray-900">Itinerary Not Found</h2>
+          <p className="mb-6 text-gray-500">We couldn&apos;t find this itinerary. It may have been deleted.</p>
           <Button onClick={() => router.push("/saved-trips")}>Back to Saved Trips</Button>
         </div>
       </div>
