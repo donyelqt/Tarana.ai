@@ -42,7 +42,7 @@ export class ParallelTrafficProcessor {
     proximityThreshold: 0.5, // 500 meters
     enableLocationClustering: true,
     enableResultCaching: true,
-    timeoutMs: 15000 // Increased to 15 seconds to prevent premature timeouts
+    timeoutMs: 5000 // Increased to 15 seconds to prevent premature timeouts
   };
 
   private activeSemaphore: Semaphore;
