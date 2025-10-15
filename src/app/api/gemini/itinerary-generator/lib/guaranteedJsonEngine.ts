@@ -15,7 +15,7 @@ import { intelligentCacheManager } from '@/lib/ai';
  */
 export class GuaranteedJsonEngine {
   private static readonly MAX_ATTEMPTS = 3;
-  private static readonly TIMEOUT_MS = 30000; // 30 seconds (Week 1 optimization - was 10ms bug)
+  private static readonly TIMEOUT_MS = 45000; // 45 seconds - AI generation takes 20-45s in practice
   
   private static metrics = {
     totalRequests: 0,
@@ -48,40 +48,66 @@ export class GuaranteedJsonEngine {
       // WEEK 1 OPTIMIZATION: Race both strategies in parallel - use first success!
       console.log(`🏁 GUARANTEED ENGINE: Racing strategies in parallel for ${requestId}`);
       
-      const strategyPromises = [
-        // Strategy 1: Structured Output (highest quality)
-        this.attemptStructuredOutput(
-          prompt, sampleItinerary, weatherContext, trafficContext, additionalContext, requestId
-        ).catch(err => {
-          console.log(`⚠️ Strategy 1 failed: ${err.message}`);
-          return null;
-        }),
+      // CRITICAL FIX: Race for first success, don't wait for all
+      const raceForFirstSuccess = new Promise<{result: StructuredItinerary | null, strategyNum: number}>(async (resolve) => {
+        const strategies = [
+          { 
+            name: 'Strategy 1',
+            fn: () => this.attemptStructuredOutput(
+              prompt, sampleItinerary, weatherContext, trafficContext, additionalContext, requestId
+            )
+          },
+          { 
+            name: 'Strategy 2',
+            fn: () => this.attemptPromptEngineering(
+              prompt, sampleItinerary, weatherContext, trafficContext, additionalContext, requestId
+            )
+          }
+        ];
         
-        // Strategy 2: Enhanced Prompt Engineering (fast & reliable)
-        this.attemptPromptEngineering(
-          prompt, sampleItinerary, weatherContext, trafficContext, additionalContext, requestId
-        ).catch(err => {
-          console.log(`⚠️ Strategy 2 failed: ${err.message}`);
-          return null;
-        })
-      ];
+        let completed = 0;
+        const errors: string[] = [];
+        
+        strategies.forEach((strategy, index) => {
+          strategy.fn()
+            .then(result => {
+              if (result) {
+                // First success wins! Return immediately
+                console.log(`🏆 ${strategy.name} succeeded first!`);
+                resolve({ result, strategyNum: index + 1 });
+              } else {
+                completed++;
+                errors.push(`${strategy.name}: returned null`);
+                if (completed === strategies.length) {
+                  // All failed
+                  resolve({ result: null, strategyNum: 0 });
+                }
+              }
+            })
+            .catch(err => {
+              completed++;
+              errors.push(`${strategy.name}: ${err.message}`);
+              console.log(`⚠️ ${strategy.name} failed: ${err.message}`);
+              
+              if (completed === strategies.length) {
+                // All failed
+                console.log(`🆘 All strategies failed:`, errors);
+                resolve({ result: null, strategyNum: 0 });
+              }
+            });
+        });
+      });
       
-      // Wait for all strategies to settle
-      const results = await Promise.allSettled(strategyPromises);
+      const { result, strategyNum } = await raceForFirstSuccess;
       
-      // Use first successful strategy
-      for (let i = 0; i < results.length; i++) {
-        const result = results[i];
-        if (result.status === 'fulfilled' && result.value) {
-          const strategyNum = i + 1;
-          const elapsed = Date.now() - startTime;
-          console.log(`🏆 GUARANTEED ENGINE: Strategy ${strategyNum} won the race in ${elapsed}ms`);
-          
-          if (strategyNum === 1) this.metrics.structuredSuccess++;
-          else this.metrics.promptEngineeredSuccess++;
-          
-          return result.value;
-        }
+      if (result) {
+        const elapsed = Date.now() - startTime;
+        console.log(`🏆 GUARANTEED ENGINE: Strategy ${strategyNum} won the race in ${elapsed}ms`);
+        
+        if (strategyNum === 1) this.metrics.structuredSuccess++;
+        else this.metrics.promptEngineeredSuccess++;
+        
+        return result;
       }
       
       // All strategies failed - use guaranteed fallback
@@ -193,7 +219,7 @@ export class GuaranteedJsonEngine {
       temperature: Math.max(0.1, 0.3 - (attempt * 0.05)), // Decrease temperature with attempts
       topK: 1,
       topP: 0.8,
-      maxOutputTokens: 8192,
+      maxOutputTokens: 3072, // Reduced from 8192 - itineraries need ~1500-2500 tokens
       candidateCount: 1
     };
 

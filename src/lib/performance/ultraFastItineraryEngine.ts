@@ -52,7 +52,7 @@ export class UltraFastItineraryEngine {
     enablePrecomputation: true,
     maxConcurrentRequests: 100,
     cacheStrategy: 'aggressive',
-    timeoutMs: 5000
+    timeoutMs: 15000
   };
 
   constructor(private options: Partial<FastGenerationOptions> = {}) {
