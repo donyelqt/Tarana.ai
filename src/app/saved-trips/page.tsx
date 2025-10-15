@@ -146,9 +146,9 @@ const SavedTrips = () => {
 
               {/* Content */}
               <div className="p-6">
-                {/* Title */}
+                {/* Title and ID */}
                 <div className="mb-3">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{itinerary.title}</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{itinerary.title} <span className="text-sm text-gray-400 font-normal">#{itinerary.id}</span></h3>
                 </div>
 
                 {/* Date and Time */}

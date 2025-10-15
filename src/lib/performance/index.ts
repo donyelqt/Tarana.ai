@@ -12,6 +12,10 @@ export { ParallelTrafficProcessor, parallelTrafficProcessor } from './parallelTr
 export { OptimizedPipeline, optimizedPipeline } from './optimizedPipeline';
 export { PerformanceBenchmark, performanceBenchmark } from './performanceBenchmark';
 
+// Week 1 Optimization Testing & Monitoring (NEW)
+export { performanceMonitor, trackPerformance, WEEK1_BASELINE, runPerformanceTest } from './performanceMonitor';
+export { default as week1Tests } from './test-week1-optimizations';
+
 export type { FastGenerationOptions, GenerationMetrics } from './ultraFastItineraryEngine';
 export type { CacheEntry, CacheStats, SmartCacheConfig } from './smartCacheManager';
 export type { TrafficProcessingOptions, TrafficProcessingMetrics } from './parallelTrafficProcessor';

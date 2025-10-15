@@ -60,7 +60,7 @@ export class SmartCacheManager {
 
   private readonly config: SmartCacheConfig = {
     maxMemoryMB: 100,
-    defaultTTL: 5 * 60 * 1000, // 5 minutes for faster updates
+    defaultTTL: 30 * 60 * 1000, // 30 minutes - activities don't change often (Week 1 optimization)
     maxEntries: 1000,
     popularityThreshold: 5,
     warmupEnabled: true
@@ -140,14 +140,25 @@ export class SmartCacheManager {
    */
   set<T>(key: string, data: T, customTTL?: number): void {
     const size = this.estimateSize(data);
-    const ttl = customTTL || this.config.defaultTTL;
+    
+    // Intelligent TTL detection (Week 1 optimization)
+    let effectiveTTL = customTTL || this.config.defaultTTL;
+    
+    // Traffic data needs short TTL (changes frequently)
+    if (key.startsWith('traffic:') || key.includes('location_') || key.includes('_traffic')) {
+      effectiveTTL = 3 * 60 * 1000; // 3 minutes for traffic
+    }
+    // Search/activity data can have longer TTL
+    else if (key.startsWith('search_') || key.startsWith('activity_') || key.includes('results')) {
+      effectiveTTL = customTTL || 30 * 60 * 1000; // 30 minutes for activities
+    }
     
     const entry: CacheEntry<T> = {
       data,
       timestamp: Date.now(),
       accessCount: 1,
       lastAccessed: Date.now(),
-      ttl,
+      ttl: effectiveTTL,
       popularity: 1,
       size
     };
@@ -161,7 +172,8 @@ export class SmartCacheManager {
     this.warmCache.set(key, entry);
     this.updateStats();
 
-    console.log(`💾 CACHE SET: ${key.substring(0, 20)}... (${Math.round(size/1024)}KB) in warm cache`);
+    const ttlMinutes = Math.round(effectiveTTL / 60000);
+    console.log(`💾 CACHE SET: ${key.substring(0, 20)}... (${Math.round(size/1024)}KB, TTL: ${ttlMinutes}min) in warm cache`);
   }
 
   /**

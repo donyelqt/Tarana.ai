@@ -15,7 +15,7 @@ import { intelligentCacheManager } from '@/lib/ai';
  */
 export class GuaranteedJsonEngine {
   private static readonly MAX_ATTEMPTS = 3;
-  private static readonly TIMEOUT_MS = 10;
+  private static readonly TIMEOUT_MS = 30000; // 30 seconds (Week 1 optimization - was 10ms bug)
   
   private static metrics = {
     totalRequests: 0,
@@ -45,36 +45,47 @@ export class GuaranteedJsonEngine {
     this.metrics.totalRequests++;
     
     try {
-      // Strategy 1: Structured Output with Function Calling (Highest Reliability)
-      console.log(`🎯 GUARANTEED ENGINE: Attempting structured output (Strategy 1)`);
-      const structuredResult = await this.attemptStructuredOutput(
-        prompt, sampleItinerary, weatherContext, trafficContext, additionalContext, requestId
-      );
+      // WEEK 1 OPTIMIZATION: Race both strategies in parallel - use first success!
+      console.log(`🏁 GUARANTEED ENGINE: Racing strategies in parallel for ${requestId}`);
       
-      if (structuredResult) {
-        this.metrics.structuredSuccess++;
-        console.log(`✅ GUARANTEED ENGINE: Structured output succeeded in ${Date.now() - startTime}ms`);
+      const strategyPromises = [
+        // Strategy 1: Structured Output (highest quality)
+        this.attemptStructuredOutput(
+          prompt, sampleItinerary, weatherContext, trafficContext, additionalContext, requestId
+        ).catch(err => {
+          console.log(`⚠️ Strategy 1 failed: ${err.message}`);
+          return null;
+        }),
         
-        // Cache the result - simplified approach
-        // Note: This is a complex caching scenario that would require more sophisticated implementation
-        
-        return structuredResult;
-      }
-
-      // Strategy 2: Enhanced Prompt Engineering (High Reliability)
-      console.log(`🔧 GUARANTEED ENGINE: Attempting enhanced prompt engineering (Strategy 2)`);
-      const promptResult = await this.attemptPromptEngineering(
-        prompt, sampleItinerary, weatherContext, trafficContext, additionalContext, requestId
-      );
+        // Strategy 2: Enhanced Prompt Engineering (fast & reliable)
+        this.attemptPromptEngineering(
+          prompt, sampleItinerary, weatherContext, trafficContext, additionalContext, requestId
+        ).catch(err => {
+          console.log(`⚠️ Strategy 2 failed: ${err.message}`);
+          return null;
+        })
+      ];
       
-      if (promptResult) {
-        this.metrics.promptEngineeredSuccess++;
-        console.log(`✅ GUARANTEED ENGINE: Prompt engineering succeeded in ${Date.now() - startTime}ms`);
-        return promptResult;
+      // Wait for all strategies to settle
+      const results = await Promise.allSettled(strategyPromises);
+      
+      // Use first successful strategy
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        if (result.status === 'fulfilled' && result.value) {
+          const strategyNum = i + 1;
+          const elapsed = Date.now() - startTime;
+          console.log(`🏆 GUARANTEED ENGINE: Strategy ${strategyNum} won the race in ${elapsed}ms`);
+          
+          if (strategyNum === 1) this.metrics.structuredSuccess++;
+          else this.metrics.promptEngineeredSuccess++;
+          
+          return result.value;
+        }
       }
-
-      // Strategy 3: Guaranteed Fallback (100% Reliability)
-      console.log(`🆘 GUARANTEED ENGINE: Using guaranteed fallback (Strategy 3)`);
+      
+      // All strategies failed - use guaranteed fallback
+      console.log(`🆘 GUARANTEED ENGINE: All strategies failed, using fallback`);
       this.metrics.fallbackUsed++;
       return this.createIntelligentFallback(sampleItinerary, requestId);
 
