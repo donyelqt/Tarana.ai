@@ -8,10 +8,10 @@ import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { useSession } from 'next-auth/react'
 import { deleteMeal, saveMeal } from '@/lib/data/supabaseMeals';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface MealCardProps {
   meal: SavedMeal;
-  onDelete?: () => void;
 }
 
 const MealTypeIcon = ({ mealType }: { mealType: SavedMeal['mealType'] }) => {
@@ -27,11 +27,12 @@ const MealTypeIcon = ({ mealType }: { mealType: SavedMeal['mealType'] }) => {
   }
 };
 
-const MealCard = ({ meal, onDelete }: MealCardProps) => {
+const MealCard = ({ meal }: MealCardProps) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -44,16 +45,16 @@ const MealCard = ({ meal, onDelete }: MealCardProps) => {
     try {
       const success = await deleteMeal(session.user.id, meal.id);
       if (success) {
+        // Invalidate React Query cache to trigger refetch
+        await queryClient.invalidateQueries({ queryKey: ['saved-meals'] });
+        await queryClient.invalidateQueries({ queryKey: ['saved-meal', meal.id] });
+        
         toast({
           title: "Success",
           description: "Meal deleted successfully!",
           variant: "success",
         });
-        if (onDelete) {
-          onDelete();
-        } else {
-          router.refresh();
-        }
+        router.refresh();
       } else {
         throw new Error('Failed to delete meal');
       }
