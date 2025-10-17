@@ -143,7 +143,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Chimichanga", "Birria Tacos", "Nacho Fiesta", "Bagnet Kare-Kare"],
     menuItems: [],
     fullMenu: chimichangaJaimesFamilyFeastMenu,
-    image: "/images/comingsoon.png",
+    image: "/images/chimichanga_taranagala.jpg",
     tags: ["Mexican", "Filipino", "Fusion", "Baguio"],
     dietaryOptions: ["Vegetarian", "Vegan", "Halal"],
     about: "Jaime's Family Feast offers a delicious fusion of Mexican and Filipino cuisine, proudly serving bestsellers like chimichanga, birria tacos, and nacho fiesta alongside Filipino favorites such as bagnet kare-kare and crispy 6-piece fried chicken. Located near Children's Park, it's the perfect spot to enjoy flavorful comfort food with family and friends.",
@@ -160,7 +160,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Local Coffee Beans", "Frappes", "Cozy Ambiance"],
     menuItems: [],
     fullMenu: kapiKullaawMenu,
-    image: "/images/comingsoon.png",
+    image: "/images/kapi_kullaaw.jpg", // Assuming a placeholder image path
     tags: ["Cafe", "Coffee", "Art", "Baguio"],
     dietaryOptions: ["Vegan", "Vegetarian", "Halal"],
     about:
