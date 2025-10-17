@@ -23,10 +23,17 @@ export const useTaranaEatsAI = () => {
       // Create a prompt for Gemini API
       const prompt = createFoodPrompt(preferences);
       
-      // Prepare the request payload
+      // Prepare the request payload with both prompt and direct preferences
       const payload = {
         prompt,
-        foodData: combinedFoodData
+        foodData: combinedFoodData,
+        preferences: {
+          pax: preferences.pax,
+          budget: preferences.budget,
+          cuisine: preferences.cuisine,
+          restrictions: preferences.restrictions,
+          mealType: preferences.mealType
+        }
       };
 
       // Call the Gemini API

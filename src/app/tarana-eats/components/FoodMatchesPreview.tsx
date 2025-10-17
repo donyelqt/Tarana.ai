@@ -167,7 +167,7 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
             <div className="flex-1 overflow-y-auto">
             {results.matches.map((match, idx) => {
               const selection = savedSelections[match.name];
-              const total = selection?.reduce((sum, item) => sum + item.price, 0);
+              const total = selection?.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
               let imageSrc = match.image;
               if (imageSrc && !imageSrc.startsWith('http') && !imageSrc.startsWith('/')) {
                 imageSrc = `/${imageSrc}`;
@@ -202,7 +202,11 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
                         <p className="font-bold text-sm">Total: ₱{total || 0}</p>
                       </div>
                       <ul className="list-disc pl-5 mt-2 text-sm text-gray-600">
-                        {selection.map(item => <li key={item.name}>{item.name} - ₱{item.price}</li>)}
+                        {selection.map(item => (
+                          <li key={item.name}>
+                            {item.name} {item.quantity && item.quantity > 1 ? `(×${item.quantity})` : ''} - ₱{item.price * (item.quantity || 1)}
+                          </li>
+                        ))}
                       </ul>
                     </div>
                   )}

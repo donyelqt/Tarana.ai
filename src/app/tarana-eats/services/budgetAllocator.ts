@@ -92,6 +92,7 @@ export class BudgetAllocator {
 
   /**
    * Filter items based on constraints and preferences
+   * With intelligent fallback when filters are too strict
    */
   private filterItemsByConstraints(
     items: IndexedMenuItem[],
@@ -99,30 +100,51 @@ export class BudgetAllocator {
     constraints?: AllocationConstraints
   ): IndexedMenuItem[] {
     let filtered = [...items];
+    const originalCount = filtered.length;
 
-    // Filter by meal type preferences
+    // Filter by meal type preferences (relaxed if result is empty)
     if (preferences?.mealType && preferences.mealType.length > 0) {
-      filtered = filtered.filter(item =>
+      const mealFiltered = filtered.filter(item =>
         preferences.mealType!.includes(item.category)
       );
+      // Only apply if we still have items, otherwise keep all
+      if (mealFiltered.length > 0) {
+        filtered = mealFiltered;
+      }
     }
 
-    // Filter by dietary restrictions
+    // Filter by dietary restrictions (relaxed approach)
     if (preferences?.restrictions && preferences.restrictions.length > 0) {
-      filtered = filtered.filter(item =>
-        preferences.restrictions!.every(r =>
+      const dietaryFiltered = filtered.filter(item => {
+        // If item has no dietary labels, skip it
+        if (!item.dietaryLabels || item.dietaryLabels.length === 0) {
+          return false;
+        }
+        // Check if item matches ANY restriction (more lenient)
+        return preferences.restrictions!.some(r =>
           item.dietaryLabels?.includes(r)
-        )
-      );
+        );
+      });
+      
+      // Only apply dietary filter if we get results, otherwise use all items
+      if (dietaryFiltered.length > 0) {
+        filtered = dietaryFiltered;
+      } else {
+        console.log('⚠️ No items match dietary restrictions, including all items');
+      }
     }
 
     // Apply category constraints
     if (constraints?.avoidCategories && constraints.avoidCategories.length > 0) {
-      filtered = filtered.filter(item =>
+      const categoryFiltered = filtered.filter(item =>
         !constraints.avoidCategories!.includes(item.category)
       );
+      if (categoryFiltered.length > 0) {
+        filtered = categoryFiltered;
+      }
     }
 
+    console.log(`📊 Filtered ${filtered.length} items from ${originalCount} total`);
     return filtered;
   }
 
@@ -200,8 +222,10 @@ export class BudgetAllocator {
       }
     }
 
-    // Ensure we have minimum items
+    // Ensure we have minimum items - more aggressive fallback
     if (selected.length < minItems * groupSize) {
+      console.log(`⚠️ Only ${selected.length} items selected, adding more to reach minimum`);
+      
       // Add more affordable items to reach minimum
       const remaining = items.filter(item => 
         !selected.includes(item) && 
@@ -214,6 +238,22 @@ export class BudgetAllocator {
           selected.push(item);
           currentCost += item.price;
         }
+      }
+    }
+    
+    // CRITICAL FALLBACK: If still no items, select cheapest items regardless
+    if (selected.length === 0 && items.length > 0) {
+      console.log('🚨 No items selected, forcing cheapest items into selection');
+      const cheapest = [...items].sort((a, b) => a.price - b.price);
+      let fallbackCost = 0;
+      
+      for (const item of cheapest) {
+        if (fallbackCost + item.price <= budget && selected.length < maxItems * groupSize) {
+          selected.push(item);
+          fallbackCost += item.price;
+        }
+        // Ensure at least 2 items minimum
+        if (selected.length >= 2 && fallbackCost > budget * 0.5) break;
       }
     }
 
