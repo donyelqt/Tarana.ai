@@ -55,6 +55,14 @@ export async function POST(req: NextRequest) {
 
     // Parse preferences first to avoid block-scoped variable error
     const preferences = parseUserPreferences(prompt);
+    
+    // DEBUG: Log all parsed preferences
+    console.log("📊 Parsed user preferences:", {
+      pax: preferences.pax,
+      budget: preferences.budget,
+      cuisine: preferences.cuisine,
+      restrictions: preferences.restrictions
+    });
 
     // Initialize menu indexing service with restaurant data
     if (foodData?.restaurants && foodData.restaurants.length > 0) {
@@ -324,6 +332,7 @@ function validateAndEnhanceRecommendations(matches: EnhancedResultMatch[], foodD
 
     return {
       ...match,
+      meals: preferences.pax || match.meals || 2, // CRITICAL: Use user's actual group size
       price: finalPrice, // Use user budget instead of AI's price
       image: restaurant.image || match.image,
       fullMenu: restaurant.fullMenu
@@ -447,10 +456,15 @@ function parseUserPreferences(prompt: string): any {
     }
   }
   
-  // Extract pax/group size
-  const paxMatch = prompt.match(/(\d+)\s*people?/) || prompt.match(/(\d+)\s*pax/i);
+  // Extract pax/group size (handles "6 people", "6+ people", "6 pax", etc.)
+  const paxMatch = prompt.match(/(\d+)\+?\s*(?:people?|pax)/i);
   if (paxMatch) {
     preferences.pax = parseInt(paxMatch[1]);
+  }
+  
+  // DEBUG: Log parsed pax value
+  if (preferences.pax) {
+    console.log(`✓ Parsed group size: ${preferences.pax} people from prompt: "${prompt}"`);
   }
   
   // Extract dietary restrictions
