@@ -57,7 +57,7 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
             className="relative animate-bounce rounded-full"
           />
         </div>
-        <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Finding Your Perfect with Intelligent Searching</h2>
+        <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">Finding Your Perfect Food Meals with Intelligent Searching</h2>
         <p className="text-gray-600 text-center max-w-md">
           Our AI is intelligently analyzing restaurant data and menus to find your perfect, personalized food recommendations.
         </p>
