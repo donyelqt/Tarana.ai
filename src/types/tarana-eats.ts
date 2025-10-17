@@ -4,6 +4,7 @@ export interface MenuItem {
   price: number;
   image: string;
   tags?: string[];
+  quantity?: number; // Quantity for cart/selection functionality
 }
 
 export interface FullMenu {

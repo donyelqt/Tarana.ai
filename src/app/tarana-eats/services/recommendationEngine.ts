@@ -247,6 +247,7 @@ export class RecommendationEngine {
 
   /**
    * Get recommended menu items for a restaurant
+   * FIXED: Proper filtering that doesn't return empty arrays
    */
   private getRecommendedMenuItems(
     restaurant: RestaurantData,
@@ -254,27 +255,52 @@ export class RecommendationEngine {
   ): IndexedMenuItem[] {
     const restaurantItems = menuIndexingService.getRestaurantMenu(restaurant.name);
 
+    if (restaurantItems.length === 0) {
+      console.log(`⚠️ Restaurant "${restaurant.name}" has no menu items indexed`);
+      return [];
+    }
+
     // Filter by meal type if specified
     let filteredItems = restaurantItems;
     if (preferences.mealType && preferences.mealType.length > 0) {
-      filteredItems = restaurantItems.filter(item =>
+      const mealFiltered = restaurantItems.filter(item =>
         preferences.mealType!.includes(item.category)
       );
+      // Only apply if we get results
+      if (mealFiltered.length > 0) {
+        filteredItems = mealFiltered;
+      }
     }
 
-    // Filter by dietary requirements
+    // Filter by dietary requirements - USE LENIENT MATCHING
     if (preferences.restrictions && preferences.restrictions.length > 0) {
-      filteredItems = filteredItems.filter(item =>
-        preferences.restrictions!.every(r =>
+      const dietaryFiltered = filteredItems.filter(item => {
+        // Skip items without dietary labels
+        if (!item.dietaryLabels || item.dietaryLabels.length === 0) {
+          return false;
+        }
+        // Match ANY restriction (lenient) instead of ALL
+        return preferences.restrictions!.some(r =>
           item.dietaryLabels?.includes(r)
-        )
-      );
+        );
+      });
+      
+      // Only apply if we get results, otherwise keep all items
+      if (dietaryFiltered.length > 0) {
+        filteredItems = dietaryFiltered;
+      } else {
+        console.log(`⚠️ No vegan items at "${restaurant.name}", returning all items`);
+        filteredItems = restaurantItems; // Keep all items as fallback
+      }
     }
 
     // Sort by popularity and return top items
-    return filteredItems
+    const sorted = filteredItems
       .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
       .slice(0, 10); // Top 10 items per restaurant
+    
+    console.log(`✅ Selected ${sorted.length} items for "${restaurant.name}"`);
+    return sorted;
   }
 
   /**

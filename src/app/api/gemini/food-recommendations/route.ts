@@ -43,7 +43,7 @@ const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes for better cache utilizatio
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, foodData } = await req.json();
+    const { prompt, foodData, preferences: clientPreferences } = await req.json();
 
     // Input validation
     if (!prompt) {
@@ -53,8 +53,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Parse preferences first to avoid block-scoped variable error
+    // Parse preferences from prompt first
     const preferences = parseUserPreferences(prompt);
+    
+    // CRITICAL: Override with client preferences if provided (handles form data directly)
+    if (clientPreferences) {
+      if (clientPreferences.pax !== null && clientPreferences.pax !== undefined) {
+        preferences.pax = clientPreferences.pax;
+      }
+      if (clientPreferences.budget) {
+        preferences.budget = clientPreferences.budget;
+      }
+      if (clientPreferences.cuisine) {
+        preferences.cuisine = clientPreferences.cuisine;
+      }
+      if (clientPreferences.restrictions) {
+        preferences.restrictions = clientPreferences.restrictions;
+      }
+    }
     
     // DEBUG: Log all parsed preferences
     console.log("📊 Parsed user preferences:", {
