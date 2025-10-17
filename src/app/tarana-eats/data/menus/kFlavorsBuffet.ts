@@ -119,25 +119,6 @@ export const kFlavorsBuffetMenu: FullMenu = {
       image: "/images/399buffetMTH.jpg",
     }
   ],
-  Snacks: [
-    {
-      name: "Unlimited Iced Tea",
-      description: "Bottomless iced tea with buffet",
-      price: 20,
-      image: "/images/placeholders/drink.png",
-    },
-    {
-      name: "Soft Drinks",
-      description: "Coca-cola products",
-      price: 25,
-      image: "/images/placeholders/drink.png",
-    },
-    {
-      name: "Bottled Water",
-      description: "Mineral water",
-      price: 15,
-      image: "/images/placeholders/drink.png",
-    }
-  ],
+  Snacks: [],
   Drinks: [],
 };
