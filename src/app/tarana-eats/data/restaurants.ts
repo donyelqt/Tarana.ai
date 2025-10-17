@@ -143,7 +143,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Chimichanga", "Birria Tacos", "Nacho Fiesta", "Bagnet Kare-Kare"],
     menuItems: [],
     fullMenu: chimichangaJaimesFamilyFeastMenu,
-    image: "/images/chimichanga.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Mexican", "Filipino", "Fusion", "Baguio"],
     dietaryOptions: ["Vegetarian", "Vegan", "Halal"],
     about: "Jaime's Family Feast offers a delicious fusion of Mexican and Filipino cuisine, proudly serving bestsellers like chimichanga, birria tacos, and nacho fiesta alongside Filipino favorites such as bagnet kare-kare and crispy 6-piece fried chicken. Located near Children's Park, it's the perfect spot to enjoy flavorful comfort food with family and friends.",
@@ -160,7 +160,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Local Coffee Beans", "Frappes", "Cozy Ambiance"],
     menuItems: [],
     fullMenu: kapiKullaawMenu,
-    image: "/images/kapi-kullaaw.jpg", // Assuming a placeholder image path
+    image: "/images/comingsoon.png",
     tags: ["Cafe", "Coffee", "Art", "Baguio"],
     dietaryOptions: ["Vegan", "Vegetarian", "Halal"],
     about:
@@ -178,7 +178,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Artisanal Bread", "Specialty Coffee", "Home-based Baking"],
     menuItems: [],
     fullMenu: cafeDeCasaMenu,
-    image: "/images/cafe-de-casa.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Cafe", "Coffee", "Artisanal", "Baguio", "Home-based"],
     dietaryOptions: ["Vegetarian", "Halal"],
     about:
@@ -196,7 +196,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Authentic Ramen", "Tonkotsu Broth", "Chashu", "Japanese Cuisine"],
     menuItems: [],
     fullMenu: agaraRamenMenu,
-    image: "/images/agara-ramen.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Japanese", "Ramen", "Authentic", "Baguio"],
     dietaryOptions: [],
     about:
@@ -214,7 +214,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Specialty Coffee", "Comfort Food", "Decadent Desserts", "Cozy Atmosphere"],
     menuItems: [],
     fullMenu: kocoCafeMenu,
-    image: "/images/koco-cafe.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Cafe", "Bistro", "Coffee", "Comfort Food", "Baguio"],
     dietaryOptions: ["Vegetarian", "Halal"],
     about:
@@ -232,7 +232,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Farm-to-Table", "Local Ingredients", "Traditional Cordilleran Dishes", "Authentic Filipino Cuisine"],
     menuItems: [],
     fullMenu: farmersDaughterMenu,
-    image: "/images/farmers-daughter.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Filipino", "Ilocano", "Cordilleran", "Farm-to-Table", "Traditional", "Baguio"],
     dietaryOptions: [],
     about:
@@ -250,7 +250,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Freshly Brewed Coffee", "Filipino-Inspired Comfort Food", "Indulgent Desserts", "Cozy Atmosphere"],
     menuItems: [],
     fullMenu: hirayaCafeMenu,
-    image: "/images/hiraya-cafe.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Filipino", "Cafe", "Coffee", "Comfort Food", "Desserts", "Baguio"],
     dietaryOptions: ["Vegetarian", "Vegan", "Halal"],
     about:
@@ -268,7 +268,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Specialty Coffee", "Expertly Crafted Drinks", "Delectable Pastries", "Trendy Atmosphere"],
     menuItems: [],
     fullMenu: blendlabCafeMenu,
-    image: "/images/blendlab-cafe.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Cafe", "Coffee", "Specialty", "Trendy", "Baguio"],
     dietaryOptions: ["Vegetarian"],
     about:
@@ -286,7 +286,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Grilled Specialties", "Unlimited Pork", "Unlimited Beef", "Rustic Ambiance"],
     menuItems: [],
     fullMenu: kuboGrillBaguioMenu,
-    image: "/images/kubo-grill-baguio.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Filipino", "Grilled", "Comfort Food", "Unlimited", "Baguio"],
     dietaryOptions: [],
     about:
@@ -304,7 +304,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Signature Papaya Salad", "Flavorful Stir-fries", "Aromatic Curries", "Authentic Thai Cuisine"],
     menuItems: [],
     fullMenu: somTamThaiRestaurantMenu,
-    image: "/images/som-tam-thai-restaurant.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Thai", "Asian", "Authentic", "Spicy", "Curry", "Baguio"],
     dietaryOptions: ["Halal", "Vegetarian"],
     about:
@@ -322,7 +322,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Beef Samgyupsal", "Beef Bulgogi", "Korean-Filipino Fusion", "Rustic Kubo Ambiance"],
     menuItems: [],
     fullMenu: kuboGrillMenu,
-    image: "/images/kubo-grill.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Filipino", "Korean", "Grilled", "Fusion", "Casual", "Baguio"],
     dietaryOptions: [],
     about:
@@ -340,7 +340,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Unlimited Barbecue", "Sushi", "Korean BBQ", "Japanese Side Dishes"],
     menuItems: [],
     fullMenu: yoshimeatsuBaguioCityMenu,
-    image: "/images/yoshimeatsu-baguio-city.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Korean", "Japanese", "Buffet", "Unlimited", "BBQ", "Sushi", "Baguio"],
     dietaryOptions: [],
     about:
@@ -358,7 +358,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Shawarma Wraps", "Beef Biryani", "Halal Cuisine", "Middle Eastern Flavors"],
     menuItems: [],
     fullMenu: aliHouseOfShawarmaHalalMenu,
-    image: "/images/ali-house-of-shawarma-halal.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Middle Eastern", "Halal", "Shawarma", "Biryani", "Mediterranean", "Baguio"],
     dietaryOptions: ["Halal"],
     about:
@@ -376,7 +376,7 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Specialty Coffee", "Comfort Food", "Creative Pandesal Dishes", "Refreshing Drinks"],
     menuItems: [],
     fullMenu: loopByCantoMenu,
-    image: "/images/loop-by-canto.jpg",
+    image: "/images/comingsoon.png",
     tags: ["Cafe", "Coffee", "Comfort Food", "Creative", "International", "Baguio"],
     dietaryOptions: ["Vegetarian"],
     about:
