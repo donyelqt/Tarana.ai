@@ -48,7 +48,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-[min(440px,calc(100vw-2rem))] sm:max-w-[480px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="w-full max-w-[min(440px,calc(100vw-2rem))] sm:max-w-[480px] p-0 gap-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Header */}
         <DialogHeader className="px-5 pt-6 pb-4 sm:px-6">
           <div className="flex items-center gap-2 mb-2">
