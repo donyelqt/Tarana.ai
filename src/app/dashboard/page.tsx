@@ -14,16 +14,31 @@ import { Bookmark, Plus, MapPin, Car, Utensils, Wand2, Link, Share2 } from "luci
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { noProfile } from "public"
+import { ReferralModal } from "./components/ReferralModal"
+import { useToast } from "@/components/ui/use-toast"
 
 const DashboardContent = () => {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
+  const { toast } = useToast()
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showSplash, setShowSplash] = useState(false)
   const [isWelcomeCardAnimated, setIsWelcomeCardAnimated] = useState(false)
+  const [isReferralModalOpen, setIsReferralModalOpen] = useState(false)
+  const referralCode = session?.user?.email ? `${session.user.email.split('@')[0].toUpperCase()}2024` : "LRG2024"
+  const referralLink = `https://tarana-ai/invite/${referralCode}`
+
+  const handleCopyInviteLink = () => {
+    navigator.clipboard.writeText(referralLink)
+    toast({
+      title: "Copied!",
+      description: "Invite link copied to clipboard.",
+      duration: 2000,
+    })
+  }
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -319,16 +334,24 @@ const DashboardContent = () => {
                 <h3 className="text-lg font-medium">Refer a Friend.</h3>
                 <h3 className="text-lg font-medium">Earn rewards.</h3>
                 <p className="text-slate-200 text-sm mt-1 mb-4">Invite friends. They get a welcome perk, you earn points and rewards.</p>
-                
+
                 <div className="font-medium text-md mb-2">Your invite link</div>
                 <div className="flex space-x-2 mb-4">
-                  <Button variant="outline" className="border border-gray-300 bg-white text-xs text-blue-700 px-3 py-1.5 hover:bg-blue-50 whitespace-nowrap">
+                  <Button
+                    variant="outline"
+                    className="border border-gray-300 bg-white text-xs text-blue-700 px-3 py-1.5 hover:bg-blue-50 whitespace-nowrap"
+                    onClick={handleCopyInviteLink}
+                  >
                     <Link size={16} className="mr-1" />
                     Copy invite link
                   </Button>
-                  <Button variant="secondary" className="bg-slate-900 text-white hover:bg-slate-800 text-xs px-3 py-1.5">
+                  <Button
+                    variant="secondary"
+                    className="bg-slate-900 text-white hover:bg-slate-800 text-xs px-3 py-1.5"
+                    onClick={() => setIsReferralModalOpen(true)}
+                  >
                     <Share2 size={16} className="mr-2" />
-                    Share
+                    Invite Friends
                   </Button>
                 </div>
 
@@ -342,6 +365,13 @@ const DashboardContent = () => {
           </div>
         </div>
       </main>
+      
+      {/* Referral Modal */}
+      <ReferralModal 
+        open={isReferralModalOpen} 
+        onOpenChange={setIsReferralModalOpen}
+        userReferralCode={referralCode}
+      />
     </div>
   )
 }
