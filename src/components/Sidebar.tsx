@@ -6,34 +6,12 @@ import { useState, useEffect, useRef } from "react"
 import { signOut } from "next-auth/react"
 import { motion, Variants } from "framer-motion"
 import { Settings, Donut, Utensils, MapPinCheck } from 'lucide-react'
+
 import Image from "next/image"
 import taranaai2 from "../../public/images/taranaai2.png"
 
-const smokeParticleVariants: Variants = {
-  initial: {
-    opacity: 0,
-    scale: 0.5,
-    y: 20,
-    x: 0,
-    rotate: 0,
-  },
-  animate: (i: number) => ({
-    opacity: [0, 0.6, 0.4, 0],
-    scale: [0.5, 1.8, 2.2],
-    y: -140,
-    x: (Math.random() - 0.5) * 320,
-    rotate: (Math.random() - 0.5) * 270,
-    transition: {
-      delay: i * 0.1,
-      duration: Math.random() * 2 + 2.5,
-      ease: 'easeOut',
-      repeat: Infinity,
-      repeatDelay: 2,
-    },
-  }),
-};
-
 const Sidebar = () => {
+
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const navRef = useRef<HTMLElement>(null)
@@ -132,18 +110,16 @@ const Sidebar = () => {
           </div>
           <nav ref={navRef} className="space-y-2 relative">
             <motion.div
-              className="absolute left-0 w-full h-40 animate-float rounded-full bg-gradient-to-br from-sky-200 to-blue-300 opacity-65 blur-2xl pointer-events-none animate-blob"
+              className="absolute left-0 w-full h-40 animate-blob rounded-full bg-gradient-to-br from-sky-200 to-blue-300 opacity-65 blur-2xl pointer-events-none"
               variants={variants}
               custom={activeTop}
               animate={getAnimationState()}
               onAnimationComplete={(definition) => {
                 if (definition === 'up') {
-                  setIsFloating(true);
+                  setIsFloating(true)
                 }
               }}
-              style={{
-                transform: 'translateY(-50%)',
-              }}
+              style={{ transform: 'translateY(-50%)' }}
             />
             <Link href="/dashboard" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/dashboard" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
               <span className="mr-3 animate-icon-interactive">
@@ -188,24 +164,6 @@ const Sidebar = () => {
           </nav>
         </div>
         <div className="relative">
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none">
-            <div className="relative w-0 h-0">
-              {Array.from({ length: 40 }).map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute bottom-0 w-12 h-12"
-                  style={{
-                    background:
-                      'radial-gradient(circle, hsla(196, 92%, 86%, 0.4) 0%, hsla(196, 92%, 86%, 0) 70%)',
-                  }}
-                  variants={smokeParticleVariants}
-                  initial="initial"
-                  animate="animate"
-                  custom={i}
-                />
-              ))}
-            </div>
-          </div>
           <button
             onClick={() => signOut({ callbackUrl: '/auth/signin' })}
             className="flex items-center text-gray-400 hover:text-blue-500 transition"
