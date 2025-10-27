@@ -66,11 +66,11 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
 
         {/* Credits Card */}
         <div className="px-5 sm:px-6">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl p-5 text-white relative overflow-hidden">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-blue-700 to-blue-500 p-5 text-white shadow-[0_18px_35px_-18px_rgba(37,99,235,0.7)]">
             {/* Background pattern effect */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-12 -translate-x-12"></div>
-            
+            <div className="absolute top-0 right-0 h-32 w-32 -translate-y-16 translate-x-16 rounded-full bg-white/10" />
+            <div className="absolute bottom-0 left-0 h-24 w-24 translate-y-12 -translate-x-12 rounded-full bg-white/10" />
+
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-4">
                 <div>
