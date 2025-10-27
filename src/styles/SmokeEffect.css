@@ -1,6 +1,6 @@
 .smoke {
     position: absolute;
-    width: 30px;
+    width: 10px;
     height: 10px;
     background: rgb(0, 187, 255);
     border-radius: 50%;
@@ -13,11 +13,11 @@
   @keyframes smoke-animation {
     0% {
       transform: scale(1);
-      opacity: 0.35;
+      opacity: 0.25;
     }
     50% {
       transform: scale(2);
-      opacity: 0.55;
+      opacity: 0.25;
     }
     100% {
       transform: scale(3);
