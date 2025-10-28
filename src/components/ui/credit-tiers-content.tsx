@@ -22,7 +22,7 @@ export const CreditTiersContent: React.FC = () => {
         <div className="bg-sky-100/60 rounded-xl p-4">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Credit Tier System</h2>
           <p className="text-sm text-gray-600 leading-relaxed mb-4">
-            Invite more friends to unlock higher credit tiers! Credits refresh daily and can be used for Smart Plans and Tarana Eats.
+            Invite more friends to unlock higher credit tiers! Credits refresh daily and can be used for Tarana Gala and Tarana Eats.
           </p>
 
           {/* Current Tier Progress - White Background Container */}

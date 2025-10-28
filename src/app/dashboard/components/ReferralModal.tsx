@@ -304,7 +304,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                   </div>
                   <div className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                    <p className="text-sm text-gray-700">Credits can be used for Smart Plans and Tarana Eats</p>
+                    <p className="text-sm text-gray-700">Credits can be used for Tarana Gala and Tarana Eats</p>
                   </div>
                 </div>
               </div>
