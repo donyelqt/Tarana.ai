@@ -31,7 +31,7 @@
 
 export const INTEGRATION_STATUS = {
   modalTrigger: 'INTEGRATED',
-  stateManagement: 'INTEGRATED', 
+  stateManagement: 'INTEGRATED',
   tabNavigation: 'INTEGRATED',
   creditTiersContent: 'INTEGRATED',
   buildStatus: 'PASSING',
