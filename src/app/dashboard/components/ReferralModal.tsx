@@ -243,16 +243,69 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
             </TabsContent>
 
             {/* Activity Tab */}
-            <TabsContent value="activity" className="space-y-3 mt-4">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-2">Recent Activity</h3>
-                <p className="text-sm text-gray-600 mb-4">Track your referrals and earned credits</p>
-                <div className="text-center py-8">
-                  <div className="text-gray-400 mb-2">
-                    <Gift className="h-12 w-12 mx-auto opacity-50" />
+            <TabsContent value="activity" className="space-y-4 mt-4">
+              {/* Recent Referrals */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-4">Recent Referrals</h3>
+                <div className="space-y-3">
+                  {/* Sarah M. Referral */}
+                  <div className="flex items-center justify-between py-3 px-4 bg-white border border-gray-100 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 rounded-full flex items-center justify-center text-white font-semibold text-sm transition-all duration-300 cursor-pointer">
+                        S
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">Sarah M.</div>
+                        <div className="text-xs text-gray-500">Oct 15, 2025</div>
+                      </div>
+                    </div>
+                    <div className="text-blue-600 text-sm font-medium">
+                      +1 Referral
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-500">No activity yet</p>
-                  <p className="text-xs text-gray-400 mt-1">Start referring friends to see activity here</p>
+
+                  {/* John D. Referral */}
+                  <div className="flex items-center justify-between py-3 px-4 bg-white border border-gray-100 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 rounded-full flex items-center justify-center text-white font-semibold text-sm transition-all duration-300 cursor-pointer">
+                        J
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">John D.</div>
+                        <div className="text-xs text-gray-500">Oct 18, 2025</div>
+                      </div>
+                    </div>
+                    <div className="text-blue-600 text-sm font-medium">
+                      +1 Referral
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* How Credits Work */}
+              <div className="bg-blue-50 rounded-xl p-4">
+                <h3 className="font-semibold text-gray-900 mb-3">How Credits Work</h3>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-sm text-gray-700">Everyone starts with 5 free credits per day</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-sm text-gray-700">Earn bonus credits/day for each active referred friend</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-sm text-gray-700">Credits refresh daily at midnight</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-sm text-gray-700">Unused credits don't roll over to the next day</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-sm text-gray-700">Credits can be used for Smart Plans and Tarana Eats</p>
+                  </div>
                 </div>
               </div>
             </TabsContent>
