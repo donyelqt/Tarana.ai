@@ -1,106 +1,132 @@
 import React from 'react';
 import { Check, Zap } from 'lucide-react';
-import { ProgressIndicator } from './progress-indicator';
-import { TierCard } from './tier-card';
 import { TIER_CONFIGS, getTierStatus, getNextTier } from '../../lib/credit-tiers';
 
 /**
- * CreditTiersContent component for the credit-tiers TabsContent
- * Displays progress indicator and all three tier cards with proper data and status
- * Uses mock data: 2/3 referrals as specified in requirements
- * Enhanced with accessibility features, responsive design, and error handling
+ * CreditTiersContent component redesigned to match UI reference
+ * Features header section, progress indicator, and tier cards with proper styling
  */
 export const CreditTiersContent: React.FC = () => {
-  // Mock data as specified in task requirements: 2/3 referrals
   const mockReferralCount = 2;
   
   try {
-    // Calculate next tier for progress indicator with error handling
     const nextTier = getNextTier(mockReferralCount);
-    const targetReferrals = nextTier ? nextTier.referralsRequired : 5; // Default to max tier if all unlocked
-    
-    // Calculate progress percentage with validation
+    const targetReferrals = nextTier ? nextTier.referralsRequired : 5;
     const progressPercentage = nextTier 
       ? Math.min(100, Math.max(0, (mockReferralCount / nextTier.referralsRequired) * 100))
       : 100;
 
     return (
-      <div 
-        className="space-y-6 mt-4 px-1 focus-within:outline-none"
-        role="main"
-        aria-label="Credit tier system information"
-        tabIndex={-1}
-      >
-        {/* Current Tier Progress Section with improved spacing and accessibility */}
-        <section aria-labelledby="progress-heading" className="space-y-4">
-          <h3 
-            id="progress-heading"
-            className="text-sm font-semibold text-gray-900 mb-3"
-          >
-            Current Tier Progress
-          </h3>
-          <ProgressIndicator
-            currentReferrals={mockReferralCount}
-            targetReferrals={targetReferrals}
-            progressPercentage={progressPercentage}
-          />
-        </section>
+      <div className="space-y-6">
+        {/* Credit Tier System Container with Sky Blue Background */}
+        <div className="bg-sky-100/60 rounded-xl p-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Credit Tier System</h2>
+          <p className="text-sm text-gray-600 leading-relaxed mb-4">
+            Invite more friends to unlock higher credit tiers! Credits refresh daily and can be used for Smart Plans and Tarana Eats.
+          </p>
 
-        {/* Credit Tiers Section with improved spacing and accessibility */}
-        <section aria-labelledby="tiers-heading" className="space-y-4">
-          <h3 
-            id="tiers-heading" 
-            className="text-sm font-semibold text-gray-900 mb-3 sr-only"
-          >
-            Available Credit Tiers
-          </h3>
-          <div className="space-y-4" role="list" aria-label="Credit tier options">
-            {TIER_CONFIGS.map((tier, index) => {
+          {/* Current Tier Progress - White Background Container */}
+          <div className="bg-white rounded-lg p-4">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm font-medium text-gray-700">Current Tier Progress</span>
+              <span className="text-sm font-medium text-gray-600">{mockReferralCount} / {targetReferrals} friends</span>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="h-2 bg-blue-600 rounded-full transition-all duration-300"
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Credit Tiers */}
+        <div>
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Credit Tiers</h3>
+          <div className="space-y-3">
+            {TIER_CONFIGS.map((tier) => {
               const status = getTierStatus(tier, mockReferralCount);
               
-              // Get appropriate icon based on tier and status with error handling
-              const getIcon = () => {
-                try {
-                  if (status === 'unlocked') {
-                    return <Check className="w-5 h-5 text-white" aria-hidden="true" />;
-                  }
-                  return <Zap className="w-5 h-5 text-white" aria-hidden="true" />;
-                } catch (error) {
-                  console.warn(`Error rendering icon for tier ${tier.id}:`, error);
-                  return <div className="w-5 h-5 bg-gray-400 rounded" aria-hidden="true" />;
+              // Determine card styling based on status
+              const getCardStyles = () => {
+                switch (status) {
+                  case 'unlocked':
+                    return {
+                      container: 'bg-green-50 border-2 border-green-200',
+                      icon: 'bg-green-600',
+                      iconElement: <Check className="w-5 h-5 text-white" />,
+                      badge: 'bg-green-600 text-white',
+                      badgeText: 'Unlocked!'
+                    };
+                  case 'next':
+                    return {
+                      container: 'bg-blue-50 border-2 border-blue-200',
+                      icon: 'bg-blue-600',
+                      iconElement: <Zap className="w-5 h-5 text-white" />,
+                      badge: 'bg-blue-600 text-white',
+                      badgeText: 'Next Tier'
+                    };
+                  default:
+                    return {
+                      container: 'bg-white border-2 border-gray-200',
+                      icon: 'bg-gray-400',
+                      iconElement: <Zap className="w-5 h-5 text-white" />,
+                      badge: '',
+                      badgeText: ''
+                    };
                 }
               };
 
+              const styles = getCardStyles();
+
               return (
-                <div key={tier.id} role="listitem">
-                  <TierCard
-                    tierName={tier.name}
-                    dailyCredits={tier.dailyCreditsBonus}
-                    totalCredits={tier.totalDailyCredits}
-                    referralsRequired={status !== 'unlocked' ? tier.referralsRequired : undefined}
-                    status={status}
-                    icon={getIcon()}
-                  />
+                <div key={tier.id} className={`rounded-xl p-4 ${styles.container}`}>
+                  <div className="flex items-center gap-4">
+                    {/* Icon */}
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${styles.icon}`}>
+                      {styles.iconElement}
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="text-base font-semibold text-gray-900">{tier.name}</h4>
+                        {styles.badgeText && (
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles.badge}`}>
+                            {styles.badgeText}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="text-sm text-gray-600 mb-1">
+                        +{tier.dailyCreditsBonus} daily credits
+                      </div>
+                      
+                      <div className="text-sm font-medium text-gray-700">
+                        Total: {tier.totalDailyCredits} credits/day
+                      </div>
+                      
+                      {status !== 'unlocked' && (
+                        <div className="text-sm text-gray-600 mt-2 flex items-center justify-end">
+                          <span className="font-medium">{tier.referralsRequired} Referrals</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
           </div>
-        </section>
-
-        {/* Responsive spacing for modal constraints with improved accessibility */}
-        <div className="pb-4 sm:pb-6" aria-hidden="true" />
+        </div>
       </div>
     );
   } catch (error) {
     console.error('Error rendering CreditTiersContent:', error);
     
-    // Fallback error state with improved styling and accessibility
     return (
-      <div 
-        className="space-y-4 mt-4 p-6 text-center bg-red-50 border border-red-200 rounded-lg"
-        role="alert"
-        aria-live="polite"
-      >
+      <div className="space-y-4 p-6 text-center bg-red-50 border border-red-200 rounded-lg">
         <div className="text-sm text-red-800 font-medium">
           Unable to load credit tier information
         </div>
