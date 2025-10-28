@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Gift, Zap, Copy, Facebook, Instagram, Linkedin } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { CreditTiersContent } from "@/components/ui/credit-tiers-content"
 
 interface ReferralModalProps {
   open: boolean
@@ -48,7 +49,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-[min(440px,calc(100vw-2rem))] sm:max-w-[480px] p-0 gap-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <DialogContent className="w-full max-w-lg p-0 gap-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Header */}
         <DialogHeader className="px-5 pt-6 pb-4 sm:px-6">
           <div className="flex items-center gap-2 mb-2">
@@ -56,7 +57,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
               <Gift className="h-5 w-5 text-blue-600" />
             </div>
             <DialogTitle className="text-xl font-semibold text-gray-900">
-              Refer Friends & Earn Credits
+              Credit Tier System
             </DialogTitle>
           </div>
           <DialogDescription className="text-sm text-gray-600 leading-relaxed">
@@ -238,26 +239,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
 
             {/* Credit Tiers Tab */}
             <TabsContent value="credit-tiers" className="space-y-3 mt-4">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 mb-2">Credit Tier System</h3>
-                <p className="text-sm text-gray-600">
-                  Earn more credits as you refer more friends! Each active referral increases your daily credit bonus.
-                </p>
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between items-center p-2 bg-white rounded-lg">
-                    <span className="text-sm font-medium">0-2 referrals</span>
-                    <span className="text-sm text-blue-600 font-semibold">+5 credits/day</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 bg-white rounded-lg">
-                    <span className="text-sm font-medium">3-5 referrals</span>
-                    <span className="text-sm text-blue-600 font-semibold">+10 credits/day</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 bg-white rounded-lg">
-                    <span className="text-sm font-medium">6+ referrals</span>
-                    <span className="text-sm text-blue-600 font-semibold">+15 credits/day</span>
-                  </div>
-                </div>
-              </div>
+              <CreditTiersContent />
             </TabsContent>
 
             {/* Activity Tab */}
@@ -277,38 +259,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
           </Tabs>
         </div>
 
-        {/* Bottom Cards */}
-        <div className="px-6 pb-6 pt-2">
-          <div className="grid grid-cols-2 gap-3">
-            {/* Smart Plans Card */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-              <div className="bg-blue-600 rounded-lg p-2 w-fit mb-2">
-                <Gift className="h-5 w-5 text-white" />
-              </div>
-              <h4 className="font-semibold text-sm text-gray-900 mb-1">Smart Plans</h4>
-              <p className="text-xs text-gray-600 mb-2 leading-relaxed">
-                Use credits to generate AI-powered itineraries tailored to your preferences
-              </p>
-              <p className="text-xs text-blue-600 font-semibold">
-                1 credit = 1 plan generation
-              </p>
-            </div>
 
-            {/* Tarana Eats Card */}
-            <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
-              <div className="bg-orange-500 rounded-lg p-2 w-fit mb-2">
-                <Gift className="h-5 w-5 text-white" />
-              </div>
-              <h4 className="font-semibold text-sm text-gray-900 mb-1">Tarana Eats</h4>
-              <p className="text-xs text-gray-600 mb-2 leading-relaxed">
-                Unlock personalized restaurant recommendations and food guides
-              </p>
-              <p className="text-xs text-orange-600 font-semibold">
-                1 credit = 1 food guide
-              </p>
-            </div>
-          </div>
-        </div>
       </DialogContent>
     </Dialog>
   )
