@@ -43,7 +43,7 @@ export const CreditTiersContent: React.FC = () => {
         </div>
 
         {/* Credit Tiers */}
-        <div>
+        <div className="pb-6">
           <h3 className="text-base font-semibold text-gray-900 mb-4">Credit Tiers</h3>
           <div className="space-y-3">
             {TIER_CONFIGS.map((tier) => {
