@@ -45,7 +45,7 @@ export class TierService {
 
     try {
       // Count active referrals
-      const { data: referrals, error: countError } = await supabaseAdmin
+      const { count: activeCount, error: countError } = await supabaseAdmin
         .from('referrals')
         .select('id', { count: 'exact', head: true })
         .eq('referrer_id', userId)
@@ -53,15 +53,15 @@ export class TierService {
 
       if (countError) throw countError;
 
-      const activeCount = referrals || 0;
-      const newTier = this.calculateTierFromReferrals(activeCount);
+      const resolvedActiveCount = activeCount ?? 0;
+      const newTier = this.calculateTierFromReferrals(resolvedActiveCount);
       const tierConfig = this.getTierConfig(newTier);
 
       // Update user profile
       const { error: updateError } = await supabaseAdmin
         .from('user_profiles')
         .update({
-          active_referrals: activeCount,
+          active_referrals: resolvedActiveCount,
           current_tier: newTier,
           daily_credits: tierConfig.dailyCredits,
           updated_at: new Date().toISOString(),
