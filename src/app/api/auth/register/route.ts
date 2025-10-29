@@ -4,6 +4,8 @@ import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rate
 import { sanitizeUserRegistration } from '@/lib/security/inputSanitizer';
 import { applySecurityHeaders } from '@/lib/security/securityHeaders';
 import { checkRequiredEnvVars } from '@/lib/security/environmentValidator';
+import { ReferralService } from '@/lib/referral-system';
+import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 
 // Rate limiter for registration attempts
 const registerRateLimit = createRateLimitMiddleware(rateLimitConfigs.auth);
@@ -28,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     const requestBody = await request.json();
-    const { fullName, email, password } = requestBody;
+    const { fullName, email, password, referralCode } = requestBody;
 
     // Validate required fields
     if (!fullName || !email || !password) {
@@ -36,6 +38,17 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields' },
         { status: 400 }
       ));
+    }
+
+    // Validate referral code if provided
+    if (referralCode) {
+      const isValidReferralCode = await ReferralService.validateReferralCode(referralCode);
+      if (!isValidReferralCode) {
+        return applySecurityHeaders(NextResponse.json(
+          { error: 'Invalid referral code' },
+          { status: 400 }
+        ));
+      }
     }
 
     // Comprehensive input sanitization and validation
@@ -50,7 +63,45 @@ export async function POST(request: NextRequest) {
 
     try {
       // Create user in Supabase with sanitized data
-      await createUserInSupabase(sanitized.fullName, sanitized.email, sanitized.password);
+      const newUser = await createUserInSupabase(sanitized.fullName, sanitized.email, sanitized.password);
+
+      // ✅ REFERRAL SYSTEM: Create user profile and handle referral
+      if (supabaseAdmin && newUser?.id) {
+        try {
+          // Create user profile with default tier
+          const { error: profileError } = await supabaseAdmin
+            .from('user_profiles')
+            .insert({
+              id: newUser.id,
+              current_tier: 'Default',
+              daily_credits: 5,
+              credits_used_today: 0,
+              total_referrals: 0,
+              active_referrals: 0,
+            });
+
+          if (profileError) {
+            console.error('Error creating user profile:', profileError);
+          }
+
+          // Create referral relationship if referral code provided
+          if (referralCode) {
+            const referralResult = await ReferralService.createReferral({
+              referralCode,
+              newUserId: newUser.id,
+            });
+
+            if (referralResult.success) {
+              console.log(`✅ Referral created for user ${newUser.id} with code ${referralCode}`);
+            } else {
+              console.error('Failed to create referral:', referralResult.error);
+            }
+          }
+        } catch (profileError) {
+          console.error('Error in referral system setup:', profileError);
+          // Don't block registration if profile creation fails
+        }
+      }
 
       // Return success response (without exposing sensitive data)
       return applySecurityHeaders(NextResponse.json(

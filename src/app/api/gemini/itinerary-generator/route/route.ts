@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { createHash } from "crypto";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/auth";
+import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
 import { geminiModel, API_KEY } from "../lib/config";
 import { getPeakHoursContext } from "@/lib/traffic";
 import { buildDetailedPrompt } from "../lib/contextBuilder";
@@ -109,6 +112,34 @@ const getCachedItinerary = unstable_cache(
 
 export async function POST(req: NextRequest) {
     try {
+        // ✅ CREDIT SYSTEM: Check authentication
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ 
+                error: "Authentication required",
+                text: "" 
+            }, { status: 401 });
+        }
+
+        const userId = session.user.id;
+
+        // ✅ CREDIT SYSTEM: Check available credits
+        try {
+            const balance = await CreditService.getCurrentBalance(userId);
+            if (balance.remainingToday < 1) {
+                return NextResponse.json({ 
+                    error: "Insufficient credits. You need 1 credit to generate an itinerary.",
+                    text: "",
+                    required: 1,
+                    available: balance.remainingToday,
+                    nextRefresh: balance.nextRefresh
+                }, { status: 402 });
+            }
+        } catch (creditError) {
+            console.error("Error checking credits:", creditError);
+            // Continue without credit check if service is unavailable
+        }
+
         const requestBody = await req.json();
         const { prompt } = requestBody;
 
@@ -126,6 +157,25 @@ export async function POST(req: NextRequest) {
 
         // Call the cached function with a stable key
         const responseData = await getCachedItinerary(requestBody, hash);
+
+        // ✅ CREDIT SYSTEM: Consume 1 credit for successful generation
+        try {
+            console.log(`🔄 Attempting to consume 1 credit for user ${userId} - Tarana Gala`);
+            const consumeResult = await CreditService.consumeCredits({
+                userId,
+                amount: 1,
+                service: 'tarana_gala',
+                description: `Generated itinerary: ${prompt?.substring(0, 50) || 'Itinerary generation'}`
+            });
+            console.log(`✅ Credit consumed successfully for user ${userId}`, consumeResult);
+        } catch (creditConsumeError: any) {
+            console.error("❌ CREDIT CONSUMPTION FAILED:", {
+                userId,
+                service: 'tarana_gala',
+                error: creditConsumeError?.message || creditConsumeError
+            });
+            // Don't block response if credit consumption fails
+        }
 
         return NextResponse.json(responseData);
 

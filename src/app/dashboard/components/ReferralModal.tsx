@@ -1,13 +1,15 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Gift, Zap, Copy, Facebook, Instagram, Linkedin } from "lucide-react"
+import { Gift, Zap, Copy, Facebook, Instagram, Linkedin, Loader2, Sparkles, Utensils } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { CreditTiersContent } from "@/components/ui/credit-tiers-content"
+import { useSession } from "next-auth/react"
+import type { UserTier } from "@/lib/referral-system/types"
 
 interface ReferralModalProps {
   open: boolean
@@ -15,15 +17,75 @@ interface ReferralModalProps {
   userReferralCode?: string
 }
 
+interface ReferralStats {
+  totalReferrals: number
+  activeReferrals: number
+  currentTier: string
+  nextTierRequirement: number
+  totalBonusCredits: number
+  recentReferrals: any[]
+}
+
+interface CreditBalance {
+  totalCredits: number
+  usedToday: number
+  remainingToday: number
+  tier: string
+  dailyLimit: number
+}
+
 export const ReferralModal: React.FC<ReferralModalProps> = ({
   open,
   onOpenChange,
-  userReferralCode = "LRG2024"
+  userReferralCode: propReferralCode
 }) => {
   const { toast } = useToast()
+  const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState("share")
+  const [loading, setLoading] = useState(true)
+  const [referralCode, setReferralCode] = useState(propReferralCode || "")
+  const [stats, setStats] = useState<ReferralStats | null>(null)
+  const [balance, setBalance] = useState<CreditBalance | null>(null)
   
-  const referralLink = `https://tarana-ai/invite/${userReferralCode}`
+  // Fetch referral data when modal opens
+  useEffect(() => {
+    if (open && session?.user) {
+      fetchReferralData()
+    }
+  }, [open, session])
+
+  const fetchReferralData = async () => {
+    setLoading(true)
+    try {
+      // Fetch referral stats and credit balance in parallel
+      const [statsRes, balanceRes] = await Promise.all([
+        fetch('/api/referrals/stats'),
+        fetch('/api/credits/balance')
+      ])
+
+      if (statsRes.ok) {
+        const statsData = await statsRes.json()
+        setStats(statsData.stats)
+        setReferralCode(statsData.referralCode || propReferralCode || "")
+      }
+
+      if (balanceRes.ok) {
+        const balanceData = await balanceRes.json()
+        setBalance(balanceData.balance)
+      }
+    } catch (error) {
+      console.error('Error fetching referral data:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load referral data",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  const referralLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/signup?ref=${referralCode}`
   
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text)
@@ -73,29 +135,40 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
             <div className="absolute bottom-0 left-0 h-24 w-24 translate-y-12 -translate-x-12 rounded-full bg-white/10" />
 
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <div className="text-sm opacity-90 mb-1">Your Daily Credits</div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-bold">5</span>
-                    <span className="text-sm opacity-90">credits/day</span>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <div className="text-sm opacity-90 mb-1">Your Daily Credits</div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-4xl font-bold">{balance?.totalCredits || 5}</span>
+                        <span className="text-sm opacity-90">credits/day</span>
+                      </div>
+                      <div className="text-xs opacity-75 mt-1">
+                        {balance?.remainingToday || 0} remaining today
+                      </div>
+                    </div>
+                    <div className="bg-blue-600/50 p-3 rounded-full">
+                      <Zap className="h-7 w-7 fill-white" />
+                    </div>
                   </div>
-                </div>
-                <div className="bg-blue-600/50 p-3 rounded-full">
-                  <Zap className="h-7 w-7 fill-white" />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/20">
-                <div>
-                  <div className="text-xs opacity-75 mb-1">Base Credits</div>
-                  <div className="text-2xl font-bold">5</div>
-                </div>
-                <div>
-                  <div className="text-xs opacity-75 mb-1">Referral Bonus</div>
-                  <div className="text-2xl font-bold text-yellow-300">+10</div>
-                </div>
-              </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/20">
+                    <div>
+                      <div className="text-xs opacity-75 mb-1">Current Tier</div>
+                      <div className="text-lg font-bold">{balance?.tier || 'Default'}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs opacity-75 mb-1">Active Referrals</div>
+                      <div className="text-lg font-bold text-yellow-300">{stats?.activeReferrals || 0}</div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -110,7 +183,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
             </TabsList>
 
             {/* Share Tab */}
-            <TabsContent value="share" className="space-y-4 mt-4">
+            <TabsContent value="share" className="space-y-4 mt-4 pb-6">
               {/* Referral Link */}
               <div>
                 <label className="text-sm font-semibold text-gray-900 mb-2 block">
@@ -144,7 +217,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <Input
                     readOnly
-                    value={userReferralCode}
+                    value={referralCode}
                     onFocus={(event) => event.target.select()}
                     className="h-10 sm:h-11 bg-gray-50 border border-gray-200 text-xs sm:text-sm font-mono text-gray-700"
                     aria-label="Referral code"
@@ -152,7 +225,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                   <Button
                     variant="outline"
                     size="default"
-                    onClick={() => copyToClipboard(userReferralCode, "Code")}
+                    onClick={() => copyToClipboard(referralCode, "Code")}
                     className="w-full sm:w-auto sm:flex-shrink-0 h-10 text-sm"
                   >
                     <Copy className="h-4 w-4 mr-1" />
@@ -235,51 +308,105 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Credit Usage Containers */}
+              <div className="grid grid-cols-1 gap-3 mt-4 sm:grid-cols-2">
+                {/* Smart Plans Container */}
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-2 bg-blue-600 rounded-lg flex-shrink-0">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900 text-base">Smart Plans</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3 leading-relaxed">
+                    Use credits to generate AI-powered itineraries tailored to your preferences
+                  </p>
+                  <div className="text-sm font-medium text-blue-600">
+                    1 credit = 1 plan generation
+                  </div>
+                </div>
+
+                {/* Tarana Eats Container */}
+                <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-2 bg-orange-500 rounded-lg flex-shrink-0">
+                      <Utensils className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900 text-base">Tarana Eats</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3 leading-relaxed">
+                    Unlock personalized restaurant recommendations and food guides
+                  </p>
+                  <div className="text-sm font-medium text-orange-600">
+                    1 credit = 1 food guide
+                  </div>
+                </div>
+              </div>
             </TabsContent>
 
             {/* Credit Tiers Tab */}
             <TabsContent value="credit-tiers" className="space-y-3 mt-4">
-              <CreditTiersContent />
+              <CreditTiersContent
+                loading={loading}
+                activeReferrals={stats?.activeReferrals}
+                currentTier={(balance?.tier || stats?.currentTier) as UserTier | undefined}
+              />
             </TabsContent>
 
             {/* Activity Tab */}
             <TabsContent value="activity" className="space-y-4 mt-4">
-              {/* Recent Referrals */}
+              {/* Referral Statistics */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Recent Referrals</h3>
-                <div className="space-y-3">
-                  {/* Sarah M. Referral */}
-                  <div className="flex items-center justify-between py-3 px-4 bg-white border border-gray-100 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 rounded-full flex items-center justify-center text-white font-semibold text-sm transition-all duration-300 cursor-pointer">
-                        S
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900 text-sm">Sarah M.</div>
-                        <div className="text-xs text-gray-500">Oct 15, 2025</div>
-                      </div>
-                    </div>
-                    <div className="text-blue-600 text-sm font-medium">
-                      +1 Referral
-                    </div>
+                <h3 className="font-semibold text-gray-900 mb-4">Referral Statistics</h3>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between py-3 px-4 bg-white border border-gray-100 rounded-lg">
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">Total Referrals</div>
+                        <div className="text-xs text-gray-500">All time</div>
+                      </div>
+                      <div className="text-blue-600 text-2xl font-bold">
+                        {stats?.totalReferrals || 0}
+                      </div>
+                    </div>
 
-                  {/* John D. Referral */}
-                  <div className="flex items-center justify-between py-3 px-4 bg-white border border-gray-100 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 rounded-full flex items-center justify-center text-white font-semibold text-sm transition-all duration-300 cursor-pointer">
-                        J
-                      </div>
+                    <div className="flex items-center justify-between py-3 px-4 bg-white border border-gray-100 rounded-lg">
                       <div>
-                        <div className="font-medium text-gray-900 text-sm">John D.</div>
-                        <div className="text-xs text-gray-500">Oct 18, 2025</div>
+                        <div className="font-medium text-gray-900 text-sm">Active Referrals</div>
+                        <div className="text-xs text-gray-500">Currently active</div>
+                      </div>
+                      <div className="text-green-600 text-2xl font-bold">
+                        {stats?.activeReferrals || 0}
                       </div>
                     </div>
-                    <div className="text-blue-600 text-sm font-medium">
-                      +1 Referral
+
+                    <div className="flex items-center justify-between py-3 px-4 bg-white border border-gray-100 rounded-lg">
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">Current Tier</div>
+                        <div className="text-xs text-gray-500">Your membership level</div>
+                      </div>
+                      <div className="text-purple-600 text-lg font-bold">
+                        {stats?.currentTier || 'Default'}
+                      </div>
                     </div>
+
+                    {stats && stats.nextTierRequirement > 0 && (
+                      <div className="p-4 bg-blue-50 rounded-lg">
+                        <div className="text-sm font-medium text-gray-900 mb-1">
+                          Next Tier Progress
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Refer {stats.nextTierRequirement} more friend{stats.nextTierRequirement !== 1 ? 's' : ''} to unlock the next tier!
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
+                )}
               </div>
 
               {/* How Credits Work */}
@@ -304,7 +431,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                   </div>
                   <div className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                    <p className="text-sm text-gray-700">Credits can be used for Smart Plans and Tarana Eats</p>
+                    <p className="text-sm text-gray-700">Credits can be used for Tarana Gala and Tarana Eats</p>
                   </div>
                 </div>
               </div>

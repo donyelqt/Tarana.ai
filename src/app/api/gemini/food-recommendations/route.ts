@@ -1,5 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/auth";
+import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
 import { FullMenu, RestaurantData } from "@/app/tarana-eats/data/taranaEatsData";
 import { ResultMatch } from "@/types/tarana-eats";
 import { RobustFoodJsonParser } from "@/lib/robustFoodJsonParser";
@@ -25,16 +28,42 @@ interface EnhancedResultMatch extends ResultMatch {
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
-// Use environment variable or fall back to default "gemini" model
-const DEFAULT_MODEL_ID = "gemini";
+// Use environment variable or fall back to valid Gemini model
+const DEFAULT_MODEL_ID = "gemini-1.5-flash"; // Valid Gemini model
 const configuredModelId = process.env.GOOGLE_GEMINI_MODEL?.trim();
 const MODEL_ID = configuredModelId && configuredModelId.length > 0 ? configuredModelId : DEFAULT_MODEL_ID;
 
 if (!configuredModelId && API_KEY) {
-  console.warn(`[Food Recommendations] GOOGLE_GEMINI_MODEL not set. Using default: ${DEFAULT_MODEL_ID}`);
+  console.log(`[Food Recommendations] Using Gemini model: ${DEFAULT_MODEL_ID}`);
 }
 
-const geminiModel = genAI ? genAI.getGenerativeModel({ model: MODEL_ID }) : null;
+const geminiModel = genAI ? genAI.getGenerativeModel({ 
+  model: MODEL_ID,
+  generationConfig: {
+    temperature: 0.8,
+    topP: 0.9,
+    topK: 40,
+    maxOutputTokens: 8192,
+  },
+  safetySettings: [
+    {
+      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+  ],
+}) : null;
 
 // Optimized caching system
 const responseCache = new Map<string, { response: any; timestamp: number }>();
@@ -43,6 +72,36 @@ const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes for better cache utilizatio
 
 export async function POST(req: NextRequest) {
   try {
+    // ✅ CREDIT SYSTEM: Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const userId = session.user.id;
+
+    // ✅ CREDIT SYSTEM: Check available credits
+    try {
+      const balance = await CreditService.getCurrentBalance(userId);
+      if (balance.remainingToday < 1) {
+        return NextResponse.json(
+          {
+            error: "Insufficient credits",
+            required: 1,
+            available: balance.remainingToday,
+            nextRefresh: balance.nextRefresh,
+          },
+          { status: 402 }
+        );
+      }
+    } catch (creditError) {
+      console.error("Error checking credits:", creditError);
+      // Continue without credit check if service is unavailable
+    }
+
     const { prompt, foodData, preferences: clientPreferences } = await req.json();
 
     // Input validation
@@ -142,27 +201,26 @@ export async function POST(req: NextRequest) {
     - Restaurants in database: ${menuStats.totalRestaurants}
     - Category breakdown: ${JSON.stringify(menuStats.categoryCounts)}
 
-    RELEVANT RESTAURANTS WITH FULL MENU DATA:
-    ${JSON.stringify(relevantRestaurants.map((r: RestaurantData) => {
+    RELEVANT RESTAURANTS (Top ${Math.min(relevantRestaurants.length, 15)}):
+    ${JSON.stringify(relevantRestaurants.slice(0, 15).map((r: RestaurantData) => {
       const menuItems = menuIndexingService.getRestaurantMenu(r.name);
-      const popularItems = menuItems.slice(0, 5).map(item => ({
+      const popularItems = menuItems.slice(0, 3).map(item => ({
         name: item.name,
-        category: item.category,
         price: item.price
       }));
       
       return {
         name: r.name,
-        cuisine: r.cuisine,
+        cuisine: r.cuisine?.[0] || 'Filipino',
         priceRange: r.priceRange,
         location: r.location,
-        popularFor: r.popularFor,
+        popularFor: r.popularFor?.[0] || 'dining',
         dietaryOptions: r.dietaryOptions,
-        ratings: r.ratings || 0,
+        ratings: r.ratings || 4.0,
         totalMenuItems: menuItems.length,
-        popularItems: popularItems
+        topItems: popularItems
       };
-    }), null, 2)}
+    }))}
 
     USER PREFERENCES: ${JSON.stringify(preferences)}
 
@@ -200,47 +258,87 @@ export async function POST(req: NextRequest) {
     `;
 
     try {
-      // Call Gemini API with timeout and generation config
-      const generationConfig = {
-        temperature: 0.9, // Higher for more creative, varied responses
-        topP: 0.95, // Broader sampling for diversity
-        topK: 40,
-        maxOutputTokens: 2048, // Limit response size for faster generation
-      };
+      // Retry logic for better reliability
+      let result: any;
+      let lastError: Error | null = null;
+      const maxRetries = 2;
       
-      const result = await Promise.race([
-        model.generateContent({
-          contents: [{ role: "user", parts: [{ text: enhancedPrompt }] }],
-          generationConfig
-        }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Gemini API timeout after 15s')), 15000)
-        )
-      ]) as any;
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          console.log(`🚀 Gemini API attempt ${attempt + 1}/${maxRetries} for food recommendations`);
+          console.log(`📝 Prompt length: ${enhancedPrompt.length} characters`);
+          
+          result = await Promise.race([
+            model.generateContent(enhancedPrompt),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Gemini API timeout after 30s')), 30000)
+            )
+          ]) as any;
+          
+          console.log(`✅ Gemini API responded on attempt ${attempt + 1}`);
+          break; // Success, exit retry loop
+        } catch (err: any) {
+          lastError = err;
+          console.error(`❌ Gemini API attempt ${attempt + 1} failed:`, err.message);
+          if (attempt < maxRetries - 1) {
+            console.log(`🔄 Retrying in 1 second...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      }
+      
+      if (!result) {
+        console.error(`❌ All Gemini API attempts failed`);
+        throw lastError || new Error('Gemini API failed after retries');
+      }
       
       const response = await result.response;
+      
+      // Debug: Check prompt feedback and safety ratings
+      if (response.promptFeedback) {
+        console.log(`⚠️ Prompt Feedback:`, JSON.stringify(response.promptFeedback));
+        if (response.promptFeedback.blockReason) {
+          console.error(`❌ Content blocked by Gemini. Reason: ${response.promptFeedback.blockReason}`);
+          throw new Error(`Gemini blocked content: ${response.promptFeedback.blockReason}`);
+        }
+      }
+      
+      // Check if candidates exist
+      if (!response.candidates || response.candidates.length === 0) {
+        console.error(`❌ No candidates in Gemini response`);
+        console.log(`Full response:`, JSON.stringify(response, null, 2));
+        throw new Error('No candidates in Gemini response');
+      }
+      
       const textResponse = response.text();
       
-      // Only log in development
-      if (process.env.NODE_ENV === 'development') {
-        console.log("Gemini Raw Response:", textResponse.substring(0, 200) + "..."); // Truncated log
+      console.log(`📊 Gemini response length: ${textResponse?.length || 0} characters`);
+      
+      // Check if response is empty or invalid
+      if (!textResponse || textResponse.trim().length < 10) {
+        console.error(`❌ Gemini returned empty/invalid response (length: ${textResponse?.length || 0})`);
+        console.log(`Candidate finish reason:`, response.candidates[0]?.finishReason);
+        console.log(`Candidate safety ratings:`, JSON.stringify(response.candidates[0]?.safetyRatings));
+        throw new Error('Empty Gemini response');
       }
+      
+      console.log(`✅ Gemini returned valid response: ${textResponse.substring(0, 100)}...`);
 
       // Use robust JSON parser with multiple recovery strategies
       const parseResult = RobustFoodJsonParser.parseResponse(textResponse);
       let recommendations: { matches: EnhancedResultMatch[] };
 
-      if (parseResult.success && parseResult.data) {
+      if (parseResult.success && parseResult.data && parseResult.data.matches && parseResult.data.matches.length > 0) {
         recommendations = parseResult.data;
-        console.log('✅ Gemini AI successfully generated recommendations');
+        console.log(`✅ Gemini AI successfully generated ${recommendations.matches.length} recommendations`);
         
         // Validate and enhance the response
         if (recommendations.matches && Array.isArray(recommendations.matches)) {
           recommendations.matches = validateAndEnhanceRecommendations(recommendations.matches, foodData, preferences);
         }
       } else {
-        console.warn('⚠️ JSON parsing failed, using intelligent fallback recommendations');
-        recommendations = createIntelligentRecommendations(foodData, prompt, preferences);
+        console.warn('⚠️ JSON parsing failed or no matches found, using intelligent fallback recommendations');
+        throw new Error('Invalid parse result');
       }
       
       // Enhance each match with comprehensive menu data and smart suggestions
@@ -301,15 +399,38 @@ export async function POST(req: NextRequest) {
         timestamp: Date.now()
       });
 
+      // ✅ CREDIT SYSTEM: Consume 1 credit for successful generation
+      try {
+        console.log(`🔄 Attempting to consume 1 credit for user ${userId} - Tarana Eats`);
+        const consumeResult = await CreditService.consumeCredits({
+          userId,
+          amount: 1,
+          service: 'tarana_eats',
+          description: `Food recommendation: ${prompt?.substring(0, 50) || 'Food search'}`
+        });
+        console.log(`✅ Credit consumed successfully for user ${userId} - Tarana Eats`, consumeResult);
+      } catch (creditConsumeError: any) {
+        console.error("❌ CREDIT CONSUMPTION FAILED:", {
+          userId,
+          service: 'tarana_eats',
+          error: creditConsumeError?.message || creditConsumeError,
+          code: creditConsumeError?.code,
+          details: creditConsumeError?.details,
+          stack: creditConsumeError?.stack
+        });
+        // Don't block response if credit consumption fails
+      }
+
       return NextResponse.json(recommendations);
 
     } catch (apiError) {
       const error = FoodRecommendationErrorHandler.createError(apiError, 'gemini_api_call');
       FoodRecommendationErrorHandler.logError(error);
       
-      // Use intelligent recommendations on API failure
-      console.log('⚠️ API error, falling back to intelligent recommendations');
+      // Use intelligent recommendations on API failure (FREE - no credit consumed)
+      console.log('⚠️ API error, falling back to FREE intelligent recommendations (no credits charged)');
       const intelligentRecommendations = createIntelligentRecommendations(foodData, prompt, preferences);
+      
       return NextResponse.json(intelligentRecommendations);
     }
   } catch (error) {
@@ -359,6 +480,7 @@ function validateAndEnhanceRecommendations(matches: EnhancedResultMatch[], foodD
 // Intelligent recommendations using recommendation engine
 function createIntelligentRecommendations(foodData: any, prompt: string, preferences: any): { matches: EnhancedResultMatch[] } {
   console.log('🧠 Using intelligent recommendation engine...');
+  console.log('🎯 Generating intelligent recommendations...');
   
   // Use recommendation engine for advanced scoring
   const recommendations = recommendationEngine.generateRecommendations(
@@ -366,6 +488,8 @@ function createIntelligentRecommendations(foodData: any, prompt: string, prefere
     preferences,
     5 // Top 5 recommendations
   );
+  
+  console.log(`✅ Generated ${recommendations.length} recommendations`);
   
   const matches: EnhancedResultMatch[] = recommendations.map(rec => {
     const userBudget = preferences.budget ? parseInt(preferences.budget.replace(/[^\d]/g, '')) : null;
