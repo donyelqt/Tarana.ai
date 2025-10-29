@@ -1,20 +1,39 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import type { WeatherCondition } from "../types/types";
 
 // Global initialization for Gemini model to avoid re-creating the client on every request.
 export const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 export const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
-const DEFAULT_MODEL_ID = "gemini";
+const DEFAULT_MODEL_ID = "gemini-1.5-flash";
 const configuredModelId = process.env.GOOGLE_GEMINI_MODEL?.trim();
 const MODEL_ID = configuredModelId && configuredModelId.length > 0 ? configuredModelId : DEFAULT_MODEL_ID;
 
-if (!configuredModelId) {
-  console.warn(`[Gemini] GOOGLE_GEMINI_MODEL not set. Falling back to default model: ${DEFAULT_MODEL_ID}`);
+if (!configuredModelId && API_KEY) {
+  console.log(`[Itinerary Generator] Using Gemini model: ${DEFAULT_MODEL_ID}`);
 }
 
-export const geminiModel = genAI ? genAI.getGenerativeModel({ model: MODEL_ID }) : null;
-
+export const geminiModel = genAI ? genAI.getGenerativeModel({ 
+  model: MODEL_ID,
+  safetySettings: [
+    {
+      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+      threshold: HarmBlockThreshold.BLOCK_NONE,
+    },
+  ],
+}) : null;
 
 // Pre-computed weather context lookup for faster processing
 export const WEATHER_CONTEXTS = {

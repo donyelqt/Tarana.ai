@@ -8,11 +8,11 @@ import { TIER_CONFIGS, getTierStatus, getNextTier } from '../../lib/credit-tiers
  */
 export const CreditTiersContent: React.FC = () => {
   const mockReferralCount = 2;
-  
+
   try {
     const nextTier = getNextTier(mockReferralCount);
     const targetReferrals = nextTier ? nextTier.referralsRequired : 5;
-    const progressPercentage = nextTier 
+    const progressPercentage = nextTier
       ? Math.min(100, Math.max(0, (mockReferralCount / nextTier.referralsRequired) * 100))
       : 100;
 
@@ -31,7 +31,7 @@ export const CreditTiersContent: React.FC = () => {
               <span className="text-sm font-medium text-gray-700">Current Tier Progress</span>
               <span className="text-sm font-medium text-gray-600">{mockReferralCount} / {targetReferrals} friends</span>
             </div>
-            
+
             {/* Progress Bar */}
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
@@ -48,7 +48,7 @@ export const CreditTiersContent: React.FC = () => {
           <div className="space-y-3">
             {TIER_CONFIGS.map((tier) => {
               const status = getTierStatus(tier, mockReferralCount);
-              
+
               // Determine card styling based on status
               const getCardStyles = () => {
                 switch (status) {
@@ -88,7 +88,7 @@ export const CreditTiersContent: React.FC = () => {
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${styles.icon}`}>
                       {styles.iconElement}
                     </div>
-                    
+
                     {/* Content */}
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
@@ -99,15 +99,15 @@ export const CreditTiersContent: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      
+
                       <div className="text-sm text-gray-600 mb-1">
                         +{tier.dailyCreditsBonus} daily credits
                       </div>
-                      
+
                       <div className="text-sm font-medium text-gray-700">
                         Total: {tier.totalDailyCredits} credits/day
                       </div>
-                      
+
                       {status !== 'unlocked' && (
                         <div className="text-sm text-gray-600 mt-2 flex items-center justify-end">
                           <span className="font-medium">{tier.referralsRequired} Referrals</span>
@@ -124,7 +124,7 @@ export const CreditTiersContent: React.FC = () => {
     );
   } catch (error) {
     console.error('Error rendering CreditTiersContent:', error);
-    
+
     return (
       <div className="space-y-4 p-6 text-center bg-red-50 border border-red-200 rounded-lg">
         <div className="text-sm text-red-800 font-medium">
