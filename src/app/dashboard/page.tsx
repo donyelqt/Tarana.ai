@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { noProfile } from "public"
 import { ReferralModal } from "./components/ReferralModal"
 import { useToast } from "@/components/ui/use-toast"
+import { trackReferralAfterSignup } from "@/lib/referral-system/client/referralTracking"
 
 const DashboardContent = () => {
   const router = useRouter()
@@ -28,6 +29,8 @@ const DashboardContent = () => {
   const [showSplash, setShowSplash] = useState(false)
   const [isWelcomeCardAnimated, setIsWelcomeCardAnimated] = useState(false)
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false)
+  const [referralTracked, setReferralTracked] = useState(false)
+  const [referralStats, setReferralStats] = useState<{ activeReferrals: number; currentTier: string } | null>(null)
   const referralCode = session?.user?.email ? `${session.user.email.split('@')[0].toUpperCase()}2024` : "LRG2024"
   const referralLink = `https://tarana-ai/invite/${referralCode}`
 
@@ -47,6 +50,66 @@ const DashboardContent = () => {
 
     return () => clearInterval(intervalId)
   }, [])
+
+  // Fetch referral stats
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetch('/api/referrals/debug')
+        .then(r => r.json())
+        .then(data => {
+          if (data.profile) {
+            setReferralStats({
+              activeReferrals: data.profile.activeReferrals || 0,
+              currentTier: data.profile.currentTier || 'Default'
+            });
+          }
+        })
+        .catch(err => console.error('Failed to fetch referral stats:', err));
+    }
+  }, [status])
+
+  // Track referral after signup (with delay to allow profile creation)
+  useEffect(() => {
+    if (status === 'authenticated' && !referralTracked) {
+      // Wait 2 seconds to ensure user profile is created
+      const timer = setTimeout(() => {
+        trackReferralAfterSignup()
+          .then((result) => {
+            if (result.success) {
+              console.log('✅ Referral tracked successfully!');
+              toast({
+                title: "Referral Applied! 🎉",
+                description: "Your friend will receive bonus credits. Thanks for joining!",
+                duration: 4000,
+              });
+              // Reload referral stats to show updated referrer's tier
+              setTimeout(() => {
+                fetch('/api/referrals/debug')
+                  .then(r => r.json())
+                  .then(data => {
+                    if (data.profile) {
+                      setReferralStats({
+                        activeReferrals: data.profile.activeReferrals || 0,
+                        currentTier: data.profile.currentTier || 'Default'
+                      });
+                    }
+                  })
+                  .catch(err => console.error('Failed to refresh stats:', err));
+              }, 1000);
+            } else if (result.error && !result.error.includes('No referral code')) {
+              console.log('ℹ️ Referral tracking result:', result.error);
+            }
+            setReferralTracked(true);
+          })
+          .catch((err) => {
+            console.error('Failed to track referral:', err);
+            setReferralTracked(true);
+          });
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [status, referralTracked, toast])
 
   useEffect(() => {
     if (searchParams.get('signedin') === 'true') {
@@ -355,11 +418,54 @@ const DashboardContent = () => {
                   </Button>
                 </div>
 
-                <div className="text-sm mb-1">1/3 referrals</div>
-                <div className="w-full bg-blue-500/50 rounded-full h-2.5 mb-1">
-                  <div className="bg-yellow-400 h-2.5 rounded-full" style={{ width: "33.33%" }}></div>
-                </div>
-                <div className="text-xs text-blue-200">Refer 3 friends to unlock premium for 7 days</div>
+                {referralStats ? (() => {
+                  const current = referralStats.activeReferrals;
+                  const tier = referralStats.currentTier;
+                  
+                  // Determine next tier target
+                  let nextTarget = 1;
+                  let nextTierName = 'Explorer';
+                  let nextBenefit = '6 credits/day';
+                  
+                  if (current >= 5) {
+                    nextTarget = 5;
+                    nextTierName = 'Voyager';
+                    nextBenefit = 'Max tier reached!';
+                  } else if (current >= 3) {
+                    nextTarget = 5;
+                    nextTierName = 'Voyager';
+                    nextBenefit = '10 credits/day';
+                  } else if (current >= 1) {
+                    nextTarget = 3;
+                    nextTierName = 'Smart Traveler';
+                    nextBenefit = '8 credits/day';
+                  }
+                  
+                  const progress = Math.min((current / nextTarget) * 100, 100);
+                  
+                  return (
+                    <>
+                      <div className="text-sm mb-1">{current}/{nextTarget} referrals - {tier} Tier</div>
+                      <div className="w-full bg-blue-500/50 rounded-full h-2.5 mb-1">
+                        <div className="bg-yellow-400 h-2.5 rounded-full transition-all" style={{ width: `${progress}%` }}></div>
+                      </div>
+                      <div className="text-xs text-blue-200">
+                        {current >= 5 
+                          ? '🎉 Maximum tier achieved!' 
+                          : `Invite ${nextTarget - current} more to unlock ${nextTierName} (${nextBenefit})`
+                        }
+                      </div>
+                    </>
+                  );
+                })() : (
+                  <>
+                    <div className="text-sm mb-1">Loading referrals...</div>
+                    <div className="w-full bg-blue-500/50 rounded-full h-2.5 mb-1">
+                      <div className="bg-yellow-400 h-2.5 rounded-full" style={{ width: "0%" }}></div>
+                    </div>
+                    <div className="text-xs text-blue-200">Invite friends to unlock higher tiers & more credits</div>
+                  </>
+                )}
               </div>
             </div>
           </div>

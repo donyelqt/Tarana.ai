@@ -9,6 +9,7 @@ import { Gift, Zap, Copy, Facebook, Instagram, Linkedin, Loader2, Sparkles, Uten
 import { useToast } from "@/components/ui/use-toast"
 import { CreditTiersContent } from "@/components/ui/credit-tiers-content"
 import { useSession } from "next-auth/react"
+import type { UserTier } from "@/lib/referral-system/types"
 
 interface ReferralModalProps {
   open: boolean
@@ -346,7 +347,11 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
 
             {/* Credit Tiers Tab */}
             <TabsContent value="credit-tiers" className="space-y-3 mt-4">
-              <CreditTiersContent />
+              <CreditTiersContent
+                loading={loading}
+                activeReferrals={stats?.activeReferrals}
+                currentTier={(balance?.tier || stats?.currentTier) as UserTier | undefined}
+              />
             </TabsContent>
 
             {/* Activity Tab */}

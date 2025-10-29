@@ -4,6 +4,7 @@ import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 // Removed unused direct supabase client import
 import { supabaseAdmin } from '../data/supabaseAdmin';
+import { ReferralService } from '../referral-system/ReferralService';
 
 // Interface for user data from Supabase (align with your 'users' table structure)
 interface SupabaseUser {

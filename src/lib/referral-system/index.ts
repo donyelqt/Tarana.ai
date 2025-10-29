@@ -9,6 +9,15 @@ export { CreditService } from './CreditService';
 export { ReferralService } from './ReferralService';
 export { TierService } from './TierService';
 
+// Client-side utilities
+export {
+  storeReferralCode,
+  getStoredReferralCode,
+  clearReferralCode,
+  trackReferralAfterSignup,
+  checkAndStoreReferralFromURL,
+} from './client/referralTracking';
+
 // Types and Interfaces
 export type {
   UserTier,

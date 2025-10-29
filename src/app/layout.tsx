@@ -7,6 +7,7 @@ import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ToastProvider } from "@/components/ui/use-toast"
 import { Toaster } from "@/components/ui/toaster";
 import SmokeEffect from "@/components/ui/SmokeEffect";
+import { ReferralTracker } from "@/components/ReferralTracker";
 
 // const inter = Inter({ subsets: ["latin"] })
 
@@ -27,6 +28,7 @@ export default function RootLayout({
         <SessionProvider>
           <QueryProvider>
             <ToastProvider>
+              <ReferralTracker />
               <SmokeEffect />
               {children}
               <Toaster />
