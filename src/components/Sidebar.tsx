@@ -154,7 +154,7 @@ const Sidebar = () => {
               Meals
             </Link>
             <div className="pt-4">
-              <Link href="#" className="flex items-center px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-blue-50 transition">
+              <Link href="/settings" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/settings" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
                 <span className="mr-3 animate-icon-interactive">
                   <Settings size={20} />
                 </span>
