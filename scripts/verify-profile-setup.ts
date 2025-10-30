@@ -5,7 +5,20 @@
  * Usage: npx ts-node scripts/verify-profile-setup.ts
  */
 
-import { supabaseAdmin } from '../src/lib/data/supabaseAdmin';
+import 'dotenv/config';
+import { createClient } from '@supabase/supabase-js';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase credentials. Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.');
+  process.exit(1);
+}
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 async function verifySetup() {
   console.log('🔍 Verifying Profile Settings Setup...\n');
@@ -88,11 +101,8 @@ async function verifySetup() {
 
   // Check 4: API route files
   console.log('4️⃣ Checking API route files...');
-  const fs = require('fs');
-  const path = require('path');
-  
-  const apiRoutePath = path.join(process.cwd(), 'src/app/api/profile/route.ts');
-  if (fs.existsSync(apiRoutePath)) {
+  const apiRoutePath = join(process.cwd(), 'src/app/api/profile/route.ts');
+  if (existsSync(apiRoutePath)) {
     console.log('   ✅ Profile API route exists\n');
   } else {
     console.log('   ❌ Profile API route not found\n');
@@ -101,9 +111,9 @@ async function verifySetup() {
 
   // Check 5: Settings page
   console.log('5️⃣ Checking Settings page...');
-  const settingsPagePath = path.join(process.cwd(), 'src/app/settings/page.tsx');
-  if (fs.existsSync(settingsPagePath)) {
-    const content = fs.readFileSync(settingsPagePath, 'utf-8');
+  const settingsPagePath = join(process.cwd(), 'src/app/settings/page.tsx');
+  if (existsSync(settingsPagePath)) {
+    const content = readFileSync(settingsPagePath, 'utf-8');
     const hasProfileLogic = content.includes('fetchProfile') && content.includes('handleSave');
     
     if (hasProfileLogic) {
