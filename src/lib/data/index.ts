@@ -1,6 +1,5 @@
 // Data Management & Storage Module
 export * from './savedItineraries';
-export * from './supabaseAdmin';
 export * from './supabaseClient';
 export * from './supabaseMeals';
 

@@ -63,30 +63,25 @@ export interface SavedItinerary {
 }
 
 import { supabase } from "./supabaseClient"; // Import Supabase client
-import { getServerSession } from 'next-auth'; // Server-side session
-import { getSession } from 'next-auth/react'; // Client-side session
-import { authOptions } from '../auth/auth';
 async function getCurrentUserId(): Promise<string | null> {
-  let session;
-  
-  // Detect if we're in server or client context
-  if (typeof window === 'undefined') {
-    // Server-side: Use getServerSession
-    try {
-      session = await getServerSession(authOptions);
-    } catch (error) {
-      console.log('Server session not available, trying client session');
-      return null;
+  try {
+    if (typeof window === 'undefined') {
+      const [{ getServerSession }, { authOptions }] = await Promise.all([
+        import('next-auth'),
+        import('../auth/auth'),
+      ]);
+
+      const session = await getServerSession(authOptions);
+      return session?.user?.id ?? null;
     }
-  } else {
-    // Client-side: Use getSession
-    session = await getSession();
+
+    const { getSession } = await import('next-auth/react');
+    const session = await getSession();
+    return session?.user?.id ?? null;
+  } catch (error) {
+    console.error('Failed to resolve current user session:', error);
+    return null;
   }
-  
-  if (session && session.user && session.user.id) {
-    return session.user.id;
-  }
-  return null;
 }
 
 export const getSavedItineraries = async (): Promise<SavedItinerary[]> => {

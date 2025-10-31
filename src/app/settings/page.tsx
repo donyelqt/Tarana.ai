@@ -16,8 +16,65 @@ interface UserProfile {
   bio: string;
 }
 
+const ProfileSettingsSkeleton = () => (
+  <div className="min-h-screen bg-white">
+    <Sidebar />
+    <main className="md:pl-72 flex-1 bg-[#f7f9fb] px-4 sm:px-6 md:px-8 py-6 md:py-8">
+      <div className="max-w-6xl mx-auto w-full animate-pulse">
+        <div className="mb-6">
+          <div className="bg-white w-full md:w-auto rounded-3xl px-5 sm:px-6 py-3 inline-flex items-center gap-4 border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+            <div className="h-7 w-40 bg-gray-200 rounded"></div>
+            <div className="h-3 w-24 bg-gray-100 rounded"></div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="relative bg-white rounded-3xl p-6 border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+              <div className="h-6 w-40 bg-gray-200 rounded mb-6"></div>
+
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-16 h-16 rounded-full bg-gray-200"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-28 bg-gray-200 rounded"></div>
+                    <div className="h-11 w-full bg-gray-100 rounded-xl"></div>
+                    <div className="h-3 w-24 bg-gray-100 rounded"></div>
+                  </div>
+                </div>
+
+                {[1, 2, 3].map((field) => (
+                  <div key={field} className="space-y-2">
+                    <div className="h-4 w-32 bg-gray-200 rounded"></div>
+                    <div className="h-11 w-full bg-gray-100 rounded-xl"></div>
+                    <div className="h-3 w-24 bg-gray-100 rounded"></div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end mt-8">
+                <div className="h-11 w-32 bg-gray-200 rounded-xl"></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {[1, 2, 3].map((card) => (
+              <div key={card} className="bg-white rounded-3xl p-6 border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.06)] space-y-4">
+                <div className="h-5 w-32 bg-gray-200 rounded"></div>
+                <div className="h-3 w-40 bg-gray-100 rounded"></div>
+                <div className="h-24 w-full bg-gray-100 rounded-2xl"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+);
+
 export default function SettingsPage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -151,6 +208,14 @@ export default function SettingsPage() {
       if (data.success) {
         setProfile(data.profile);
         setHasChanges(false);
+        if (update) {
+          await update({
+            user: {
+              ...session?.user,
+              name: data.profile.fullName,
+            },
+          });
+        }
         toast({
           title: 'Success',
           description: 'Profile updated successfully',
@@ -176,16 +241,7 @@ export default function SettingsPage() {
 
   // Loading state
   if (status === 'loading' || isLoading) {
-    return (
-      <div className="min-h-screen bg-white">
-        <Sidebar />
-        <main className="md:pl-72 flex-1 px-4 sm:px-6 md:px-8 py-6 md:py-8">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          </div>
-        </main>
-      </div>
-    );
+    return <ProfileSettingsSkeleton />;
   }
 
   return (
@@ -208,7 +264,15 @@ export default function SettingsPage() {
               {/* Left Column - Profile Settings */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Profile Settings Card */}
-                <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
+                <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] relative">
+                  {isSaving && (
+                    <div className="absolute inset-0 bg-white/70 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10">
+                      <div className="flex items-center gap-3 text-blue-600">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="font-medium">Updating profile…</span>
+                      </div>
+                    </div>
+                  )}
                   <h2 className="text-xl font-semibold text-gray-900 mb-6">Profile Settings</h2>
 
                   <div className="space-y-6">
