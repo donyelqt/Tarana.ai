@@ -91,6 +91,7 @@ export default function SettingsPage() {
   
   // Profile state
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
   
   // Form state
   const [fullName, setFullName] = useState('');
@@ -128,6 +129,7 @@ export default function SettingsPage() {
     setFullName(profileData.fullName || '');
     setLocation(profileData.location || '');
     setBio(profileData.bio || '');
+    setHasInitialLoad(true);
   }, [profileData]);
 
   useEffect(() => {
@@ -251,7 +253,7 @@ export default function SettingsPage() {
   };
 
   // Loading state
-  if (status === 'loading' || isProfileLoading) {
+  if (!hasInitialLoad && (status === 'loading' || isProfileLoading)) {
     return <ProfileSettingsSkeleton />;
   }
 
