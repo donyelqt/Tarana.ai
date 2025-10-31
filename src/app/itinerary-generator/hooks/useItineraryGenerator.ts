@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { FormData, ItineraryData } from '../types';
 import { WeatherData } from '@/lib/core/utils';
 import { getSavedItineraries, saveItinerary } from '@/lib/data/savedItineraries';
+import { useCreditBalance } from '@/hooks/useCreditBalance';
 import { generateItinerary, enhanceItinerary } from '../services/itineraryService';
 import { sampleItinerary } from '../data/itineraryData';
 import { burnham } from '../../../../public';
@@ -15,6 +16,9 @@ export const useItineraryGenerator = () => {
   const router = useRouter();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { hasCredits, balance, refetch: refetchCredits, isLoading: isCheckingCredits } = useCreditBalance({
+    refetchIntervalMs: 60_000,
+  });
 
   /**
    * Generate an itinerary based on form data and weather information
@@ -29,7 +33,28 @@ export const useItineraryGenerator = () => {
     } = {}
   ) => {
     const { onStart, onComplete, onError } = callbacks;
-    
+
+    if (!hasCredits()) {
+      const nextRefresh = balance?.nextRefresh
+        ? new Date(balance.nextRefresh).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : 'midnight';
+
+      toast({
+        title: 'No credits available',
+        description: `You’ve used all your daily Tarana Gala credits. Credits refresh at ${nextRefresh}. Visit your dashboard to review credits and copy your referral link for more.`,
+        variant: 'destructive',
+      });
+
+      if (onError) {
+        onError('No credits available');
+      }
+
+      return;
+    }
+
     // Save a snapshot of the form data
     setFormSnapshot(formData);
     
@@ -60,6 +85,7 @@ export const useItineraryGenerator = () => {
       // Enhance the generated itinerary with images and weather-appropriate tags
       const enhancedItinerary = enhanceItinerary(itinerary, weatherData);
       setGeneratedItinerary(enhancedItinerary);
+      refetchCredits();
 
     } catch (error: any) {
       console.error("Unhandled error in handleGenerateItinerary:", error);
@@ -78,7 +104,7 @@ export const useItineraryGenerator = () => {
       // Always trigger complete callback
       if (onComplete) onComplete();
     }
-  }, [toast]);
+  }, [balance?.nextRefresh, hasCredits, refetchCredits, toast]);
 
   /**
    * Save the generated itinerary to the database
@@ -143,6 +169,10 @@ export const useItineraryGenerator = () => {
     handleGenerateItinerary,
     handleSaveItinerary,
     setGeneratedItinerary,
-    setFormSnapshot
+    setFormSnapshot,
+    creditBalance: balance,
+    isCheckingCredits,
+    isOutOfCredits: balance ? balance.remainingToday <= 0 : false,
+    refetchCredits,
   };
 };

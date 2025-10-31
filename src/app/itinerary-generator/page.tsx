@@ -8,6 +8,7 @@ import { useItineraryForm } from "./hooks/useItineraryForm";
 import { useItineraryGenerator } from "./hooks/useItineraryGenerator";
 import ItineraryForm from "./components/ItineraryForm";
 import ItineraryPreview from "./components/ItineraryPreview";
+import Link from "next/link";
 import { 
   budgetOptions, 
   paxOptions, 
@@ -49,6 +50,10 @@ export default function ItineraryGenerator() {
     generatedItinerary,
     handleGenerateItinerary,
     handleSaveItinerary
+  ,
+    creditBalance,
+    isCheckingCredits,
+    isOutOfCredits,
   } = useItineraryGenerator();
   
   // Fetch weather data on component mount
@@ -63,6 +68,10 @@ export default function ItineraryGenerator() {
   
   // Handler for form submission
   const onSubmitItinerary = async (formData: FormData) => {
+    if (isOutOfCredits) {
+      return;
+    }
+
     setShowPreview(true);
     await handleGenerateItinerary(
       formData, 
@@ -85,6 +94,9 @@ export default function ItineraryGenerator() {
   
   // Handler for saving the itinerary
   const onSaveItinerary = () => {
+    if (isOutOfCredits) {
+      return;
+    }
     handleSaveItinerary(weatherData);
   };
 
@@ -114,6 +126,9 @@ export default function ItineraryGenerator() {
             budgetOptions={budgetOptions}
             paxOptions={paxOptions}
             durationOptions={durationOptions}
+            disabled={isOutOfCredits || isCheckingCredits}
+            remainingCredits={creditBalance?.remainingToday}
+            nextRefreshTime={creditBalance ? new Date(creditBalance.nextRefresh).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined}
           />
         </div>
         <div className="w-full md:w-[450px] border-l md:overflow-y-auto">
