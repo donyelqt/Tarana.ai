@@ -54,6 +54,9 @@ export interface ItineraryFormProps {
   budgetOptions: string[];
   paxOptions: string[];
   durationOptions: string[];
+  disabled?: boolean;
+  remainingCredits?: number;
+  nextRefreshTime?: string;
 }
 
 export interface ItineraryPreviewProps {

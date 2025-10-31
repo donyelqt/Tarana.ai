@@ -7,6 +7,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { TaranaEatsFormValues, FoodMatchesData } from "@/types/tarana-eats";
 import { combinedFoodData } from "./data/taranaEatsData";
 import { taranaai } from "../../../public";
+import { useCreditBalance } from "@/hooks/useCreditBalance";
+import Link from "next/link";
 
 export default function TaranaEatsPage() {
   const [results, setResults] = useState<FoodMatchesData | null>(null);
@@ -14,12 +16,25 @@ export default function TaranaEatsPage() {
   const [isGenerated, setIsGenerated] = useState(false);
   const [formInputs, setFormInputs] = useState<TaranaEatsFormValues | null>(null);
   const { toast } = useToast();
+  const { balance: creditBalance, isLoading: isCheckingCredits, hasCredits, refetch } = useCreditBalance({
+    refetchIntervalMs: 60_000,
+  });
+  const isOutOfCredits = creditBalance ? creditBalance.remainingToday <= 0 : false;
 
   const handleLoadingChange = (isLoading: boolean) => {
     setLoading(isLoading);
   };
 
   const handleGenerateResults = async (data: any) => {
+    if (isOutOfCredits) {
+      toast({
+        title: "Credits required",
+        description: `You’ve used all Tarana Eats credits for today. Credits refresh at ${creditBalance?.nextRefresh ? new Date(creditBalance.nextRefresh).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'midnight'}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       setIsGenerated(true);
@@ -33,6 +48,7 @@ export default function TaranaEatsPage() {
         }));
         
         setResults({ matches: validatedMatches });
+        await refetch();
         setLoading(false);
         return;
       }
@@ -93,6 +109,7 @@ export default function TaranaEatsPage() {
       }
       
       setResults({ matches: filteredRestaurants });
+      await refetch();
       
     } catch (error) {
       console.error("Error generating results:", error);
@@ -117,6 +134,9 @@ export default function TaranaEatsPage() {
             onLoadingChange={handleLoadingChange} 
             initialValues={formInputs}
             isGenerated={isGenerated}
+            disabled={isOutOfCredits || isCheckingCredits}
+            remainingCredits={creditBalance?.remainingToday}
+            nextRefreshTime={creditBalance ? new Date(creditBalance.nextRefresh).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined}
           />
         </div>
         <div className="w-full md:w-[450px] border-l md:overflow-y-auto">

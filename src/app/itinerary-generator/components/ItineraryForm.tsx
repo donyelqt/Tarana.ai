@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/core";
 import { useToast } from "@/components/ui/use-toast";
 import { DatePicker } from "@/components/ui/date-picker";
+import Link from "next/link";
 import { ItineraryFormProps, FormData } from "../types";
 import { useEffect, useState } from "react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -29,7 +30,10 @@ export default function ItineraryForm({
   interests: propInterests,
   budgetOptions,
   paxOptions,
-  durationOptions
+  durationOptions,
+  disabled = false,
+  remainingCredits,
+  nextRefreshTime,
 }: ItineraryFormProps) {
   const { toast } = useToast();
   // Local state to control the budget popover
@@ -56,6 +60,16 @@ export default function ItineraryForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (disabled) {
+      toast({
+        title: "Credits required",
+        description: `You’ve used all Tarana Gala credits for today. Credits refresh at ${nextRefreshTime ?? 'midnight'}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!budget || !pax || !duration || selectedInterests.length === 0) {
       toast({
         title: "Missing Information",
@@ -100,6 +114,25 @@ export default function ItineraryForm({
     <div className="w-full bg-gray-100">
     <div className="w-full rounded-tl-7xl bg-white p-6">
       <div className="text-2xl font-bold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
+      {disabled && (
+        <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+          <p className="font-semibold">You&apos;re out of Tarana Gala credits for today.</p>
+          <p className="mt-1">
+            Credits reset every midnight. Remaining today: {remainingCredits ?? 0}. Visit your dashboard to review credits and share your referral link for bonus credits.
+          </p>
+          {nextRefreshTime && (
+            <p className="mt-1 text-xs text-blue-600">Next refresh: {nextRefreshTime}</p>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-blue-500/30 transition hover:from-blue-600 hover:to-indigo-700"
+            >
+              Go to Dashboard
+            </Link>
+          </div>
+        </div>
+      )}
       <form className="space-y-8" onSubmit={handleSubmit}>
         {/* Budget Range */}
         <div>
@@ -113,9 +146,9 @@ export default function ItineraryForm({
                   "w-full justify-between text-md font-medium",
                   !budget && "text-muted-foreground",
                   budget && "border-slate-300 text-gray-700 hover:text-blue-600",
-                  showPreview && "cursor-not-allowed"
+                  (showPreview || disabled) && "cursor-not-allowed"
                 )}
-                disabled={showPreview}
+                disabled={showPreview || disabled}
               >
                 {budget || "Select budget range"}
                 <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -173,10 +206,10 @@ export default function ItineraryForm({
                 className={cn(
                   "py-3 font-medium transition",
                   pax === opt ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
-                  showPreview ? 'cursor-not-allowed' : ''
+                  showPreview || disabled ? 'cursor-not-allowed' : ''
                 )}
-                onClick={() => !showPreview && setPax(opt)}
-                disabled={showPreview}
+                onClick={() => !(showPreview || disabled) && setPax(opt)}
+                disabled={showPreview || disabled}
               >{opt}</Button>
             ))}
           </div>
@@ -193,10 +226,10 @@ export default function ItineraryForm({
                 className={cn(
                   "py-3 font-medium transition",
                   duration === opt ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
-                  showPreview ? 'cursor-not-allowed' : ''
+                  showPreview || disabled ? 'cursor-not-allowed' : ''
                 )}
-                onClick={() => !showPreview && setDuration(opt)}
-                disabled={showPreview}
+                onClick={() => !(showPreview || disabled) && setDuration(opt)}
+                disabled={showPreview || disabled}
               >{opt}</Button>
             ))}
           </div>
@@ -231,10 +264,10 @@ export default function ItineraryForm({
                 className={cn(
                   "flex items-center justify-center gap-2 py-3 font-medium transition",
                   selectedInterests.includes(label) ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 text-white border-blue-500' : 'bg-white border-gray-300 text-gray-700',
-                  showPreview ? 'cursor-not-allowed' : ''
+                  showPreview || disabled ? 'cursor-not-allowed' : ''
                 )}
-                onClick={() => !showPreview && handleInterest(label)}
-                disabled={showPreview}
+                onClick={() => !(showPreview || disabled) && handleInterest(label)}
+                disabled={showPreview || disabled}
               >
                 <span>{icon}</span>
                 {label}
@@ -249,9 +282,9 @@ export default function ItineraryForm({
             className={cn(
               "w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition",
               showPreview ? 'bg-blue-700 text-white shadow-lg' : 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 hover:to-purple-500 text-white',
-              (showPreview || isGenerating) ? 'cursor-not-allowed' : ''
+              (showPreview || isGenerating || disabled) ? 'cursor-not-allowed' : ''
             )}
-            disabled={showPreview || isGenerating}
+            disabled={showPreview || isGenerating || disabled}
           >
             {isGenerating ? (
               <>
