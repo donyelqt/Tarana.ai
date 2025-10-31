@@ -1,17 +1,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Sun, Loader2 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Sun } from 'lucide-react';
 
 interface UserProfile {
   id: string;
   email: string;
   fullName: string;
   image: string;
+  location: string;
+  bio: string;
+}
+
+interface UpdateProfilePayload {
+  fullName: string;
   location: string;
   bio: string;
 }
@@ -77,14 +84,13 @@ export default function SettingsPage() {
   const { data: session, status, update } = useSession();
   const router = useRouter();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [inAppNotifications, setInAppNotifications] = useState(true);
   
   // Profile state
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   
   // Form state
   const [fullName, setFullName] = useState('');
@@ -99,41 +105,40 @@ export default function SettingsPage() {
     }
   }, [status, router]);
 
-  // Fetch user profile
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (status !== 'authenticated') return;
-      
-      try {
-        const response = await fetch('/api/profile');
-        const data = await response.json();
-        
-        if (data.success && data.profile) {
-          setProfile(data.profile);
-          setFullName(data.profile.fullName);
-          setLocation(data.profile.location);
-          setBio(data.profile.bio);
-        } else {
-          toast({
-            title: 'Error',
-            description: 'Failed to load profile',
-            variant: 'destructive',
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load profile',
-          variant: 'destructive',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const { data: profileData, isLoading: isProfileLoading, error: profileError } = useQuery<UserProfile, Error>({
+    queryKey: ['profile'],
+    enabled: status === 'authenticated',
+    retry: false,
+    queryFn: async () => {
+      const response = await fetch('/api/profile');
+      const data = await response.json();
 
-    fetchProfile();
-  }, [status, toast]);
+      if (!response.ok || !data.success || !data.profile) {
+        throw new Error(data.error || 'Failed to load profile');
+      }
+
+      return data.profile as UserProfile;
+    },
+  });
+
+  useEffect(() => {
+    if (!profileData) return;
+
+    setProfile(profileData);
+    setFullName(profileData.fullName || '');
+    setLocation(profileData.location || '');
+    setBio(profileData.bio || '');
+  }, [profileData]);
+
+  useEffect(() => {
+    if (profileError) {
+      toast({
+        title: 'Error',
+        description: profileError.message || 'Failed to load profile',
+        variant: 'destructive',
+      });
+    }
+  }, [profileError, toast]);
 
   // Track changes
   useEffect(() => {
@@ -146,6 +151,56 @@ export default function SettingsPage() {
     
     setHasChanges(changed);
   }, [fullName, location, bio, profile]);
+
+  const updateProfileMutation = useMutation<UserProfile, Error, UpdateProfilePayload>({
+    mutationFn: async (payload: UpdateProfilePayload) => {
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success || !data.profile) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      return data.profile as UserProfile;
+    },
+    onSuccess: async (updatedProfile) => {
+      setProfile(updatedProfile);
+      setHasChanges(false);
+      setFullName(updatedProfile.fullName || '');
+      setLocation(updatedProfile.location || '');
+      setBio(updatedProfile.bio || '');
+
+      queryClient.setQueryData(['profile'], updatedProfile);
+
+      if (update) {
+        await update({
+          user: {
+            ...session?.user,
+            name: updatedProfile.fullName,
+          },
+        });
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Profile updated successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update profile',
+        variant: 'destructive',
+      });
+    },
+  });
 
   // Handle save
   const handleSave = async () => {
@@ -188,61 +243,19 @@ export default function SettingsPage() {
       return;
     }
 
-    setIsSaving(true);
-
-    try {
-      const response = await fetch('/api/profile', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fullName: fullName.trim(),
-          location: location.trim(),
-          bio: bio.trim(),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setProfile(data.profile);
-        setHasChanges(false);
-        if (update) {
-          await update({
-            user: {
-              ...session?.user,
-              name: data.profile.fullName,
-            },
-          });
-        }
-        toast({
-          title: 'Success',
-          description: 'Profile updated successfully',
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: data.error || 'Failed to update profile',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update profile',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    updateProfileMutation.mutate({
+      fullName: fullName.trim(),
+      location: location.trim(),
+      bio: bio.trim(),
+    });
   };
 
   // Loading state
-  if (status === 'loading' || isLoading) {
+  if (status === 'loading' || isProfileLoading) {
     return <ProfileSettingsSkeleton />;
   }
+
+  const isSaving = updateProfileMutation.isPending;
 
   return (
     <div className="min-h-screen bg-white">
@@ -264,15 +277,7 @@ export default function SettingsPage() {
               {/* Left Column - Profile Settings */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Profile Settings Card */}
-                <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] relative">
-                  {isSaving && (
-                    <div className="absolute inset-0 bg-white/70 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10">
-                      <div className="flex items-center gap-3 text-blue-600">
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span className="font-medium">Updating profile…</span>
-                      </div>
-                    </div>
-                  )}
+                <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
                   <h2 className="text-xl font-semibold text-gray-900 mb-6">Profile Settings</h2>
 
                   <div className="space-y-6">
@@ -358,21 +363,14 @@ export default function SettingsPage() {
 
                   {/* Save Changes Button */}
                   <div className="flex justify-end mt-8">
-                    <button 
+                    <button
                       onClick={handleSave}
                       disabled={!hasChanges || isSaving}
-                      className={`bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-medium shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 flex items-center gap-2 ${
+                      className={`bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-medium shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 flex items-center justify-center ${
                         (!hasChanges || isSaving) ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                     >
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        'Save Changes'
-                      )}
+                      {isSaving ? 'Saving…' : 'Save Changes'}
                     </button>
                   </div>
                 </div>
@@ -390,14 +388,16 @@ export default function SettingsPage() {
                       </div>
                       <button
                         onClick={() => setEmailNotifications(!emailNotifications)}
-                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${emailNotifications ? 'bg-blue-600' : 'bg-gray-300'
-                          }`}
+                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                          emailNotifications ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
                         role="switch"
                         aria-checked={emailNotifications}
                       >
                         <span
-                          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${emailNotifications ? 'translate-x-6' : 'translate-x-1'
-                            }`}
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                            emailNotifications ? 'translate-x-6' : 'translate-x-1'
+                          }`}
                         />
                       </button>
                     </div>
@@ -410,14 +410,16 @@ export default function SettingsPage() {
                       </div>
                       <button
                         onClick={() => setInAppNotifications(!inAppNotifications)}
-                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${inAppNotifications ? 'bg-blue-600' : 'bg-gray-300'
-                          }`}
+                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                          inAppNotifications ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
                         role="switch"
                         aria-checked={inAppNotifications}
                       >
                         <span
-                          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${inAppNotifications ? 'translate-x-6' : 'translate-x-1'
-                            }`}
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                            inAppNotifications ? 'translate-x-6' : 'translate-x-1'
+                          }`}
                         />
                       </button>
                     </div>
