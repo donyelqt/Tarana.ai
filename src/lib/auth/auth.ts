@@ -18,9 +18,6 @@ interface SupabaseUser {
 
 // Function to add a new user to Supabase
 export async function createUserInSupabase(fullName: string, email: string, password: string) {
-  if (!supabaseAdmin) {
-    throw new Error("Supabase admin client is not initialized.");
-  }
   // Check if user already exists using the admin client
   const { data: existingUser, error: fetchError } = await supabaseAdmin
     .from('users')
@@ -59,10 +56,6 @@ export async function createUserInSupabase(fullName: string, email: string, pass
 
 // Function to find a user by email from Supabase
 export async function findUserByEmailFromSupabase(email: string): Promise<SupabaseUser | null> {
-  if (!supabaseAdmin) {
-    console.error("Supabase admin client is not initialized.");
-    return null;
-  }
   const { data, error } = await supabaseAdmin // <--- USE supabaseAdmin
     .from('users')
     .select('*') // Select all necessary fields, including hashed_password
@@ -161,10 +154,6 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google" && user.email) {
-        if (!supabaseAdmin) {
-          console.error("Supabase admin client is not initialized in signIn callback.");
-          return false;
-        }
         try {
           const { data: dbUser, error: fetchError } = await supabaseAdmin
             .from('users')
@@ -212,34 +201,57 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user, account }) {
-      // Patch: Ensure token.id is set for Google users
+    async jwt({ token, user, account, trigger, session }) {
+      if (trigger === 'update' && session?.user) {
+        token.name = session.user.name ?? token.name;
+        token.picture = session.user.image ?? token.picture;
+      }
+
       if (account && user) {
         if (account.provider === "google") {
-          if (!supabaseAdmin) {
-            console.error("Supabase admin client is not initialized in jwt callback.");
-            return token;
-          }
-          // Fetch user from Supabase to get the id
           const { data: dbUser } = await supabaseAdmin
             .from('users')
-            .select('id')
+            .select('id, full_name')
             .eq('email', user.email?.toLowerCase())
             .single();
-          if (dbUser && dbUser.id) {
+
+          if (dbUser?.id) {
             token.id = dbUser.id;
+          }
+
+          if (!user.name && dbUser?.full_name) {
+            token.name = dbUser.full_name;
           }
         } else {
           token.id = user.id;
         }
-        token.picture = user.image;
+
+        token.picture = user.image ?? token.picture;
+        token.name = user.name ?? token.name;
+        token.email = user.email ?? token.email;
       }
+
+      if (!token.name && token.email) {
+        const { data } = await supabaseAdmin
+          .from('users')
+          .select('full_name')
+          .eq('email', token.email.toLowerCase())
+          .single();
+
+        if (data?.full_name) {
+          token.name = data.full_name;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.image = token.picture as string;
+        session.user.image = (token.picture as string) ?? session.user.image;
+        if (token.name) {
+          session.user.name = token.name as string;
+        }
       }
       return session;
     },
