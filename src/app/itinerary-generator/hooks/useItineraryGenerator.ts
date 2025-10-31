@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { FormData, ItineraryData } from '../types';
 import { WeatherData } from '@/lib/core/utils';
-import { saveItinerary } from '@/lib/data/savedItineraries';
+import { getSavedItineraries, saveItinerary } from '@/lib/data/savedItineraries';
 import { generateItinerary, enhanceItinerary } from '../services/itineraryService';
 import { sampleItinerary } from '../data/itineraryData';
 import { burnham } from '../../../../public';
@@ -13,6 +14,7 @@ export const useItineraryGenerator = () => {
   const [formSnapshot, setFormSnapshot] = useState<FormData | null>(null);
   const router = useRouter();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   /**
    * Generate an itinerary based on form data and weather information
@@ -114,6 +116,9 @@ export const useItineraryGenerator = () => {
       };
 
       await saveItinerary(itineraryToSave);
+
+      await queryClient.invalidateQueries({ queryKey: ['itineraries'], exact: true });
+      await queryClient.prefetchQuery({ queryKey: ['itineraries'], queryFn: getSavedItineraries });
       
       toast({
         title: "Success",
@@ -121,10 +126,7 @@ export const useItineraryGenerator = () => {
         variant: "success",
       });
 
-      // Navigate to saved trips after a short delay
-      setTimeout(() => {
-        router.push("/saved-trips");
-      }, 1200);
+      router.push("/saved-trips");
     } catch (error: any) {
       console.error("Failed to save itinerary:", error);
       toast({
@@ -133,7 +135,7 @@ export const useItineraryGenerator = () => {
         variant: "destructive",
       });
     }
-  }, [formSnapshot, generatedItinerary, router, toast]);
+  }, [formSnapshot, generatedItinerary, queryClient, router, toast]);
 
   return {
     generatedItinerary,
