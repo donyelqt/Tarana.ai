@@ -23,11 +23,13 @@ export const useCreditBalance = (
   const [balance, setBalance] = useState<CreditBalance | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const fetchBalance = useCallback(async () => {
     if (!session?.user?.id) {
       setBalance(null);
       setIsLoading(false);
+      setHasLoaded(false);
       return;
     }
 
@@ -42,6 +44,7 @@ export const useCreditBalance = (
 
       const data = await response.json();
       setBalance(data.balance ?? null);
+      setHasLoaded(true);
       setError(null);
     } catch (err) {
       console.error("Error fetching credit balance:", err);
@@ -52,8 +55,14 @@ export const useCreditBalance = (
   }, [session?.user?.id]);
 
   useEffect(() => {
+    if (status === "loading") {
+      return;
+    }
+
     if (status !== "authenticated") {
       setBalance(null);
+      setIsLoading(false);
+      setHasLoaded(false);
       return;
     }
 
@@ -76,8 +85,10 @@ export const useCreditBalance = (
     error,
     refetch: fetchBalance,
     hasCredits: (requiredCredits: number = 1) => {
+      if (!hasLoaded) return true;
       if (!balance) return false;
       return balance.remainingToday >= requiredCredits;
     },
+    isLoaded: hasLoaded,
   };
 };

@@ -16,7 +16,7 @@ export const useItineraryGenerator = () => {
   const router = useRouter();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { hasCredits, balance, refetch: refetchCredits, isLoading: isCheckingCredits } = useCreditBalance({
+  const { hasCredits, balance, refetch: refetchCredits, isLoading: isCheckingCredits, isLoaded: isCreditBalanceLoaded } = useCreditBalance({
     refetchIntervalMs: 60_000,
   });
 
@@ -172,7 +172,8 @@ export const useItineraryGenerator = () => {
     setFormSnapshot,
     creditBalance: balance,
     isCheckingCredits,
-    isOutOfCredits: balance ? balance.remainingToday <= 0 : false,
+    isCreditBalanceLoaded,
+    isOutOfCredits: isCreditBalanceLoaded && balance ? balance.remainingToday <= 0 : false,
     refetchCredits,
   };
 };

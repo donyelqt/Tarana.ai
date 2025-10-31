@@ -24,9 +24,10 @@ interface TaranaEatsFormProps {
   disabled?: boolean;
   remainingCredits?: number;
   nextRefreshTime?: string;
+  showOutOfCredits?: boolean;
 }
 
-export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadingChange, initialValues, isGenerated, disabled = false, remainingCredits, nextRefreshTime }: TaranaEatsFormProps) {
+export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadingChange, initialValues, isGenerated, disabled = false, remainingCredits, nextRefreshTime, showOutOfCredits = false }: TaranaEatsFormProps) {
   const [formValues, setFormValues] = useState<TaranaEatsFormValues>(initialValues || {
     budget: "",
     cuisine: cuisineOptions[0],
@@ -73,7 +74,7 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
     e.preventDefault();
 
     // Validate form inputs
-    if (disabled) {
+    if (showOutOfCredits) {
       toast({
         title: "Credits required",
         description: `You’ve used all Tarana Eats credits for today. Credits refresh at ${nextRefreshTime ?? 'midnight'}.`,
@@ -126,7 +127,7 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
     <form onSubmit={handleSubmit} className="bg-white p-6">
       <h2 className="text-2xl font-bold mb-2">Where to Eat? We Got You.</h2>
       <p className="text-gray-500 mb-6">Enter your budget and group size. We&apos;ll show you cafés and meals that fit.</p>
-      {disabled && (
+      {showOutOfCredits && (
         <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
           <p className="font-semibold">You&apos;re out of Tarana Eats credits for today.</p>
           <p className="mt-1">
