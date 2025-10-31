@@ -34,6 +34,7 @@ export default function ItineraryForm({
   disabled = false,
   remainingCredits,
   nextRefreshTime,
+  showOutOfCredits = false,
 }: ItineraryFormProps) {
   const { toast } = useToast();
   // Local state to control the budget popover
@@ -114,7 +115,7 @@ export default function ItineraryForm({
     <div className="w-full bg-gray-100">
     <div className="w-full rounded-tl-7xl bg-white p-6">
       <div className="text-2xl font-bold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
-      {disabled && (
+      {showOutOfCredits && (
         <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
           <p className="font-semibold">You&apos;re out of Tarana Gala credits for today.</p>
           <p className="mt-1">

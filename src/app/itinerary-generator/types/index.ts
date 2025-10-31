@@ -57,6 +57,7 @@ export interface ItineraryFormProps {
   disabled?: boolean;
   remainingCredits?: number;
   nextRefreshTime?: string;
+  showOutOfCredits?: boolean;
 }
 
 export interface ItineraryPreviewProps {

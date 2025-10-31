@@ -126,9 +126,10 @@ export default function ItineraryGenerator() {
             budgetOptions={budgetOptions}
             paxOptions={paxOptions}
             durationOptions={durationOptions}
-            disabled={isOutOfCredits || isCheckingCredits}
+            disabled={isOutOfCredits || !creditBalance}
             remainingCredits={creditBalance?.remainingToday}
             nextRefreshTime={creditBalance ? new Date(creditBalance.nextRefresh).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined}
+            showOutOfCredits={Boolean(creditBalance && creditBalance.remainingToday <= 0)}
           />
         </div>
         <div className="w-full md:w-[450px] border-l md:overflow-y-auto">

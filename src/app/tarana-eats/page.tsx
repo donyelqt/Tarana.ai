@@ -8,7 +8,6 @@ import { TaranaEatsFormValues, FoodMatchesData } from "@/types/tarana-eats";
 import { combinedFoodData } from "./data/taranaEatsData";
 import { taranaai } from "../../../public";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
-import Link from "next/link";
 
 export default function TaranaEatsPage() {
   const [results, setResults] = useState<FoodMatchesData | null>(null);
@@ -16,20 +15,26 @@ export default function TaranaEatsPage() {
   const [isGenerated, setIsGenerated] = useState(false);
   const [formInputs, setFormInputs] = useState<TaranaEatsFormValues | null>(null);
   const { toast } = useToast();
-  const { balance: creditBalance, isLoading: isCheckingCredits, hasCredits, refetch } = useCreditBalance({
+  const { balance: creditBalance, isLoading: isCheckingCredits, refetch, isLoaded: isCreditBalanceLoaded } = useCreditBalance({
     refetchIntervalMs: 60_000,
   });
-  const isOutOfCredits = creditBalance ? creditBalance.remainingToday <= 0 : false;
+  const isOutOfCredits = isCreditBalanceLoaded && creditBalance ? creditBalance.remainingToday <= 0 : false;
+  const creditBalanceLoaded = isCreditBalanceLoaded && Boolean(creditBalance);
+  const formDisabled = !creditBalanceLoaded || isOutOfCredits;
+  const showOutOfCredits = isOutOfCredits;
+  const nextRefreshDisplay = creditBalance && showOutOfCredits
+    ? new Date(creditBalance.nextRefresh).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    : undefined;
 
   const handleLoadingChange = (isLoading: boolean) => {
     setLoading(isLoading);
   };
 
   const handleGenerateResults = async (data: any) => {
-    if (isOutOfCredits) {
+    if (isCreditBalanceLoaded && isOutOfCredits) {
       toast({
         title: "Credits required",
-        description: `You’ve used all Tarana Eats credits for today. Credits refresh at ${creditBalance?.nextRefresh ? new Date(creditBalance.nextRefresh).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'midnight'}.`,
+        description: `You’ve used all Tarana Eats credits for today. Credits refresh at ${nextRefreshDisplay ?? 'midnight'}.`,
         variant: "destructive",
       });
       return;
@@ -134,9 +139,10 @@ export default function TaranaEatsPage() {
             onLoadingChange={handleLoadingChange} 
             initialValues={formInputs}
             isGenerated={isGenerated}
-            disabled={isOutOfCredits || isCheckingCredits}
+            disabled={formDisabled}
             remainingCredits={creditBalance?.remainingToday}
-            nextRefreshTime={creditBalance ? new Date(creditBalance.nextRefresh).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined}
+            nextRefreshTime={nextRefreshDisplay}
+            showOutOfCredits={showOutOfCredits}
           />
         </div>
         <div className="w-full md:w-[450px] border-l md:overflow-y-auto">
