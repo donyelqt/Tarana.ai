@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Sun } from 'lucide-react';
 import { noProfile } from 'public';
+import { WeatherData, fetchWeatherFromAPI, getWeatherIconUrl } from '@/lib/core/utils';
 
 interface UserProfile {
   id: string;
@@ -99,6 +100,10 @@ export default function SettingsPage() {
   const [location, setLocation] = useState('');
   const [bio, setBio] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Weather state
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [isWeatherLoading, setIsWeatherLoading] = useState(true);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -253,6 +258,35 @@ export default function SettingsPage() {
     });
   };
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadWeather = async () => {
+      try {
+        setIsWeatherLoading(true);
+        const data = await fetchWeatherFromAPI();
+        if (isMounted) {
+          setWeatherData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch weather data for settings page:', error);
+        if (isMounted) {
+          setWeatherData(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsWeatherLoading(false);
+        }
+      }
+    };
+
+    loadWeather();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Loading state
   if (!hasInitialLoad && (status === 'loading' || isProfileLoading)) {
     return <ProfileSettingsSkeleton />;
@@ -260,6 +294,13 @@ export default function SettingsPage() {
 
   const isSaving = updateProfileMutation.isPending;
   const displayImage = session?.user?.image || profile?.image || noProfile;
+  const displayTemperature = typeof weatherData?.main?.temp === 'number'
+    ? Math.round(weatherData.main.temp)
+    : 18;
+  const displayCondition = weatherData?.weather?.[0]?.main ?? 'Sunny';
+  const displayIconUrl = weatherData?.weather?.[0]?.icon
+    ? getWeatherIconUrl(weatherData.weather[0].icon)
+    : 'https://openweathermap.org/img/wn/01d@2x.png';
 
   return (
     <div className="min-h-screen bg-white">
@@ -433,14 +474,19 @@ export default function SettingsPage() {
 
               {/* Right Column - Widgets */}
               <div className="space-y-6">
-                {/* Baguio Weather Widget */}
+                {/* Baguio Weather */}
                 <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Baguio Weather</h3>
                   <div className="flex items-center gap-3">
-                    <Sun className="w-8 h-8 text-yellow-500" />
+                    <img
+                      src={displayIconUrl}
+                      alt={displayCondition}
+                      className="w-10 h-10"
+                      loading="lazy"
+                    />
                     <div>
-                      <div className="text-2xl font-semibold text-gray-900">18° C</div>
-                      <div className="text-sm text-gray-600">Sunny</div>
+                      <div className="text-2xl font-semibold text-gray-900">{displayTemperature}° C</div>
+                      <div className="text-sm text-gray-600">{displayCondition}</div>
                     </div>
                   </div>
                 </div>
