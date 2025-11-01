@@ -7,8 +7,8 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-white font-sans">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-        <div className="grid gap-16 lg:grid-cols-2 lg:items-center">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 md:py-20">
+        <div className="grid gap-12 lg:gap-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center">
           <section className="space-y-10">
             <div className="space-y-6">
               <h1 className="text-4xl sm:text-5xl font-semibold text-gray-900">Contact Us</h1>
@@ -19,8 +19,8 @@ export default function ContactPage() {
             </div>
 
             <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-500 text-white">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:gap-4">
+                <div className="mb-4 sm:mb-0 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white">
                   <Mail className="h-6 w-6" aria-hidden="true" />
                 </div>
                 <div>
@@ -34,8 +34,8 @@ export default function ContactPage() {
                 </div>
               </div>
 
-              <div className="flex items-start gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-500 text-white">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:gap-4">
+                <div className="mb-4 sm:mb-0 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white">
                   <MapPin className="h-6 w-6" aria-hidden="true" />
                 </div>
                 <div>
@@ -49,7 +49,7 @@ export default function ContactPage() {
 
             <div className="space-y-3">
               <p className="text-sm font-medium uppercase tracking-[0.14em] text-gray-400">Stay Connected</p>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <Link
                   href="https://www.facebook.com/tarana.ai"
                   target="_blank"
@@ -73,8 +73,8 @@ export default function ContactPage() {
           </section>
 
           <section>
-            <div className="rounded-[32px] bg-[#F4F7FF] p-8 shadow-sm ring-1 ring-inset ring-blue-100">
-              <form className="space-y-6">
+            <div className="rounded-[32px] bg-[#F4F7FF] p-6 sm:p-8 shadow-sm ring-1 ring-inset ring-blue-100">
+              <form className="space-y-5 sm:space-y-6">
                 <div className="space-y-2">
                   <label htmlFor="name" className="text-sm font-medium text-gray-700">
                     Name
