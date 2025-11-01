@@ -32,7 +32,7 @@ const Navbar = () => {
             <div className="hidden md:flex items-center justify-center space-x-10 ml-16">
                 <Link href="/" className={`${pathname === "/" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>Home</Link>
                 <Link href="/about" className={`${pathname === "/about" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>About</Link>
-                <Link href="#" className={`${pathname === "/contact" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>Contact</Link>
+                <Link href="/contact" className={`${pathname === "/contact" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>Contact</Link>
             </div>
 
             <div className="hidden md:flex items-center space-x-4">
@@ -65,7 +65,7 @@ const Navbar = () => {
                 <div className="flex flex-col space-y-5 max-w-7xl mx-auto">
                     <Link href="/" className={`font-medium py-2 border-b border-gray-100 ${pathname === "/" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>Home</Link>
                     <Link href="/about" className={`font-medium py-2 border-b border-gray-100 ${pathname === "/about" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>About</Link>
-                    <Link href="#" className={`font-medium py-2 border-b border-gray-100 ${pathname === "/contact" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>Contact</Link>
+                    <Link href="/contact" className={`font-medium py-2 border-b border-gray-100 ${pathname === "/contact" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>Contact</Link>
                     <div className="flex flex-col space-y-3 pt-2">
                         <Link href="/auth/signin" className="text-gray-900 hover:text-blue-500 font-medium py-2">
                             Sign In
