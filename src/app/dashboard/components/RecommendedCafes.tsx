@@ -9,6 +9,8 @@ const cafes = [
     distance: "0.9km",
     time: "6 min",
     traffic: "Low" as const,
+    lat: 16.4140,
+    lon: 120.5951,
   },
   {
     name: "Good Shepherd Cafe",
@@ -16,6 +18,9 @@ const cafes = [
     distance: "2.5km",
     time: "8 - 20 min",
     traffic: "Low" as const,
+    lat: 16.4063,
+    lon: 120.6025,
+    mapLabel: "Good Shepherd Cafe",
   },
   {
     name: "Kapi Kullaaw",
@@ -23,6 +28,8 @@ const cafes = [
     distance: "1.2km",
     time: "7 min",
     traffic: "Low" as const,
+    lat: 16.4138,
+    lon: 120.5973,
   },
 ];
 
