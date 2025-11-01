@@ -110,11 +110,11 @@ export default function ContactPage() {
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="message" className="text-sm font-medium text-gray-700">
-                    Subject
+                    Message
                   </label>
                   <textarea
                     id="message"
-                    placeholder="e.g. Partnership Inquiry, Feedback, Support"
+                    placeholder="Share your message or details here"
                     rows={5}
                     className="w-full rounded-2xl border border-transparent bg-white px-4 py-3 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
                   />
