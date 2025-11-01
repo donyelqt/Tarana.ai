@@ -16,6 +16,9 @@ const spots = [
     distance: "1.2km",
     time: "8 min",
     traffic: "Moderate" as const,
+    lat: 16.3994,
+    lon: 120.6157,
+    mapLabel: "Camp John Hay Yellow Trail",
   },
   {
     name: "SM City Baguio",

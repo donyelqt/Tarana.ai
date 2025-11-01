@@ -208,6 +208,8 @@ export const authOptions: NextAuthOptions = {
       }
 
       if (account && user) {
+        let resolvedName = token.name as string | undefined;
+
         if (account.provider === "google") {
           const { data: dbUser } = await supabaseAdmin
             .from('users')
@@ -219,16 +221,15 @@ export const authOptions: NextAuthOptions = {
             token.id = dbUser.id;
           }
 
-          if (!user.name && dbUser?.full_name) {
-            token.name = dbUser.full_name;
-          }
+          resolvedName = dbUser?.full_name ?? user.name ?? resolvedName;
         } else {
           token.id = user.id;
+          resolvedName = user.name ?? resolvedName;
         }
 
         token.picture = user.image ?? token.picture;
-        token.name = user.name ?? token.name;
         token.email = user.email ?? token.email;
+        token.name = resolvedName ?? token.name;
       }
 
       if (!token.name && token.email) {

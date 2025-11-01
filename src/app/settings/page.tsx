@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Sun } from 'lucide-react';
+import { noProfile } from 'public';
 
 interface UserProfile {
   id: string;
@@ -258,6 +259,7 @@ export default function SettingsPage() {
   }
 
   const isSaving = updateProfileMutation.isPending;
+  const displayImage = session?.user?.image || profile?.image || noProfile;
 
   return (
     <div className="min-h-screen bg-white">
@@ -287,7 +289,7 @@ export default function SettingsPage() {
                     <div className="flex items-start gap-4">
                       <div className="w-16 h-16 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden">
                         <img
-                          src={session?.user?.image || profile?.image || '/api/placeholder/64/64'}
+                          src={displayImage}
                           alt="Profile"
                           className="w-full h-full object-cover"
                         />
