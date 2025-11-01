@@ -1,6 +1,16 @@
+"use client"
+
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 const Footer = () => {
+  const pathname = usePathname()
+  const navLinks = [
+    { href: "/", label: "Home" },
+    { href: "/about", label: "About" },
+    { href: "/contact", label: "Contact" },
+  ]
+
   return (
     <section className="p-6">
       <div className="max-w-7xl mx-auto text-center px-4 bg-gradient-to-b from-blue-700 to-blue-500 text-white py-20 rounded-7xl mt-8">
@@ -29,16 +39,23 @@ const Footer = () => {
             Tarana.<span className="text-blue-600">ai</span>
           </Link>
 
-          <div className="flex space-x-8 mb-4 md:mb-0">
-            <Link href="/" className="hover:text-blue-700">
-              Home
-            </Link>
-            <Link href="/about" className="hover:text-blue-700">
-              About
-            </Link>
-            <Link href="#" className="hover:text-blue-700">
-              Contact
-            </Link>
+          <div className="flex space-x-4 md:space-x-8 mb-4 md:mb-0">
+            {navLinks.map(({ href, label }) => {
+              const isActive = pathname === href
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`px-3 py-2 text-sm md:text-base transition-colors ${
+                    isActive
+                      ? "text-blue-600 font-semibold border-b-2 border-blue-600"
+                      : "text-gray-900 hover:text-blue-500"
+                  }`}
+                >
+                  {label}
+                </Link>
+              )
+            })}
           </div>
 
           <div className="flex space-x-6">
