@@ -15,6 +15,13 @@ import {
   UserTier,
 } from './types';
 
+const unlimitedIds = new Set(
+  (process.env.UNLIMITED_CREDIT_USERS || '')
+    .split(',')
+    .map(id => id.trim())
+    .filter(Boolean)
+);
+
 export class CreditService {
   /**
    * Ensure user profile exists, create if not
@@ -80,6 +87,17 @@ export class CreditService {
    * Get current credit balance for a user
    */
   static async getCurrentBalance(userId: string): Promise<CreditBalance> {
+    if (unlimitedIds.has(userId)) {
+      return {
+        totalCredits: Number.MAX_SAFE_INTEGER,
+        usedToday: 0,
+        remainingToday: Number.MAX_SAFE_INTEGER,
+        tier: 'Developer' as UserTier,
+        nextRefresh: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        dailyLimit: Number.MAX_SAFE_INTEGER,
+      };
+    }
+
     if (!supabaseAdmin) {
       throw new ReferralSystemError('Database not available', 'DB_ERROR', true);
     }
@@ -143,6 +161,13 @@ export class CreditService {
   static async consumeCredits(
     request: ConsumeCreditsRequest
   ): Promise<ConsumeCreditsResult> {
+    if (unlimitedIds.has(request.userId)) {
+      return {
+        success: true,
+        remainingCredits: Number.MAX_SAFE_INTEGER,
+      };
+    }
+
     if (!supabaseAdmin) {
       throw new ReferralSystemError('Database not available', 'DB_ERROR', true);
     }
