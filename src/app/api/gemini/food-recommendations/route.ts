@@ -69,6 +69,9 @@ const geminiModel = genAI ? genAI.getGenerativeModel({
 const responseCache = new Map<string, { response: any; timestamp: number }>();
 const preprocessingCache = new Map<string, any>();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes for better cache utilization
+const DEFAULT_PLACEHOLDER_IMAGE = "/images/placeholders/hero-placeholder.svg";
+const MIN_RECOMMENDATIONS = 3;
+const MAX_RECOMMENDATIONS = 5;
 
 export async function POST(req: NextRequest) {
   try {
@@ -334,7 +337,12 @@ export async function POST(req: NextRequest) {
         
         // Validate and enhance the response
         if (recommendations.matches && Array.isArray(recommendations.matches)) {
-          recommendations.matches = validateAndEnhanceRecommendations(recommendations.matches, foodData, preferences);
+          recommendations.matches = validateAndEnhanceRecommendations(
+            recommendations.matches,
+            foodData,
+            preferences,
+            prompt
+          );
         }
       } else {
         console.warn('⚠️ JSON parsing failed or no matches found, using intelligent fallback recommendations');
@@ -342,57 +350,6 @@ export async function POST(req: NextRequest) {
       }
       
       // Enhance each match with comprehensive menu data and smart suggestions
-      if (recommendations && recommendations.matches && Array.isArray(recommendations.matches)) {
-        recommendations.matches = recommendations.matches.map((match: EnhancedResultMatch) => {
-          const restaurant = foodData.restaurants.find((r: RestaurantData) => r.name === match.name);
-          if (restaurant) {
-            // Get recommended menu items using smart algorithms
-            const menuItems = menuIndexingService.getRestaurantMenu(restaurant.name);
-            const allocation = budgetAllocator.allocateBudget(
-              menuItems,
-              match.price,
-              preferences.pax || 2,
-              preferences
-            );
-
-            // Enhance AI reasoning with specific allocation details (keep conversational)
-            const topItems = allocation.selectedItems.slice(0, 3);
-            const utilizationPercent = Math.round(allocation.utilizationRate);
-            
-            // Ensure match.reason exists with fallback
-            const baseReason = match.reason || `Great ${restaurant.cuisine?.[0] || 'dining'} option for your group!`;
-            
-            // Only enhance if AI response seems incomplete (check if it already has budget info)
-            const hasBudgetInfo = baseReason.toLowerCase().includes('budget') || baseReason.toLowerCase().includes('php');
-            const hasItemCount = /\d+\s+(item|dish|option)/.test(baseReason);
-            
-            let enhancedReason = baseReason;
-            
-            // Add natural language enhancement if missing key info
-            if (!hasBudgetInfo && allocation.selectedItems.length > 0) {
-              enhancedReason += ` Plus, we've handpicked ${allocation.selectedItems.length} items that use ${utilizationPercent}% of your budget perfectly!`;
-            } else if (!hasItemCount && topItems.length > 0) {
-              const itemsList = topItems.map(i => i.name).join(', ');
-              enhancedReason += ` Don't miss their ${itemsList}!`;
-            }
-
-            return {
-              ...match,
-              reason: enhancedReason,
-              fullMenu: restaurant.fullMenu,
-              recommendedMenuItems: allocation.selectedItems.slice(0, 8),
-              budgetAllocation: {
-                totalCost: allocation.totalCost,
-                remainingBudget: allocation.remainingBudget,
-                utilizationRate: allocation.utilizationRate,
-                recommendations: allocation.recommendations
-              }
-            };
-          }
-          return match;
-        });
-      }
-      
       // Cache the response
       responseCache.set(cacheKey, {
         response: recommendations,
@@ -443,38 +400,171 @@ export async function POST(req: NextRequest) {
 }
 
 // Validation and enhancement helper
-function validateAndEnhanceRecommendations(matches: EnhancedResultMatch[], foodData: any, preferences: any): EnhancedResultMatch[] {
-  return matches.map(match => {
-    const restaurant = foodData.restaurants.find((r: RestaurantData) => r.name === match.name);
-    if (!restaurant) return match;
+function validateAndEnhanceRecommendations(
+  matches: EnhancedResultMatch[],
+  foodData: any,
+  preferences: any,
+  prompt: string
+): EnhancedResultMatch[] {
+  if (!foodData?.restaurants || foodData.restaurants.length === 0) {
+    return matches;
+  }
 
-    // CRITICAL: Override AI's price with user's actual budget
-    let finalPrice = match.price; // Default to AI's price
-    
-    if (preferences.budget) {
-      const userBudget = parseInt(preferences.budget.replace(/[^\d]/g, ''));
-      if (userBudget && userBudget > 0) {
-        finalPrice = userBudget; // Use user's budget as total budget
-        
-        // DEBUG LOGGING - Remove after fixing
-        console.log("🔍 VALIDATION DEBUG - Overriding AI price with user budget:", {
-          restaurantName: match.name,
-          aiGeneratedPrice: match.price,
-          userBudgetInput: preferences.budget,
-          extractedUserBudget: userBudget,
-          finalPriceUsed: finalPrice
-        });
-      }
+  const restaurantLookup = buildRestaurantLookup(foodData.restaurants);
+  const seenRestaurants = new Set<string>();
+  const groundedMatches: EnhancedResultMatch[] = [];
+
+  for (const match of matches) {
+    const restaurant = findRestaurantByNormalizedName(restaurantLookup, match.name);
+    if (!restaurant) {
+      console.warn(`⚠️ Skipping hallucinated restaurant from AI response: "${match.name}"`);
+      continue;
     }
 
-    return {
-      ...match,
-      meals: preferences.pax || match.meals || 2, // CRITICAL: Use user's actual group size
-      price: finalPrice, // Use user budget instead of AI's price
-      image: restaurant.image || match.image,
-      fullMenu: restaurant.fullMenu
-    };
+    const normalizedName = normalizeRestaurantName(restaurant.name);
+    if (seenRestaurants.has(normalizedName)) {
+      console.log(`ℹ️ Ignoring duplicate recommendation for: ${restaurant.name}`);
+      continue;
+    }
+
+    groundedMatches.push(hydrateMatchFromRestaurant(match, restaurant, preferences));
+    seenRestaurants.add(normalizedName);
+    if (groundedMatches.length >= MAX_RECOMMENDATIONS) {
+      break;
+    }
+  }
+
+  if (groundedMatches.length < MIN_RECOMMENDATIONS) {
+    console.log(`⚠️ Only ${groundedMatches.length} grounded matches. Supplementing with retrieval engine.`);
+    const fallbackMatches = createIntelligentRecommendations(foodData, prompt, preferences).matches;
+
+    for (const fallbackMatch of fallbackMatches) {
+      const fallbackRestaurant = findRestaurantByNormalizedName(restaurantLookup, fallbackMatch.name);
+      if (!fallbackRestaurant) {
+        continue;
+      }
+      const normalizedName = normalizeRestaurantName(fallbackRestaurant.name);
+      if (seenRestaurants.has(normalizedName)) {
+        continue;
+      }
+
+      groundedMatches.push(hydrateMatchFromRestaurant(fallbackMatch, fallbackRestaurant, preferences));
+      seenRestaurants.add(normalizedName);
+
+      if (groundedMatches.length >= MIN_RECOMMENDATIONS) {
+        break;
+      }
+    }
+  }
+
+  if (groundedMatches.length === 0) {
+    console.error('❌ No valid recommendations after grounding. Falling back entirely to deterministic engine.');
+    return createIntelligentRecommendations(foodData, prompt, preferences).matches.slice(0, MAX_RECOMMENDATIONS);
+  }
+
+  return groundedMatches.slice(0, MAX_RECOMMENDATIONS);
+}
+
+function hydrateMatchFromRestaurant(
+  match: EnhancedResultMatch,
+  restaurant: RestaurantData,
+  preferences: any
+): EnhancedResultMatch {
+  const meals = preferences?.pax || match.meals || 2;
+
+  let finalPrice = Number(match.price) || 0;
+  const userBudget = typeof preferences?.budget === 'string'
+    ? parseInt(preferences.budget.replace(/[^\d]/g, ''), 10)
+    : Number(preferences?.budget) || 0;
+
+  if (userBudget && userBudget > 0) {
+    finalPrice = userBudget;
+  }
+
+  if (!finalPrice || finalPrice <= 0) {
+    const minPrice = restaurant.priceRange?.min || 0;
+    const maxPrice = restaurant.priceRange?.max || 0;
+    const avgPrice = maxPrice > 0 ? (minPrice + maxPrice) / 2 : minPrice;
+    const fallbackPerPerson = avgPrice > 0 ? avgPrice : maxPrice || 300;
+    finalPrice = Math.max(100, Math.round(fallbackPerPerson * meals));
+  }
+
+  const menuItems = menuIndexingService.getRestaurantMenu(restaurant.name);
+  const allocation = menuItems.length > 0 && finalPrice > 0
+    ? budgetAllocator.allocateBudget(menuItems, finalPrice, meals, preferences)
+    : {
+        selectedItems: [] as any[],
+        totalCost: 0,
+        remainingBudget: finalPrice,
+        utilizationRate: 0,
+        recommendations: [] as string[]
+      };
+
+  const topItems = allocation.selectedItems.slice(0, 3);
+  const utilizationPercent = Math.round(allocation.utilizationRate || 0);
+  const baseReason = match.reason || `Great ${restaurant.cuisine?.[0] || 'dining'} option for your group!`;
+  const hasBudgetInfo = baseReason.toLowerCase().includes('budget') || baseReason.toLowerCase().includes('php');
+  const hasItemInfo = /\b(item|dish|option)s?\b/i.test(baseReason);
+
+  let enhancedReason = baseReason;
+  if (!hasBudgetInfo && allocation.selectedItems.length > 0) {
+    enhancedReason += ` Plus, we've curated ${allocation.selectedItems.length} picks that use ${utilizationPercent}% of your budget.`;
+  } else if (!hasItemInfo && topItems.length > 0) {
+    const itemsList = topItems.map(item => item.name).join(', ');
+    enhancedReason += ` Be sure to try ${itemsList}.`;
+  }
+
+  const restaurantImage = restaurant.image && restaurant.image.trim().length > 0
+    ? restaurant.image
+    : match.image && match.image.trim().length > 0
+      ? match.image
+      : DEFAULT_PLACEHOLDER_IMAGE;
+
+  return {
+    ...match,
+    name: restaurant.name,
+    meals,
+    price: finalPrice,
+    image: restaurantImage,
+    fullMenu: restaurant.fullMenu,
+    recommendedMenuItems: allocation.selectedItems.slice(0, 8),
+    budgetAllocation: {
+      totalCost: allocation.totalCost,
+      remainingBudget: allocation.remainingBudget,
+      utilizationRate: allocation.utilizationRate,
+      recommendations: allocation.recommendations
+    },
+    reason: enhancedReason
+  };
+}
+
+function buildRestaurantLookup(restaurants: RestaurantData[]): Map<string, RestaurantData> {
+  const lookup = new Map<string, RestaurantData>();
+  restaurants.forEach(restaurant => {
+    const normalized = normalizeRestaurantName(restaurant.name);
+    if (!lookup.has(normalized)) {
+      lookup.set(normalized, restaurant);
+    }
   });
+  return lookup;
+}
+
+function findRestaurantByNormalizedName(
+  lookup: Map<string, RestaurantData>,
+  name: string
+): RestaurantData | undefined {
+  if (!name) return undefined;
+  const normalized = normalizeRestaurantName(name);
+  return lookup.get(normalized);
+}
+
+function normalizeRestaurantName(name: string): string {
+  return name
+    ?.normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 // Intelligent recommendations using recommendation engine
