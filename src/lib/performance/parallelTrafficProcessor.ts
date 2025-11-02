@@ -212,7 +212,7 @@ export class ParallelTrafficProcessor {
       return [];
     }
 
-    const agentBatchSize = 3;
+    const agentBatchSize = 4;
     const results: Activity[][] = new Array(clusters.length);
 
     for (let i = 0; i < clusters.length; i += agentBatchSize) {

@@ -287,6 +287,7 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
   processed = organizeItineraryByDays(processed, durationDays);
   if (durationDays && model && hasMissingPeriods(processed, durationDays)) {
     processed = await ensureFullItinerary(processed, prompt, durationDays, model, peakHoursContext);
+    processed = removeDuplicateActivities(processed);
   }
 
   // Log peak hours filtering for debugging (kept concise)
@@ -311,6 +312,17 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
 
   // Final cleanup pass - only remove duplicates, preserve reasons and activities as-is
   if (processed && typeof processed === "object" && Array.isArray((processed as any).items)) {
+    const inferredDuration = durationDays ?? (() => {
+      const dayLabels = new Set<string>();
+      (processed as any).items.forEach((item: any) => {
+        const [dayLabel] = (item?.period || '').split(' - ');
+        if (dayLabel) {
+          dayLabels.add(dayLabel.trim());
+        }
+      });
+      return dayLabels.size || (processed as any).items.length || 1;
+    })();
+
     const seenByPeriod = new Map<string, Set<string>>();
     (processed as any).items = (processed as any).items
       .map((period: any, index: number) => {
@@ -326,26 +338,74 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
         }
 
         const validatedActivities = period.activities.filter((act: any) => {
-          if (!act || !act.title || act.title.toLowerCase() === "no available activity") {
+          const normalizedTitle = typeof act?.title === 'string' ? act.title.trim().toLowerCase() : '';
+          if (!normalizedTitle || normalizedTitle === "no available activity" || normalizedTitle === "activity") {
             return false; // Filter out nulls and placeholders
           }
 
-          const normalized = act.title.toLowerCase();
-          if (periodSeen!.has(normalized)) {
+          if (periodSeen!.has(normalizedTitle)) {
             return false; // Filter out duplicates within the same period
           }
-          periodSeen!.add(normalized);
+          periodSeen!.add(normalizedTitle);
           return true;
         });
 
         const finalPeriod = { ...period, activities: validatedActivities };
         // Always preserve the reason field, even if activities array is empty
-        if (period.reason) {
+        if (finalPeriod.activities.length === 0) {
+          if (period.reason) {
+            finalPeriod.reason = period.reason;
+          } else {
+            const [rawDay, rawSlot] = (period?.period || '').split(' - ');
+            const dayNumber = (() => {
+              if (!rawDay) return 1;
+              const match = rawDay.match(/(\d+)/);
+              const parsed = match ? parseInt(match[1], 10) : NaN;
+              return Number.isNaN(parsed) ? 1 : parsed;
+            })();
+            const slotLabel = rawSlot || 'Flexible';
+            finalPeriod.reason = buildDeterministicEmptySlotReason(dayNumber, slotLabel, inferredDuration);
+          }
+        } else if (period.reason) {
           finalPeriod.reason = period.reason;
         }
 
         return finalPeriod;
       });
+
+    processed = removeDuplicateActivities(processed);
+
+    if (processed && Array.isArray((processed as any).items)) {
+      const resolvedDuration = durationDays ?? (() => {
+        const dayLabels = new Set<string>();
+        (processed as any).items.forEach((item: any) => {
+          const [dayLabel] = (item?.period || '').split(' - ');
+          if (dayLabel) {
+            dayLabels.add(dayLabel.trim());
+          }
+        });
+        return dayLabels.size || (processed as any).items.length || 1;
+      })();
+
+      (processed as any).items = (processed as any).items.map((period: any) => {
+        const activities = Array.isArray(period?.activities) ? period.activities : [];
+        if (activities.length === 0) {
+          const [rawDay, rawSlot] = (period?.period || '').split(' - ');
+          const dayNumber = (() => {
+            if (!rawDay) return 1;
+            const match = rawDay.match(/(\d+)/);
+            const parsed = match ? parseInt(match[1], 10) : NaN;
+            return Number.isNaN(parsed) ? 1 : parsed;
+          })();
+          const slotLabel = rawSlot || 'Flexible';
+          return {
+            ...period,
+            reason: period.reason || buildDeterministicEmptySlotReason(dayNumber, slotLabel, resolvedDuration)
+          };
+        }
+        return period;
+      });
+    }
   }
 
   return processed;
