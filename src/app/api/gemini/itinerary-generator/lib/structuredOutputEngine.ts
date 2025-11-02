@@ -66,7 +66,7 @@ export class StructuredOutputEngine {
         temperature: 0.15,
         topK: 4,
         topP: 0.7,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
         candidateCount: 1
       };
 
@@ -259,7 +259,7 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
           title: this.ensureString(activity?.title, "Activity"),
           time: this.ensureString(activity?.time, "9:00-10:00AM"),
           desc: this.ensureString(activity?.desc, "Enjoy this activity with optimal timing."),
-          tags: this.ensureArray(activity?.tags).filter((tag: any) => typeof tag === 'string')
+          tags: this.ensureTags(activity?.tags, activity?.title, item?.period, activity?.desc)
         })),
         // Preserve the reason field if it exists
         reason: typeof item?.reason === 'string' ? item.reason : undefined
@@ -278,6 +278,68 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
 
   private static ensureArray(value: any): any[] {
     return Array.isArray(value) ? value : [];
+  }
+
+  private static ensureTags(value: any, ...fallbackHints: Array<string | undefined>): string[] {
+    const collected = new Set<string>();
+
+    if (Array.isArray(value)) {
+      value.forEach(tag => {
+        if (typeof tag === 'string' && tag.trim()) {
+          collected.add(tag.trim());
+        }
+      });
+    } else if (typeof value === 'string' && value.trim()) {
+      collected.add(value.trim());
+    }
+
+    if (collected.size === 0) {
+      for (const hint of fallbackHints) {
+        const fallbackTag = this.deriveFallbackTag(hint);
+        if (fallbackTag) {
+          collected.add(fallbackTag);
+          break;
+        }
+      }
+    }
+
+    if (collected.size === 0) {
+      collected.add('general-interest');
+    }
+
+    return Array.from(collected);
+  }
+
+  private static deriveFallbackTag(hint?: string): string | null {
+    if (!hint || typeof hint !== 'string') {
+      return null;
+    }
+
+    const normalized = hint.toLowerCase();
+
+    if (normalized.includes('nature') || normalized.includes('scenery')) {
+      return 'nature';
+    }
+    if (normalized.includes('food') || normalized.includes('dining')) {
+      return 'food';
+    }
+    if (normalized.includes('culture') || normalized.includes('heritage')) {
+      return 'culture';
+    }
+    if (normalized.includes('adventure') || normalized.includes('hiking')) {
+      return 'adventure';
+    }
+    if (normalized.includes('morning')) {
+      return 'morning';
+    }
+    if (normalized.includes('afternoon')) {
+      return 'afternoon';
+    }
+    if (normalized.includes('evening') || normalized.includes('night')) {
+      return 'evening';
+    }
+
+    return null;
   }
 
   /**

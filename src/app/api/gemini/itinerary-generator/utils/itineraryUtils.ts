@@ -11,24 +11,45 @@ export function removeDuplicateActivities(parsedItinerary: any) {
   if (!parsedItinerary || !parsedItinerary.items || !Array.isArray(parsedItinerary.items)) {
     return parsedItinerary;
   }
-  const seenActivities = new Set<string>();
+
+  const seenByPeriod = new Map<string, Set<string>>();
+
   const result = {
     ...parsedItinerary,
-    items: parsedItinerary.items.map((day: any) => {
-      if (!day.activities || !Array.isArray(day.activities)) return day;
+    items: parsedItinerary.items.map((period: any, index: number) => {
+      if (!period.activities || !Array.isArray(period.activities)) {
+        return period;
+      }
+
+      const periodKey = typeof period?.period === 'string' ? period.period : `period-${index}`;
+      let periodSeen = seenByPeriod.get(periodKey);
+      if (!periodSeen) {
+        periodSeen = new Set<string>();
+        seenByPeriod.set(periodKey, periodSeen);
+      }
+
+      const filteredActivities = period.activities.filter((activity: any) => {
+        const title = typeof activity?.title === 'string' ? activity.title.trim() : '';
+        if (!title) {
+          return false;
+        }
+
+        const normalized = title.toLowerCase();
+        if (periodSeen!.has(normalized)) {
+          return false;
+        }
+
+        periodSeen!.add(normalized);
+        return true;
+      });
+
       return {
-        ...day,
-        activities: day.activities.filter((activity: any) => {
-          const title = activity?.title;
-          if (!title || typeof title !== 'string') return false;
-          const key = title.toLowerCase();
-          if (seenActivities.has(key)) return false;
-          seenActivities.add(key);
-          return true;
-        })
+        ...period,
+        activities: filteredActivities
       };
     })
   };
+
   return result;
 }
 
@@ -89,7 +110,24 @@ export function organizeItineraryByDays(it: any, days: number | null) {
     const slot = slots[slotIndex];
     daysBuckets[dayIndex][slot].push(activity);
   });
-  
+
+  // Backfill empty slots so each day has at least one activity per period when possible
+  if (allActivities.length > 0) {
+    let fillerIndex = 0;
+    const fillerPool = allActivities.map(activity => ({ ...activity }));
+
+    daysBuckets.forEach(bucket => {
+      const slots: Array<'Morning'|'Afternoon'|'Evening'> = ['Morning','Afternoon','Evening'];
+      slots.forEach(slot => {
+        if (bucket[slot].length === 0 && fillerPool.length > 0) {
+          const fallback = fillerPool[fillerIndex % fillerPool.length];
+          fillerIndex++;
+          bucket[slot].push({ ...fallback });
+        }
+      });
+    });
+  }
+
   // Build new items: Day N - Morning/Afternoon/Evening
   const newItems: any[] = [];
   for (let i = 0; i < daysBuckets.length; i++) {
@@ -289,22 +327,30 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
 
   // Final cleanup pass - only remove duplicates, preserve reasons and activities as-is
   if (processed && typeof processed === "object" && Array.isArray((processed as any).items)) {
-    const seenActivities = new Set<string>();
+    const seenByPeriod = new Map<string, Set<string>>();
     (processed as any).items = (processed as any).items
-      .map((period: any) => {
+      .map((period: any, index: number) => {
         if (!period.activities || !Array.isArray(period.activities)) {
           period.activities = [];
         }
 
-        // Only remove duplicates, don't validate against database or check peak hours again
+        const periodKey = typeof period?.period === 'string' ? period.period : `period-${index}`;
+        let periodSeen = seenByPeriod.get(periodKey);
+        if (!periodSeen) {
+          periodSeen = new Set<string>();
+          seenByPeriod.set(periodKey, periodSeen);
+        }
+
         const validatedActivities = period.activities.filter((act: any) => {
           if (!act || !act.title || act.title.toLowerCase() === "no available activity") {
             return false; // Filter out nulls and placeholders
           }
-          if (seenActivities.has(act.title)) {
-            return false; // Filter out duplicates
+
+          const normalized = act.title.toLowerCase();
+          if (periodSeen!.has(normalized)) {
+            return false; // Filter out duplicates within the same period
           }
-          seenActivities.add(act.title);
+          periodSeen!.add(normalized);
           return true;
         });
 
@@ -316,6 +362,35 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
 
         return finalPeriod;
       });
+  }
+
+  // Ensure every period has at least one activity by recycling available ones when needed
+  if (processed && Array.isArray(processed?.items)) {
+    const availablePool = processed.items
+      .flatMap((period: any) => Array.isArray(period?.activities) ? period.activities : [])
+      .filter((activity: any) => activity && typeof activity?.title === 'string' && activity.title.trim().length > 0)
+      .map((activity: any) => ({ ...activity }));
+
+    if (availablePool.length > 0) {
+      let fallbackIndex = 0;
+      processed.items = processed.items.map((period: any) => {
+        if (!Array.isArray(period.activities)) {
+          period.activities = [];
+        }
+
+        if (period.activities.length === 0) {
+          const fallbackActivity = availablePool[fallbackIndex % availablePool.length];
+          fallbackIndex++;
+          period.activities = [{ ...fallbackActivity }];
+          // Remove deterministic placeholder reason when we now have a real activity
+          if (period.reason) {
+            delete period.reason;
+          }
+        }
+
+        return period;
+      });
+    }
   }
   
   return processed;
