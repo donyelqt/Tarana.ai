@@ -37,8 +37,8 @@ export class ParallelTrafficProcessor {
   private static instance: ParallelTrafficProcessor;
   
   private readonly defaultOptions: TrafficProcessingOptions = {
-    maxConcurrency: 100,
-    batchSize: 100,
+    maxConcurrency: 8,
+    batchSize: 50,
     proximityThreshold: 0.5, // 500 meters
     enableLocationClustering: true,
     enableResultCaching: true,
