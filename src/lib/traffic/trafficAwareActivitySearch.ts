@@ -45,7 +45,7 @@ class TrafficAwareActivitySearchService {
     const enhancedActivities: TrafficEnhancedActivity[] = [];
 
     // Process activities in batches for better performance
-    const batchSize = 100;
+    const batchSize = 10;
     for (let i = 0; i < activities.length; i += batchSize) {
       const batch = activities.slice(i, i + batchSize);
       
