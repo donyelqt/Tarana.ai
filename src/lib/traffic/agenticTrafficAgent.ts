@@ -19,9 +19,9 @@ function getTrafficModel() {
       model: TRAFFIC_AGENT_MODEL_ID,
       generationConfig: {
         temperature: 0.15,
-        topP: 0.8,
+        topP: 0.7,
         topK: 32,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 768,
       },
     });
   }
@@ -69,11 +69,7 @@ interface RunAgenticTrafficParams {
   lon: number;
   peakHours: string;
   context: AgenticTrafficContext;
-}
-
-interface ToolInvocationResult {
-  tool: string;
-  output: any;
+  initialTrafficData?: LocationTrafficData;
 }
 
 interface AgenticTrafficPayload {
@@ -85,56 +81,13 @@ interface AgenticTrafficPayload {
   crowdLevel: "VERY_LOW" | "LOW" | "MODERATE" | "HIGH" | "VERY_HIGH";
 }
 
-function buildPlanPrompt(params: RunAgenticTrafficParams) {
-  const { title, lat, lon, peakHours, context } = params;
-  const now = getManilaTime().toLocaleString("en-PH", { timeZone: "Asia/Manila" });
-
-  return `You are the Tarana Traffic Agent. The user needs a traffic-aware recommendation for "${title}".
-
-Tools available (you do NOT execute them, you only plan which ones to call):
-1. GET_TRAFFIC_DATA — fetches real-time congestion metrics for the provided latitude/longitude.
-2. CHECK_PEAK_HOURS — analyses whether the current Manila time is inside the activity's peak hours window.
-3. SUMMARIZE — final tool that you MUST call last to craft the recommendation.
-
-Return a JSON object with an "actions" array listing the tools (by name) in the order they should be executed. Example:
-{"actions":["GET_TRAFFIC_DATA","CHECK_PEAK_HOURS","SUMMARIZE"]}
-
-Always include SUMMARIZE as the final action.
-
-Context:
-- Activity: ${title}
-- Coordinates: (${lat}, ${lon})
-- Peak hours: ${peakHours || "unknown"}
-- Current Manila time: ${now}
-- Day: ${context.dayOfWeek} (Weekend: ${context.isWeekend})
-- User preferences: ${JSON.stringify(context.userPreferences || {}, null, 2)}
-`;
-}
-
-async function requestPlan(params: RunAgenticTrafficParams): Promise<string[]> {
-  const model = getTrafficModel();
-  const prompt = buildPlanPrompt(params);
-  const response = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0.05,
-      maxOutputTokens: 512,
-    },
-  });
-
-  const rawText = response.response?.text() ?? "";
-  const plan = extractJson(rawText) as TrafficAgentPlan | null;
-  return normaliseActions(plan);
-}
-
 async function summariseWithModel(
   params: RunAgenticTrafficParams,
   trafficData: LocationTrafficData | null,
-  peakStatus: { isCurrentlyPeak: boolean; peakHours: string; nextLowTrafficTime?: string | undefined },
-  toolOutputs: ToolInvocationResult[]
+  peakStatus: { isCurrentlyPeak: boolean; peakHours: string; nextLowTrafficTime?: string | undefined }
 ): Promise<AgenticTrafficPayload | null> {
   const model = getTrafficModel();
-  const instruction = `You are the Tarana Traffic Agent. Generate a structured recommendation JSON based on the provided tool outputs.
+  const instruction = `You are the Tarana Traffic Agent. Read the context and respond with strict JSON only.
 
 Return ONLY raw JSON matching this schema:
 {
@@ -153,6 +106,16 @@ Guidelines:
 - If data is missing, make the safest assumption and note it in the analysis.
 `;
 
+  const condensedTraffic = trafficData
+    ? {
+        trafficLevel: trafficData.trafficLevel,
+        congestionScore: trafficData.congestionScore,
+        recommendationScore: trafficData.recommendationScore,
+        incidentCount: (trafficData.incidents || []).length,
+        lastUpdated: trafficData.lastUpdated,
+      }
+    : null;
+
   const contextPayload = {
     activity: {
       title: params.title,
@@ -161,8 +124,7 @@ Guidelines:
       peakHours: params.peakHours,
     },
     peakStatus,
-    trafficData,
-    toolOutputs,
+    traffic: condensedTraffic,
   };
 
   const response = await model.generateContent({
@@ -171,7 +133,7 @@ Guidelines:
         role: "user",
         parts: [
           { text: instruction },
-          { text: `Context JSON:\n${JSON.stringify(contextPayload, null, 2)}` },
+          { text: `Context JSON:\n${JSON.stringify(contextPayload)}` },
         ],
       },
     ],
@@ -179,64 +141,43 @@ Guidelines:
       temperature: 0.1,
       topP: 0.8,
       topK: 32,
-      maxOutputTokens: 768,
+      maxOutputTokens: 256,
+      responseMimeType: "application/json",
     },
   });
 
-  const rawText = response.response?.text() ?? "";
-  const parsed = extractJson(rawText) as AgenticTrafficPayload | null;
+  const partText =
+    response.response?.candidates?.[0]?.content?.parts?.find(part => "text" in part)?.text ?? "";
+  const parsed = extractJson(partText) as AgenticTrafficPayload | null;
   return parsed ?? null;
 }
 
 export async function runAgenticTrafficAnalysis(params: RunAgenticTrafficParams): Promise<TrafficAnalysisResult> {
-  const actions = await requestPlan(params);
-  const toolOutputs: ToolInvocationResult[] = [];
-
-  let trafficData: LocationTrafficData | null = null;
+  let trafficData: LocationTrafficData | null = params.initialTrafficData ?? null;
   let peakStatus: { isCurrentlyPeak: boolean; peakHours: string; nextLowTrafficTime?: string } = {
     isCurrentlyPeak: false,
     peakHours: params.peakHours,
   };
 
-  for (const action of actions) {
-    if (action === "GET_TRAFFIC_DATA") {
-      try {
-        trafficData = await tomtomTrafficService.getLocationTrafficData(params.lat, params.lon);
-        toolOutputs.push({
-          tool: "GET_TRAFFIC_DATA",
-          output: trafficData,
-        });
-      } catch (error) {
-        toolOutputs.push({
-          tool: "GET_TRAFFIC_DATA",
-          output: { error: (error as Error).message || "Failed to fetch traffic data." },
-        });
-      }
-    }
-
-    if (action === "CHECK_PEAK_HOURS") {
-      const isPeak = isCurrentlyPeakHours(params.peakHours);
-      peakStatus = {
-        isCurrentlyPeak: isPeak,
-        peakHours: params.peakHours,
-        nextLowTrafficTime: isPeak ? "Check alternative off-peak slots" : undefined,
-      };
-
-      toolOutputs.push({
-        tool: "CHECK_PEAK_HOURS",
-        output: peakStatus,
-      });
-    }
-
-    if (action === "SUMMARIZE") {
-      break;
+  if (!trafficData) {
+    try {
+      trafficData = await tomtomTrafficService.getLocationTrafficData(params.lat, params.lon);
+    } catch (error) {
+      console.error(`❌ Traffic fetch failed inside agent for ${params.title}:`, error);
     }
   }
+
+  const isPeak = isCurrentlyPeakHours(params.peakHours);
+  peakStatus = {
+    isCurrentlyPeak: isPeak,
+    peakHours: params.peakHours,
+    nextLowTrafficTime: isPeak ? "Check alternative off-peak slots" : undefined,
+  };
 
   const effectiveTrafficData =
     trafficData || (await tomtomTrafficService.getLocationTrafficData(params.lat, params.lon));
 
-  const summaryPayload = await summariseWithModel(params, effectiveTrafficData, peakStatus, toolOutputs);
+  const summaryPayload = await summariseWithModel(params, effectiveTrafficData, peakStatus);
 
   const combinedScore = summaryPayload?.combinedScore ?? 60;
   const recommendation = summaryPayload?.recommendation ?? "PLAN_LATER";

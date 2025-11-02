@@ -144,14 +144,33 @@ class AgenticTrafficAnalyzer {
       console.log(`\n=== AGENTIC AI TRAFFIC ANALYZER START ===`);
       console.log(`🤖 Delegating comprehensive analysis for "${title}" to Gemini agent`);
 
-      const agenticResult = await runAgenticTrafficAnalysis({
-        activityId,
-        title,
-        lat,
-        lon,
-        peakHours,
-        context
-      });
+      const initialTrafficPromise = this.tomtomService
+        .getLocationTrafficData(lat, lon)
+        .catch(() => null);
+
+      const agentStart = performance.now();
+      const agentPromise = initialTrafficPromise.then(initialTraffic =>
+        runAgenticTrafficAnalysis({
+          activityId,
+          title,
+          lat,
+          lon,
+          peakHours,
+          context,
+          initialTrafficData: initialTraffic ?? undefined
+        })
+      );
+
+      const agenticResult = await Promise.race([
+        agentPromise.then(result => {
+          const duration = performance.now() - agentStart;
+          console.log(`🧠 Agent runtime for "${title}": ${Math.round(duration)}ms`);
+          return result;
+        }),
+        new Promise<TrafficAnalysisResult>((_, reject) =>
+          setTimeout(() => reject(new Error('Agentic traffic analysis timeout')), 12000)
+        )
+      ]);
 
       this.analysisCache.set(cacheKey, {
         result: agenticResult,
@@ -172,9 +191,46 @@ class AgenticTrafficAnalyzer {
 
     } catch (error) {
       console.error(`❌ Agentic AI: Error delegating analysis for ${title}:`, error);
-      throw error instanceof Error
-        ? error
-        : new Error(`Agentic traffic analysis failed for ${title}`);
+
+      const fallbackTraffic = await this.tomtomService
+        .getLocationTrafficData(lat, lon)
+        .catch(() => null);
+
+      if (fallbackTraffic) {
+        const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
+        const peakHoursStatus = {
+          isCurrentlyPeak,
+          peakHours,
+          nextLowTrafficTime: isCurrentlyPeak ? this.getNextLowTrafficTime(peakHours) : undefined
+        };
+
+        const combinedScore = this.calculateCombinedScore(fallbackTraffic, peakHoursStatus, context);
+        const recommendation = this.generateRecommendation(combinedScore, fallbackTraffic, peakHoursStatus, context);
+        const aiAnalysis = this.generateAIAnalysis(fallbackTraffic, peakHoursStatus, context, title);
+        const trafficSummary = getTrafficSummary(fallbackTraffic);
+        const bestTimeToVisit = this.determineBestTimeToVisit(fallbackTraffic, peakHours, context);
+        const alternativeTimeSlots = this.generateAlternativeTimeSlots(peakHours, fallbackTraffic, context);
+        const crowdLevel = this.determineCrowdLevel(fallbackTraffic, peakHoursStatus);
+
+        return {
+          activityId,
+          title,
+          lat,
+          lon,
+          realTimeTraffic: fallbackTraffic,
+          peakHoursStatus,
+          combinedScore,
+          recommendation,
+          aiAnalysis,
+          trafficSummary,
+          bestTimeToVisit,
+          alternativeTimeSlots,
+          crowdLevel,
+          lastAnalyzed: new Date()
+        };
+      }
+
+      return this.createFallbackAnalysis(activityId, title, lat, lon, peakHours, context);
     }
   }
 

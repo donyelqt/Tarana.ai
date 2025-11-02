@@ -37,8 +37,8 @@ export class ParallelTrafficProcessor {
   private static instance: ParallelTrafficProcessor;
   
   private readonly defaultOptions: TrafficProcessingOptions = {
-    maxConcurrency: 100,
-    batchSize: 100,
+    maxConcurrency: 8,
+    batchSize: 40,
     proximityThreshold: 0.5, // 500 meters
     enableLocationClustering: true,
     enableResultCaching: true,
@@ -208,22 +208,35 @@ export class ParallelTrafficProcessor {
    * Process clusters concurrently with controlled parallelism
    */
   private async processClustersConcurrently(clusters: Activity[][]): Promise<Activity[][]> {
-    const processingPromises = clusters.map(async (cluster, index) => {
-      return this.activeSemaphore.acquire(async () => {
-        return this.processClusterWithTimeout(cluster, index);
-      });
-    });
+    if (!clusters.length) {
+      return [];
+    }
 
-    const results = await Promise.allSettled(processingPromises);
-    
-    return results.map((result, index) => {
-      if (result.status === 'fulfilled') {
-        return result.value;
-      } else {
-        console.warn(`⚠️ Cluster ${index} processing failed:`, result.reason);
-        return this.createFallbackCluster(clusters[index]);
-      }
-    });
+    const agentBatchSize = 3;
+    const results: Activity[][] = new Array(clusters.length);
+
+    for (let i = 0; i < clusters.length; i += agentBatchSize) {
+      const batch = clusters.slice(i, i + agentBatchSize);
+      const batchResults = await Promise.allSettled(
+        batch.map((cluster, offset) =>
+          this.activeSemaphore.acquire(async () =>
+            this.processClusterWithTimeout(cluster, i + offset)
+          )
+        )
+      );
+
+      batchResults.forEach((result, offset) => {
+        const clusterIndex = i + offset;
+        if (result.status === 'fulfilled') {
+          results[clusterIndex] = result.value;
+        } else {
+          console.warn(`⚠️ Cluster ${clusterIndex} processing failed:`, result.reason);
+          results[clusterIndex] = this.createFallbackCluster(clusters[clusterIndex]);
+        }
+      });
+    }
+
+    return results;
   }
 
   /**
@@ -316,22 +329,31 @@ export class ParallelTrafficProcessor {
    * Create fallback cluster with conservative traffic data - mark as HIGH to exclude
    */
   private createFallbackCluster(cluster: Activity[]): Activity[] {
-    console.log(`⚠️ FALLBACK CLUSTER: Marking ${cluster.length} activities as HIGH traffic due to timeout`);
-    return cluster.map(activity => ({
-      ...activity,
-      trafficAnalysis: {
+    console.log(`⚠️ FALLBACK CLUSTER: Using safe moderate traffic data for ${cluster.length} activities`);
+    return cluster.map(activity => {
+      const coords = this.getCoordinatesCached(activity.title);
+      const fallbackTraffic = {
         realTimeTraffic: {
-          trafficLevel: 'HIGH', // Conservative: exclude if we can't get real data
-          congestionScore: 100,
-          recommendationScore: 0
+          lat: coords?.lat ?? 0,
+          lon: coords?.lon ?? 0,
+          incidents: [],
+          trafficLevel: 'MODERATE' as const,
+          congestionScore: 55,
+          recommendationScore: 60,
+          lastUpdated: new Date()
         }
-      },
-      combinedTrafficScore: 25,
-      trafficRecommendation: 'AVOID_NOW' as any,
-      crowdLevel: 'HIGH' as any,
-      lat: this.getCoordinatesCached(activity.title)?.lat || 0,
-      lon: this.getCoordinatesCached(activity.title)?.lon || 0
-    }));
+      };
+
+      return {
+        ...activity,
+        trafficAnalysis: fallbackTraffic,
+        combinedTrafficScore: 58,
+        trafficRecommendation: 'PLAN_LATER' as any,
+        crowdLevel: 'MODERATE' as any,
+        lat: coords?.lat ?? 0,
+        lon: coords?.lon ?? 0
+      };
+    });
   }
 
   /**
