@@ -12,40 +12,22 @@ export function removeDuplicateActivities(parsedItinerary: any) {
     return parsedItinerary;
   }
 
-  const seenByPeriod = new Map<string, Set<string>>();
+  const seenActivities = new Set<string>();
 
   const result = {
     ...parsedItinerary,
-    items: parsedItinerary.items.map((period: any, index: number) => {
-      if (!period.activities || !Array.isArray(period.activities)) {
-        return period;
-      }
-
-      const periodKey = typeof period?.period === 'string' ? period.period : `period-${index}`;
-      let periodSeen = seenByPeriod.get(periodKey);
-      if (!periodSeen) {
-        periodSeen = new Set<string>();
-        seenByPeriod.set(periodKey, periodSeen);
-      }
-
-      const filteredActivities = period.activities.filter((activity: any) => {
-        const title = typeof activity?.title === 'string' ? activity.title.trim() : '';
-        if (!title) {
-          return false;
-        }
-
-        const normalized = title.toLowerCase();
-        if (periodSeen!.has(normalized)) {
-          return false;
-        }
-
-        periodSeen!.add(normalized);
-        return true;
-      });
-
+    items: parsedItinerary.items.map((period: any) => {
+      if (!period.activities || !Array.isArray(period.activities)) return period;
       return {
         ...period,
-        activities: filteredActivities
+        activities: period.activities.filter((activity: any) => {
+          const title = activity?.title;
+          if (!title || typeof title !== 'string') return false;
+          const key = title.toLowerCase();
+          if (seenActivities.has(key)) return false;
+          seenActivities.add(key);
+          return true;
+        })
       };
     })
   };
@@ -206,7 +188,9 @@ export async function validateAndEnrichActivity(activity: any): Promise<any | nu
     desc: canonicalActivity.desc,
     tags: canonicalActivity.tags,
     peakHours: canonicalActivity.peakHours,
-    time: canonicalActivity.time
+    time: canonicalActivity.time,
+    origin: activity.origin ?? 'primary',
+    reason: activity.reason || `Recommended using canonical profile for ${activity.title}.`
   };
 }
 
@@ -364,35 +348,6 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
       });
   }
 
-  // Ensure every period has at least one activity by recycling available ones when needed
-  if (processed && Array.isArray(processed?.items)) {
-    const availablePool = processed.items
-      .flatMap((period: any) => Array.isArray(period?.activities) ? period.activities : [])
-      .filter((activity: any) => activity && typeof activity?.title === 'string' && activity.title.trim().length > 0)
-      .map((activity: any) => ({ ...activity }));
-
-    if (availablePool.length > 0) {
-      let fallbackIndex = 0;
-      processed.items = processed.items.map((period: any) => {
-        if (!Array.isArray(period.activities)) {
-          period.activities = [];
-        }
-
-        if (period.activities.length === 0) {
-          const fallbackActivity = availablePool[fallbackIndex % availablePool.length];
-          fallbackIndex++;
-          period.activities = [{ ...fallbackActivity }];
-          // Remove deterministic placeholder reason when we now have a real activity
-          if (period.reason) {
-            delete period.reason;
-          }
-        }
-
-        return period;
-      });
-    }
-  }
-  
   return processed;
 }
 

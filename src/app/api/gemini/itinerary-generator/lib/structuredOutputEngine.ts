@@ -66,7 +66,7 @@ export class StructuredOutputEngine {
         temperature: 0.15,
         topK: 4,
         topP: 0.7,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 4096,
         candidateCount: 1
       };
 
