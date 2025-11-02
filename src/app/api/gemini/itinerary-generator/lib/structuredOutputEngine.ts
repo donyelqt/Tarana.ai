@@ -4,8 +4,11 @@
  * Eliminates all JSON parsing errors through schema-enforced generation
  */
 
+import { Buffer } from 'buffer';
+import { jsonrepair } from 'jsonrepair';
 import { z } from 'zod';
 import { geminiModel } from './config';
+import { JsonSyntaxValidator } from './enhancedPromptEngine';
 
 // Strict Zod schemas for guaranteed structure
 export const ActivitySchema = z.object({
@@ -40,7 +43,7 @@ export type StructuredItinerary = z.infer<typeof ItinerarySchema>;
  */
 export class StructuredOutputEngine {
   private static readonly MAX_RETRIES = 3;
-  private static readonly TIMEOUT_MS = 60000; // 60 seconds
+  private static readonly TIMEOUT_MS = 45000;
 
   /**
    * Generate itinerary with guaranteed structure using enhanced JSON mode
@@ -60,10 +63,10 @@ export class StructuredOutputEngine {
       // Generation config optimized for JSON output
       const generationConfig = {
         responseMimeType: "application/json",
-        temperature: 0.2, 
-        topK: 32,
-        topP: 0.9,
-        maxOutputTokens: 8192,
+        temperature: 0.15,
+        topK: 4,
+        topP: 0.7,
+        maxOutputTokens: 4096,
         candidateCount: 1
       };
 
@@ -85,14 +88,14 @@ export class StructuredOutputEngine {
           ]) as any;
 
           // Extract JSON response
-          const text = result.response?.text();
-          
+          const text = extractResponseText(result);
+
           if (!text) {
             throw new Error('No valid response text');
           }
 
-          // Parse JSON response
-          const rawData = JSON.parse(text);
+          // Parse JSON response with recovery strategies
+          const rawData = this.parseStructuredJson(text, requestId);
           console.log(`✅ STRUCTURED ENGINE: Raw JSON received in ${Date.now() - startTime}ms`);
 
           // Validate and clean the structured data
@@ -121,6 +124,61 @@ export class StructuredOutputEngine {
       console.error(`💥 STRUCTURED ENGINE: Critical error for request ${requestId}:`, error);
       return this.createFallbackItinerary(requestId);
     }
+  }
+
+  private static parseStructuredJson(text: string, requestId: string): any {
+    try {
+      const parsed = JSON.parse(text);
+      return this.decodeNestedJson(parsed, requestId);
+    } catch (error) {
+      console.warn(`🔄 STRUCTURED ENGINE: Direct parse failed for ${requestId}, attempting recovery...`);
+    }
+
+    const syntaxCheck = JsonSyntaxValidator.validateSyntax(text);
+    if (syntaxCheck.cleanedJson) {
+      try {
+        const parsed = JSON.parse(syntaxCheck.cleanedJson);
+        return this.decodeNestedJson(parsed, requestId);
+      } catch (error) {
+        console.warn(`🔄 STRUCTURED ENGINE: Syntax cleaning failed for ${requestId}, attempting aggressive fix...`);
+      }
+    }
+
+    try {
+      const fixed = JsonSyntaxValidator.attemptFix(text);
+      const parsed = JSON.parse(fixed);
+      return this.decodeNestedJson(parsed, requestId);
+    } catch (error) {
+      console.warn(`🔄 STRUCTURED ENGINE: Custom fixer failed for ${requestId}, invoking jsonrepair...`);
+    }
+
+    try {
+      const repaired = jsonrepair(text);
+      const parsed = typeof repaired === 'string' ? JSON.parse(repaired) : repaired;
+      return this.decodeNestedJson(parsed, requestId);
+    } catch (error) {
+      console.error(`❌ STRUCTURED ENGINE: jsonrepair failed for ${requestId}:`, error instanceof Error ? error.message : error);
+      throw new Error('Unable to recover structured JSON response');
+    }
+  }
+
+  private static decodeNestedJson(value: unknown, requestId: string): any {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          console.warn(`🔁 STRUCTURED ENGINE: Detected stringified JSON for ${requestId}, parsing again.`);
+          const reparsed = JSON.parse(trimmed);
+          return this.decodeNestedJson(reparsed, requestId);
+        } catch (error) {
+          console.warn(`⚠️ STRUCTURED ENGINE: Nested JSON parse failed for ${requestId}:`, error instanceof Error ? error.message : error);
+          return trimmed;
+        }
+      }
+    }
+
+    return value;
   }
 
   /**
@@ -276,6 +334,41 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
       };
     }
   }
+}
+
+function extractResponseText(result: any): string | null {
+  const candidates = result?.response?.candidates ?? [];
+
+  for (const candidate of candidates) {
+    const parts = candidate?.content?.parts ?? [];
+    for (const part of parts) {
+      if (typeof part?.text === 'string' && part.text.trim()) {
+        return part.text;
+      }
+      const inline = (part as any)?.inlineData?.data;
+      if (inline) {
+        try {
+          const decoded = Buffer.from(inline, 'base64').toString('utf-8');
+          if (decoded.trim()) {
+            return decoded;
+          }
+        } catch {
+          // ignore decode errors
+        }
+      }
+    }
+  }
+
+  try {
+    const fallback = result?.response?.text?.();
+    if (typeof fallback === 'string' && fallback.trim()) {
+      return fallback;
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
 }
 
 /**

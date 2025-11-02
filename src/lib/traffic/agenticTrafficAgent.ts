@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { tomtomTrafficService, getTrafficSummary, getTrafficTimeRecommendation, LocationTrafficData } from "./tomtomTraffic";
 import { isCurrentlyPeakHours, getManilaTime } from "./peakHours";
@@ -44,6 +45,46 @@ function extractJson(text: string): any | null {
   } catch (error) {
     return null;
   }
+}
+
+function decodeInlineData(data: string | undefined): string | null {
+  if (!data) return null;
+  try {
+    return Buffer.from(data, "base64").toString("utf-8");
+  } catch {
+    return null;
+  }
+}
+
+function extractResponsePayload(
+  result: Awaited<ReturnType<ReturnType<typeof getTrafficModel>["generateContent"]>>
+): string | null {
+  const candidates = result.response?.candidates ?? [];
+
+  for (const candidate of candidates) {
+    const parts = candidate?.content?.parts ?? [];
+    for (const part of parts) {
+      if (typeof part?.text === "string" && part.text.trim()) {
+        return part.text;
+      }
+
+      const inlineText = decodeInlineData((part as any)?.inlineData?.data);
+      if (inlineText && inlineText.trim()) {
+        return inlineText;
+      }
+    }
+  }
+
+  try {
+    const fallback = result.response?.text?.();
+    if (typeof fallback === "string" && fallback.trim()) {
+      return fallback;
+    }
+  } catch (error) {
+    console.warn("⚠️ Agentic AI: Error reading fallback text from model response", error);
+  }
+
+  return null;
 }
 
 function normaliseActions(plan: TrafficAgentPlan | null): string[] {
@@ -146,9 +187,16 @@ Guidelines:
     },
   });
 
-  const partText =
-    response.response?.candidates?.[0]?.content?.parts?.find(part => "text" in part)?.text ?? "";
-  const parsed = extractJson(partText) as AgenticTrafficPayload | null;
+  const rawPayload = extractResponsePayload(response);
+  const parsed = rawPayload ? (extractJson(rawPayload) as AgenticTrafficPayload | null) : null;
+
+  if (!parsed) {
+    const preview = rawPayload ? `${rawPayload.slice(0, 200)}${rawPayload.length > 200 ? "…" : ""}` : "<empty>";
+    console.warn(
+      `⚠️ Agentic AI: Failed to parse structured traffic JSON for "${params.title}". Raw preview: ${preview}`
+    );
+  }
+
   return parsed ?? null;
 }
 
@@ -177,6 +225,14 @@ export async function runAgenticTrafficAnalysis(params: RunAgenticTrafficParams)
   const effectiveTrafficData =
     trafficData || (await tomtomTrafficService.getLocationTrafficData(params.lat, params.lon));
 
+  const deterministic = buildDeterministicResult(params, effectiveTrafficData, peakStatus);
+  if (deterministic) {
+    console.log(
+      `⚡ Agentic AI: Skipping LLM for "${params.title}" due to clear real-time traffic (score ${effectiveTrafficData.congestionScore})`
+    );
+    return deterministic;
+  }
+
   const summaryPayload = await summariseWithModel(params, effectiveTrafficData, peakStatus);
 
   const combinedScore = summaryPayload?.combinedScore ?? 60;
@@ -201,6 +257,47 @@ export async function runAgenticTrafficAnalysis(params: RunAgenticTrafficParams)
     recommendation,
     aiAnalysis: analysis,
     trafficSummary: getTrafficSummary(effectiveTrafficData),
+    bestTimeToVisit,
+    alternativeTimeSlots,
+    crowdLevel,
+    lastAnalyzed: new Date(),
+  };
+}
+
+function buildDeterministicResult(
+  params: RunAgenticTrafficParams,
+  traffic: LocationTrafficData,
+  peakStatus: { isCurrentlyPeak: boolean; peakHours: string; nextLowTrafficTime?: string }
+): TrafficAnalysisResult | null {
+  const incidentsCount = traffic.incidents?.length ?? 0;
+  const isClearTraffic = traffic.congestionScore === 0 && incidentsCount === 0;
+
+  if (!isClearTraffic) {
+    return null;
+  }
+
+  const recommendation = traffic.trafficLevel === "VERY_LOW" ? "VISIT_NOW" : "VISIT_SOON";
+  const combinedScore = Math.min(100, 95 + (peakStatus.isCurrentlyPeak ? -10 : 0));
+  const analysis = `Real-time TomTom data shows zero congestion and no incidents near ${params.title}. Proceed confidently—traffic is ${traffic.trafficLevel.toLowerCase()}.`;
+  const bestTimeToVisit = getTrafficTimeRecommendation(traffic);
+  const alternativeTimeSlots = ["Anytime today", "Late evening"];
+  const crowdLevel = traffic.trafficLevel === "VERY_LOW" ? "LOW" : "MODERATE";
+
+  return {
+    activityId: params.activityId,
+    title: params.title,
+    lat: params.lat,
+    lon: params.lon,
+    realTimeTraffic: traffic,
+    peakHoursStatus: {
+      isCurrentlyPeak: peakStatus.isCurrentlyPeak,
+      peakHours: peakStatus.peakHours,
+      nextLowTrafficTime: peakStatus.nextLowTrafficTime,
+    },
+    combinedScore,
+    recommendation,
+    aiAnalysis: analysis,
+    trafficSummary: getTrafficSummary(traffic),
     bestTimeToVisit,
     alternativeTimeSlots,
     crowdLevel,

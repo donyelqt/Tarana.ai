@@ -243,111 +243,16 @@ export async function ensureFullItinerary(
         }
   }
 
-  // Find all empty periods and ask the AI to generate reasons for them in a single batch.
+  // Fill empty periods with deterministic reasons to avoid extra model calls.
   const emptyPeriods = itinerary.items.filter((item: any) => !item.activities || item.activities.length === 0);
 
   if (emptyPeriods.length > 0) {
-    const reasonPrompt = `
-      You are a world-class travel assistant AI specializing in Baguio City itineraries. Your task is to provide insightful, unique, and genuinely helpful reasons for why certain time slots are left empty, with specific focus on peak hours optimization and practical travel advice.
-
-      USER TRIP REQUEST: "${userPrompt}"
-      CURRENT TRAFFIC AND PEAK HOUR CONTEXT: ${peakHoursContext}
-
-      For EACH of the following empty time slots, provide a distinct and compelling reason that explains the strategic value of keeping this time flexible.
-
-      EMPTY SLOTS:
-      ${emptyPeriods.map((p: any) => `- ${p.period}`).join('\n')}
-
-      CRITICAL INSTRUCTIONS:
-      1. **PEAK HOURS FOCUS:** If activities were excluded due to current peak hours, clearly explain this and suggest when to visit those attractions instead.
-      2. **TRAFFIC-AWARE REASONING:** Reference current Manila time and explain how traffic patterns affect the decision to keep this slot open.
-      3. **SPECIFIC BAGUIO CONTEXT:** Include local insights about Baguio's unique characteristics (weather changes, mountain traffic, local dining patterns).
-      4. **ACTIONABLE SUGGESTIONS:** Don't just explain why it's empty - provide specific alternative activities or timing recommendations.
-      5. **UNIQUE REASONS:** Each explanation must be distinct and tailored to the specific day/time combination.
-
-      ENHANCED REASONING CATEGORIES:
-      - **Peak Hours Avoidance:** "Major attractions like [specific attraction] are currently experiencing peak crowds (current Manila time shows rush hour). This time is strategically left open so you can visit these places during off-peak hours for a better experience."
-      - **Weather Flexibility:** "Baguio's mountain weather can change quickly. This flexible time allows you to adapt your plans based on current conditions."
-      - **Local Dining Patterns:** "This aligns with local meal times in Baguio. Use this period to discover authentic local restaurants when they're less crowded."
-      - **Traffic Optimization:** "Current traffic conditions make this an ideal buffer time. Mountain roads to popular viewpoints are clearer during off-peak hours."
-      - **Cultural Immersion:** "Perfect time for spontaneous local discoveries - perhaps stumble upon a local market or artisan workshop not in typical tourist guides."
-
-      RETURN FORMAT: Valid JSON object with period names as keys and detailed, actionable reasons as values.
-
-      EXAMPLE ENHANCED REASONS:
-      {
-        "Day 2 - Afternoon": "Popular shopping areas like Session Road and Baguio Night Market are currently experiencing peak foot traffic. This afternoon break allows you to explore these areas later when they're less crowded. Perfect time to rest at your hotel or discover a quiet local café.",
-        "Day 3 - Morning": "Major viewpoints like Mines View Park are currently in their morning rush (6-8 AM peak hours). This flexible morning lets you visit these scenic spots after 9 AM when parking is easier and crowds are lighter. Use this time for a leisurely breakfast at a local restaurant.",
-        "Day 3 - Evening": "Evening traffic to popular dinner spots peaks around 6-7 PM. This open slot allows you to dine later when restaurants are less crowded and you can enjoy a more relaxed atmosphere. Consider exploring nearby walking areas or local night markets that open later."
-      }
-
-      Generate specific, actionable reasons for each empty slot.
-    `;
-
-    let reasons: any = {}; // Initialize reasons
-    try {
-      const result = await model.generateContent(reasonPrompt);
-      const text = result.response.text();
-      const reasonsJson = extractJson(text);
-      if (reasonsJson) {
-        reasons = JSON.parse(reasonsJson);
-      }
-    } catch (error) {
-      console.error("Failed to generate AI reasons for empty slots:", error);
-      // AI call failed, reasons will be an empty object, and we'll apply fallbacks.
-    }
-
-    // Add reasons to the itinerary, applying a fallback for any period the AI missed.
     itinerary.items.forEach((item: any) => {
       if (!item.activities || item.activities.length === 0) {
-        if (reasons[item.period]) {
-          item.reason = reasons[item.period];
-        } else {
-          // Apply enhanced fallback with peak hours reasoning
-          const period = item.period;
-          const [day, timeSlot] = period.split(' - ');
-          
-          // Enhanced fallback reasons based on day and time slot
-          // Enhanced fallback messages with specific Baguio context and peak hours reasoning
-          const timeSlotMessages = {
-            morning: [
-              "Morning peak hours at popular viewpoints (6-8 AM) create crowded conditions. This flexible time allows you to visit Mines View Park, Botanical Garden, or other scenic spots after 9 AM when parking is available and crowds are lighter. Perfect for a leisurely breakfast at a local café first.",
-              "Current Manila time indicates morning rush at tourist attractions. Use this period for hotel breakfast or explore quiet residential areas like Teacher's Camp before the tour buses arrive at major sites.",
-              "Popular morning destinations are currently experiencing peak traffic. This open slot lets you start your day relaxed and visit attractions during their off-peak hours for better photo opportunities and shorter queues."
-            ],
-            afternoon: [
-              "Afternoon peak hours (12-3 PM) at shopping areas like Session Road and SM Baguio create heavy foot traffic. This break allows you to explore these areas later when they're less crowded. Perfect time for a traditional Baguio 'merienda' at a quiet local restaurant.",
-              "Current traffic conditions make this ideal for indoor activities or rest. Consider visiting museums, art galleries, or enjoying the cool Baguio weather from your hotel. Popular outdoor attractions will be less crowded after 3 PM.",
-              "Peak afternoon traffic to mountain viewpoints makes this perfect buffer time. Use this period to rest and prepare for evening activities, or explore nearby walking areas that don't require vehicle access."
-            ],
-            evening: [
-              "Evening peak hours (5-7 PM) at restaurants and night markets create long waits. This flexible time allows you to dine later when establishments are less crowded and you can enjoy a more relaxed atmosphere. Perfect for discovering hidden local eateries.",
-              "Current Manila time shows evening rush hour affecting Baguio's dining scene. Use this period to explore nearby walking areas or wait until after 8 PM when popular restaurants have shorter queues and better service.",
-              "Peak evening traffic makes this ideal for spontaneous exploration. Consider discovering local night markets that open later, or enjoy Baguio's cool evening air with a leisurely walk through quieter neighborhoods."
-            ]
-          };
-          
-          const dayNumber = parseInt(day.replace('Day ', ''));
-          
-          if (dayNumber === durationDays && timeSlot === "Evening") {
-            item.reason = "This final evening is left unscheduled to allow for a stress-free departure. Use this time for last-minute shopping, a farewell dinner, or simply to reflect on your wonderful Baguio experience.";
-          } else if (dayNumber === 1 && timeSlot === "Morning") {
-            item.reason = "Your first morning is intentionally flexible. After arriving and getting settled, this time allows you to ease into Baguio's relaxed pace - perhaps grab a local breakfast or take a short walk to get your bearings.";
-          } else {
-            const timeSlotKey = timeSlot.toLowerCase() as keyof typeof timeSlotMessages;
-            const messages = timeSlotMessages[timeSlotKey] || [
-              "This period is intentionally left flexible due to current traffic conditions. Use this time for spontaneous discoveries or relaxation."
-            ];
-            
-            item.reason = messages[Math.floor(Math.random() * messages.length)];
-          }
-          
-          if (!reasons[item.period]) {
-            console.warn(
-              `AI did not provide a reason for empty slot: ${item.period}. Using enhanced fallback.`
-            );
-          }
-        }
+        const period = item.period;
+        const [day, timeSlot] = period.split(' - ');
+        const dayNumber = parseInt(day.replace('Day ', ''));
+        item.reason = buildDeterministicEmptySlotReason(dayNumber, timeSlot, durationDays ?? 1);
       }
     });
   }
@@ -358,12 +263,11 @@ export async function ensureFullItinerary(
 export async function processItinerary(parsed: any, prompt: string, durationDays: number | null, model: any, peakHoursContext: string) {
   let processed = removeDuplicateActivities(parsed);
   processed = organizeItineraryByDays(processed, durationDays);
-  if (durationDays && model) {
+  if (durationDays && model && hasMissingPeriods(processed, durationDays)) {
     processed = await ensureFullItinerary(processed, prompt, durationDays, model, peakHoursContext);
   }
 
-  // Log peak hours filtering for debugging
-  console.log('=== PEAK HOURS FILTERING SUMMARY ===');
+  // Log peak hours filtering for debugging (kept concise)
   let totalActivities = 0;
   let filteredActivities = 0;
   
@@ -381,9 +285,7 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
     });
   }
   
-  console.log(`Total activities in itinerary: ${totalActivities}`);
-  console.log(`Activities currently in peak hours: ${filteredActivities}`);
-  console.log('=======================================');
+  console.log(`=== PEAK HOURS FILTERING SUMMARY ===\nTotal activities: ${totalActivities}\nActivities in peak hours: ${filteredActivities}\n=======================================`);
 
   // Final cleanup pass - only remove duplicates, preserve reasons and activities as-is
   if (processed && typeof processed === "object" && Array.isArray((processed as any).items)) {
@@ -417,4 +319,70 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
   }
   
   return processed;
+}
+
+function hasMissingPeriods(itinerary: any, durationDays: number): boolean {
+  if (!itinerary?.items || !Array.isArray(itinerary.items)) {
+    return true;
+  }
+
+  const periodsPerDay = new Map<string, { period: string; hasActivities: boolean }[]>();
+
+  itinerary.items.forEach((item: any) => {
+    const [day] = (item?.period || '').split(' - ');
+    if (!day) {
+      return;
+    }
+    if (!periodsPerDay.has(day)) {
+      periodsPerDay.set(day, []);
+    }
+    periodsPerDay.get(day)!.push({ period: item.period, hasActivities: Array.isArray(item.activities) && item.activities.length > 0 });
+  });
+
+  for (let i = 1; i <= durationDays; i++) {
+    const key = `Day ${i}`;
+    const slots = periodsPerDay.get(key) || [];
+    const missingSlot = slots.some(slot => !slot.hasActivities);
+    if (missingSlot || slots.length === 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function buildDeterministicEmptySlotReason(dayNumber: number, timeSlot: string, durationDays: number): string {
+  const normalizedSlot = timeSlot.toLowerCase();
+
+  if (dayNumber === durationDays && normalizedSlot === "evening") {
+    return "This final evening is left unscheduled to allow for a stress-free departure. Use this time for last-minute shopping, a farewell dinner, or simply to reflect on your wonderful Baguio experience.";
+  }
+
+  if (dayNumber === 1 && normalizedSlot === "morning") {
+    return "Your first morning is intentionally flexible. After arriving and getting settled, this time allows you to ease into Baguio's relaxed pace—perfect for a hearty breakfast or a light walk to get your bearings.";
+  }
+
+  const slotMessages: Record<string, string[]> = {
+    morning: [
+      "Morning peak hours at popular viewpoints (6-8 AM) create crowded conditions. This flexible time lets you visit scenic spots after 9 AM when parking is easier and the atmosphere is calmer.",
+      "Tour buses fill up Baguio's key attractions early. Use this window for a relaxing breakfast or a quiet stroll before tackling the main sights at off-peak hours.",
+      "Traffic sensors show a short-lived morning rush. Holding this slot open keeps your day adaptable for weather or spontaneous discoveries later on."
+    ],
+    afternoon: [
+      "Afternoon congestion around Session Road and SM Baguio peaks from 12-3 PM. This buffer keeps your group rested before diving into late-day adventures.",
+      "Mountain roads heading to panoramic viewpoints slow down after lunch. Stay flexible now so you can visit during clearer, late-afternoon windows.",
+      "Cloud buildup is common mid-afternoon. Keeping this slot open lets you pivot to indoor cafés or museums until skies clear."
+    ],
+    evening: [
+      "Dinner rush in Baguio spikes between 6-7 PM. Waiting it out means shorter queues and better service once the crowd thins.",
+      "Night markets and cafés come alive later in the evening. This empty slot is your strategic buffer to explore them after peak traffic eases.",
+      "Evening weather can turn misty. Keeping plans flexible allows you to choose between cozy indoor spots or a late-night stroll when conditions improve."
+    ]
+  };
+
+  const candidates = slotMessages[normalizedSlot] || [
+    "This period stays open to adapt to real-time traffic and crowd conditions, giving your group room for spontaneous exploration."
+  ];
+
+  return candidates[dayNumber % candidates.length];
 }

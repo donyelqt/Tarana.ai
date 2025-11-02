@@ -4,18 +4,73 @@
  * Uses multiple validation layers and automatic error recovery
  */
 
+import { Buffer } from 'buffer';
+import { jsonrepair } from 'jsonrepair';
 import { z } from 'zod';
 import { geminiModel } from './config';
 import { StructuredOutputEngine, ItinerarySchema, PeriodSchema, type StructuredItinerary } from './structuredOutputEngine';
 import { EnhancedPromptEngine, JsonSyntaxValidator } from './enhancedPromptEngine';
 import { intelligentCacheManager } from '@/lib/ai';
 
+function extractResponseText(result: any): string | null {
+  const candidates = result?.response?.candidates ?? [];
+
+  for (const candidate of candidates) {
+    const parts = candidate?.content?.parts ?? [];
+    for (const part of parts) {
+      if (typeof part?.text === 'string' && part.text.trim()) {
+        return part.text;
+      }
+      const inline = (part as any)?.inlineData?.data;
+      if (inline) {
+        try {
+          const decoded = Buffer.from(inline, 'base64').toString('utf-8');
+          if (decoded.trim()) {
+            return decoded;
+          }
+        } catch {
+          // ignore decode errors
+        }
+      }
+    }
+  }
+
+  try {
+    const fallback = result?.response?.text?.();
+    if (typeof fallback === 'string' && fallback.trim()) {
+      return fallback;
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
+}
+
+function compactSampleItinerary(sample: any) {
+  if (!sample?.items) {
+    return sample ?? null;
+  }
+
+  const compactItems = sample.items.slice(0, 6).map((item: any) => ({
+    period: item.period,
+    activities: (item.activities || []).slice(0, 3).map((activity: any) => ({
+      title: activity.title,
+      desc: activity.desc,
+      tags: activity.tags,
+      trafficLevel: activity.trafficAnalysis?.realTimeTraffic?.trafficLevel,
+    })),
+  }));
+
+  return { items: compactItems };
+}
+
 /**
  * Multi-layer JSON generation with guaranteed success
  */
 export class GuaranteedJsonEngine {
   private static readonly MAX_ATTEMPTS = 3;
-  private static readonly TIMEOUT_MS = 45000; // 45 seconds - AI generation takes 20-45s in practice
+  private static readonly TIMEOUT_MS = 30000;
   
   private static metrics = {
     totalRequests: 0,
@@ -43,56 +98,81 @@ export class GuaranteedJsonEngine {
     console.log(`🛡️ GUARANTEED ENGINE: Starting generation for request ${requestId}`);
     const startTime = Date.now();
     this.metrics.totalRequests++;
+
+    const compactSample = compactSampleItinerary(sampleItinerary);
     
     try {
       // WEEK 1 OPTIMIZATION: Race both strategies in parallel - use first success!
       console.log(`🏁 GUARANTEED ENGINE: Racing strategies in parallel for ${requestId}`);
       
       // CRITICAL FIX: Race for first success, don't wait for all
-      const raceForFirstSuccess = new Promise<{result: StructuredItinerary | null, strategyNum: number}>(async (resolve) => {
+      const raceForFirstSuccess = new Promise<{ result: StructuredItinerary | null; strategyNum: number }>((resolve) => {
         const strategies = [
-          { 
+          {
             name: 'Strategy 1',
-            fn: () => this.attemptStructuredOutput(
-              prompt, sampleItinerary, weatherContext, trafficContext, additionalContext, requestId
-            )
+            fn: (shouldAbort: () => boolean) =>
+              this.attemptStructuredOutput(
+                prompt,
+                compactSample,
+                weatherContext,
+                trafficContext,
+                additionalContext,
+                requestId,
+                shouldAbort
+              ),
           },
-          { 
+          {
             name: 'Strategy 2',
-            fn: () => this.attemptPromptEngineering(
-              prompt, sampleItinerary, weatherContext, trafficContext, additionalContext, requestId
-            )
-          }
+            fn: (shouldAbort: () => boolean) =>
+              this.attemptPromptEngineering(
+                prompt,
+                compactSample,
+                weatherContext,
+                trafficContext,
+                additionalContext,
+                requestId,
+                shouldAbort
+              ),
+          },
         ];
-        
+
         let completed = 0;
         const errors: string[] = [];
-        
+        let settled = false;
+
+        const finish = (payload: { result: StructuredItinerary | null; strategyNum: number }) => {
+          if (settled) return;
+          settled = true;
+          resolve(payload);
+        };
+
         strategies.forEach((strategy, index) => {
-          strategy.fn()
-            .then(result => {
+          const shouldAbort = () => settled;
+
+          strategy
+            .fn(shouldAbort)
+            .then((result) => {
+              if (settled) return;
               if (result) {
-                // First success wins! Return immediately
                 console.log(`🏆 ${strategy.name} succeeded first!`);
-                resolve({ result, strategyNum: index + 1 });
+                finish({ result, strategyNum: index + 1 });
               } else {
                 completed++;
                 errors.push(`${strategy.name}: returned null`);
                 if (completed === strategies.length) {
-                  // All failed
-                  resolve({ result: null, strategyNum: 0 });
+                  finish({ result: null, strategyNum: 0 });
                 }
               }
             })
-            .catch(err => {
+            .catch((err) => {
+              if (settled) return;
               completed++;
               errors.push(`${strategy.name}: ${err.message}`);
               console.log(`⚠️ ${strategy.name} failed: ${err.message}`);
-              
+
               if (completed === strategies.length) {
-                // All failed
                 console.log(`🆘 All strategies failed:`, errors);
-                resolve({ result: null, strategyNum: 0 });
+                finish({ result: null, strategyNum: 0 });
               }
             });
         });
@@ -131,14 +211,22 @@ export class GuaranteedJsonEngine {
     weatherContext: string,
     trafficContext: string,
     additionalContext: string,
-    requestId: string
+    requestId: string,
+    shouldAbort?: () => boolean
   ): Promise<StructuredItinerary | null> {
-    
+    if (shouldAbort?.()) {
+      return null;
+    }
+
     try {
       const enhancedPrompt = EnhancedPromptEngine.buildBulletproofPrompt(
         prompt, sampleItinerary, weatherContext, trafficContext, additionalContext
       );
       
+      if (shouldAbort?.()) {
+        return null;
+      }
+
       const result = await StructuredOutputEngine.generateStructuredItinerary(
         enhancedPrompt, requestId
       );
@@ -168,11 +256,19 @@ export class GuaranteedJsonEngine {
     weatherContext: string,
     trafficContext: string,
     additionalContext: string,
-    requestId: string
+    requestId: string,
+    shouldAbort?: () => boolean
   ): Promise<StructuredItinerary | null> {
-    
+    if (shouldAbort?.()) {
+      return null;
+    }
+
     for (let attempt = 1; attempt <= this.MAX_ATTEMPTS; attempt++) {
       try {
+        if (shouldAbort?.()) {
+          return null;
+        }
+
         console.log(`🔧 GUARANTEED ENGINE: Prompt engineering attempt ${attempt}/${this.MAX_ATTEMPTS}`);
         
         // Build progressive prompt (gets simpler with each attempt)
@@ -185,8 +281,12 @@ export class GuaranteedJsonEngine {
         );
 
         // Generate with strict JSON mode
-        const result = await this.generateWithStrictJson(enhancedPrompt, attempt);
+        const result = await this.generateWithStrictJson(enhancedPrompt, attempt, shouldAbort);
         
+        if (shouldAbort?.()) {
+          return null;
+        }
+
         if (result) {
           console.log(`✅ GUARANTEED ENGINE: Prompt engineering succeeded on attempt ${attempt}`);
           this.updateAverageAttempts(attempt);
@@ -196,7 +296,7 @@ export class GuaranteedJsonEngine {
       } catch (error: any) {
         console.warn(`⚠️ GUARANTEED ENGINE: Prompt engineering attempt ${attempt} failed:`, error.message);
         
-        if (attempt < this.MAX_ATTEMPTS) {
+        if (attempt < this.MAX_ATTEMPTS && !shouldAbort?.()) {
           const delay = Math.min(1000 * attempt, 3000);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
@@ -211,15 +311,19 @@ export class GuaranteedJsonEngine {
    */
   private static async generateWithStrictJson(
     prompt: string,
-    attempt: number
+    attempt: number,
+    shouldAbort?: () => boolean
   ): Promise<StructuredItinerary | null> {
-    
+    if (shouldAbort?.()) {
+      return null;
+    }
+
     const generationConfig = {
       responseMimeType: "application/json",
-      temperature: Math.max(0.1, 0.3 - (attempt * 0.05)), // Decrease temperature with attempts
+      temperature: Math.max(0.1, 0.25 - attempt * 0.05),
       topK: 1,
-      topP: 0.8,
-      maxOutputTokens: 3072, // Reduced from 8192 - itineraries need ~1500-2500 tokens
+      topP: 0.7,
+      maxOutputTokens: 2048,
       candidateCount: 1
     };
 
@@ -234,7 +338,11 @@ export class GuaranteedJsonEngine {
         )
       ]) as any;
 
-      const text = result.response?.text();
+      if (shouldAbort?.()) {
+        return null;
+      }
+
+      const text = extractResponseText(result);
       if (!text) {
         throw new Error('Empty response from Gemini');
       }
@@ -255,13 +363,22 @@ export class GuaranteedJsonEngine {
     attempt: number
   ): StructuredItinerary | null {
     
+    const validatePayload = (payload: unknown, label: string): StructuredItinerary | null => {
+      const normalized = this.decodeNestedJson(payload);
+      const validation = ItinerarySchema.safeParse(normalized);
+      if (validation.success) {
+        console.log(`✅ GUARANTEED ENGINE: ${label} succeeded`);
+        return validation.data;
+      }
+      return null;
+    };
+
     // Strategy 1: Direct parsing
     try {
       const parsed = JSON.parse(text);
-      const validation = ItinerarySchema.safeParse(parsed);
-      if (validation.success) {
-        console.log(`✅ GUARANTEED ENGINE: Direct JSON parsing succeeded`);
-        return validation.data;
+      const direct = validatePayload(parsed, 'Direct JSON parsing');
+      if (direct) {
+        return direct;
       }
     } catch (error) {
       console.log(`🔄 GUARANTEED ENGINE: Direct parsing failed, trying recovery...`);
@@ -272,10 +389,9 @@ export class GuaranteedJsonEngine {
     if (syntaxCheck.cleanedJson) {
       try {
         const parsed = JSON.parse(syntaxCheck.cleanedJson);
-        const validation = ItinerarySchema.safeParse(parsed);
-        if (validation.success) {
-          console.log(`✅ GUARANTEED ENGINE: Syntax-fixed JSON parsing succeeded`);
-          return validation.data;
+        const cleaned = validatePayload(parsed, 'Syntax-fixed JSON parsing');
+        if (cleaned) {
+          return cleaned;
         }
       } catch (error) {
         console.log(`🔄 GUARANTEED ENGINE: Syntax fixing failed, trying aggressive recovery...`);
@@ -286,16 +402,55 @@ export class GuaranteedJsonEngine {
     const fixed = JsonSyntaxValidator.attemptFix(text);
     try {
       const parsed = JSON.parse(fixed);
-      const validation = ItinerarySchema.safeParse(parsed);
-      if (validation.success) {
-        console.log(`✅ GUARANTEED ENGINE: Aggressive fixing succeeded`);
-        return validation.data;
+      const aggressive = validatePayload(parsed, 'Aggressive fixing');
+      if (aggressive) {
+        return aggressive;
       }
     } catch (error) {
       console.log(`❌ GUARANTEED ENGINE: All JSON recovery strategies failed`);
     }
 
+    // Strategy 4: jsonrepair rescue
+    try {
+      const repaired = jsonrepair(text);
+      const reparsed = typeof repaired === 'string' ? JSON.parse(repaired) : repaired;
+      const repairedResult = validatePayload(reparsed, 'jsonrepair recovery');
+      if (repairedResult) {
+        return repairedResult;
+      }
+    } catch (error) {
+      console.log(`❌ GUARANTEED ENGINE: jsonrepair recovery failed:`, error instanceof Error ? error.message : error);
+    }
+
     return null;
+  }
+
+  private static decodeNestedJson(value: unknown): any {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          const reparsed = JSON.parse(trimmed);
+          return this.decodeNestedJson(reparsed);
+        } catch {
+          return trimmed;
+        }
+      }
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.decodeNestedJson(item));
+    }
+
+    if (value && typeof value === 'object') {
+      return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [key, val]) => {
+        acc[key] = this.decodeNestedJson(val);
+        return acc;
+      }, {});
+    }
+
+    return value;
   }
 
   /**
