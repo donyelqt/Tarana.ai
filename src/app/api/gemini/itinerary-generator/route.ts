@@ -138,14 +138,15 @@ export async function POST(req: NextRequest) {
         }
 
         // Generate a stable cache key from the request body
-        const hash = createHash('sha256').update(JSON.stringify(requestBody)).digest('hex');
+        const baseHash = createHash('sha256').update(JSON.stringify(requestBody)).digest('hex');
+        const cacheKeyBase = `${userId}:${baseHash}`;
         
         let responseData;
         
         // ✅ CACHE BYPASS: For refresh requests, skip cache and generate fresh
         if (isRefreshRequest) {
             console.log('⏩ Executing fresh generation (cache bypassed)');
-            const requestId = hash.substring(0, 8);
+            const requestId = cacheKeyBase.substring(0, 8);
             
             // Generate fresh itinerary without cache
             responseData = await ErrorHandler.withRetry(async () => {
@@ -199,7 +200,7 @@ export async function POST(req: NextRequest) {
             console.log('✅ Fresh generation completed (refresh mode)');
         } else {
             // Normal flow: Use cached function
-            responseData = await getCachedItinerary(requestBody, hash);
+            responseData = await getCachedItinerary(requestBody, cacheKeyBase);
         }
 
         // ✅ CREDIT SYSTEM: Consume 1 credit for successful generation

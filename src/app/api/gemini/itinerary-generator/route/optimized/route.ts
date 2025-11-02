@@ -8,11 +8,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
+import { getServerSession } from "next-auth";
 import { optimizedPipeline } from "@/lib/performance/optimizedPipeline";
 import { smartCacheManager } from "@/lib/performance/smartCacheManager";
 import { ErrorHandler, ErrorType, ItineraryError } from "../../lib/errorHandler";
 import { API_KEY } from "../../lib/config";
 import { geminiModel } from "../../lib/config";
+import { authOptions } from "@/lib/auth/auth";
 
 // Ultra-fast cache with aggressive optimization
 const CACHE_TTL = 3 * 60 * 1000; // 3 minutes for faster updates
@@ -65,6 +67,9 @@ export async function POST(req: NextRequest) {
     const requestBody = await req.json();
     const { prompt } = requestBody;
 
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id ?? "anonymous";
+
     // Validate API key
     if (!API_KEY) {
       console.error("GOOGLE_GEMINI_API_KEY is missing!");
@@ -82,13 +87,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate stable request ID for deduplication
-    const requestHash = createHash('sha256').update(JSON.stringify(requestBody)).digest('hex');
+    const serializedBody = JSON.stringify(requestBody);
+    const requestHash = createHash('sha256').update(`${userId}:${serializedBody}`).digest('hex');
     const requestId = requestHash.substring(0, 8);
+    const dedupeKey = `${userId}:${requestHash}`;
 
     // Check for duplicate concurrent requests
-    if (activeRequests.has(requestHash)) {
+    if (activeRequests.has(dedupeKey)) {
       console.log(`🔄 DEDUPLICATION: Using existing request for "${prompt}"`);
-      const result = await activeRequests.get(requestHash)!;
+      const result = await activeRequests.get(dedupeKey)!;
       return NextResponse.json({
         ...result,
         fromCache: true,
@@ -97,7 +104,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check smart cache first
-    const cacheKey = `optimized:${requestHash}`;
+    const cacheKey = `optimized:${userId}:${requestHash}`;
     const cachedResult = smartCacheManager.get(cacheKey);
     
     if (cachedResult) {
@@ -120,7 +127,7 @@ export async function POST(req: NextRequest) {
     ]) as Promise<any>;
 
     // Store in active requests for deduplication
-    activeRequests.set(requestHash, generationPromise);
+    activeRequests.set(dedupeKey, generationPromise);
 
     try {
       // Execute optimized generation
@@ -140,7 +147,7 @@ export async function POST(req: NextRequest) {
 
     } finally {
       // Clean up active request
-      setTimeout(() => activeRequests.delete(requestHash), 5000);
+      setTimeout(() => activeRequests.delete(dedupeKey), 5000);
     }
 
   } catch (e: any) {
