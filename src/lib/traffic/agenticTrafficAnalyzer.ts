@@ -6,6 +6,7 @@
 import { tomtomTrafficService, LocationTrafficData, getTrafficSummary, getTrafficTimeRecommendation } from './tomtomTraffic';
 import { isCurrentlyPeakHours, getManilaTime } from './peakHours';
 import { getActivityCoordinates } from '../data/baguioCoordinates';
+import { runAgenticTrafficAnalysis } from './agenticTrafficAgent';
 
 // Activity interface
 export interface Activity {
@@ -141,93 +142,39 @@ class AgenticTrafficAnalyzer {
 
     try {
       console.log(`\n=== AGENTIC AI TRAFFIC ANALYZER START ===`);
-      console.log(`📍 Agentic AI: Analyzing coordinates for "${title}": ${lat}, ${lon}`);
-      
-      // Get real-time traffic data
-      console.log(`🔍 Agentic AI: Fetching real-time traffic data for "${title}"`);
-      const realTimeTraffic = await this.tomtomService.getLocationTrafficData(lat, lon);
-      
-      console.log(`📊 Agentic AI: Real-time traffic data for "${title}":`, {
-        congestionScore: realTimeTraffic?.congestionScore || 0,
-        trafficLevel: realTimeTraffic?.trafficLevel || 'UNKNOWN',
-        incidents: realTimeTraffic?.incidents?.length || 0,
-        recommendationScore: realTimeTraffic?.recommendationScore || 0,
-        apiSuccess: !!realTimeTraffic
-      });
-      
-      // Analyze peak hours status
-      const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
-      const peakHoursStatus = {
-        isCurrentlyPeak,
-        peakHours,
-        nextLowTrafficTime: isCurrentlyPeak ? this.getNextLowTrafficTime(peakHours) : undefined
-      };
-      
-      console.log(`⏰ Agentic AI: Peak hours analysis for "${title}":`, {
-        isCurrentlyPeak,
-        peakHours,
-        currentTime: context.currentTime.toLocaleString('en-PH', { timeZone: 'Asia/Manila' })
-      });
-      
-      // Calculate combined score using AI reasoning
-      const combinedScore = this.calculateCombinedScore(realTimeTraffic, peakHoursStatus, context);
-      
-      console.log(`🎯 Agentic AI: Combined score for "${title}": ${combinedScore}/100`);
-      
-      // Generate AI-powered recommendation
-      const recommendation = this.generateRecommendation(combinedScore, realTimeTraffic, peakHoursStatus, context);
-      
-      // Generate intelligent analysis
-      const aiAnalysis = this.generateAIAnalysis(realTimeTraffic, peakHoursStatus, context, title);
-      
-      // Get traffic summary and recommendations
-      const trafficSummary = getTrafficSummary(realTimeTraffic);
-      const bestTimeToVisit = this.determineBestTimeToVisit(realTimeTraffic, peakHours, context);
-      const alternativeTimeSlots = this.generateAlternativeTimeSlots(peakHours, realTimeTraffic, context);
-      const crowdLevel = this.determineCrowdLevel(realTimeTraffic, peakHoursStatus);
+      console.log(`🤖 Delegating comprehensive analysis for "${title}" to Gemini agent`);
 
-      const result: TrafficAnalysisResult = {
+      const agenticResult = await runAgenticTrafficAnalysis({
         activityId,
         title,
         lat,
         lon,
-        realTimeTraffic,
-        peakHoursStatus,
-        combinedScore,
-        recommendation,
-        aiAnalysis,
-        trafficSummary,
-        bestTimeToVisit,
-        alternativeTimeSlots,
-        crowdLevel,
-        lastAnalyzed: new Date()
-      };
-
-      console.log(`✅ Agentic AI: Comprehensive analysis completed for "${title}" - Recommendation: ${recommendation}`);
-
-      // Cache the result
-      this.analysisCache.set(cacheKey, {
-        result: result,
-        expiry: Date.now() + (5 * 60 * 1000) // 5 minutes
+        peakHours,
+        context
       });
-      
+
+      this.analysisCache.set(cacheKey, {
+        result: agenticResult,
+        expiry: Date.now() + (5 * 60 * 1000)
+      });
+
       console.log(`✅ AGENTIC AI SUCCESS: Analysis complete for "${title}"`);
       console.log(`🎯 FINAL ANALYSIS RESULT:`, {
         activity: title,
-        combinedScore: result.combinedScore,
-        recommendation: result.recommendation,
-        crowdLevel: result.crowdLevel,
-        realTimeTrafficIntegrated: !!realTimeTraffic,
+        combinedScore: agenticResult.combinedScore,
+        recommendation: agenticResult.recommendation,
+        crowdLevel: agenticResult.crowdLevel,
+        realTimeTrafficIntegrated: !!agenticResult.realTimeTraffic,
         peakHoursConsidered: true
       });
       console.log(`=== AGENTIC AI TRAFFIC ANALYZER END ===\n`);
-      return result;
+      return agenticResult;
 
     } catch (error) {
-      console.error(`❌ Agentic AI: Error analyzing traffic for ${title}:`, error);
-      
-      // Return fallback analysis
-      return this.createFallbackAnalysis(activityId, title, lat, lon, peakHours, context);
+      console.error(`❌ Agentic AI: Error delegating analysis for ${title}:`, error);
+      throw error instanceof Error
+        ? error
+        : new Error(`Agentic traffic analysis failed for ${title}`);
     }
   }
 
