@@ -58,56 +58,78 @@ export function organizeItineraryByDays(it: any, days: number | null) {
       pool[slot].push(a);
     }
   }
-  
-  // CRITICAL FIX: Ensure we don't lose activities by collecting all activities first
-  const allActivities = [...pool.Morning, ...pool.Afternoon, ...pool.Evening, ...pool.Flexible];
-  
+  const slotOrder: Array<'Morning' | 'Afternoon' | 'Evening'> = ['Morning', 'Afternoon', 'Evening'];
+  const slotPriority: Record<'Morning' | 'Afternoon' | 'Evening', Array<'Morning' | 'Afternoon' | 'Evening' | 'Flexible'>> = {
+    Morning: ['Morning', 'Flexible', 'Afternoon', 'Evening'],
+    Afternoon: ['Afternoon', 'Flexible', 'Morning', 'Evening'],
+    Evening: ['Evening', 'Flexible', 'Afternoon', 'Morning']
+  };
+  const fallbackPriority: Array<'Morning' | 'Afternoon' | 'Evening' | 'Flexible'> = ['Morning', 'Afternoon', 'Evening', 'Flexible'];
+
+  const queues: Record<'Morning' | 'Afternoon' | 'Evening' | 'Flexible', any[]> = {
+    Morning: [...pool.Morning],
+    Afternoon: [...pool.Afternoon],
+    Evening: [...pool.Evening],
+    Flexible: [...pool.Flexible]
+  };
+
+  const takeFromQueues = (
+    slot: 'Morning' | 'Afternoon' | 'Evening',
+    strict: boolean
+  ): any | null => {
+    const preferred = strict
+      ? slotPriority[slot]
+      : Array.from(new Set([...slotPriority[slot], ...fallbackPriority]));
+    for (const key of preferred) {
+      if (queues[key].length > 0) {
+        return queues[key].shift();
+      }
+    }
+    return null;
+  };
+
+  const anyQueuesRemaining = () =>
+    queues.Morning.length > 0 ||
+    queues.Afternoon.length > 0 ||
+    queues.Evening.length > 0 ||
+    queues.Flexible.length > 0;
+
   // Prepare day buckets
   const daysBuckets = Array.from({ length: days }, () => ({ Morning: [] as any[], Afternoon: [] as any[], Evening: [] as any[] }));
-  
-  // Distribute activities across days ensuring all activities are used
-  // Morning activities distribution
-  pool.Morning.forEach((activity, index) => {
-    const dayIndex = index % days;
-    daysBuckets[dayIndex].Morning.push(activity);
-  });
-  
-  // Afternoon activities distribution
-  pool.Afternoon.forEach((activity, index) => {
-    const dayIndex = index % days;
-    daysBuckets[dayIndex].Afternoon.push(activity);
-  });
-  
-  // Evening activities distribution
-  pool.Evening.forEach((activity, index) => {
-    const dayIndex = index % days;
-    daysBuckets[dayIndex].Evening.push(activity);
-  });
-  
-  // Flexible activities distribution - distribute evenly across all time slots
-  pool.Flexible.forEach((activity, index) => {
-    const dayIndex = index % days;
-    const slotIndex = Math.floor(index / days) % 3;
-    const slots: Array<'Morning'|'Afternoon'|'Evening'> = ['Morning','Afternoon','Evening'];
-    const slot = slots[slotIndex];
-    daysBuckets[dayIndex][slot].push(activity);
-  });
 
-  // Backfill empty slots so each day has at least one activity per period when possible
-  if (allActivities.length > 0) {
-    let fillerIndex = 0;
-    const fillerPool = allActivities.map(activity => ({ ...activity }));
-
-    daysBuckets.forEach(bucket => {
-      const slots: Array<'Morning'|'Afternoon'|'Evening'> = ['Morning','Afternoon','Evening'];
-      slots.forEach(slot => {
-        if (bucket[slot].length === 0 && fillerPool.length > 0) {
-          const fallback = fillerPool[fillerIndex % fillerPool.length];
-          fillerIndex++;
-          bucket[slot].push({ ...fallback });
-        }
-      });
+  // First pass: ensure every slot gets at most one best-fit activity
+  for (let dayIndex = 0; dayIndex < days; dayIndex++) {
+    const bucket = daysBuckets[dayIndex];
+    slotOrder.forEach(slot => {
+      const activity = takeFromQueues(slot, true);
+      if (activity) {
+        bucket[slot].push(activity);
+      }
     });
+  }
+
+  // Additional passes: distribute any remaining activities while maintaining uniqueness
+  while (anyQueuesRemaining()) {
+    let assignedThisRound = false;
+    for (let dayIndex = 0; dayIndex < days; dayIndex++) {
+      const bucket = daysBuckets[dayIndex];
+      for (const slot of slotOrder) {
+        const activity = takeFromQueues(slot, false);
+        if (activity) {
+          bucket[slot].push(activity);
+          assignedThisRound = true;
+        }
+        if (!anyQueuesRemaining()) {
+          break;
+        }
+      }
+      if (!anyQueuesRemaining()) {
+        break;
+      }
+    }
+    if (!assignedThisRound) {
+      break; // Safeguard against infinite loops if queues cannot be depleted
+    }
   }
 
   // Build new items: Day N - Morning/Afternoon/Evening

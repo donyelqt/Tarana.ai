@@ -7,6 +7,7 @@
 import { Buffer } from 'buffer';
 import { jsonrepair } from 'jsonrepair';
 import { z } from 'zod';
+import { SchemaType, type Schema } from "@google/generative-ai";
 import { geminiModel } from './config';
 import { StructuredOutputEngine, ItinerarySchema, PeriodSchema, type StructuredItinerary } from './structuredOutputEngine';
 import { EnhancedPromptEngine, JsonSyntaxValidator } from './enhancedPromptEngine';
@@ -70,7 +71,7 @@ function compactSampleItinerary(sample: any) {
  */
 export class GuaranteedJsonEngine {
   private static readonly MAX_ATTEMPTS = 3;
-  private static readonly TIMEOUT_MS = 30000;
+  private static readonly TIMEOUT_MS = 20000;
   
   private static metrics = {
     totalRequests: 0,
@@ -309,6 +310,46 @@ export class GuaranteedJsonEngine {
   /**
    * Generate with strict JSON validation
    */
+  private static readonly itineraryResponseSchema: Schema = {
+    type: SchemaType.OBJECT,
+    properties: {
+      title: { type: SchemaType.STRING },
+      subtitle: { type: SchemaType.STRING },
+      items: {
+        type: SchemaType.ARRAY,
+        minItems: 1,
+        items: {
+          type: SchemaType.OBJECT,
+          properties: {
+            period: { type: SchemaType.STRING },
+            activities: {
+              type: SchemaType.ARRAY,
+              items: {
+                type: SchemaType.OBJECT,
+                properties: {
+                  image: { type: SchemaType.STRING },
+                  title: { type: SchemaType.STRING },
+                  time: { type: SchemaType.STRING },
+                  desc: { type: SchemaType.STRING },
+                  tags: {
+                    type: SchemaType.ARRAY,
+                    items: {
+                      type: SchemaType.STRING
+                    }
+                  }
+                },
+                required: ["image", "title", "time", "desc", "tags"]
+              }
+            },
+            reason: { type: SchemaType.STRING }
+          },
+          required: ["period", "activities"]
+        }
+      }
+    },
+    required: ["title", "subtitle", "items"]
+  };
+
   private static async generateWithStrictJson(
     prompt: string,
     attempt: number,
@@ -324,7 +365,8 @@ export class GuaranteedJsonEngine {
       topK: 1,
       topP: 0.7,
       maxOutputTokens: 2048,
-      candidateCount: 1
+      candidateCount: 1,
+      responseSchema: this.itineraryResponseSchema
     };
 
     try {

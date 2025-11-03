@@ -200,6 +200,69 @@ Guidelines:
   return parsed ?? null;
 }
 
+function buildDeterministicPayload(
+  params: RunAgenticTrafficParams,
+  trafficData: LocationTrafficData | null,
+  peakStatus: { isCurrentlyPeak: boolean; peakHours: string; nextLowTrafficTime?: string }
+): AgenticTrafficPayload {
+  const level = trafficData?.trafficLevel ?? "MODERATE";
+  const congestionScore = trafficData?.congestionScore ?? 55;
+  const recommendationScore = trafficData?.recommendationScore ?? 60;
+
+  let combinedScore = recommendationScore;
+  combinedScore += peakStatus.isCurrentlyPeak ? -15 : 10;
+  combinedScore = Math.max(0, Math.min(100, Math.round(combinedScore)));
+
+  let recommendation: AgenticTrafficPayload["recommendation"] = "PLAN_LATER";
+  if (combinedScore >= 80 && ["VERY_LOW", "LOW"].includes(level)) {
+    recommendation = "VISIT_NOW";
+  } else if (combinedScore >= 65 && ["VERY_LOW", "LOW", "MODERATE"].includes(level)) {
+    recommendation = "VISIT_SOON";
+  } else if (level === "HIGH" || level === "SEVERE") {
+    recommendation = "AVOID_NOW";
+  }
+
+  const crowdLevelMap: Record<string, AgenticTrafficPayload["crowdLevel"]> = {
+    VERY_LOW: "LOW",
+    LOW: "LOW",
+    MODERATE: "MODERATE",
+    HIGH: "HIGH",
+    SEVERE: "VERY_HIGH",
+    UNKNOWN: "MODERATE"
+  };
+
+  const analysisParts: string[] = [];
+  if (trafficData) {
+    analysisParts.push(`Traffic level ${level.toLowerCase()} (score: ${Math.round(congestionScore)})`);
+  } else {
+    analysisParts.push("Using cached congestion estimates");
+  }
+  if (peakStatus.isCurrentlyPeak) {
+    analysisParts.push(`Currently inside peak window ${peakStatus.peakHours}`);
+  } else if (peakStatus.peakHours) {
+    analysisParts.push(`Outside peak window ${peakStatus.peakHours}`);
+  }
+
+  const alternativeTimeSlots = peakStatus.isCurrentlyPeak
+    ? [peakStatus.nextLowTrafficTime || "After peak hours", "Early morning (7-9 AM)", "Late afternoon (4-6 PM)"]
+    : ["Later today", "Early evening (6-8 PM)", "Next off-peak window"];
+
+  const bestTimeToVisit = trafficData
+    ? getTrafficTimeRecommendation(trafficData)
+    : peakStatus.isCurrentlyPeak
+      ? "Plan for the next off-peak window"
+      : "Current timing is favorable";
+
+  return {
+    combinedScore,
+    recommendation,
+    analysis: analysisParts.join(". "),
+    bestTimeToVisit,
+    alternativeTimeSlots: Array.from(new Set(alternativeTimeSlots)),
+    crowdLevel: crowdLevelMap[level] || "MODERATE"
+  };
+}
+
 export async function runAgenticTrafficAnalysis(params: RunAgenticTrafficParams): Promise<TrafficAnalysisResult> {
   let trafficData: LocationTrafficData | null = params.initialTrafficData ?? null;
   let peakStatus: { isCurrentlyPeak: boolean; peakHours: string; nextLowTrafficTime?: string } = {
@@ -234,13 +297,17 @@ export async function runAgenticTrafficAnalysis(params: RunAgenticTrafficParams)
   }
 
   const summaryPayload = await summariseWithModel(params, effectiveTrafficData, peakStatus);
+  const effectivePayload = summaryPayload ?? (() => {
+    console.warn(`⚠️ Agentic AI: Using deterministic traffic payload for "${params.title}"`);
+    return buildDeterministicPayload(params, effectiveTrafficData, peakStatus);
+  })();
 
-  const combinedScore = summaryPayload?.combinedScore ?? 60;
-  const recommendation = summaryPayload?.recommendation ?? "PLAN_LATER";
-  const analysis = summaryPayload?.analysis ?? "Fallback analysis applied.";
-  const bestTimeToVisit = summaryPayload?.bestTimeToVisit ?? getTrafficTimeRecommendation(effectiveTrafficData);
-  const alternativeTimeSlots = summaryPayload?.alternativeTimeSlots ?? ["Early morning", "Late afternoon"];
-  const crowdLevel = summaryPayload?.crowdLevel ?? "MODERATE";
+  const combinedScore = effectivePayload.combinedScore;
+  const recommendation = effectivePayload.recommendation;
+  const analysis = effectivePayload.analysis;
+  const bestTimeToVisit = effectivePayload.bestTimeToVisit;
+  const alternativeTimeSlots = effectivePayload.alternativeTimeSlots;
+  const crowdLevel = effectivePayload.crowdLevel;
 
   return {
     activityId: params.activityId,
