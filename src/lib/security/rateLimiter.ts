@@ -159,6 +159,13 @@ export const rateLimitConfigs = {
     maxRequests: 10, // 10 requests per minute
     blockDurationMs: 10 * 60 * 1000, // Block for 10 minutes
   },
+
+  // Referral validation - tighter unauthenticated limits
+  referralValidation: {
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    maxRequests: 20, // 20 attempts per window
+    blockDurationMs: 15 * 60 * 1000, // Block for 15 minutes
+  },
 } as const;
 
 /**
