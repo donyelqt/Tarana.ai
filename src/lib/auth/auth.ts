@@ -6,6 +6,108 @@ import bcrypt from "bcryptjs";
 import { supabaseAdmin } from '../data/supabaseAdmin';
 import { ReferralService } from '../referral-system/ReferralService';
 
+interface LoginAttemptEntry {
+  attempts: number;
+  firstAttemptAt: number;
+  blockedUntil?: number;
+}
+
+const LOGIN_RATE_LIMIT_CONFIG = {
+  windowMs: 15 * 60 * 1000, // 15 minutes window
+  maxAttempts: 5, // 5 attempts per window
+  blockDurationMs: 30 * 60 * 1000, // Block for 30 minutes
+};
+
+const loginAttempts = new Map<string, LoginAttemptEntry>();
+
+function extractHeader(headers: any, name: string): string | undefined {
+  if (!headers) return undefined;
+
+  if (typeof headers.get === 'function') {
+    return headers.get(name) ?? headers.get(name.toLowerCase());
+  }
+
+  const lowerName = name.toLowerCase();
+  const value = headers[name] ?? headers[lowerName];
+
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return value;
+}
+
+function getClientIdentifier(email?: string | null, req?: any): string {
+  const normalizedEmail = email?.toLowerCase() || 'unknown_email';
+
+  const ipHeader = extractHeader(req?.headers, 'x-forwarded-for');
+  const realIpHeader = extractHeader(req?.headers, 'x-real-ip');
+  const ipFromHeader = ipHeader?.split(',')[0]?.trim() || realIpHeader?.trim();
+  const ip = ipFromHeader || req?.ip || 'unknown_ip';
+
+  return `${normalizedEmail}:${ip}`;
+}
+
+function cleanupLoginEntry(identifier: string, entry: LoginAttemptEntry, now: number) {
+  if (entry.firstAttemptAt + LOGIN_RATE_LIMIT_CONFIG.windowMs < now) {
+    loginAttempts.delete(identifier);
+  }
+}
+
+function getLoginBlockStatus(identifier: string): { blocked: boolean; retryAfter?: number } {
+  const entry = loginAttempts.get(identifier);
+  if (!entry) {
+    return { blocked: false };
+  }
+
+  const now = Date.now();
+
+  // Reset window if enough time passed
+  cleanupLoginEntry(identifier, entry, now);
+  const updatedEntry = loginAttempts.get(identifier);
+  if (!updatedEntry) {
+    return { blocked: false };
+  }
+
+  if (updatedEntry.blockedUntil && updatedEntry.blockedUntil > now) {
+    return {
+      blocked: true,
+      retryAfter: Math.ceil((updatedEntry.blockedUntil - now) / 1000),
+    };
+  }
+
+  return { blocked: false };
+}
+
+function registerFailedLogin(identifier: string): { blocked: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const entry = loginAttempts.get(identifier);
+
+  if (!entry || entry.firstAttemptAt + LOGIN_RATE_LIMIT_CONFIG.windowMs < now) {
+    loginAttempts.set(identifier, {
+      attempts: 1,
+      firstAttemptAt: now,
+    });
+  } else {
+    entry.attempts += 1;
+
+    if (entry.attempts >= LOGIN_RATE_LIMIT_CONFIG.maxAttempts) {
+      entry.blockedUntil = now + LOGIN_RATE_LIMIT_CONFIG.blockDurationMs;
+    }
+
+    loginAttempts.set(identifier, entry);
+  }
+
+  const status = getLoginBlockStatus(identifier);
+  return status;
+}
+
+function resetLoginAttempts(identifier: string) {
+  if (loginAttempts.has(identifier)) {
+    loginAttempts.delete(identifier);
+  }
+}
+
 // Interface for user data from Supabase (align with your 'users' table structure)
 interface SupabaseUser {
   id: string; // Typically a UUID from Supabase
@@ -99,10 +201,19 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         // This is where you would typically verify the user credentials against your database
         if (!credentials?.email || !credentials?.password) {
           return null;
+        }
+
+        const loginIdentifier = getClientIdentifier(credentials.email, req);
+        const blockStatus = getLoginBlockStatus(loginIdentifier);
+
+        if (blockStatus.blocked) {
+          const error = new Error('Too many login attempts. Please try again later.');
+          (error as any).status = 429;
+          throw error;
         }
 
         // rememberMe will be handled in the signin page
@@ -113,6 +224,7 @@ export const authOptions: NextAuthOptions = {
 
           if (!user || !user.hashed_password) {
             // User not found or password not set
+            registerFailedLogin(loginIdentifier);
             return null;
           }
 
@@ -122,8 +234,11 @@ export const authOptions: NextAuthOptions = {
           if (!isPasswordValid) {
             // Add a small delay to prevent timing attacks, though bcrypt itself is slow
             await new Promise(resolve => setTimeout(resolve, 250 + Math.random() * 100));
+            registerFailedLogin(loginIdentifier);
             return null;
           }
+
+          resetLoginAttempts(loginIdentifier);
 
           // Return user data (ensure 'name' corresponds to 'full_name' or similar in your SupabaseUser interface)
           return {
