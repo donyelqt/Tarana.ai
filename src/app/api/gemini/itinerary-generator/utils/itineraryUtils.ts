@@ -6,12 +6,6 @@ import { supabaseAdmin } from "@/lib/data/supabaseAdmin";
 
 // Utilities for itinerary post-processing
 
-// Function to check for duplicate activities across days
-export function removeDuplicateActivities(parsedItinerary: any) {
-  if (!parsedItinerary || !parsedItinerary.items || !Array.isArray(parsedItinerary.items)) {
-    return parsedItinerary;
-  }
-
 function cloneAllowedActivity(activity: any) {
   const cloned: any = {
     image: activity.image,
@@ -111,6 +105,12 @@ function distributeRemainingAllowedActivities(itinerary: any, durationDays: numb
 
   return itinerary;
 }
+
+// Function to check for duplicate activities across days
+export function removeDuplicateActivities(parsedItinerary: any) {
+  if (!parsedItinerary || !parsedItinerary.items || !Array.isArray(parsedItinerary.items)) {
+    return parsedItinerary;
+  }
 
   const seenActivities = new Set<string>();
 
