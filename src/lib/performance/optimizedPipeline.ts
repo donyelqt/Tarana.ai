@@ -89,6 +89,7 @@ export class OptimizedPipeline {
     // Phase 2: Parallel Traffic Enhancement (300-800ms)
     const trafficStartTime = Date.now();
     const { enhancedActivities, metrics: trafficMetrics } = await parallelTrafficProcessor.processActivitiesUltraFast(activities);
+    const allowedActivitiesSnapshot = this.createAllowedActivitiesSnapshot(enhancedActivities);
     const normalizeTitle = (title: string) =>
       title
         ?.toLowerCase()
@@ -172,7 +173,11 @@ export class OptimizedPipeline {
     const aiStartTime = Date.now();
 
     // Build detailed prompt for structured generation
-    const effectiveSampleItinerary = this.buildEffectiveSampleItinerary(enhancedActivities, request);
+    const effectiveSampleItinerary = this.buildEffectiveSampleItinerary(
+      enhancedActivities,
+      request,
+      allowedActivitiesSnapshot
+    );
     const detailedPrompt = buildDetailedPrompt(
         request.prompt,
         effectiveSampleItinerary,
@@ -186,6 +191,14 @@ export class OptimizedPipeline {
 
     // Generate guaranteed structured itinerary
     const structuredItinerary = await GuaranteedJsonEngine.generateGuaranteedJson(detailedPrompt, effectiveSampleItinerary, '', '');
+    const structuredItineraryWithMetadata: any = {
+      ...structuredItinerary,
+      searchMetadata: {
+        ...(structuredItinerary as any)?.searchMetadata,
+        allowedActivities: allowedActivitiesSnapshot,
+        source: 'traffic_filtered'
+      }
+    };
     const aiTime = Date.now() - aiStartTime;
 
     console.log(`🤖 STRUCTURED AI PHASE: Completed in ${aiTime}ms`);
@@ -194,7 +207,12 @@ export class OptimizedPipeline {
     // We still need to run the final processing steps.
     const processingStartTime = Date.now();
     const peakHoursContext = getPeakHoursContext();
-    const finalItinerary = await handleItineraryProcessing(structuredItinerary, request.prompt, request.durationDays, peakHoursContext);
+    const finalItinerary = await handleItineraryProcessing(
+      structuredItineraryWithMetadata,
+      request.prompt,
+      request.durationDays,
+      peakHoursContext
+    );
 
     if (finalItinerary?.items) {
       finalItinerary.items = finalItinerary.items.map((period: any) => {
@@ -242,6 +260,13 @@ export class OptimizedPipeline {
         };
       });
     }
+
+    if (finalItinerary) {
+      finalItinerary.searchMetadata = {
+        ...(structuredItineraryWithMetadata.searchMetadata || {}),
+        ...(finalItinerary.searchMetadata || {})
+      };
+    }
     const processingTime = Date.now() - processingStartTime;
     const totalTime = Date.now() - pipelineStartTime;
 
@@ -283,7 +308,11 @@ export class OptimizedPipeline {
   /**
    * Build effective sample itinerary optimized for AI context
    */
-  private buildEffectiveSampleItinerary(activities: any[], request: OptimizedGenerationRequest): any {
+  private buildEffectiveSampleItinerary(
+    activities: any[],
+    request: OptimizedGenerationRequest,
+    allowedActivities: any[]
+  ): any {
     // Group activities by time period for better organization
     const morningActivities: any[] = [];
     const afternoonActivities: any[] = [];
@@ -321,9 +350,53 @@ export class OptimizedPipeline {
         searchMethod: 'optimized',
         totalResults: activities.length,
         processingTime: Date.now(),
-        optimizations: ['parallel_processing', 'smart_caching', 'geographic_clustering']
+        optimizations: ['parallel_processing', 'smart_caching', 'geographic_clustering'],
+        allowedActivities
       }
     };
+  }
+
+  private createAllowedActivitiesSnapshot(activities: any[]): any[] {
+    const seen = new Set<string>();
+
+    return activities.reduce((acc: any[], activity: any) => {
+      const title = typeof activity?.title === 'string' ? activity.title.trim() : '';
+      if (!title) {
+        return acc;
+      }
+
+      const key = title.toLowerCase();
+      if (seen.has(key)) {
+        return acc;
+      }
+      seen.add(key);
+
+      const tags = Array.isArray(activity?.tags) ? [...activity.tags] : [];
+
+      acc.push({
+        image: activity?.image || '',
+        title,
+        time: activity?.time || '',
+        desc: activity?.desc || '',
+        tags,
+        peakHours: activity?.peakHours,
+        trafficRecommendation: activity?.trafficRecommendation,
+        combinedTrafficScore: activity?.combinedTrafficScore,
+        crowdLevel: activity?.crowdLevel,
+        lat: activity?.lat,
+        lon: activity?.lon,
+        trafficAnalysis: activity?.trafficAnalysis
+          ? {
+              recommendation: activity.trafficAnalysis.recommendation ?? activity?.trafficRecommendation,
+              realTimeTraffic: activity.trafficAnalysis.realTimeTraffic
+                ? { ...activity.trafficAnalysis.realTimeTraffic }
+                : undefined
+            }
+          : undefined
+      });
+
+      return acc;
+    }, []);
   }
 
   /**
