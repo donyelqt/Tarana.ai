@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MiddlewareHandler, MiddlewareChainConfig } from './types';
+import { applySecurityHeaders } from '@/lib/security/securityHeaders';
 
 /**
  * Composes multiple middleware functions into a single middleware chain
@@ -20,20 +21,27 @@ export function composeMiddleware(config: MiddlewareChainConfig): MiddlewareHand
   
   return async (request: NextRequest) => {
     try {
-      let response = NextResponse.next();
+      let response = applySecurityHeaders(NextResponse.next());
       
       // Execute each middleware in sequence
       for (const middleware of activeMiddlewares) {
         try {
           const result = await middleware.handler(request);
           
-          // If middleware returns a response that's not Next.next(), return it immediately
-          if (result instanceof NextResponse && result !== NextResponse.next()) {
-            return result;
+          if (result instanceof NextResponse) {
+            const securedResult = applySecurityHeaders(result);
+            const isNext = securedResult.headers.get('x-middleware-next') === '1';
+            
+            if (!isNext) {
+              return securedResult;
+            }
+            
+            response = securedResult;
+            continue;
           }
           
-          // Otherwise continue to the next middleware
-          response = result;
+          // Middleware returned undefined/null – default to continuing with a secured response
+          response = applySecurityHeaders(NextResponse.next());
         } catch (error) {
           console.error(`Error in middleware ${middleware.name}:`, error);
           
@@ -44,7 +52,7 @@ export function composeMiddleware(config: MiddlewareChainConfig): MiddlewareHand
         }
       }
       
-      return response;
+      return applySecurityHeaders(response);
     } catch (error) {
       console.error('Unhandled middleware error:', error);
       
