@@ -6,6 +6,7 @@
  * @version 2.0.0
  */
 
+import { createHash } from 'crypto';
 import { generateEmbedding } from '../ai/embeddings';
 import { supabaseAdmin } from '../data/supabaseAdmin';
 import { isCurrentlyPeakHours, getManilaTime } from '../traffic/peakHours';
@@ -473,7 +474,7 @@ class DiversityEngine {
  */
 export class IntelligentSearchEngine {
   private config: IntelligentSearchConfig;
-  private cache: Map<string, IntelligentSearchResult[]> = new Map();
+  private cache: Map<string, { timestamp: number; results: IntelligentSearchResult[] }> = new Map();
   private readonly CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
   constructor(config: Partial<IntelligentSearchConfig> = {}) {
@@ -487,8 +488,8 @@ export class IntelligentSearchEngine {
     const cacheKey = this.generateCacheKey(query, context);
     const cached = this.cache.get(cacheKey);
     
-    if (cached && this.isCacheValid(cacheKey)) {
-      return cached;
+    if (cached && this.isCacheValid(cached.timestamp)) {
+      return cached.results;
     }
 
     try {
@@ -496,7 +497,10 @@ export class IntelligentSearchEngine {
       const results = await this.performIntelligentSearch(query, context);
       
       // Cache results
-      this.cache.set(cacheKey, results);
+      this.cache.set(cacheKey, {
+        timestamp: Date.now(),
+        results
+      });
       this.cleanupCache();
       
       return results;
@@ -664,18 +668,31 @@ export class IntelligentSearchEngine {
   }
 
   private generateCacheKey(query: string, context: SearchContext): string {
-    return `${query}_${JSON.stringify(context)}_${Date.now()}`;
+    const normalizedContext = {
+      query: query.trim().toLowerCase(),
+      interests: Array.isArray(context.interests) ? [...context.interests].sort() : [],
+      weatherCondition: context.weatherCondition,
+      timeOfDay: context.timeOfDay,
+      budget: context.budget,
+      groupSize: context.groupSize,
+      duration: context.duration,
+      userPreferences: context.userPreferences ? Object.keys(context.userPreferences).sort().reduce<Record<string, unknown>>((acc, key) => {
+        acc[key] = context.userPreferences![key];
+        return acc;
+      }, {}) : undefined
+    };
+
+    return createHash('md5').update(JSON.stringify(normalizedContext)).digest('hex');
   }
 
-  private isCacheValid(cacheKey: string): boolean {
-    const timestamp = parseInt(cacheKey.split('_').pop() || '0');
+  private isCacheValid(timestamp: number): boolean {
     return Date.now() - timestamp < this.CACHE_TTL;
   }
 
   private cleanupCache(): void {
     if (this.cache.size > 100) {
       const entries = Array.from(this.cache.entries());
-      const validEntries = entries.filter(([key]) => this.isCacheValid(key));
+      const validEntries = entries.filter(([, value]) => this.isCacheValid(value.timestamp));
       this.cache.clear();
       validEntries.forEach(([key, value]) => this.cache.set(key, value));
     }

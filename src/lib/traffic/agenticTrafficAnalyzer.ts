@@ -172,6 +172,11 @@ class AgenticTrafficAnalyzer {
         )
       ]);
 
+      if (!agenticResult || !agenticResult.realTimeTraffic || Object.keys(agenticResult.realTimeTraffic).length === 0) {
+        console.warn(`⚠️ Agentic AI: Empty traffic payload for "${title}". Using deterministic fallback.`);
+        return this.createFallbackAnalysis(activityId, title, lat, lon, peakHours, context);
+      }
+
       this.analysisCache.set(cacheKey, {
         result: agenticResult,
         expiry: Date.now() + (5 * 60 * 1000)

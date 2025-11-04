@@ -39,7 +39,7 @@ export class ParallelTrafficProcessor {
   private readonly defaultOptions: TrafficProcessingOptions = {
     maxConcurrency: 16,
     batchSize: 10,
-    proximityThreshold: 0.5, // 500 meters
+    proximityThreshold: 1.5, // 1.5 km ~ broader clustering
     enableLocationClustering: true,
     enableResultCaching: true,
     timeoutMs: 15000 // Increased to 15 seconds to prevent premature timeouts
@@ -182,7 +182,11 @@ export class ParallelTrafficProcessor {
       processed.add(activity.title);
 
       const coords = this.getCoordinatesCached(activity.title);
-      if (!coords) continue;
+      if (!coords) {
+        console.warn(`⚠️ CLUSTERING: No coordinates cached for "${activity.title}". Using standalone fallback.`);
+        clusters.push(cluster);
+        continue;
+      }
 
       // Find nearby activities within proximity threshold
       for (const other of activities) {

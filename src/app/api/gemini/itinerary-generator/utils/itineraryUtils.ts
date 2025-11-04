@@ -87,7 +87,7 @@ const buildTrafficAwareDescription = (activity: any, canonical: any) => {
   }
 
   if (recommendation) {
-    sentences.push(`Tarana recommends you ${recommendation}.`);
+    sentences.push(`Tarana-ai recommends you ${recommendation}.`);
   }
 
   if (peakWindow) {

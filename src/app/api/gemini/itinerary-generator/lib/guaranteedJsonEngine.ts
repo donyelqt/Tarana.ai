@@ -13,6 +13,12 @@ import { StructuredOutputEngine, ItinerarySchema, PeriodSchema, type StructuredI
 import { EnhancedPromptEngine, JsonSyntaxValidator } from './enhancedPromptEngine';
 import { intelligentCacheManager } from '@/lib/ai';
 
+interface StrategyControls {
+  signal?: AbortSignal;
+  abort?: () => void;
+  shouldAbort?: () => boolean;
+}
+
 function extractResponseText(result: any): string | null {
   const normalisePayload = (payload: unknown): string | null => {
     if (typeof payload === 'string') {
@@ -108,7 +114,7 @@ function compactSampleItinerary(sample: any) {
 export class GuaranteedJsonEngine {
   private static readonly MAX_ATTEMPTS = 1;
   
-  private static readonly TIMEOUT_MS = 30000;
+  private static readonly TIMEOUT_MS = 15000;
   
   private static metrics = {
     totalRequests: 0,
@@ -144,11 +150,14 @@ export class GuaranteedJsonEngine {
       console.log(`🏁 GUARANTEED ENGINE: Racing strategies in parallel for ${requestId}`);
       
       // CRITICAL FIX: Race for first success, don't wait for all
-      const raceForFirstSuccess = new Promise<{ result: StructuredItinerary | null; strategyNum: number }>((resolve) => {
-        const strategies = [
+      const raceForFirstSuccess = new Promise<{ result: StructuredItinerary | null; strategyIndex: number }>((resolve) => {
+        const strategies: Array<{
+          name: string;
+          run: (controls: StrategyControls) => Promise<StructuredItinerary | null>;
+        }> = [
           {
             name: 'Strategy 1',
-            fn: (shouldAbort: () => boolean) =>
+            run: (controls) =>
               this.attemptStructuredOutput(
                 prompt,
                 compactSample,
@@ -156,12 +165,12 @@ export class GuaranteedJsonEngine {
                 trafficContext,
                 additionalContext,
                 requestId,
-                shouldAbort
+                controls
               ),
           },
           {
             name: 'Strategy 2',
-            fn: (shouldAbort: () => boolean) =>
+            run: (controls) =>
               this.attemptPromptEngineering(
                 prompt,
                 compactSample,
@@ -169,7 +178,7 @@ export class GuaranteedJsonEngine {
                 trafficContext,
                 additionalContext,
                 requestId,
-                shouldAbort
+                controls
               ),
           },
         ];
@@ -177,54 +186,72 @@ export class GuaranteedJsonEngine {
         let completed = 0;
         const errors: string[] = [];
         let settled = false;
+        const controllers: AbortController[] = new Array(strategies.length);
 
-        const finish = (payload: { result: StructuredItinerary | null; strategyNum: number }) => {
+        const finish = (payload: { result: StructuredItinerary | null; strategyIndex: number }) => {
           if (settled) return;
           settled = true;
+          controllers.forEach((controller, idx) => {
+            if (controller && idx !== payload.strategyIndex) {
+              controller.abort();
+            }
+          });
           resolve(payload);
         };
 
         strategies.forEach((strategy, index) => {
-          const shouldAbort = () => settled;
+          const controller = new AbortController();
+          controllers[index] = controller;
+          const controls: StrategyControls = {
+            signal: controller.signal,
+            abort: () => controller.abort(),
+            shouldAbort: () => settled || controller.signal.aborted,
+          };
 
           strategy
-            .fn(shouldAbort)
+            .run(controls)
             .then((result) => {
               if (settled) return;
               if (result) {
                 console.log(`🏆 ${strategy.name} succeeded first!`);
-                finish({ result, strategyNum: index + 1 });
+                finish({ result, strategyIndex: index });
               } else {
                 completed++;
                 errors.push(`${strategy.name}: returned null`);
                 if (completed === strategies.length) {
-                  finish({ result: null, strategyNum: 0 });
+                  finish({ result: null, strategyIndex: -1 });
                 }
               }
             })
             .catch((err) => {
               if (settled) return;
-              completed++;
-              errors.push(`${strategy.name}: ${err.message}`);
-              console.log(`⚠️ ${strategy.name} failed: ${err.message}`);
+              if (err?.name === 'AbortError') {
+                completed++;
+              } else {
+                completed++;
+                errors.push(`${strategy.name}: ${err?.message || 'unknown error'}`);
+                console.log(`⚠️ ${strategy.name} failed: ${err?.message || err}`);
+              }
 
               if (completed === strategies.length) {
-                console.log(`🆘 All strategies failed:`, errors);
-                finish({ result: null, strategyNum: 0 });
+                if (errors.length) {
+                  console.log(`🆘 All strategies failed:`, errors);
+                }
+                finish({ result: null, strategyIndex: -1 });
               }
             });
         });
       });
-      
-      const { result, strategyNum } = await raceForFirstSuccess;
-      
+
+      const { result, strategyIndex } = await raceForFirstSuccess;
+
       if (result) {
         const elapsed = Date.now() - startTime;
-        console.log(`🏆 GUARANTEED ENGINE: Strategy ${strategyNum} won the race in ${elapsed}ms`);
+        console.log(`🏆 GUARANTEED ENGINE: Strategy ${strategyIndex + 1} won the race in ${elapsed}ms`);
         
-        if (strategyNum === 1) this.metrics.structuredSuccess++;
+        if (strategyIndex === 0) this.metrics.structuredSuccess++;
         else this.metrics.promptEngineeredSuccess++;
-        
+
         return result;
       }
       
@@ -250,9 +277,10 @@ export class GuaranteedJsonEngine {
     trafficContext: string,
     additionalContext: string,
     requestId: string,
-    shouldAbort?: () => boolean
+    controls?: StrategyControls
   ): Promise<StructuredItinerary | null> {
-    if (shouldAbort?.()) {
+    if (controls?.shouldAbort?.()) {
+      controls.abort?.();
       return null;
     }
 
@@ -260,13 +288,16 @@ export class GuaranteedJsonEngine {
       const enhancedPrompt = EnhancedPromptEngine.buildBulletproofPrompt(
         prompt, sampleItinerary, weatherContext, trafficContext, additionalContext
       );
-      
-      if (shouldAbort?.()) {
+
+      if (controls?.shouldAbort?.()) {
+        controls.abort?.();
         return null;
       }
 
       const result = await StructuredOutputEngine.generateStructuredItinerary(
-        enhancedPrompt, requestId
+        enhancedPrompt,
+        requestId,
+        controls?.signal
       );
       
       // Validate the result
@@ -280,7 +311,8 @@ export class GuaranteedJsonEngine {
       }
       
     } catch (error: any) {
-      if (shouldAbort?.()) {
+      if (controls?.shouldAbort?.() || error?.name === 'AbortError') {
+        controls?.abort?.();
         return null;
       }
       console.warn(`⚠️ GUARANTEED ENGINE: Structured output failed:`, error.message);
@@ -298,19 +330,22 @@ export class GuaranteedJsonEngine {
     trafficContext: string,
     additionalContext: string,
     requestId: string,
-    shouldAbort?: () => boolean
+    controls?: StrategyControls
   ): Promise<StructuredItinerary | null> {
-    if (shouldAbort?.()) {
+    if (controls?.shouldAbort?.()) {
+      controls?.abort?.();
       return null;
     }
 
     for (let attempt = 1; attempt <= this.MAX_ATTEMPTS; attempt++) {
-      if (shouldAbort?.()) {
+      if (controls?.shouldAbort?.()) {
+        controls?.abort?.();
         return null;
       }
 
       try {
-        if (shouldAbort?.()) {
+        if (controls?.shouldAbort?.()) {
+          controls?.abort?.();
           return null;
         }
 
@@ -326,9 +361,10 @@ export class GuaranteedJsonEngine {
         );
 
         // Generate with strict JSON mode
-        const result = await this.generateWithStrictJson(enhancedPrompt, attempt, shouldAbort);
+        const result = await this.generateWithStrictJson(enhancedPrompt, attempt, controls);
         
-        if (shouldAbort?.()) {
+        if (controls?.shouldAbort?.()) {
+          controls?.abort?.();
           return null;
         }
 
@@ -338,12 +374,13 @@ export class GuaranteedJsonEngine {
         }
 
       } catch (error: any) {
-        if (shouldAbort?.()) {
+        if (controls?.shouldAbort?.() || error?.name === 'AbortError') {
+          controls?.abort?.();
           return null;
         }
         console.warn(`⚠️ GUARANTEED ENGINE: Prompt engineering attempt ${attempt} failed:`, error.message);
 
-        if (attempt < this.MAX_ATTEMPTS && !shouldAbort?.()) {
+        if (attempt < this.MAX_ATTEMPTS && !controls?.shouldAbort?.()) {
           const delay = Math.min(1000 * attempt, 3000);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
@@ -396,9 +433,10 @@ export class GuaranteedJsonEngine {
   private static async generateWithStrictJson(
     prompt: string,
     attempt: number,
-    shouldAbort?: () => boolean
+    controls?: StrategyControls
   ): Promise<StructuredItinerary | null> {
-    if (shouldAbort?.()) {
+    if (controls?.shouldAbort?.()) {
+      controls?.abort?.();
       return null;
     }
 
@@ -413,17 +451,23 @@ export class GuaranteedJsonEngine {
     };
 
     try {
+      const requestOptions = controls?.signal ? { signal: controls.signal } : undefined;
+
       const result = await Promise.race([
         geminiModel!.generateContent({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig
-        }),
+        }, requestOptions),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Generation timeout')), this.TIMEOUT_MS)
+          setTimeout(() => {
+            controls?.abort?.();
+            reject(new Error('Generation timeout'));
+          }, this.TIMEOUT_MS)
         )
       ]) as any;
 
-      if (shouldAbort?.()) {
+      if (controls?.shouldAbort?.()) {
+        controls?.abort?.();
         return null;
       }
 
@@ -439,7 +483,8 @@ export class GuaranteedJsonEngine {
       return this.parseAndValidateJson(text, attempt);
       
     } catch (error: any) {
-      if (shouldAbort?.()) {
+      if (controls?.shouldAbort?.() || error?.name === 'AbortError') {
+        controls?.abort?.();
         return null;
       }
       console.warn(`⚠️ GUARANTEED ENGINE: Generation failed on attempt ${attempt}:`, error.message);

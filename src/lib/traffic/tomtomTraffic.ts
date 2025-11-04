@@ -48,7 +48,7 @@ class TomTomTrafficService {
     this.config = {
       apiKey: process.env.TOMTOM_API_KEY || '',
       baseUrl: 'https://api.tomtom.com',
-      timeout: Number.isFinite(timeoutOverride) && timeoutOverride > 0 ? timeoutOverride : 20000
+      timeout: Number.isFinite(timeoutOverride) && timeoutOverride > 0 ? timeoutOverride : 8000
     };
 
     if (!this.config.apiKey) {
@@ -73,6 +73,17 @@ class TomTomTrafficService {
     try {
       // Always try to get flow data (primary), incidents are secondary
       const flowData = await this.getTrafficFlow(lat, lon);
+
+      if (!flowData) {
+        if (cached) {
+          console.warn(`♻️ TomTom: Flow unavailable, reusing cached traffic data for ${lat}, ${lon}`);
+          cached.expiry = Date.now() + this.CACHE_DURATION / 2;
+          return cached.data;
+        }
+
+        console.warn(`⚠️ TomTom: Flow data unavailable and no cache for ${lat}, ${lon}. Using fallback values.`);
+        return this.createFallbackTrafficData(lat, lon);
+      }
       
       // Try to get incidents but don't fail if unavailable
       let incidents: TrafficIncident[] = [];
@@ -111,6 +122,12 @@ class TomTomTrafficService {
 
       return result;
     } catch (error) {
+      if (cached) {
+        console.warn(`♻️ TomTom: Error fetching traffic (${lat}, ${lon}). Reusing cached data:`, error instanceof Error ? error.message : 'Unknown error');
+        cached.expiry = Date.now() + this.CACHE_DURATION / 2;
+        return cached.data;
+      }
+
       console.log(`⚠️ TomTom: Traffic API failed, using fallback data for ${lat}, ${lon}:`, error instanceof Error ? error.message : 'Unknown error');
       return this.createFallbackTrafficData(lat, lon);
     }
@@ -156,12 +173,15 @@ class TomTomTrafficService {
       }
 
       const data = await response.json();
-      console.log(`✅ TomTom: Flow data received successfully`);
-      
       return data.flowSegmentData || null;
 
-    } catch (error) {
-      console.error(`❌ TomTom: Flow API request failed:`, error);
+    } catch (error: any) {
+      const message = error?.message || error?.toString?.() || 'Unknown error';
+      if (message.includes('abort') || message.includes('timeout') || message.includes('UND_ERR_CONNECT_TIMEOUT')) {
+        console.warn(`⌛ TomTom: Flow API timed out for ${lat}, ${lon} (${message}). Using fallback.`);
+      } else {
+        console.error(`❌ TomTom: Flow API request failed:`, error);
+      }
       return null;
     }
   }

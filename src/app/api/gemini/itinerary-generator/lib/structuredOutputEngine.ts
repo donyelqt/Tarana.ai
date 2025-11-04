@@ -50,7 +50,8 @@ export class StructuredOutputEngine {
    */
   static async generateStructuredItinerary(
     prompt: string,
-    requestId: string = 'unknown'
+    requestId: string = 'unknown',
+    signal?: AbortSignal
   ): Promise<StructuredItinerary> {
     console.log(`🏗️ STRUCTURED ENGINE: Starting generation for request ${requestId}`);
     
@@ -77,15 +78,50 @@ export class StructuredOutputEngine {
           console.log(`🔄 STRUCTURED ENGINE: Attempt ${attempt}/${this.MAX_RETRIES}`);
           
           // Use JSON mode for guaranteed structure
-          const result = await Promise.race([
+          let timeoutId: NodeJS.Timeout | null = null;
+          let abortHandler: (() => void) | null = null;
+
+          const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Generation timeout')), this.TIMEOUT_MS);
+          });
+
+          const abortPromise = signal
+            ? new Promise((_, reject) => {
+                if (signal.aborted) {
+                  const abortError = new Error('Aborted');
+                  abortError.name = 'AbortError';
+                  reject(abortError);
+                  return;
+                }
+                abortHandler = () => {
+                  const abortError = new Error('Aborted');
+                  abortError.name = 'AbortError';
+                  reject(abortError);
+                };
+                signal.addEventListener('abort', abortHandler, { once: true });
+              })
+            : null;
+
+          const racePromises: Promise<any>[] = [
             geminiModel!.generateContent({
               contents: [{ role: "user", parts: [{ text: structuredPrompt }] }],
               generationConfig
             }),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Generation timeout')), this.TIMEOUT_MS)
-            )
-          ]) as any;
+            timeoutPromise
+          ];
+
+          if (abortPromise) {
+            racePromises.push(abortPromise);
+          }
+
+          const result = await Promise.race(racePromises) as any;
+
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+          if (abortHandler && signal) {
+            signal.removeEventListener('abort', abortHandler);
+          }
 
           // Extract JSON response
           const text = extractResponseText(result);
@@ -112,6 +148,10 @@ export class StructuredOutputEngine {
             const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
             console.log(`🔄 STRUCTURED ENGINE: Retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        } finally {
+          if (signal?.aborted) {
+            break;
           }
         }
       }

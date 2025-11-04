@@ -47,6 +47,9 @@ export class SmartCacheManager {
   private hotCache = new Map<string, CacheEntry<any>>(); // Frequently accessed
   private warmCache = new Map<string, CacheEntry<any>>(); // Moderately accessed
   private coldCache = new Map<string, CacheEntry<any>>(); // Rarely accessed
+  private warmupPromise: Promise<void> | null = null;
+  private warmupInitialized = false;
+  private lastWarmupTimestamp = 0;
   
   private stats: CacheStats = {
     hits: 0,
@@ -68,7 +71,7 @@ export class SmartCacheManager {
 
   private constructor() {
     if (this.config.warmupEnabled) {
-      this.initializeWarmup();
+      this.ensureWarmup();
     }
   }
 
@@ -256,6 +259,7 @@ export class SmartCacheManager {
    * Predictive cache warming for common patterns
    */
   private async initializeWarmup(): Promise<void> {
+    this.warmupInitialized = true;
     const commonPatterns = [
       { query: 'nature', interests: ['Nature', 'Adventure'] },
       { query: 'food', interests: ['Food', 'Local Cuisine'] },
@@ -280,6 +284,24 @@ export class SmartCacheManager {
     }
 
     console.log(`🔥 CACHE WARMUP: Pre-warmed ${commonPatterns.length} common patterns`);
+  }
+
+  private ensureWarmup(): void {
+    if (this.warmupPromise) {
+      return;
+    }
+
+    const ttl = this.config.defaultTTL;
+    const now = Date.now();
+    if (this.warmupInitialized && now - this.lastWarmupTimestamp < ttl) {
+      return;
+    }
+
+    this.warmupPromise = this.initializeWarmup()
+      .finally(() => {
+        this.lastWarmupTimestamp = Date.now();
+        this.warmupPromise = null;
+      });
   }
 
   /**

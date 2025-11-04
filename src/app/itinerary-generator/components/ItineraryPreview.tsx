@@ -208,12 +208,6 @@ export default function ItineraryPreview({
                       <div className="text-xs text-gray-500 mb-2">{act.time}</div>
                       <div className="text-sm text-gray-700 mb-3">
                         {act.desc}
-                        {/* Add traffic timing hint */}
-                        {act.peakHours && (
-                          <div className="text-xs text-gray-500 mt-1 italic">
-                            Peak hours: {act.peakHours}
-                          </div>
-                        )}
                       </div>
                       <div className="flex gap-2 flex-wrap mb-3">
                         {/* Traffic Level Tag */}

@@ -15,6 +15,20 @@ import { getPeakHoursContext } from "@/lib/traffic";
 import { GuaranteedJsonEngine } from '@/app/api/gemini/itinerary-generator/lib/guaranteedJsonEngine';
 import type { WeatherCondition } from "@/app/api/gemini/itinerary-generator/types/types";
 
+const PIPELINE_DEBUG = (() => {
+  const envValue = process.env.OPTIMIZED_PIPELINE_DEBUG ?? process.env.NEXT_PUBLIC_OPTIMIZED_PIPELINE_DEBUG;
+  if (typeof envValue === 'string') {
+    return envValue.toLowerCase() !== 'false';
+  }
+  return true;
+})();
+
+const debugLog = (...args: unknown[]) => {
+  if (PIPELINE_DEBUG) {
+    console.log(...args);
+  }
+};
+
 export interface PipelineMetrics {
   totalTime: number;
   phases: {
@@ -68,7 +82,7 @@ export class OptimizedPipeline {
     metrics: PipelineMetrics;
   }> {
     const pipelineStartTime = Date.now();
-    console.log(`🚀 OPTIMIZED PIPELINE: Starting ultra-fast generation for "${request.prompt}"`);
+    debugLog(`🚀 OPTIMIZED PIPELINE: Starting ultra-fast generation for "${request.prompt}"`);
 
     // Determine weather type efficiently
     const weatherType = this.getWeatherTypeOptimized(request.weatherData);
@@ -84,7 +98,7 @@ export class OptimizedPipeline {
     );
     const searchTime = Date.now() - searchStartTime;
 
-    console.log(`⚡ SEARCH PHASE: Completed in ${searchTime}ms with ${activities.length} activities`);
+    debugLog(`⚡ SEARCH PHASE: Completed in ${searchTime}ms with ${activities.length} activities`);
 
     // Phase 2: Parallel Traffic Enhancement (300-800ms)
     const trafficStartTime = Date.now();
@@ -167,7 +181,7 @@ export class OptimizedPipeline {
     };
     const trafficTime = Date.now() - trafficStartTime;
 
-    console.log(`🚦 TRAFFIC PHASE: Completed in ${trafficTime}ms with ${enhancedActivities.length} enhanced activities`);
+    debugLog(`🚦 TRAFFIC PHASE: Completed in ${trafficTime}ms with ${enhancedActivities.length} enhanced activities`);
 
     // Phase 3 & 4: Structured AI Generation & Processing (1000-2000ms)
     const aiStartTime = Date.now();
@@ -201,7 +215,7 @@ export class OptimizedPipeline {
     };
     const aiTime = Date.now() - aiStartTime;
 
-    console.log(`🤖 STRUCTURED AI PHASE: Completed in ${aiTime}ms`);
+    debugLog(`🤖 STRUCTURED AI PHASE: Completed in ${aiTime}ms`);
 
     // The output is already validated, so we can skip complex parsing.
     // We still need to run the final processing steps.
@@ -270,7 +284,7 @@ export class OptimizedPipeline {
     const processingTime = Date.now() - processingStartTime;
     const totalTime = Date.now() - pipelineStartTime;
 
-    console.log(`⚡ PROCESSING PHASE: Completed in ${processingTime}ms`);
+    debugLog(`⚡ PROCESSING PHASE: Completed in ${processingTime}ms`);
 
     // Calculate comprehensive metrics
     const metrics: PipelineMetrics = {
@@ -293,8 +307,8 @@ export class OptimizedPipeline {
       }
     };
 
-    console.log(`🎯 OPTIMIZED PIPELINE: Completed in ${totalTime}ms (${Math.round(enhancedActivities.length / (totalTime / 1000))} activities/sec)`);
-    console.log(`📊 PERFORMANCE BREAKDOWN:`, {
+    debugLog(`🎯 OPTIMIZED PIPELINE: Completed in ${totalTime}ms (${Math.round(enhancedActivities.length / (totalTime / 1000))} activities/sec)`);
+    debugLog(`📊 PERFORMANCE BREAKDOWN:`, {
       search: `${searchTime}ms`,
       traffic: `${trafficTime}ms`,
       ai: `${aiTime}ms`,
