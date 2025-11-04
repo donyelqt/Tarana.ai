@@ -188,7 +188,8 @@ function distributeRemainingAllowedActivities(itinerary: any, durationDays: numb
   }
 
   const periodsInOrder: any[] = itinerary.items.filter((item: any) => Array.isArray(item.activities));
-  const maxPerSlot = 2; // Align with prompt: at most two activities per period for short itineraries
+  const isRelaxedPace = typeof durationDays === 'number' && durationDays >= 3;
+  const maxPerSlot = isRelaxedPace ? 1 : 2; // Relax to one per slot on longer trips
 
   // Fill empty periods first using remaining activities
   let cursor = 0;
@@ -204,7 +205,7 @@ function distributeRemainingAllowedActivities(itinerary: any, durationDays: numb
   }
 
   // Balance across periods, aiming for at least two activities per slot before adding extras
-  const targetPerSlot = Math.min(maxPerSlot, durationDays && durationDays > 0 ? maxPerSlot : maxPerSlot);
+  const targetPerSlot = maxPerSlot;
   const sortedByLoad: any[] = [...periodsInOrder].sort((a, b) => a.activities.length - b.activities.length);
 
   let safety = 0;
@@ -297,7 +298,8 @@ export function organizeItineraryByDays(it: any, days: number | null) {
     }
   }
   const slotOrder: Array<'Morning' | 'Afternoon' | 'Evening'> = ['Morning', 'Afternoon', 'Evening'];
-  const maxActivitiesPerSlot = 2; // Keep two activities per period to respect prompt pacing
+  const isRelaxedPace = days >= 3;
+  const maxActivitiesPerSlot = isRelaxedPace ? 1 : 2;
   const slotPriority: Record<'Morning' | 'Afternoon' | 'Evening', Array<'Morning' | 'Afternoon' | 'Evening' | 'Flexible'>> = {
     Morning: ['Morning', 'Flexible', 'Afternoon', 'Evening'],
     Afternoon: ['Afternoon', 'Flexible', 'Morning', 'Evening'],

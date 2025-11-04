@@ -14,6 +14,7 @@ import { handleItineraryProcessing } from "@/app/api/gemini/itinerary-generator/
 import { getPeakHoursContext } from "@/lib/traffic";
 import { GuaranteedJsonEngine } from '@/app/api/gemini/itinerary-generator/lib/guaranteedJsonEngine';
 import type { WeatherCondition } from "@/app/api/gemini/itinerary-generator/types/types";
+import crypto from "crypto";
 
 const PIPELINE_DEBUG = (() => {
   const envValue = process.env.OPTIMIZED_PIPELINE_DEBUG ?? process.env.NEXT_PUBLIC_OPTIMIZED_PIPELINE_DEBUG;
@@ -103,7 +104,10 @@ export class OptimizedPipeline {
     // Phase 2: Parallel Traffic Enhancement (300-800ms)
     const trafficStartTime = Date.now();
     const { enhancedActivities, metrics: trafficMetrics } = await parallelTrafficProcessor.processActivitiesUltraFast(activities);
-    const allowedActivitiesSnapshot = this.createAllowedActivitiesSnapshot(enhancedActivities);
+    const shuffleSeed = this.computeActivityShuffleSeed(request);
+    const shuffledActivities = this.shuffleActivities(enhancedActivities, shuffleSeed);
+    const activitiesForPrompt = this.limitActivitiesToCapacity(shuffledActivities, request.durationDays);
+    const allowedActivitiesSnapshot = this.createAllowedActivitiesSnapshot(activitiesForPrompt);
     const normalizeTitle = (title: string) =>
       title
         ?.toLowerCase()
@@ -122,7 +126,7 @@ export class OptimizedPipeline {
       tags: string[];
     }>();
 
-    enhancedActivities.forEach(activity => {
+    activitiesForPrompt.forEach(activity => {
       if (!activity?.title) {
         return;
       }
@@ -181,16 +185,17 @@ export class OptimizedPipeline {
     };
     const trafficTime = Date.now() - trafficStartTime;
 
-    debugLog(`🚦 TRAFFIC PHASE: Completed in ${trafficTime}ms with ${enhancedActivities.length} enhanced activities`);
+    debugLog(`🚦 TRAFFIC PHASE: Completed in ${trafficTime}ms with ${activitiesForPrompt.length} shuffled activities`);
 
     // Phase 3 & 4: Structured AI Generation & Processing (1000-2000ms)
     const aiStartTime = Date.now();
 
     // Build detailed prompt for structured generation
     const effectiveSampleItinerary = this.buildEffectiveSampleItinerary(
-      enhancedActivities,
+      activitiesForPrompt,
       request,
-      allowedActivitiesSnapshot
+      allowedActivitiesSnapshot,
+      shuffleSeed
     );
     const detailedPrompt = buildDetailedPrompt(
         request.prompt,
@@ -301,20 +306,31 @@ export class OptimizedPipeline {
         parallelizationGain: searchMetrics.parallelizationGain
       },
       performance: {
-        activitiesProcessed: enhancedActivities.length,
-        throughput: enhancedActivities.length / (totalTime / 1000),
-        efficiency: this.calculateEfficiencyScore(totalTime, enhancedActivities.length)
+        activitiesProcessed: activitiesForPrompt.length,
+        throughput: activitiesForPrompt.length / (totalTime / 1000),
+        efficiency: this.calculateEfficiencyScore(totalTime, activitiesForPrompt.length)
       }
     };
 
-    debugLog(`🎯 OPTIMIZED PIPELINE: Completed in ${totalTime}ms (${Math.round(enhancedActivities.length / (totalTime / 1000))} activities/sec)`);
-    debugLog(`📊 PERFORMANCE BREAKDOWN:`, {
-      search: `${searchTime}ms`,
-      traffic: `${trafficTime}ms`,
-      ai: `${aiTime}ms`,
-      processing: `${processingTime}ms`,
-      efficiency: `${metrics.performance.efficiency}%`
-    });
+    const throughput = activitiesForPrompt.length / (totalTime / 1000 || 1);
+    debugLog(`🎯 OPTIMIZED PIPELINE: Completed in ${totalTime}ms (${throughput.toFixed(2)} activities/sec)`);
+    debugLog(
+      `📊 PERFORMANCE BREAKDOWN:\n` +
+      `   • Search Phase....... ${searchTime}ms\n` +
+      `   • Traffic Phase...... ${trafficTime}ms\n` +
+      `   • AI Generation...... ${aiTime}ms\n` +
+      `   • Post-Processing.... ${processingTime}ms\n` +
+      `   • Total Time......... ${totalTime}ms\n` +
+      `   • Efficiency Score... ${metrics.performance.efficiency}%`
+    );
+    debugLog(
+      `🧠 OPTIMIZATION INSIGHTS:\n` +
+      `   • Activities Enhanced..... ${activitiesForPrompt.length}\n` +
+      `   • Throughput.............. ${throughput.toFixed(2)} activities/sec\n` +
+      `   • Cache Hit Rate.......... ${searchMetrics.cacheHitRate * 100}%\n` +
+      `   • API Calls Reduced....... ${trafficMetrics.apiCallsReduced}\n` +
+      `   • Parallelization Gain.... ${searchMetrics.parallelizationGain}`
+    );
 
     return { itinerary: finalItinerary, metrics };
   }
@@ -325,7 +341,8 @@ export class OptimizedPipeline {
   private buildEffectiveSampleItinerary(
     activities: any[],
     request: OptimizedGenerationRequest,
-    allowedActivities: any[]
+    allowedActivities: any[],
+    shuffleSeed?: number
   ): any {
     // Group activities by time period for better organization
     const morningActivities: any[] = [];
@@ -353,7 +370,7 @@ export class OptimizedPipeline {
     if (eveningActivities.length > 0) items.push({ period: "Evening", activities: eveningActivities });
     if (anytimeActivities.length > 0) items.push({ period: "Flexible Time", activities: anytimeActivities });
 
-    return {
+    const itinerary = {
       title: "Ultra-Fast Personalized Recommendations",
       subtitle: `Activities optimized using enterprise-grade algorithms with real-time traffic data`,
       items: items.length > 0 ? items : [{
@@ -365,9 +382,74 @@ export class OptimizedPipeline {
         totalResults: activities.length,
         processingTime: Date.now(),
         optimizations: ['parallel_processing', 'smart_caching', 'geographic_clustering'],
-        allowedActivities
+        allowedActivitiesCount: allowedActivities?.length ?? 0,
+        activityShuffleSeed: shuffleSeed ?? null,
+        activityOrder: activities.map((activity: any) => activity?.title).filter(Boolean),
       }
     };
+
+    return itinerary;
+  }
+
+  private computeActivityShuffleSeed(request: OptimizedGenerationRequest): number {
+    const hash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify({
+        prompt: request.prompt,
+        interests: request.interests,
+        duration: request.durationDays,
+        budget: request.budget,
+        pax: request.pax,
+        weather: request.weatherData?.weather?.[0]?.id ?? null,
+      }))
+      .digest('hex');
+
+    // Convert first 8 hex chars to an integer seed
+    return parseInt(hash.slice(0, 8), 16) || Date.now();
+  }
+
+  private shuffleActivities<T>(activities: T[], seed: number): T[] {
+    if (!activities?.length) {
+      return activities ?? [];
+    }
+
+    const result = [...activities];
+
+    const random = (() => {
+      // Mulberry32 PRNG for deterministic shuffling
+      let t = seed >>> 0;
+      return () => {
+        t += 0x6D2B79F5;
+        let v = t;
+        v = Math.imul(v ^ (v >>> 15), v | 1);
+        v ^= v + Math.imul(v ^ (v >>> 7), v | 61);
+        return ((v ^ (v >>> 14)) >>> 0) / 4294967296;
+      };
+    })();
+
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+
+    return result;
+  }
+
+  private limitActivitiesToCapacity<T>(activities: T[], durationDays: number | null): T[] {
+    if (!activities?.length) {
+      return activities ?? [];
+    }
+
+    const days = typeof durationDays === 'number' && durationDays > 0 ? durationDays : 1;
+    const perSlotCap = days >= 3 ? 1 : 2; // mirrors relaxed pacing logic
+    const slotsPerDay = 3; // Morning, Afternoon, Evening
+    const baseCapacity = slotsPerDay * perSlotCap * days;
+
+    // Allow a tiny buffer so Gemini can choose alternates if needed, but cap it to avoid prompt bloat.
+    const buffer = Math.min(2, Math.max(0, activities.length - baseCapacity));
+    const maxItems = Math.min(activities.length, baseCapacity + buffer);
+
+    return activities.slice(0, maxItems);
   }
 
   private createAllowedActivitiesSnapshot(activities: any[]): any[] {
