@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { sanitizeName, sanitizeText } from '@/lib/security/inputSanitizer';
 
 // GET - Fetch user profile
 export async function GET(req: NextRequest) {
@@ -64,29 +65,33 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { fullName, location, bio } = body;
 
+    const sanitizedFullName = sanitizeName(fullName ?? '');
+    const sanitizedLocation = location ? sanitizeText(location).slice(0, 200) : undefined;
+    const sanitizedBio = bio ? sanitizeText(bio).slice(0, 500) : undefined;
+
     // Validation
-    if (!fullName || fullName.trim().length === 0) {
+    if (!sanitizedFullName || sanitizedFullName.length === 0) {
       return NextResponse.json(
         { error: 'Full name is required' },
         { status: 400 }
       );
     }
 
-    if (fullName.length > 100) {
+    if (sanitizedFullName.length > 100) {
       return NextResponse.json(
         { error: 'Full name must be less than 100 characters' },
         { status: 400 }
       );
     }
 
-    if (location && location.length > 200) {
+    if (sanitizedLocation && sanitizedLocation.length > 200) {
       return NextResponse.json(
         { error: 'Location must be less than 200 characters' },
         { status: 400 }
       );
     }
 
-    if (bio && bio.length > 500) {
+    if (sanitizedBio && sanitizedBio.length > 500) {
       return NextResponse.json(
         { error: 'Bio must be less than 500 characters' },
         { status: 400 }
@@ -97,9 +102,9 @@ export async function PATCH(req: NextRequest) {
     const { data: updatedUser, error } = await supabaseAdmin
       .from('users')
       .update({
-        full_name: fullName.trim(),
-        location: location?.trim() || null,
-        bio: bio?.trim() || null,
+        full_name: sanitizedFullName,
+        location: sanitizedLocation ?? null,
+        bio: sanitizedBio ?? null,
         updated_at: new Date().toISOString(),
       })
       .eq('email', session.user.email.toLowerCase())
