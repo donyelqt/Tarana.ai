@@ -44,10 +44,11 @@ class TomTomTrafficService {
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
 
   constructor() {
+    const timeoutOverride = Number(process.env.TOMTOM_TIMEOUT_MS);
     this.config = {
       apiKey: process.env.TOMTOM_API_KEY || '',
       baseUrl: 'https://api.tomtom.com',
-      timeout: 10000
+      timeout: Number.isFinite(timeoutOverride) && timeoutOverride > 0 ? timeoutOverride : 20000
     };
 
     if (!this.config.apiKey) {

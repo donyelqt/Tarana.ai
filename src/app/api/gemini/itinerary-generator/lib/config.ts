@@ -57,21 +57,21 @@ export const WEATHER_CONTEXTS = {
 
 // Mapping of weather types to acceptable activity tags – used to pre-filter the sample DB sent to Gemini
 export const WEATHER_TAG_FILTERS = {
-  thunderstorm: ["Indoor-Friendly"],
-  rainy: ["Indoor-Friendly"],
-  snow: ["Indoor-Friendly"],
-  foggy: ["Indoor-Friendly", "Weather-Flexible"],
-  cloudy: ["Outdoor-Friendly", "Weather-Flexible"],
-  clear: ["Outdoor-Friendly"],
-  cold: ["Indoor-Friendly"],
+  thunderstorm: [],
+  rainy: [],
+  snow: [],
+  foggy: [],
+  cloudy: [],
+  clear: [],
+  cold: [],
   default: []
 } as const;
 
 // Interest mapping for faster lookup - updated to match activities in itineraryData.ts
 export const INTEREST_DETAILS = {
-  "Nature & Scenery": "- Nature & Scenery: Burnham Park, Mines View Park, Wright Park, Camp John Hay, Botanical Garden, Mirador Heritage and Eco Park, Valley of Colors, Mt. Kalugong, Great wall of Baguio, Camp John Hay Yellow Trail, Lions Head, Baguio Cathedral, The Mansion, Diplomat Hotel",
-  "Food & Culinary": "- Food & Culinary: Baguio Night Market, SM City Baguio, Baguio Public Market, Good Shepherd Convent",
-  "Culture & Arts": "- Culture & Arts: Bencab Museum, Tam-Awan Village, Ili-Likha Artists Village, Baguio Cathedral, The Mansion, Diplomat Hotel, Philippine Military Academy, Mirador Heritage and Eco Park, Valley of Colors, Easter Weaving Room",
-  "Shopping & Local Finds": "- Shopping & Local Finds: Baguio Night Market, Baguio Public Market, SM City Baguio, Good Shepherd Convent, Easter Weaving Room, Ili-Likha Artists Village",
-  "Adventure": "- Adventure: Burnham Park, Wright Park, Camp John Hay, Tam-Awan Village, Great wall of Baguio, Camp John Hay Yellow Trail, Mt. Kalugong"
+  "Nature & Scenery": "- Nature & Scenery: Burnham Park, Mines View Park, Botanical Garden, The Mansion, Wright Park, Camp John Hay, Bencab Museum, Baguio Cathedral, Mirador Heritage and Eco Park, Diplomat Hotel, Lions Head, Philippine Military Academy, Great wall of Baguio, Camp John Hay Yellow Trail, Valley of Colors, Mt. Kalugong, Tavern Cafe, Oh My Gulay, Hill Station",
+  "Food & Culinary": "- Food & Culinary: Baguio Night Market, SM City Baguio, Baguio Public Market, Good Shepherd Convent, Chimichanga by Jaimes Family Feast, Kapi Kullaaw, Itaewon Cafe, Agara Ramen, KoCo Cafe, Good Shepherd Cafe, Tavern Cafe, Oh My Gulay, Hill Station, Hiraya Cafe, Uji-Matcha Cafe, K-Flavors Buffet, Korean Palace Kung Jeon, Myeong Dong Jjigae Restaurant",
+  "Culture & Arts": "- Culture & Arts: Bencab Museum, Tam-Awan Village, Ili-Likha Artists Village, Baguio Cathedral, The Mansion, Diplomat Hotel, Philippine Military Academy, Mirador Heritage and Eco Park, Valley of Colors, Easter Weaving Room, Lions Head, Kapi Kullaaw",
+  "Shopping & Local Finds": "- Shopping & Local Finds: Baguio Night Market, Baguio Public Market, SM City Baguio, Good Shepherd Convent, Easter Weaving Room, Ili-Likha Artists Village, Chimichanga by Jaimes Family Feast, Itaewon Cafe, Agara Ramen, KoCo Cafe, Good Shepherd Cafe, Hiraya Cafe, Uji-Matcha Cafe, K-Flavors Buffet, Korean Palace Kung Jeon, Myeong Dong Jjigae Restaurant",
+  "Adventure": "- Adventure: Burnham Park, Wright Park, Camp John Hay, Tam-Awan Village, Great wall of Baguio, Camp John Hay Yellow Trail, Mt. Kalugong, Mines View Park"
 };

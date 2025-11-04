@@ -30,6 +30,131 @@ function cloneAllowedActivity(activity: any) {
   return cloned;
 }
 
+const normalizeText = (value: unknown) =>
+  typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().toLowerCase() : '';
+
+const humanizeTrafficLevel = (level: string | undefined) => {
+  if (!level) return '';
+  return level.toLowerCase().replace(/_/g, ' ');
+};
+
+const formatRecommendation = (recommendation: string | undefined) => {
+  if (!recommendation) return '';
+  const lower = recommendation.toLowerCase().replace(/_/g, ' ');
+  return lower.startsWith('visit') ? lower : `plan to ${lower}`;
+};
+
+const formatTimeSlot = (time: string | undefined) => {
+  if (!time || typeof time !== 'string') return '';
+  const trimmed = time.trim();
+  if (!trimmed) return '';
+  const separatorMatch = trimmed.match(/[–-]/);
+  if (separatorMatch) {
+    return `during ${trimmed}`;
+  }
+  return `at ${trimmed}`;
+};
+
+const extractHighlight = (canonicalDesc: string | undefined) => {
+  if (!canonicalDesc || typeof canonicalDesc !== 'string') {
+    return '';
+  }
+  const trimmed = canonicalDesc.trim();
+  if (!trimmed) return '';
+  const [firstSentence] = trimmed.split(/(?<=\.)\s+/);
+  return firstSentence || trimmed;
+};
+
+const buildTrafficAwareDescription = (activity: any, canonical: any) => {
+  const highlight = extractHighlight(canonical?.desc) || `Enjoy ${activity.title}.`;
+  const timeSlot = formatTimeSlot(activity?.time || canonical?.time);
+  const trafficLevel = humanizeTrafficLevel(
+    activity?.trafficAnalysis?.realTimeTraffic?.trafficLevel ||
+    canonical?.trafficAnalysis?.realTimeTraffic?.trafficLevel
+  );
+  const recommendation = formatRecommendation(activity?.trafficRecommendation || canonical?.trafficRecommendation);
+  const peakWindow = activity?.peakHours || canonical?.peakHours;
+
+  const sentences: string[] = [];
+  sentences.push(highlight.endsWith('.') ? highlight : `${highlight}.`);
+
+  if (timeSlot) {
+    sentences.push(`Plan this stop ${timeSlot} to keep your day relaxed and on schedule.`);
+  }
+
+  if (trafficLevel) {
+    sentences.push(`Live traffic is ${trafficLevel}, so expect a comfortable arrival and minimal delays.`);
+  }
+
+  if (recommendation) {
+    sentences.push(`Tarana recommends you ${recommendation}.`);
+  }
+
+  if (peakWindow) {
+    sentences.push(`This timing avoids the usual peak hours (${peakWindow}).`);
+  }
+
+  if (sentences.length === 0) {
+    return `Enjoy ${activity.title} while conditions stay favorable.`;
+  }
+
+  return sentences.join(' ');
+};
+
+function enrichActivityDescriptions(itinerary: any) {
+  if (!itinerary || !Array.isArray(itinerary?.items)) {
+    return itinerary;
+  }
+
+  const allowList = Array.isArray(itinerary?.searchMetadata?.allowedActivities)
+    ? itinerary.searchMetadata.allowedActivities
+    : [];
+
+  if (!allowList.length) {
+    return itinerary;
+  }
+
+  const allowedByTitle = new Map<string, any>();
+  allowList.forEach((allowed: any) => {
+    const key = normalizeText(allowed?.title);
+    if (key) {
+      allowedByTitle.set(key, allowed);
+    }
+  });
+
+  itinerary.items.forEach((period: any) => {
+    if (!Array.isArray(period?.activities)) {
+      return;
+    }
+
+    period.activities = period.activities.map((activity: any) => {
+      const key = normalizeText(activity?.title);
+      if (!key || !allowedByTitle.has(key)) {
+        return activity;
+      }
+
+      const canonical = allowedByTitle.get(key);
+      const currentDesc = typeof activity?.desc === 'string' ? activity.desc.trim() : '';
+      const canonicalDesc = typeof canonical?.desc === 'string' ? canonical.desc.trim() : '';
+
+      const isSameDesc = currentDesc && canonicalDesc
+        ? normalizeText(currentDesc) === normalizeText(canonicalDesc)
+        : !currentDesc;
+
+      if (!isSameDesc) {
+        return activity;
+      }
+
+      return {
+        ...activity,
+        desc: buildTrafficAwareDescription(activity, canonical)
+      };
+    });
+  });
+
+  return itinerary;
+}
+
 function distributeRemainingAllowedActivities(itinerary: any, durationDays: number | null) {
   if (!itinerary || !Array.isArray(itinerary.items)) return itinerary;
 
@@ -62,7 +187,8 @@ function distributeRemainingAllowedActivities(itinerary: any, durationDays: numb
     return itinerary;
   }
 
-  const periodsInOrder = itinerary.items.filter((item: any) => Array.isArray(item.activities));
+  const periodsInOrder: any[] = itinerary.items.filter((item: any) => Array.isArray(item.activities));
+  const maxPerSlot = 2; // Align with prompt: at most two activities per period for short itineraries
 
   // Fill empty periods first using remaining activities
   let cursor = 0;
@@ -78,8 +204,8 @@ function distributeRemainingAllowedActivities(itinerary: any, durationDays: numb
   }
 
   // Balance across periods, aiming for at least two activities per slot before adding extras
-  const targetPerSlot = durationDays && durationDays <= 2 ? 2 : 2;
-  const sortedByLoad = [...periodsInOrder].sort((a, b) => a.activities.length - b.activities.length);
+  const targetPerSlot = Math.min(maxPerSlot, durationDays && durationDays > 0 ? maxPerSlot : maxPerSlot);
+  const sortedByLoad: any[] = [...periodsInOrder].sort((a, b) => a.activities.length - b.activities.length);
 
   let safety = 0;
   while (cursor < remaining.length && safety < remaining.length * 2) {
@@ -95,11 +221,19 @@ function distributeRemainingAllowedActivities(itinerary: any, durationDays: numb
     }
   }
 
-  // If activities remain, append them round-robin to preserve all allowed entries
+  // If activities remain, append them round-robin without exceeding per-slot cap
   while (cursor < remaining.length) {
     for (const period of periodsInOrder) {
       if (cursor >= remaining.length) break;
+      if (period.activities.length >= maxPerSlot) {
+        continue;
+      }
       period.activities.push(cloneAllowedActivity(remaining[cursor++]));
+    }
+
+    // Stop when every slot hit the cap
+    if (periodsInOrder.every(period => period.activities.length >= maxPerSlot)) {
+      break;
     }
   }
 
@@ -163,6 +297,7 @@ export function organizeItineraryByDays(it: any, days: number | null) {
     }
   }
   const slotOrder: Array<'Morning' | 'Afternoon' | 'Evening'> = ['Morning', 'Afternoon', 'Evening'];
+  const maxActivitiesPerSlot = 2; // Keep two activities per period to respect prompt pacing
   const slotPriority: Record<'Morning' | 'Afternoon' | 'Evening', Array<'Morning' | 'Afternoon' | 'Evening' | 'Flexible'>> = {
     Morning: ['Morning', 'Flexible', 'Afternoon', 'Evening'],
     Afternoon: ['Afternoon', 'Flexible', 'Morning', 'Evening'],
@@ -206,7 +341,7 @@ export function organizeItineraryByDays(it: any, days: number | null) {
     const bucket = daysBuckets[dayIndex];
     slotOrder.forEach(slot => {
       const activity = takeFromQueues(slot, true);
-      if (activity) {
+      if (activity && bucket[slot].length < maxActivitiesPerSlot) {
         bucket[slot].push(activity);
       }
     });
@@ -219,7 +354,7 @@ export function organizeItineraryByDays(it: any, days: number | null) {
       const bucket = daysBuckets[dayIndex];
       for (const slot of slotOrder) {
         const activity = takeFromQueues(slot, false);
-        if (activity) {
+        if (activity && bucket[slot].length < maxActivitiesPerSlot) {
           bucket[slot].push(activity);
           assignedThisRound = true;
         }
@@ -536,12 +671,9 @@ export async function ensureFullItinerary(
 export async function processItinerary(parsed: any, prompt: string, durationDays: number | null, model: any, peakHoursContext: string) {
   let processed = removeDuplicateActivities(parsed);
   processed = organizeItineraryByDays(processed, durationDays);
-  if (durationDays && model && hasMissingPeriods(processed, durationDays)) {
-    processed = await ensureFullItinerary(processed, prompt, durationDays, model, peakHoursContext);
-    processed = removeDuplicateActivities(processed);
-  }
 
   processed = distributeRemainingAllowedActivities(processed, durationDays);
+  processed = enrichActivityDescriptions(processed);
 
   // Log peak hours filtering for debugging (kept concise)
   let totalActivities = 0;

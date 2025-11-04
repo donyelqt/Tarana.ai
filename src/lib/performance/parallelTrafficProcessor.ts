@@ -37,7 +37,7 @@ export class ParallelTrafficProcessor {
   private static instance: ParallelTrafficProcessor;
   
   private readonly defaultOptions: TrafficProcessingOptions = {
-    maxConcurrency: 8,
+    maxConcurrency: 16,
     batchSize: 10,
     proximityThreshold: 0.5, // 500 meters
     enableLocationClustering: true,
@@ -212,29 +212,22 @@ export class ParallelTrafficProcessor {
       return [];
     }
 
-    const agentBatchSize = 4;
     const results: Activity[][] = new Array(clusters.length);
 
-    for (let i = 0; i < clusters.length; i += agentBatchSize) {
-      const batch = clusters.slice(i, i + agentBatchSize);
-      const batchResults = await Promise.allSettled(
-        batch.map((cluster, offset) =>
-          this.activeSemaphore.acquire(async () =>
-            this.processClusterWithTimeout(cluster, i + offset)
-          )
-        )
-      );
+    const settledResults = await Promise.allSettled(
+      clusters.map((cluster, index) =>
+        this.activeSemaphore.acquire(() => this.processClusterWithTimeout(cluster, index))
+      )
+    );
 
-      batchResults.forEach((result, offset) => {
-        const clusterIndex = i + offset;
-        if (result.status === 'fulfilled') {
-          results[clusterIndex] = result.value;
-        } else {
-          console.warn(`⚠️ Cluster ${clusterIndex} processing failed:`, result.reason);
-          results[clusterIndex] = this.createFallbackCluster(clusters[clusterIndex]);
-        }
-      });
-    }
+    settledResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        results[index] = result.value;
+      } else {
+        console.warn(`⚠️ Cluster ${index} processing failed:`, result.reason);
+        results[index] = this.createFallbackCluster(clusters[index]);
+      }
+    });
 
     return results;
   }
@@ -360,8 +353,8 @@ export class ParallelTrafficProcessor {
    * Wait for traffic data completion with timeout
    */
   private async waitForTrafficDataCompletion(): Promise<void> {
-    // Small delay to ensure all async traffic analysis completes
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // All cluster processing promises are awaited upstream; no additional delay required.
+    return;
   }
 
   /**

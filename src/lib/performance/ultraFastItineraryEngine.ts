@@ -180,33 +180,48 @@ export class UltraFastItineraryEngine {
    */
   private applyUltraFastFiltering(activities: Activity[], interests: string[], weatherType: string): Activity[] {
     const startTime = Date.now();
-    
-    const filtered = activities.filter(activity => {
-      // Ultra-fast peak hours check
-      if (activity.peakHours && isCurrentlyPeakHours(activity.peakHours)) {
-        return false;
+    const isRandomInterest = interests.length === 0 || interests.includes("Random");
+
+    const mergedByTitle = new Map<string, Activity>();
+
+    const upsertActivity = (activity: Activity) => {
+      if (!activity?.title) {
+        return;
       }
 
-      // Ultra-fast traffic level check - allow VERY_LOW, LOW and MODERATE
-      if ((activity as any).trafficAnalysis?.realTimeTraffic?.trafficLevel) {
-        const trafficLevel = (activity as any).trafficAnalysis.realTimeTraffic.trafficLevel;
-        if (!['VERY_LOW', 'LOW', 'MODERATE'].includes(trafficLevel)) {
-          return false;
-        }
+      const key = activity.title.trim().toLowerCase();
+      if (!key) {
+        return;
       }
 
-      // Ultra-fast interest matching
-      if (interests.length > 0 && !interests.includes("Random")) {
+      if (!mergedByTitle.has(key)) {
+        mergedByTitle.set(key, activity);
+        return;
+      }
+
+      const existing = mergedByTitle.get(key) as any;
+      const incomingScore = (activity as any).combinedTrafficScore || (activity as any).relevanceScore || 0;
+      const existingScore = (existing?.combinedTrafficScore ?? existing?.relevanceScore) || 0;
+      if (incomingScore > existingScore) {
+        mergedByTitle.set(key, activity);
+      }
+    };
+
+    activities.forEach(upsertActivity);
+
+    if (isRandomInterest) {
+      sampleItineraryCombined.items[0].activities.forEach(upsertActivity);
+    }
+
+    let filtered = Array.from(mergedByTitle.values());
+
+    if (!isRandomInterest) {
+      filtered = filtered.filter(activity => {
         const tags = activity.tags || [];
-        if (!tags.some(tag => interests.includes(tag))) {
-          return false;
-        }
-      }
+        return tags.some(tag => interests.includes(tag));
+      });
+    }
 
-      return true;
-    });
-
-    // Ultra-fast sorting by combined score
     filtered.sort((a, b) => {
       const scoreA = (a as any).combinedTrafficScore || (a as any).relevanceScore || 0;
       const scoreB = (b as any).combinedTrafficScore || (b as any).relevanceScore || 0;
@@ -216,7 +231,7 @@ export class UltraFastItineraryEngine {
     const filterTime = Date.now() - startTime;
     console.log(`⚡ ULTRA-FAST FILTERING: Processed ${activities.length} → ${filtered.length} activities in ${filterTime}ms`);
 
-    return filtered.slice(0, 40); // Increased from 12 to 15 for better coverage
+    return isRandomInterest ? filtered : filtered.slice(0, 40);
   }
 
   /**

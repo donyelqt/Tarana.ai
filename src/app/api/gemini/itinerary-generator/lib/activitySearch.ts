@@ -1,6 +1,7 @@
 // Removed legacy vector search import - now using unified intelligent search
 import { proposeSubqueries } from "../agent/agent";
-import { isCurrentlyPeakHours, getManilaTime } from "@/lib/traffic";
+import { getManilaTime } from "@/lib/traffic";
+
 import { WEATHER_TAG_FILTERS } from "./config";
 import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/traffic";
 import { IntelligentSearchEngine } from "@/lib/search";
@@ -105,21 +106,56 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                 }
             }));
         
-        const similar = processedResults;
-
-        // Apply unified intelligent filtering and optimization
-        const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
         const interestSet = new Set(
             interests && Array.isArray(interests) && !interests.includes("Random") ? interests : []
         );
 
+        let similar = processedResults;
+
+        if (interestSet.size === 0) {
+            const mergedByTitle = new Map<string, any>();
+            similar.forEach(item => mergedByTitle.set(item.activity_id.toLowerCase(), item));
+
+            databaseActivities.forEach((activity: Activity) => {
+                const key = activity.title.toLowerCase();
+                if (!mergedByTitle.has(key)) {
+                    mergedByTitle.set(key, {
+                        activity_id: activity.title,
+                        similarity: 0.25,
+                        metadata: {
+                            title: activity.title,
+                            desc: activity.desc,
+                            tags: activity.tags,
+                            time: activity.time,
+                            image: activity.image,
+                            peakHours: activity.peakHours
+                        },
+                        relevanceScore: 0.25,
+                        reasoning: ['Random interest baseline inclusion'],
+                        confidence: 0.5,
+                        searchScores: {
+                            vector: 0,
+                            semantic: 0,
+                            fuzzy: 0,
+                            contextual: 0,
+                            temporal: 0,
+                            diversity: 0
+                        }
+                    });
+                }
+            });
+
+            similar = Array.from(mergedByTitle.values());
+            console.log(`🎛️ RANDOM INTEREST MODE: Using full catalog with ${similar.length} activities for traffic analysis.`);
+        }
+
+        // Apply unified intelligent filtering and optimization
+        const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
+
         const scoredSimilar = similar.map((s: any) => {
             const tags = Array.isArray(s.metadata?.tags) ? s.metadata.tags : [];
-            const peakHours = s.metadata?.peakHours || "";
             const interestMatch = interestSet.size === 0 || tags.some((t: string) => interestSet.has(t));
             const weatherMatch = allowedWeatherTags.length === 0 || tags.some((t: string) => allowedWeatherTags.includes(t));
-            const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
-            
             let relevanceScore = s.similarity;
             
             if (interestMatch && interestSet.size > 0) {
@@ -131,20 +167,11 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                 const matchCount = tags.filter((t: string) => allowedWeatherTags.includes(t)).length;
                 relevanceScore += (matchCount / allowedWeatherTags.length) * 0.2;
             }
-            
-            if (!isCurrentlyPeak) {
-                relevanceScore += 0.25;
-            } else {
-                relevanceScore -= 0.5;
-            }
-            
             return {
                 ...s,
                 relevanceScore,
                 interestMatch,
                 weatherMatch,
-                isCurrentlyPeak,
-                peakHours,
                 searchMethod: 'unified_intelligent_search',
                 vectorScore: s.searchScores?.vector || 0,
                 semanticScore: s.searchScores?.semantic || 0,
@@ -152,62 +179,12 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             };
         });
 
-        // STRICT peak hours filtering - absolutely no peak hour activities allowed
         const filteredSimilar = scoredSimilar
-            .filter(s => {
-                // Must match interests and weather
-                if (!s.interestMatch || !s.weatherMatch) return false;
-                
-                // CRITICAL: Double-check peak hours status
-                const peakHours = s.metadata?.peakHours || s.peakHours || "";
-                const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
-                
-                if (isCurrentlyPeak) {
-                    console.log(`FILTERING OUT: ${s.metadata?.title || s.activity_id} - Currently in peak hours: ${peakHours}`);
-                    return false;
-                }
-                
-                return true;
-            })
+            .filter(s => s.interestMatch && s.weatherMatch)
             .sort((a, b) => b.relevanceScore - a.relevanceScore)
             .slice(0, 40);
 
         if (filteredSimilar.length > 0) {
-            const morningActivities: any[] = [];
-            const afternoonActivities: any[] = [];
-            const eveningActivities: any[] = [];
-            const anytimeActivities: any[] = [];
-            
-            filteredSimilar.forEach((s: any) => {
-                const timeStr = s.metadata?.time?.toLowerCase() || "";
-                
-                const rawActivity = {
-                    image: s.metadata?.image || "",
-                    title: s.metadata?.title || s.activity_id,
-                    time: s.metadata?.time || "",
-                    desc: s.metadata?.desc || "",
-                    tags: s.metadata?.tags || [],
-                    peakHours: s.metadata?.peakHours || "",
-                    relevanceScore: s.relevanceScore,
-                    isCurrentlyPeak: s.isCurrentlyPeak
-                };
-                
-                const activity = rawActivity;
-                if (!activity) return;
-                
-                if (timeStr.includes("am") || timeStr.includes("morning")) {
-                    morningActivities.push(activity);
-                } else if (timeStr.includes("pm") || timeStr.includes("afternoon")) {
-                    afternoonActivities.push(activity);
-                } else if (timeStr.includes("evening") || timeStr.includes("night")) {
-                    eveningActivities.push(activity);
-                } else {
-                    anytimeActivities.push(activity);
-                }
-            });
-            
-            const items = [];
-            
             // Apply traffic-aware activity search with detailed logging
             console.log(`\n🚦 TRAFFIC-AWARE SEARCH: Processing ${filteredSimilar.length} activities`);
             const trafficOptions = createDefaultTrafficOptions();
@@ -235,9 +212,81 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             console.log(`📊 DETAILED TRAFFIC DATA:`, trafficSummary);
             console.log(`=======================================\n`);
 
+            const allowedTrafficLevels = new Set(['VERY_LOW', 'LOW', 'MODERATE']);
+            const trafficFilteredActivities = trafficEnhancedActivities.filter(activity => {
+              const level = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
+              if (!level) {
+                return true;
+              }
+              const isAllowed = allowedTrafficLevels.has(level);
+              if (!isAllowed) {
+                console.log(`🚫 TRAFFIC FILTER: Removing ${activity.title} - level ${level}`);
+              }
+              return isAllowed;
+            });
+
+            if (trafficFilteredActivities.length === 0) {
+              console.warn('⚠️ TRAFFIC FILTER: No activities passed traffic-level constraints; itinerary may contain empty slots.');
+            }
+
             // Final activity selection and validation
-            const finalActivities = trafficEnhancedActivities.slice(0, Math.min(20, trafficEnhancedActivities.length));
+            const finalActivities = trafficFilteredActivities.slice(0, Math.min(20, trafficFilteredActivities.length));
             console.log(` FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`);
+
+            const groupByPeriod = () => ({
+              Morning: [] as any[],
+              Afternoon: [] as any[],
+              Evening: [] as any[],
+              Flexible: [] as any[]
+            });
+
+            const buckets = groupByPeriod();
+
+            const normalizeActivity = (activity: any) => ({
+              image: activity.image || '',
+              title: activity.title,
+              time: activity.time || '',
+              desc: activity.desc || '',
+              tags: Array.isArray(activity.tags) ? [...activity.tags] : [],
+              peakHours: activity.peakHours,
+              trafficAnalysis: activity.trafficAnalysis,
+              trafficRecommendation: activity.trafficRecommendation,
+              combinedTrafficScore: activity.combinedTrafficScore,
+              relevanceScore: activity.relevanceScore,
+              isCurrentlyPeak: activity.isCurrentlyPeak
+            });
+
+            const inferPeriod = (timeStr: string) => {
+              const lower = timeStr.toLowerCase();
+              if (lower.includes('morning') || (lower.includes('am') && !lower.includes('pm'))) {
+                return 'Morning';
+              }
+              if (lower.includes('afternoon')) {
+                return 'Afternoon';
+              }
+              if (lower.includes('evening') || lower.includes('night') || lower.includes('pm')) {
+                return 'Evening';
+              }
+              return 'Flexible';
+            };
+
+            finalActivities.forEach(activity => {
+              const normalized = normalizeActivity(activity);
+              const periodKey = inferPeriod(activity.time || '');
+              buckets[periodKey].push(normalized);
+            });
+
+            const items: Array<{ period: string; activities: any[] }> = [];
+
+            (['Morning', 'Afternoon', 'Evening'] as const).forEach(period => {
+              if (buckets[period].length > 0) {
+                items.push({ period, activities: buckets[period] });
+              }
+            });
+
+            if (buckets.Flexible.length > 0) {
+              items.push({ period: 'Flexible Time', activities: buckets.Flexible });
+            }
 
             // Log real-time traffic integration success for final activities
             console.log(`
@@ -287,22 +336,6 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
               } : undefined
             }));
 
-            if (morningActivities.length > 0) {
-                items.push({ period: "Morning", activities: morningActivities });
-            }
-            
-            if (afternoonActivities.length > 0) {
-                items.push({ period: "Afternoon", activities: afternoonActivities });
-            }
-            
-            if (eveningActivities.length > 0) {
-                items.push({ period: "Evening", activities: eveningActivities });
-            }
-            
-            if (anytimeActivities.length > 0) {
-                items.push({ period: "Flexible Time", activities: anytimeActivities });
-            }
-            
             const subtitleText = intelligentResults.length >= 10 
                 ? "Activities matched using intelligent search with advanced AI algorithms"
                 : "Activities matched to your preferences using semantic search";
