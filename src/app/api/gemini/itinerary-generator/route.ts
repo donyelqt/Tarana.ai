@@ -12,6 +12,32 @@ import { generateItinerary, handleItineraryProcessing, parseAndCleanJson } from 
 import { ErrorHandler, ErrorType, ItineraryError } from "./lib/errorHandler";
 import { GuaranteedJsonEngine } from "./lib/guaranteedJsonEngine";
 import type { WeatherCondition } from "./types/types";
+import { z } from "zod";
+
+const itineraryRequestSchema = z.object({
+    prompt: z.string().min(1).max(5000),
+    weatherData: z.object({
+        weather: z.array(z.object({
+            id: z.number().int().optional(),
+            main: z.string().max(100).optional(),
+            description: z.string().max(300).optional(),
+            icon: z.string().max(50).optional(),
+        })).max(10).optional(),
+        main: z.object({
+            temp: z.number().min(-150).max(150).optional(),
+            feels_like: z.number().optional(),
+            temp_min: z.number().optional(),
+            temp_max: z.number().optional(),
+            humidity: z.number().optional(),
+        }).partial().optional(),
+    }).passthrough().optional(),
+    interests: z.array(z.string().min(1).max(100)).max(25).optional(),
+    duration: z.union([z.string().max(100), z.number().int().positive()]).optional(),
+    budget: z.string().max(100).optional(),
+    pax: z.union([z.string().max(50), z.number().int().positive()]).optional(),
+}).passthrough();
+
+type ItineraryRequest = z.infer<typeof itineraryRequestSchema>;
 
 // Main logic for generating an itinerary, wrapped for caching
 const getCachedItinerary = unstable_cache(
@@ -20,6 +46,9 @@ const getCachedItinerary = unstable_cache(
         
         return await ErrorHandler.withRetry(async () => {
             const { prompt, weatherData, interests, duration, budget, pax } = requestBody;
+            const safeInterests = interests ?? [];
+            const safeBudget = budget === undefined || budget === null ? undefined : String(budget);
+            const safePax = pax === undefined || pax === null ? undefined : String(pax);
 
             if (!geminiModel) {
                 throw new ItineraryError(ErrorType.GENERATION, "Gemini model not available", false, requestId);
@@ -45,8 +74,8 @@ const getCachedItinerary = unstable_cache(
         };
         const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
 
-            const effectiveSampleItinerary = await findAndScoreActivities(prompt, interests, weatherType, durationDays, geminiModel);
-            const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, interests, durationDays, budget, pax);
+            const effectiveSampleItinerary = await findAndScoreActivities(prompt, safeInterests, weatherType, durationDays, geminiModel);
+            const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, safeInterests, durationDays, safeBudget, safePax);
             
             // Use Guaranteed JSON Engine for 100% reliable output
             const peakHoursContext = getPeakHoursContext();
@@ -105,7 +134,18 @@ export async function POST(req: NextRequest) {
             // Continue without credit check if service is unavailable
         }
 
-        const requestBody = await req.json();
+        const rawRequestBody = await req.json();
+        const parsedRequestBody = itineraryRequestSchema.safeParse(rawRequestBody);
+
+        if (!parsedRequestBody.success) {
+            const formattedErrors = parsedRequestBody.error.flatten();
+            return NextResponse.json({
+                error: "Invalid request payload",
+                details: formattedErrors.fieldErrors,
+            }, { status: 400 });
+        }
+
+        const requestBody: ItineraryRequest = parsedRequestBody.data;
         const { prompt } = requestBody;
 
         if (!API_KEY) {
@@ -151,6 +191,9 @@ export async function POST(req: NextRequest) {
             // Generate fresh itinerary without cache
             responseData = await ErrorHandler.withRetry(async () => {
                 const { prompt, weatherData, interests, duration, budget, pax } = requestBody;
+                const safeInterests = interests ?? [];
+                const safeBudget = budget === undefined || budget === null ? undefined : String(budget);
+                const safePax = pax === undefined || pax === null ? undefined : String(pax);
 
                 if (!geminiModel) {
                     throw new ItineraryError(ErrorType.GENERATION, "Gemini model not available", false, requestId);
@@ -176,8 +219,8 @@ export async function POST(req: NextRequest) {
                 };
                 const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
 
-                const effectiveSampleItinerary = await findAndScoreActivities(prompt, interests, weatherType, durationDays, geminiModel);
-                const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, interests, durationDays, budget, pax);
+                const effectiveSampleItinerary = await findAndScoreActivities(prompt, safeInterests, weatherType, durationDays, geminiModel);
+                const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, safeInterests, durationDays, safeBudget, safePax);
                 
                 const peakHoursContext = getPeakHoursContext();
                 const weatherContext = `Weather: ${weatherData?.weather?.[0]?.description || 'clear'}, ${weatherData?.main?.temp || 20}°C`;
