@@ -16,14 +16,32 @@ create table if not exists public.saved_meals (
 -- Enable Row Level Security
 alter table public.saved_meals enable row level security;
 
+-- Drop existing policies if they exist
+drop policy if exists "Users can view their own saved meals" on public.saved_meals;
+drop policy if exists "Users can create their own saved meals" on public.saved_meals;
+drop policy if exists "Users can update their own saved meals" on public.saved_meals;
+drop policy if exists "Users can delete their own saved meals" on public.saved_meals;
+
 -- Policy: Users can view their own saved meals
-create policy "Users can view their own saved meals" on saved_meals for select using (auth.uid() = user_id);
+create policy "Users can view their own saved meals" 
+on public.saved_meals 
+for select 
+using (auth.uid() = user_id);
 
 -- Policy: Users can insert their own saved meals
-create policy "Users can create their own saved meals" on saved_meals for insert with check (auth.uid() = user_id);
+create policy "Users can create their own saved meals" 
+on public.saved_meals 
+for insert 
+with check (auth.uid() = user_id);
 
 -- Policy: Users can update their own saved meals
-create policy "Users can update their own saved meals" on saved_meals for update using (auth.uid() = user_id);
+create policy "Users can update their own saved meals" 
+on public.saved_meals 
+for update 
+using (auth.uid() = user_id);
 
 -- Policy: Users can delete their own saved meals
-create policy "Users can delete their own saved meals" on saved_meals for delete using (auth.uid() = user_id);
+create policy "Users can delete their own saved meals" 
+on public.saved_meals 
+for delete 
+using (auth.uid() = user_id);

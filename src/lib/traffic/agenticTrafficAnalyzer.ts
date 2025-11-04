@@ -184,7 +184,7 @@ class AgenticTrafficAnalyzer {
         recommendation: agenticResult.recommendation,
         crowdLevel: agenticResult.crowdLevel,
         realTimeTrafficIntegrated: !!agenticResult.realTimeTraffic,
-        peakHoursConsidered: true
+        peakHoursConsidered: false
       });
       console.log(`=== AGENTIC AI TRAFFIC ANALYZER END ===\n`);
       return agenticResult;

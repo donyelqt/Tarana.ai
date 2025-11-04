@@ -62,7 +62,19 @@ export interface SavedItinerary {
   activityCoordinates?: Array<{ lat: number; lon: number; name: string }>;
 }
 
-import { supabase } from "./supabaseClient"; // Import Supabase client
+import { supabase } from "./supabaseClient"; // Import regular Supabase client
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// Helper to get the appropriate Supabase client
+async function getSupabaseClient(): Promise<SupabaseClient> {
+  // On server-side, use admin client
+  if (typeof window === 'undefined') {
+    const { supabaseAdmin } = await import('./supabaseAdmin');
+    return supabaseAdmin;
+  }
+  // On client-side, use regular client (RLS must be disabled or policies must allow access)
+  return supabase;
+}
 async function getCurrentUserId(): Promise<string | null> {
   try {
     if (typeof window === 'undefined') {
@@ -92,7 +104,8 @@ export const getSavedItineraries = async (): Promise<SavedItinerary[]> => {
   }
 
   try {
-    const { data, error } = await supabase
+    const client = await getSupabaseClient();
+    const { data, error } = await client
       .from('itineraries')
       .select('*')
       .eq('user_id', userId)
@@ -137,7 +150,8 @@ export const saveItinerary = async (itinerary: Omit<SavedItinerary, 'id' | 'crea
   try {
     console.log('Attempting to save itinerary with data:', JSON.stringify(newItineraryData, null, 2)); // Log data being sent
 
-    const { data, error } = await supabase
+    const client = await getSupabaseClient();
+    const { data, error } = await client
       .from('itineraries')
       .insert(newItineraryData)
       .select()
@@ -170,7 +184,8 @@ export const deleteItinerary = async (id: string): Promise<void> => {
   }
 
   try {
-    const { error } = await supabase
+    const client = await getSupabaseClient();
+    const { error } = await client
       .from('itineraries')
       .delete()
       .eq('id', id)
@@ -235,10 +250,12 @@ export const updateItinerary = async (id: string, updatedData: Partial<Omit<Save
   console.log('   traffic_snapshot:', updatePayload.traffic_snapshot ? 'SET' : 'NOT SET');
   console.log('   activity_coordinates:', updatePayload.activity_coordinates ? 'SET' : 'NOT SET');
 
+  const client = await getSupabaseClient();
+  
   if (Object.keys(updatePayload).length === 0) {
     console.log("No data provided for update.");
     // Optionally, fetch and return the existing itinerary
-    const { data: currentItinerary, error: fetchError } = await supabase
+    const { data: currentItinerary, error: fetchError } = await client
       .from('itineraries')
       .select('*')
       .eq('id', id)
@@ -249,7 +266,7 @@ export const updateItinerary = async (id: string, updatedData: Partial<Omit<Save
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('itineraries')
       .update(updatePayload)
       .eq('id', id)

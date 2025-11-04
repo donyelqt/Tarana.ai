@@ -71,7 +71,7 @@ function compactSampleItinerary(sample: any) {
  */
 export class GuaranteedJsonEngine {
   private static readonly MAX_ATTEMPTS = 3;
-  private static readonly TIMEOUT_MS = 20000;
+  private static readonly TIMEOUT_MS = 30000;
   
   private static metrics = {
     totalRequests: 0,

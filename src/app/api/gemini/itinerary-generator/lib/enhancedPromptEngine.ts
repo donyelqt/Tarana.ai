@@ -27,14 +27,38 @@ export class EnhancedPromptEngine {
     const fewShotExamples = this.getFewShotExamples();
     const chainOfThoughtInstructions = this.getChainOfThoughtInstructions();
     const strictFormatEnforcement = this.getStrictFormatEnforcement();
-    
+    const allowedActivityTitles = sampleItinerary
+      ? Array.from(
+          new Set(
+            (Array.isArray(sampleItinerary.items) ? sampleItinerary.items : []).
+              flatMap((item: any) =>
+                Array.isArray(item?.activities)
+                  ? item.activities
+                      .map((activity: any) =>
+                        typeof activity?.title === 'string' && activity.title.trim().length > 0
+                          ? activity.title.trim()
+                          : null
+                      )
+                      .filter((title: string | null): title is string => Boolean(title))
+                  : []
+              )
+          )
+        )
+      : [];
+
+    const allowedActivityGuidance = allowedActivityTitles.length
+      ? `ALLOWED ACTIVITY TITLES (USE EXACTLY AS WRITTEN):\n${allowedActivityTitles
+          .map((title) => `- ${title}`)
+          .join('\n')}\n\nRULES:\n- You MUST select activities only from the titles above.\n- NEVER invent new establishments, activities, or locations.\n- If no suitable activity exists for a period, return an empty "activities" array for that period.\n\n`
+      : '';
+
     return `${this.getSystemPrompt()}
 
 ${originalPrompt}
 
 ${sampleItinerary ? `EXCLUSIVE DATABASE: ${JSON.stringify(sampleItinerary)}` : ''}
 
-${weatherContext}
+${allowedActivityGuidance}${weatherContext}
 ${trafficContext}
 ${additionalContext}
 

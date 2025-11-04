@@ -75,9 +75,15 @@ export function buildDetailedPrompt(
     const peakHoursContext = getPeakHoursContext();
     const trafficContext = buildTrafficAwareContext(sampleItinerary?.items?.flatMap((item: any) => item.activities || []), restrictToSampleActivities);
     
+    const allowedActivitiesFromSearch = Array.isArray(sampleItinerary?.searchMetadata?.allowedActivities)
+      ? sampleItinerary.searchMetadata.allowedActivities
+      : null;
+
     // Provide a curated list of activities with essential details to prevent hallucination.
-    const curatedActivities = sampleItinerary?.items
-      ?.flatMap((item: any) => item.activities || [])
+    const curatedActivities = (allowedActivitiesFromSearch && allowedActivitiesFromSearch.length > 0
+        ? allowedActivitiesFromSearch
+        : sampleItinerary?.items?.flatMap((item: any) => item.activities || []) || []
+      )
       .slice(0, 18)
       .map((activity: any) => ({
         title: activity.title,

@@ -244,6 +244,11 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
+      // Generate a simple token identifier (not a real Supabase JWT, just for tracking)
+      if (!token.accessToken && token.id) {
+        token.accessToken = `custom_${token.id}_${Date.now()}`;
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -253,6 +258,8 @@ export const authOptions: NextAuthOptions = {
         if (token.name) {
           session.user.name = token.name as string;
         }
+        // Add a mock access token (since we're using admin client, this is just for display)
+        session.accessToken = token.accessToken as string;
       }
       return session;
     },

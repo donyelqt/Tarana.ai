@@ -12,6 +12,106 @@ export function removeDuplicateActivities(parsedItinerary: any) {
     return parsedItinerary;
   }
 
+function cloneAllowedActivity(activity: any) {
+  const cloned: any = {
+    image: activity.image,
+    title: activity.title,
+    time: activity.time,
+    desc: activity.desc,
+    tags: Array.isArray(activity.tags) ? [...activity.tags] : [],
+    peakHours: activity.peakHours,
+    trafficRecommendation: activity.trafficRecommendation,
+    combinedTrafficScore: activity.combinedTrafficScore
+  };
+
+  if (activity.trafficAnalysis) {
+    cloned.trafficAnalysis = {
+      recommendation: activity.trafficAnalysis.recommendation,
+      realTimeTraffic: activity.trafficAnalysis.realTimeTraffic
+        ? { ...activity.trafficAnalysis.realTimeTraffic }
+        : undefined
+    };
+  }
+
+  return cloned;
+}
+
+function distributeRemainingAllowedActivities(itinerary: any, durationDays: number | null) {
+  if (!itinerary || !Array.isArray(itinerary.items)) return itinerary;
+
+  const allowList = Array.isArray(itinerary?.searchMetadata?.allowedActivities)
+    ? itinerary.searchMetadata.allowedActivities
+    : [];
+
+  if (!allowList.length) return itinerary;
+
+  const usedTitles = new Set<string>();
+  itinerary.items.forEach((period: any) => {
+    if (!Array.isArray(period.activities)) {
+      period.activities = [];
+      return;
+    }
+    period.activities.forEach((activity: any) => {
+      const title = typeof activity?.title === 'string' ? activity.title.trim().toLowerCase() : '';
+      if (title) {
+        usedTitles.add(title);
+      }
+    });
+  });
+
+  const remaining = allowList.filter((activity: any) => {
+    const title = typeof activity?.title === 'string' ? activity.title.trim().toLowerCase() : '';
+    return title && !usedTitles.has(title);
+  });
+
+  if (!remaining.length) {
+    return itinerary;
+  }
+
+  const periodsInOrder = itinerary.items.filter((item: any) => Array.isArray(item.activities));
+
+  // Fill empty periods first using remaining activities
+  let cursor = 0;
+  for (const period of periodsInOrder) {
+    if (cursor >= remaining.length) break;
+    if (period.activities.length === 0) {
+      period.activities.push(cloneAllowedActivity(remaining[cursor++]));
+    }
+  }
+
+  if (cursor >= remaining.length) {
+    return itinerary;
+  }
+
+  // Balance across periods, aiming for at least two activities per slot before adding extras
+  const targetPerSlot = durationDays && durationDays <= 2 ? 2 : 2;
+  const sortedByLoad = [...periodsInOrder].sort((a, b) => a.activities.length - b.activities.length);
+
+  let safety = 0;
+  while (cursor < remaining.length && safety < remaining.length * 2) {
+    for (const period of sortedByLoad) {
+      if (cursor >= remaining.length) break;
+      if (period.activities.length < targetPerSlot) {
+        period.activities.push(cloneAllowedActivity(remaining[cursor++]));
+      }
+    }
+    safety++;
+    if (sortedByLoad.every(period => period.activities.length >= targetPerSlot)) {
+      break;
+    }
+  }
+
+  // If activities remain, append them round-robin to preserve all allowed entries
+  while (cursor < remaining.length) {
+    for (const period of periodsInOrder) {
+      if (cursor >= remaining.length) break;
+      period.activities.push(cloneAllowedActivity(remaining[cursor++]));
+    }
+  }
+
+  return itinerary;
+}
+
   const seenActivities = new Set<string>();
 
   const result = {
@@ -50,12 +150,16 @@ export function organizeItineraryByDays(it: any, days: number | null) {
   if (!days || !it || !Array.isArray(it.items) || days <= 0) return it;
   // Collect all activities by inferred slot
   const pool: Record<string, any[]> = { Morning: [], Afternoon: [], Evening: [], Flexible: [] };
+  const activityIndex = new Map<string, any>();
   for (const period of it.items) {
     const slot = inferSlot(period?.period || '');
     const acts = Array.isArray(period?.activities) ? period.activities : [];
     for (const a of acts) {
       if (!a?.title || a.title.toLowerCase() === 'no available activity') continue;
       pool[slot].push(a);
+      if (typeof a.title === 'string') {
+        activityIndex.set(a.title.toLowerCase(), a);
+      }
     }
   }
   const slotOrder: Array<'Morning' | 'Afternoon' | 'Evening'> = ['Morning', 'Afternoon', 'Evening'];
@@ -141,8 +245,116 @@ export function organizeItineraryByDays(it: any, days: number | null) {
       newItems.push({ period: `Day ${dayNum} - ${s}`, activities: daysBuckets[i][s] });
     }
   }
-  
-  return { ...it, items: newItems };
+
+  const normalizeAllowedActivity = (activity: any) => {
+    if (!activity || typeof activity?.title !== 'string') return null;
+    const normalized: Record<string, any> = {
+      title: activity.title,
+      desc: activity.desc,
+      tags: Array.isArray(activity.tags) ? activity.tags : [],
+      time: activity.time,
+      image: activity.image,
+      peakHours: activity.peakHours
+    };
+
+    if (activity.trafficAnalysis) {
+      normalized.trafficAnalysis = activity.trafficAnalysis;
+    }
+    if (activity.trafficRecommendation) {
+      normalized.trafficRecommendation = activity.trafficRecommendation;
+    }
+    if (typeof activity.combinedTrafficScore !== 'undefined') {
+      normalized.combinedTrafficScore = activity.combinedTrafficScore;
+    }
+    if (typeof activity.relevanceScore !== 'undefined') {
+      normalized.relevanceScore = activity.relevanceScore;
+    }
+    if (typeof activity.isCurrentlyPeak !== 'undefined') {
+      normalized.isCurrentlyPeak = activity.isCurrentlyPeak;
+    }
+
+    return normalized;
+  };
+
+  const mergeAllowedActivity = (existing: any | undefined, incoming: any | null) => {
+    if (!existing && !incoming) return null;
+    const merged: Record<string, any> = {
+      ...(incoming || {}),
+      ...(existing || {})
+    };
+
+    if ((!merged.tags || merged.tags.length === 0) && incoming?.tags?.length) {
+      merged.tags = incoming.tags;
+    }
+
+    if (!merged.image && incoming?.image) {
+      merged.image = incoming.image;
+    }
+
+    if (!merged.time && incoming?.time) {
+      merged.time = incoming.time;
+    }
+
+    if (!merged.peakHours && incoming?.peakHours) {
+      merged.peakHours = incoming.peakHours;
+    }
+
+    return merged;
+  };
+
+  const existingAllowedActivities = Array.isArray(it?.searchMetadata?.allowedActivities)
+    ? it.searchMetadata.allowedActivities
+    : [];
+
+  const allowedMap = new Map<string, any>();
+  const orderedKeys: string[] = [];
+  const registerAllowed = (key: string, value: any) => {
+    allowedMap.set(key, value);
+    if (!orderedKeys.includes(key)) {
+      orderedKeys.push(key);
+    }
+  };
+
+  existingAllowedActivities.forEach((activity: any) => {
+    const key = typeof activity?.title === 'string' ? activity.title.trim().toLowerCase() : '';
+    const normalized = normalizeAllowedActivity(activity);
+    if (!key || !normalized) return;
+    registerAllowed(key, normalized);
+  });
+
+  const observedTitleKeys = new Set(
+    newItems.flatMap((item: any) =>
+      Array.isArray(item.activities)
+        ? item.activities
+            .map((activity: any) =>
+              typeof activity?.title === 'string' ? activity.title.trim().toLowerCase() : null
+            )
+            .filter(Boolean)
+        : []
+    )
+  );
+
+  observedTitleKeys.forEach(titleKey => {
+    const activity = activityIndex.get(titleKey);
+    const normalized = normalizeAllowedActivity(activity);
+    const merged = mergeAllowedActivity(allowedMap.get(titleKey), normalized);
+    if (merged) {
+      registerAllowed(titleKey, merged);
+    }
+  });
+
+  const allowedActivities = orderedKeys
+    .map(key => allowedMap.get(key))
+    .filter(Boolean);
+
+  return {
+    ...it,
+    items: newItems,
+    searchMetadata: {
+      ...(it.searchMetadata || {}),
+      allowedActivities
+    }
+  };
 }
 
 /**
@@ -263,6 +475,23 @@ export async function ensureFullItinerary(
           for (const newItem of generatedItinerary.items) {
             // Filter out any peak hour activities that might have been generated
             const filteredActivities = (newItem.activities || []).filter((activity: any) => {
+              const title = typeof activity?.title === 'string' ? activity.title.trim() : '';
+              if (!title) return false;
+
+              const allowList = Array.isArray(itinerary?.searchMetadata?.allowedActivities)
+                ? itinerary.searchMetadata.allowedActivities
+                : [];
+              const allowedTitleSet = new Set(
+                allowList.map((allowed: any) =>
+                  typeof allowed?.title === 'string' ? allowed.title.trim().toLowerCase() : null
+                ).filter(Boolean)
+              );
+
+              if (!allowedTitleSet.has(title.toLowerCase())) {
+                console.log(`Filtering out ${title} - not present in allowedActivities allowlist`);
+                return false;
+              }
+
               if (!activity.peakHours) return true; // No peak hours data, assume it's fine
               const isPeakNow = isCurrentlyPeakHours(activity.peakHours);
               if (isPeakNow) {
@@ -311,6 +540,8 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
     processed = await ensureFullItinerary(processed, prompt, durationDays, model, peakHoursContext);
     processed = removeDuplicateActivities(processed);
   }
+
+  processed = distributeRemainingAllowedActivities(processed, durationDays);
 
   // Log peak hours filtering for debugging (kept concise)
   let totalActivities = 0;

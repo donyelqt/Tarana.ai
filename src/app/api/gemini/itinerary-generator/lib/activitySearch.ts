@@ -237,10 +237,11 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
 
             // Final activity selection and validation
             const finalActivities = trafficEnhancedActivities.slice(0, Math.min(20, trafficEnhancedActivities.length));
-            console.log(`🎯 FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`);
-            
+            console.log(` FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`);
+
             // Log real-time traffic integration success for final activities
-            console.log(`\n=== FINAL ITINERARY TRAFFIC INTEGRATION ===`);
+            console.log(`
+=== FINAL ITINERARY TRAFFIC INTEGRATION ===`);
             const finalTrafficStats = finalActivities.map(activity => ({
                 activity: activity.title,
                 realTimeTraffic: activity.trafficAnalysis?.realTimeTraffic ? 'INTEGRATED' : 'FALLBACK',
@@ -272,6 +273,19 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                 tags
               };
             });
+
+            const sanitisedAllowedActivities = finalActivities.map(activity => ({
+              image: activity.image,
+              title: activity.title,
+              time: activity.time,
+              desc: activity.desc,
+              tags: Array.isArray(activity.tags) ? activity.tags : [],
+              peakHours: activity.peakHours,
+              trafficAnalysis: activity.trafficAnalysis ? {
+                realTimeTraffic: activity.trafficAnalysis.realTimeTraffic,
+                recommendation: activity.trafficRecommendation,
+              } : undefined
+            }));
 
             if (morningActivities.length > 0) {
                 items.push({ period: "Morning", activities: morningActivities });
@@ -319,7 +333,8 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                 searchMetadata: {
                     searchMethod: finalResults.length >= 10 ? 'intelligent' : 'semantic',
                     totalResults: filteredSimilar.length,
-                    processingTime: Date.now()
+                    processingTime: Date.now(),
+                    allowedActivities: sanitisedAllowedActivities
                 }
             } as any;
         }
