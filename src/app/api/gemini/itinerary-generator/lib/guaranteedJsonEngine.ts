@@ -14,6 +14,24 @@ import { EnhancedPromptEngine, JsonSyntaxValidator } from './enhancedPromptEngin
 import { intelligentCacheManager } from '@/lib/ai';
 
 function extractResponseText(result: any): string | null {
+  const normalisePayload = (payload: unknown): string | null => {
+    if (typeof payload === 'string') {
+      const trimmed = payload.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+
+    if (payload && typeof payload === 'object') {
+      try {
+        const serialized = JSON.stringify(payload);
+        return serialized === '{}' ? null : serialized;
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  };
+
   const candidates = result?.response?.candidates ?? [];
 
   for (const candidate of candidates) {
@@ -22,6 +40,23 @@ function extractResponseText(result: any): string | null {
       if (typeof part?.text === 'string' && part.text.trim()) {
         return part.text;
       }
+
+      const functionCall = (part as any)?.functionCall;
+      if (functionCall?.args !== undefined) {
+        const extracted = normalisePayload(functionCall.args);
+        if (extracted) {
+          return extracted;
+        }
+      }
+
+      const functionResponse = (part as any)?.functionResponse?.response;
+      if (functionResponse?.output !== undefined) {
+        const extracted = normalisePayload(functionResponse.output);
+        if (extracted) {
+          return extracted;
+        }
+      }
+
       const inline = (part as any)?.inlineData?.data;
       if (inline) {
         try {
@@ -37,9 +72,10 @@ function extractResponseText(result: any): string | null {
   }
 
   try {
-    const fallback = result?.response?.text?.();
-    if (typeof fallback === 'string' && fallback.trim()) {
-      return fallback;
+    const fallback = result?.response?.functionCall?.args ?? result?.response?.text?.();
+    const extracted = normalisePayload(fallback);
+    if (extracted) {
+      return extracted;
     }
   } catch {
     // ignore
@@ -70,7 +106,8 @@ function compactSampleItinerary(sample: any) {
  * Multi-layer JSON generation with guaranteed success
  */
 export class GuaranteedJsonEngine {
-  private static readonly MAX_ATTEMPTS = 3;
+  private static readonly MAX_ATTEMPTS = 1;
+  
   private static readonly TIMEOUT_MS = 30000;
   
   private static metrics = {
@@ -243,6 +280,9 @@ export class GuaranteedJsonEngine {
       }
       
     } catch (error: any) {
+      if (shouldAbort?.()) {
+        return null;
+      }
       console.warn(`⚠️ GUARANTEED ENGINE: Structured output failed:`, error.message);
       return null;
     }
@@ -265,6 +305,10 @@ export class GuaranteedJsonEngine {
     }
 
     for (let attempt = 1; attempt <= this.MAX_ATTEMPTS; attempt++) {
+      if (shouldAbort?.()) {
+        return null;
+      }
+
       try {
         if (shouldAbort?.()) {
           return null;
@@ -290,26 +334,25 @@ export class GuaranteedJsonEngine {
 
         if (result) {
           console.log(`✅ GUARANTEED ENGINE: Prompt engineering succeeded on attempt ${attempt}`);
-          this.updateAverageAttempts(attempt);
           return result;
         }
-        
+
       } catch (error: any) {
+        if (shouldAbort?.()) {
+          return null;
+        }
         console.warn(`⚠️ GUARANTEED ENGINE: Prompt engineering attempt ${attempt} failed:`, error.message);
-        
+
         if (attempt < this.MAX_ATTEMPTS && !shouldAbort?.()) {
           const delay = Math.min(1000 * attempt, 3000);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
     }
-    
+
     return null;
   }
 
-  /**
-   * Generate with strict JSON validation
-   */
   private static readonly itineraryResponseSchema: Schema = {
     type: SchemaType.OBJECT,
     properties: {
@@ -364,7 +407,7 @@ export class GuaranteedJsonEngine {
       temperature: Math.max(0.1, 0.25 - attempt * 0.05),
       topK: 1,
       topP: 0.7,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 4096,
       candidateCount: 1,
       responseSchema: this.itineraryResponseSchema
     };
@@ -386,12 +429,19 @@ export class GuaranteedJsonEngine {
 
       const text = extractResponseText(result);
       if (!text) {
-        throw new Error('Empty response from Gemini');
+        console.warn(`⚠️ GUARANTEED ENGINE: Empty response payload on attempt ${attempt}`,
+          typeof result?.response !== 'undefined'
+            ? JSON.stringify(result.response).slice(0, 400)
+            : 'no response payload');
+        return null;
       }
 
       return this.parseAndValidateJson(text, attempt);
       
     } catch (error: any) {
+      if (shouldAbort?.()) {
+        return null;
+      }
       console.warn(`⚠️ GUARANTEED ENGINE: Generation failed on attempt ${attempt}:`, error.message);
       return null;
     }

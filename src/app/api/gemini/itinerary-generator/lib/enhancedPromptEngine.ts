@@ -271,34 +271,28 @@ Return ONLY "VALID" if correct, or the specific error if invalid.`;
    * Generate prompt with progressive difficulty reduction
    */
   static buildProgressivePrompt(
-    originalPrompt: string,
+    basePrompt: string,
     attempt: number,
     maxAttempts: number
   ): string {
-    const basePrompt = this.buildBulletproofPrompt(originalPrompt, null, '', '');
-    
-    if (attempt === 1) {
+    if (attempt <= 1) {
       return basePrompt;
     }
-    
+
     // Simplify prompt for retries
     const simplificationLevel = Math.min(attempt - 1, 3);
-    
+
     const simplifications = [
       '', // No simplification
       '\nSIMPLIFIED MODE: Focus on basic structure with minimal activities.',
       '\nMINIMAL MODE: Return simple itinerary with 1-2 activities maximum.',
       '\nFALLBACK MODE: Return basic structure even if activities are generic.'
     ];
-    
-    return basePrompt + simplifications[simplificationLevel];
+
+    return `${basePrompt}${simplifications[simplificationLevel]}`;
   }
 }
 
-/**
- * JSON Syntax Validator
- * Validates JSON syntax before sending to parser
- */
 export class JsonSyntaxValidator {
   
   /**

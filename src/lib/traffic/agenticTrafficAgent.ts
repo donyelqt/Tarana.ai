@@ -22,7 +22,7 @@ function getTrafficModel() {
         temperature: 0.15,
         topP: 0.7,
         topK: 32,
-        maxOutputTokens: 768,
+        maxOutputTokens: 1024,
       },
     });
   }
@@ -59,6 +59,24 @@ function decodeInlineData(data: string | undefined): string | null {
 function extractResponsePayload(
   result: Awaited<ReturnType<ReturnType<typeof getTrafficModel>["generateContent"]>>
 ): string | null {
+  const normalisePayload = (payload: unknown): string | null => {
+    if (typeof payload === "string") {
+      const trimmed = payload.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+
+    if (payload && typeof payload === "object") {
+      try {
+        const serialized = JSON.stringify(payload);
+        return serialized === "{}" ? null : serialized;
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  };
+
   const candidates = result.response?.candidates ?? [];
 
   for (const candidate of candidates) {
@@ -66,6 +84,22 @@ function extractResponsePayload(
     for (const part of parts) {
       if (typeof part?.text === "string" && part.text.trim()) {
         return part.text;
+      }
+
+      const functionCall = (part as any)?.functionCall;
+      if (functionCall?.args !== undefined) {
+        const extracted = normalisePayload(functionCall.args);
+        if (extracted) {
+          return extracted;
+        }
+      }
+
+      const functionResponse = (part as any)?.functionResponse?.response;
+      if (functionResponse?.output !== undefined) {
+        const extracted = normalisePayload(functionResponse.output);
+        if (extracted) {
+          return extracted;
+        }
       }
 
       const inlineText = decodeInlineData((part as any)?.inlineData?.data);
@@ -76,9 +110,20 @@ function extractResponsePayload(
   }
 
   try {
-    const fallback = result.response?.text?.();
-    if (typeof fallback === "string" && fallback.trim()) {
-      return fallback;
+    const responseAny = (result as any)?.response;
+    let fallback: unknown = undefined;
+
+    if (responseAny?.functionCall && typeof responseAny.functionCall === "object") {
+      fallback = responseAny.functionCall.args;
+    }
+
+    if (fallback == null && typeof responseAny?.text === "function") {
+      fallback = responseAny.text();
+    }
+
+    const extracted = normalisePayload(fallback);
+    if (extracted) {
+      return extracted;
     }
   } catch (error) {
     console.warn("⚠️ Agentic AI: Error reading fallback text from model response", error);
@@ -182,7 +227,7 @@ Guidelines:
       temperature: 0.1,
       topP: 0.8,
       topK: 32,
-      maxOutputTokens: 256,
+      maxOutputTokens: 512,
       responseMimeType: "application/json",
     },
   });

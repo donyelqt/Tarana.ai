@@ -399,6 +399,24 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
 }
 
 function extractResponseText(result: any): string | null {
+  const normalisePayload = (payload: unknown): string | null => {
+    if (typeof payload === 'string') {
+      const trimmed = payload.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+
+    if (payload && typeof payload === 'object') {
+      try {
+        const serialized = JSON.stringify(payload);
+        return serialized === '{}' ? null : serialized;
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  };
+
   const candidates = result?.response?.candidates ?? [];
 
   for (const candidate of candidates) {
@@ -407,6 +425,23 @@ function extractResponseText(result: any): string | null {
       if (typeof part?.text === 'string' && part.text.trim()) {
         return part.text;
       }
+
+      const functionCall = (part as any)?.functionCall;
+      if (functionCall?.args !== undefined) {
+        const extracted = normalisePayload(functionCall.args);
+        if (extracted) {
+          return extracted;
+        }
+      }
+
+      const functionResponse = (part as any)?.functionResponse?.response;
+      if (functionResponse?.output !== undefined) {
+        const extracted = normalisePayload(functionResponse.output);
+        if (extracted) {
+          return extracted;
+        }
+      }
+
       const inline = (part as any)?.inlineData?.data;
       if (inline) {
         try {
@@ -422,9 +457,10 @@ function extractResponseText(result: any): string | null {
   }
 
   try {
-    const fallback = result?.response?.text?.();
-    if (typeof fallback === 'string' && fallback.trim()) {
-      return fallback;
+    const fallback = result?.response?.functionCall?.args ?? result?.response?.text?.();
+    const extracted = normalisePayload(fallback);
+    if (extracted) {
+      return extracted;
     }
   } catch {
     // ignore
