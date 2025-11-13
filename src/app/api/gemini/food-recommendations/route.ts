@@ -29,7 +29,7 @@ const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 // Use environment variable or fall back to valid Gemini model
-const DEFAULT_MODEL_ID = "gemini-1.5-flash"; // Valid Gemini model
+const DEFAULT_MODEL_ID = "gemini-2.5-flash"; // Valid Gemini model
 const configuredModelId = process.env.GOOGLE_GEMINI_MODEL?.trim();
 const MODEL_ID = configuredModelId && configuredModelId.length > 0 ? configuredModelId : DEFAULT_MODEL_ID;
 

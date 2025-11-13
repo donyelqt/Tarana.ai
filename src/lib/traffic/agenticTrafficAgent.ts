@@ -4,7 +4,7 @@ import { tomtomTrafficService, getTrafficSummary, getTrafficTimeRecommendation, 
 import { isCurrentlyPeakHours, getManilaTime } from "./peakHours";
 import type { AgenticTrafficContext, TrafficAnalysisResult } from "./agenticTrafficAnalyzer";
 
-const TRAFFIC_AGENT_MODEL_ID = process.env.GOOGLE_GEMINI_MODEL?.trim() || "gemini-1.5-flash";
+const TRAFFIC_AGENT_MODEL_ID = process.env.GOOGLE_GEMINI_MODEL?.trim() || "gemini-2.5-flash";
 const GOOGLE_GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 
 let cachedTrafficModel: ReturnType<GoogleGenerativeAI["getGenerativeModel"]> | null = null;
