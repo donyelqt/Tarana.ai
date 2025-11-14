@@ -60,7 +60,7 @@ export default function InteractiveRouteMap({
     try {
 
       // Get API key from environment or fallback
-      const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY || '6Acdv8xeMK2MXLSy3tFQ1qk9s8ovwabD';
+      const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY;
       
       if (!apiKey) {
         throw new Error('TomTom API key is required');
