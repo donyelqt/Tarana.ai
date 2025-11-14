@@ -45,14 +45,20 @@ class TomTomTrafficService {
 
   constructor() {
     const timeoutOverride = Number(process.env.TOMTOM_TIMEOUT_MS);
+    const primaryApiKey = process.env.TOMTOM_API_KEY;
+    const fallbackPublicApiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY;
+    const resolvedApiKey = primaryApiKey || fallbackPublicApiKey || '';
+
     this.config = {
-      apiKey: process.env.TOMTOM_API_KEY || '',
+      apiKey: resolvedApiKey,
       baseUrl: 'https://api.tomtom.com',
       timeout: Number.isFinite(timeoutOverride) && timeoutOverride > 0 ? timeoutOverride : 8000
     };
 
     if (!this.config.apiKey) {
-      console.warn('⚠️ TomTom API key not found. Traffic features will use fallback data.');
+      console.warn(' TomTom API key not found. Traffic features will use fallback data.');
+    } else if (!primaryApiKey && fallbackPublicApiKey) {
+      console.warn(' TomTom API key missing but NEXT_PUBLIC_TOMTOM_API_KEY is set. Using public key for traffic requests.');
     }
   }
 
