@@ -50,6 +50,42 @@ export default function InteractiveRouteMap({
   const [retryCount, setRetryCount] = useState(0);
   const [currentMapStyle, setCurrentMapStyle] = useState<MapStyle>('main');
   const [isChangingStyle, setIsChangingStyle] = useState(false);
+  const [tomtomKey, setTomtomKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchKey = async () => {
+      try {
+        const response = await fetch('/api/config/tomtom-key', {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || 'Unable to retrieve TomTom API key');
+        }
+
+        const data = await response.json();
+        if (mounted) {
+          setTomtomKey(typeof data.key === 'string' ? data.key : null);
+          setMapError(null);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'TomTom API key unavailable';
+        if (mounted) {
+          setTomtomKey(null);
+          setMapError(message);
+        }
+      }
+    };
+
+    fetchKey();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Initialize map using the TomTom utility service
   const initializeMap = useCallback(async () => {
@@ -57,14 +93,14 @@ export default function InteractiveRouteMap({
       return;
     }
 
+    if (!tomtomKey) {
+      return;
+    }
+
     try {
 
       // Get API key from environment or fallback
-      const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY || '6Acdv8xeMK2MXLSy3tFQ1qk9s8ovwabD';
-      
-      if (!apiKey) {
-        throw new Error('TomTom API key is required');
-      }
+      const apiKey = tomtomKey;
 
       // Create optimized world map configuration with Baguio City as default location
       const mapConfig: TomTomMapConfig = {
@@ -87,18 +123,16 @@ export default function InteractiveRouteMap({
       mapInstanceRef.current = map;
 
       // Set loaded state
-      
       setIsMapLoaded(true);
       setIsSdkLoaded(true);
       setMapError(null);
       setRetryCount(0);
-      
     } catch (error) {
       console.error('Map initialization error:', error);
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setMapError(`Failed to initialize map: ${errorMessage}`);
-      
+
       // Clean up failed map instance
       if (mapInstanceRef.current) {
         try {
@@ -109,35 +143,39 @@ export default function InteractiveRouteMap({
         mapInstanceRef.current = null;
       }
     }
-  }, []);
+  }, [currentMapStyle, tomtomKey]);
 
   // Load TomTom Maps with improved error handling
   useEffect(() => {
+    if (!tomtomKey) {
+      return;
+    }
+
     let isMounted = true;
-    
+
     const loadWithRetry = async (attempt: number = 1): Promise<void> => {
       if (!isMounted) return;
-      
+
       try {
         setMapError(null);
-        
+
         // Update SDK status
         const sdkStatus = getTomTomSDKStatus();
         setIsSdkLoaded(sdkStatus.isLoaded);
         setRetryCount(sdkStatus.retryCount);
-        
+
         if (sdkStatus.error) {
           throw new Error(sdkStatus.error);
         }
-        
+
         if (isMounted) {
           await initializeMap();
         }
       } catch (error) {
         console.error(`Map loading attempt ${attempt} failed:`, error);
-        
+
         if (!isMounted) return;
-        
+
         if (attempt < TOMTOM_CONFIG.RETRY_ATTEMPTS) {
           setRetryCount(attempt);
           setTimeout(() => {
@@ -153,11 +191,11 @@ export default function InteractiveRouteMap({
     };
 
     loadWithRetry();
-    
+
     return () => {
       isMounted = false;
     };
-  }, [initializeMap]);
+  }, [initializeMap, tomtomKey]);
 
   // Retry map initialization
   const retryMapInitialization = useCallback(() => {
@@ -165,7 +203,7 @@ export default function InteractiveRouteMap({
     setIsMapLoaded(false);
     setIsSdkLoaded(false);
     setRetryCount(0);
-    
+
     // Clean up existing map instance
     if (mapInstanceRef.current) {
       try {
@@ -175,10 +213,10 @@ export default function InteractiveRouteMap({
       }
       mapInstanceRef.current = null;
     }
-    
+
     // Reset the TomTom service
     resetTomTomService();
-    
+
     // Trigger re-initialization
     setTimeout(() => {
       initializeMap();
@@ -191,24 +229,27 @@ export default function InteractiveRouteMap({
       return;
     }
 
+    if (!tomtomKey) {
+      setMapError('TomTom API key is not available yet');
+      return;
+    }
+
     try {
       setIsChangingStyle(true);
-      const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY || '6Acdv8xeMK2MXLSy3tFQ1qk9s8ovwabD';
-      
       console.log(`🎨 Changing map style from ${currentMapStyle} to ${newStyle}`);
-      
+
       // Use the updated changeMapStyle function that recreates the map
       const newMapInstance = await changeMapStyle(
         mapInstanceRef.current, 
         newStyle, 
-        apiKey, 
+        tomtomKey, 
         mapRef.current
       );
-      
+
       // Update the map instance reference
       mapInstanceRef.current = newMapInstance;
       setCurrentMapStyle(newStyle);
-      
+
       console.log(`✅ Successfully changed map style to ${newStyle}`);
     } catch (error) {
       console.error('Failed to change map style:', error);
@@ -220,7 +261,7 @@ export default function InteractiveRouteMap({
     } finally {
       setIsChangingStyle(false);
     }
-  }, [currentMapStyle, isChangingStyle]);
+  }, [currentMapStyle, isChangingStyle, onRouteSelect, tomtomKey]);
 
   // Update map with route data
   useEffect(() => {

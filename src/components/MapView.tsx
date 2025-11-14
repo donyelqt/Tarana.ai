@@ -48,6 +48,42 @@ const MapView = ({
   const [isMobile, setIsMobile] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [mapHeight, setMapHeight] = useState(320)
+  const [apiKey, setApiKey] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const fetchApiKey = async () => {
+      try {
+        const response = await fetch("/api/config/tomtom-key", {
+          credentials: "include",
+        })
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}))
+          throw new Error(data.error || "Failed to load TomTom API key")
+        }
+
+        const data = await response.json()
+        if (isMounted) {
+          setApiKey(typeof data.key === "string" ? data.key : null)
+          setError(null)
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "TomTom API key unavailable"
+        if (isMounted) {
+          setApiKey(null)
+          setError(message)
+        }
+      }
+    }
+
+    fetchApiKey()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   // Mobile detection and responsive height calculation
   useEffect(() => {
@@ -123,16 +159,14 @@ const MapView = ({
       return
     }
 
+    if (!apiKey) {
+      return
+    }
+
     let isActive = true
-    const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY
 
     const initializeTomTomMap = async () => {
       if (!mapRef.current) {
-        return
-      }
-
-      if (!apiKey) {
-        setError("TomTom API key is not configured")
         return
       }
 
@@ -265,7 +299,7 @@ const MapView = ({
         windowResizeHandlerRef.current = null
       }
     }
-  }, [title, address, lat, lng])
+  }, [title, address, lat, lng, apiKey])
 
   const handleOpenInTomTom = useCallback(() => {
     const zoom = 16

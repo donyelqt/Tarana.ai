@@ -33,6 +33,7 @@ export const environmentConfigs = {
       'SMTP_USER',
       'SMTP_PASS',
       'SMTP_FROM_EMAIL',
+      'TOMTOM_API_KEY',
     ],
     optional: [
       'GOOGLE_CLIENT_ID',
