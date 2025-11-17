@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1300" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="background" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#eef2ff" />
+      <stop offset="100%" stop-color="#f8fafc" />
+    </linearGradient>
+    <filter id="laneShadow" x="-10%" y="-10%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#94a3b8" flood-opacity="0.25" />
+    </filter>
+    <filter id="cardShadow" x="-10%" y="-10%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#1e293b" flood-opacity="0.18" />
+    </filter>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#1f2937" />
+    </marker>
+    <style>
+      text { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; fill: #0f172a; }
+      .title { font-weight: 700; font-size: 38px; letter-spacing: 0.02em; }
+      .subtitle { font-weight: 500; font-size: 20px; fill: #475569; }
+      .lane-title { font-weight: 700; font-size: 22px; letter-spacing: 0.08em; text-transform: uppercase; fill: #1d4ed8; }
+      .lane-subtitle { font-weight: 400; font-size: 16px; fill: #475569; }
+      .lane { fill: #ffffff; stroke: #cbd5f5; stroke-width: 2px; rx: 30; ry: 30; filter: url(#laneShadow); }
+      .card { fill: #ffffff; stroke: rgba(37, 99, 235, 0.55); stroke-width: 2.3px; rx: 18; ry: 18; filter: url(#cardShadow); }
+      .card-alt { fill: #eef2ff; stroke: rgba(99, 102, 241, 0.6); stroke-width: 2.3px; rx: 18; ry: 18; filter: url(#cardShadow); }
+      .card-warm { fill: #fef9c3; stroke: #f59e0b; stroke-width: 2.3px; rx: 18; ry: 18; filter: url(#cardShadow); }
+      .step-title { font-weight: 700; font-size: 22px; }
+      .step-body { font-weight: 400; font-size: 17px; line-height: 1.55; fill: #1f2937; }
+      .connector { stroke: #0f172a; stroke-width: 3px; fill: none; marker-end: url(#arrowhead); }
+      .cross { stroke-dasharray: 14 12; opacity: 0.75; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1800" height="1300" fill="url(#background)" />
+  <text x="900" y="90" text-anchor="middle" class="title">Tarana.ai Multi-Agent Itinerary Flow</text>
+  <text x="900" y="130" text-anchor="middle" class="subtitle">Concierge orchestrates specialist agents via shared request session</text>
+
+  <!-- Lanes -->
+  <g>
+    <rect x="70" y="170" width="320" height="1060" class="lane" />
+    <text x="230" y="210" text-anchor="middle" class="lane-title">Concierge</text>
+    <text x="230" y="238" text-anchor="middle" class="lane-subtitle">User interface &amp; supervision</text>
+
+    <rect x="410" y="170" width="320" height="1060" class="lane" />
+    <text x="570" y="210" text-anchor="middle" class="lane-title">Context Scout</text>
+    <text x="570" y="238" text-anchor="middle" class="lane-subtitle">Live environment signals</text>
+
+    <rect x="750" y="170" width="320" height="1060" class="lane" />
+    <text x="910" y="210" text-anchor="middle" class="lane-title">Retrieval Strategist</text>
+    <text x="910" y="238" text-anchor="middle" class="lane-subtitle">Search &amp; coverage planning</text>
+
+    <rect x="1090" y="170" width="320" height="1060" class="lane" />
+    <text x="1250" y="210" text-anchor="middle" class="lane-title">Itinerary Composer</text>
+    <text x="1250" y="238" text-anchor="middle" class="lane-subtitle">Prompting &amp; generation</text>
+
+    <rect x="1430" y="170" width="320" height="1060" class="lane" />
+    <text x="1590" y="210" text-anchor="middle" class="lane-title">Supervisor</text>
+    <text x="1590" y="238" text-anchor="middle" class="lane-subtitle">Policy &amp; escalation</text>
+  </g>
+
+  <!-- Concierge cards -->
+  <g>
+    <rect x="110" y="270" width="240" height="140" class="card" />
+    <text x="130" y="310" class="step-title">User Intake</text>
+    <text x="130" y="340" class="step-body">
+      <tspan x="130" dy="0">• Capture prompt &amp; filters</tspan>
+      <tspan x="130" dy="24">• Create request session</tspan>
+    </text>
+
+    <rect x="110" y="450" width="240" height="170" class="card-alt" />
+    <text x="130" y="490" class="step-title">Guardrails</text>
+    <text x="130" y="520" class="step-body">
+      <tspan x="130" dy="0">• Auth, credits, schema</tspan>
+      <tspan x="130" dy="24">• Abort or continue</tspan>
+      <tspan x="130" dy="24">• Notify Supervisor on fail</tspan>
+    </text>
+
+    <rect x="110" y="910" width="240" height="170" class="card" />
+    <text x="130" y="950" class="step-title">Result Dispatch</text>
+    <text x="130" y="980" class="step-body">
+      <tspan x="130" dy="0">• Log metrics &amp; credits</tspan>
+      <tspan x="130" dy="24">• Stream itinerary to user</tspan>
+      <tspan x="130" dy="24">• Close request session</tspan>
+    </text>
+  </g>
+
+  <!-- Context Scout cards -->
+  <g>
+    <rect x="450" y="330" width="240" height="170" class="card-alt" />
+    <text x="470" y="370" class="step-title">Fetch Signals</text>
+    <text x="470" y="400" class="step-body">
+      <tspan x="470" dy="0">• Weather API</tspan>
+      <tspan x="470" dy="24">• Traffic (TomTom)</tspan>
+      <tspan x="470" dy="24">• Crowd / seasonal intel</tspan>
+    </text>
+
+    <rect x="450" y="540" width="240" height="170" class="card" />
+    <text x="470" y="580" class="step-title">Normalize Context</text>
+    <text x="470" y="610" class="step-body">
+      <tspan x="470" dy="0">• Standardize units</tspan>
+      <tspan x="470" dy="24">• Persist to session store</tspan>
+      <tspan x="470" dy="24">• Emit ready-event</tspan>
+    </text>
+  </g>
+
+  <!-- Retrieval Strategist cards -->
+  <g>
+    <rect x="790" y="430" width="240" height="190" class="card" />
+    <text x="810" y="470" class="step-title">Primary Search</text>
+    <text x="810" y="500" class="step-body">
+      <tspan x="810" dy="0">• Intelligent &amp; vector search</tspan>
+      <tspan x="810" dy="24">• Score by traffic + weather</tspan>
+      <tspan x="810" dy="24">• Publish candidate set</tspan>
+    </text>
+
+    <rect x="790" y="680" width="240" height="190" class="card-alt" />
+    <text x="810" y="720" class="step-title">Coverage Check</text>
+    <text x="810" y="750" class="step-body">
+      <tspan x="810" dy="0">• If recall low, request</tspan>
+      <tspan x="810" dy="24">  subqueries via Gemini</tspan>
+      <tspan x="810" dy="24">• Merge &amp; dedupe results</tspan>
+    </text>
+  </g>
+
+  <!-- Itinerary Composer cards -->
+  <g>
+    <rect x="1130" y="520" width="240" height="200" class="card" />
+    <text x="1150" y="560" class="step-title">Prompt Builder</text>
+    <text x="1150" y="590" class="step-body">
+      <tspan x="1150" dy="0">• Fuse exclusive activities</tspan>
+      <tspan x="1150" dy="24">• Inject weather/traffic rules</tspan>
+      <tspan x="1150" dy="24">• Enforce budget &amp; pax tags</tspan>
+    </text>
+
+    <rect x="1130" y="780" width="240" height="200" class="card-alt" />
+    <text x="1150" y="820" class="step-title">Guaranteed JSON</text>
+    <text x="1150" y="850" class="step-body">
+      <tspan x="1150" dy="0">• Run Gemini + retry policy</tspan>
+      <tspan x="1150" dy="24">• Validate schema &amp; tags</tspan>
+      <tspan x="1150" dy="24">• Persist final itinerary</tspan>
+    </text>
+  </g>
+
+  <!-- Supervisor cards -->
+  <g>
+    <rect x="1470" y="350" width="260" height="200" class="card-warm" />
+    <text x="1490" y="390" class="step-title">Policy Watcher</text>
+    <text x="1490" y="420" class="step-body">
+      <tspan x="1490" dy="0">• Monitor lane outputs &amp; SLAs</tspan>
+      <tspan x="1490" dy="24">• Trigger retries or fallbacks</tspan>
+      <tspan x="1490" dy="24">• Escalate on rule violations</tspan>
+    </text>
+
+    <rect x="1470" y="640" width="260" height="200" class="card" />
+    <text x="1490" y="680" class="step-title">Decision Hooks</text>
+    <text x="1490" y="710" class="step-body">
+      <tspan x="1490" dy="0">• Request extra signals</tspan>
+      <tspan x="1490" dy="24">• Ask Strategist to re-search</tspan>
+      <tspan x="1490" dy="24">• Approve final itinerary</tspan>
+    </text>
+  </g>
+
+  <!-- Vertical connectors -->
+  <g>
+    <path d="M230 410 L230 450" class="connector" />
+    <path d="M230 620 L230 910" class="connector" />
+
+    <path d="M570 500 L570 540" class="connector" />
+
+    <path d="M910 620 L910 680" class="connector" />
+
+    <path d="M1250 720 L1250 780" class="connector" />
+
+    <path d="M1590 550 L1590 640" class="connector" />
+  </g>
+
+  <!-- Cross-lane connectors -->
+  <g>
+    <path d="M350 360 C390 360 430 360 450 360" class="connector" />
+    <path d="M350 560 C390 560 430 560 450 560" class="connector" />
+
+    <path d="M690 460 C730 460 770 460 790 460" class="connector" />
+    <path d="M690 710 C730 710 770 710 790 710" class="connector" />
+
+    <path d="M1030 610 C1060 610 1100 610 1130 610" class="connector" />
+    <path d="M1030 860 C1060 860 1100 860 1130 860" class="connector" />
+
+    <path d="M1370 430 C1400 430 1440 430 1470 430" class="connector" />
+    <path d="M1370 700 C1400 700 1440 700 1470 700" class="connector" />
+
+    <path d="M1370 1130 C1400 1130 1440 1130 1470 1130" class="connector cross" />
+    <path d="M350 1040 C770 1040 1200 1040 1470 1040" class="connector cross" />
+  </g>
+
+  <text x="900" y="1230" text-anchor="middle" class="note">Arrows show event flow; dashed lines indicate supervision actions or policy-based feedback loops.</text>
+</svg>

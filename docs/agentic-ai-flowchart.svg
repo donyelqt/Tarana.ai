@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="900" viewBox="0 0 1000 900">
+  <style>
+    .title { font: 700 28px 'Arial', sans-serif; }
+    .subtitle { font: 400 18px 'Arial', sans-serif; }
+    .label { font: 600 18px 'Arial', sans-serif; }
+    .body { font: 400 16px 'Arial', sans-serif; }
+    .note { font: 400 14px 'Arial', sans-serif; fill: #1f2937; }
+    .box { fill: #f8fafc; stroke: #1d4ed8; stroke-width: 2.5px; rx: 12; ry: 12; }
+    .box-secondary { fill: #ecfeff; stroke: #0f766e; stroke-width: 2.5px; rx: 12; ry: 12; }
+    .decision { fill: #fff7ed; stroke: #d97706; stroke-width: 2.5px; }
+    .terminator { fill: #fef2f2; stroke: #b91c1c; stroke-width: 2.5px; rx: 30; ry: 30; }
+    .arrow { stroke: #1f2937; stroke-width: 2.5px; marker-end: url(#arrowhead); fill: none; }
+  </style>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <polygon points="0 0, 12 4, 0 8" fill="#1f2937" />
+    </marker>
+  </defs>
+
+  <text x="500" y="60" text-anchor="middle" class="title">Tarana.ai – Agentic Itinerary Generation Flow</text>
+  <text x="500" y="92" text-anchor="middle" class="subtitle">Autonomous loop that gathers context, plans retrieval, and guarantees structured output</text>
+
+  <!-- User Request -->
+  <rect x="360" y="110" width="280" height="80" class="terminator" />
+  <text x="500" y="150" text-anchor="middle" class="label">User Request</text>
+  <text x="500" y="172" text-anchor="middle" class="body">Client submits prompt + context</text>
+
+  <!-- API Handler -->
+  <rect x="240" y="220" width="520" height="110" class="box" />
+  <text x="500" y="258" text-anchor="middle" class="label">Next.js API Handler</text>
+  <text x="500" y="282" text-anchor="middle" class="body">Validate session ▸ schema ▸ credit balance</text>
+  <text x="500" y="304" text-anchor="middle" class="body">Generate request hash for caching + retries</text>
+
+  <!-- Cache Decision -->
+  <polygon points="500,360 640,420 500,480 360,420" class="decision" />
+  <text x="500" y="410" text-anchor="middle" class="label">Cache / Retry Controller</text>
+  <text x="500" y="434" text-anchor="middle" class="body">Refresh headers? ▸ bypass cache</text>
+  <text x="500" y="456" text-anchor="middle" class="body">Otherwise reuse computed itinerary</text>
+
+  <!-- Search Engine -->
+  <rect x="220" y="510" width="560" height="130" class="box" />
+  <text x="500" y="548" text-anchor="middle" class="label">Traffic-Aware Intelligent Search</text>
+  <text x="500" y="572" text-anchor="middle" class="body">Score activities by weather ▸ traffic ▸ interests ▸ time of day</text>
+  <text x="500" y="596" text-anchor="middle" class="body">Return high-confidence candidate set</text>
+
+  <!-- Agentic Subquery Planner -->
+  <rect x="660" y="530" width="280" height="120" class="box-secondary" />
+  <text x="800" y="568" text-anchor="middle" class="label">Agentic Subquery Planner</text>
+  <text x="800" y="592" text-anchor="middle" class="body">Gemini generates targeted follow-up queries</text>
+  <text x="800" y="614" text-anchor="middle" class="body">Uses live traffic + peak-hours context</text>
+
+  <!-- Context Builder -->
+  <rect x="240" y="670" width="520" height="110" class="box" />
+  <text x="500" y="708" text-anchor="middle" class="label">Context Fusion & Guardrails</text>
+  <text x="500" y="732" text-anchor="middle" class="body">Build detailed prompt with exclusive activity list</text>
+  <text x="500" y="754" text-anchor="middle" class="body">Embed weather ▸ traffic ▸ budget ▸ pax directives</text>
+
+  <!-- Guaranteed JSON Engine -->
+  <rect x="240" y="810" width="520" height="110" class="box" />
+  <text x="500" y="848" text-anchor="middle" class="label">Guaranteed JSON Engine</text>
+  <text x="500" y="872" text-anchor="middle" class="body">Gemini generation with retries + schema enforcement</text>
+  <text x="500" y="894" text-anchor="middle" class="body">Post-process, log metrics, consume credit, respond</text>
+
+  <!-- Arrows -->
+  <path d="M500 190 L500 220" class="arrow" />
+  <path d="M500 330 L500 360" class="arrow" />
+  <path d="M500 480 L500 510" class="arrow" />
+  <path d="M500 640 L500 670" class="arrow" />
+  <path d="M500 780 L500 810" class="arrow" />
+
+  <!-- Agent loop arrows -->
+  <path d="M600 570 L660 570" class="arrow" />
+  <path d="M660 610 L600 610" class="arrow" marker-end="" marker-start="url(#arrowhead)" />
+  <text x="630" y="598" text-anchor="middle" class="note">Low recall</text>
+  <text x="630" y="622" text-anchor="middle" class="note">Expanded search results</text>
+
+  <!-- Output note -->
+  <text x="500" y="930" text-anchor="middle" class="note">Response streamed back to client UI</text>
+</svg>
