@@ -13,6 +13,13 @@ import { ErrorHandler, ErrorType, ItineraryError } from "./lib/errorHandler";
 import { GuaranteedJsonEngine } from "./lib/guaranteedJsonEngine";
 import type { WeatherCondition } from "./types/types";
 import { z } from "zod";
+import { PipelineCoordinator } from "@/agents/pipelineCoordinator";
+import { ConciergeAgent } from "@/agents/conciergeAgent";
+import { ContextScoutAgent } from "@/agents/contextScoutAgent";
+import { RetrievalStrategistAgent } from "@/agents/retrievalStrategistAgent";
+import { ItineraryComposerAgent } from "@/agents/itineraryComposerAgent";
+import { RequestWeatherProvider } from "@/agents/providers/requestWeatherProvider";
+import { clearSession, type RequestSession } from "@/lib/agentic/sessionStore";
 
 const itineraryRequestSchema = z.object({
     prompt: z.string().min(1).max(5000),
@@ -39,6 +46,89 @@ const itineraryRequestSchema = z.object({
 
 type ItineraryRequest = z.infer<typeof itineraryRequestSchema>;
 
+const conciergeAgent = new ConciergeAgent({ requestSchema: itineraryRequestSchema });
+const contextScoutAgent = new ContextScoutAgent({ weatherProvider: new RequestWeatherProvider() });
+const retrievalStrategistAgent = new RetrievalStrategistAgent({ geminiModel });
+const itineraryComposerAgent = new ItineraryComposerAgent();
+const pipelineCoordinator = new PipelineCoordinator({
+  concierge: conciergeAgent,
+  contextScout: contextScoutAgent,
+  retrievalStrategist: retrievalStrategistAgent,
+  itineraryComposer: itineraryComposerAgent,
+});
+
+const USE_MULTI_AGENT = process.env.USE_MULTI_AGENT === "true";
+
+async function consumeCredit(userId: string, prompt: string) {
+    try {
+        console.log(`🔄 Attempting to consume 1 credit for user ${userId} - Tarana Gala`);
+        const consumeResult = await CreditService.consumeCredits({
+            userId,
+            amount: 1,
+            service: "tarana_gala",
+            description: `Generated itinerary: ${prompt?.substring(0, 50) || "Itinerary generation"}`,
+        });
+        console.log(`✅ Credit consumed successfully for user ${userId} - Tarana Gala`, consumeResult);
+    } catch (creditConsumeError: any) {
+        console.error("❌ CREDIT CONSUMPTION FAILED:", {
+            userId,
+            service: "tarana_gala",
+            error: creditConsumeError?.message || creditConsumeError,
+            code: creditConsumeError?.code,
+            details: creditConsumeError?.details,
+            stack: creditConsumeError?.stack,
+        });
+    }
+}
+
+async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
+    if (!API_KEY) {
+        console.error("GOOGLE_GEMINI_API_KEY is missing!");
+        return NextResponse.json({ text: "", error: "GOOGLE_GEMINI_API_KEY is missing on the server." }, { status: 500 });
+    }
+
+    let session: RequestSession | undefined;
+
+    try {
+        session = await pipelineCoordinator.handleRequest(req);
+
+        if (!session.itinerary?.json) {
+            throw new Error("Itinerary generation returned no result");
+        }
+
+        await consumeCredit(session.userId, session.prompt);
+
+        const responsePayload = { text: JSON.stringify(session.itinerary.json) };
+        return NextResponse.json(responsePayload);
+    } catch (error: any) {
+        const err = error as Error & { details?: Record<string, string[]> };
+
+        if (error instanceof InsufficientCreditsError) {
+            return NextResponse.json({
+                error: "Insufficient credits",
+                text: "",
+                required: error.required,
+                available: error.available,
+            }, { status: 402 });
+        }
+
+        if (err?.message === "Authentication required") {
+            return NextResponse.json({ error: err.message, text: "" }, { status: 401 });
+        }
+
+        if (err?.details) {
+            return NextResponse.json({ error: "Invalid request payload", details: err.details }, { status: 400 });
+        }
+
+        console.error("Multi-agent pipeline error:", err);
+        return NextResponse.json({ text: "", error: err?.message ?? "Internal Server Error" }, { status: 500 });
+    } finally {
+        if (session) {
+            clearSession(session.id);
+        }
+    }
+}
+
 // Main logic for generating an itinerary, wrapped for caching
 const getCachedItinerary = unstable_cache(
     async (requestBody: any, hash: string) => {
@@ -54,25 +144,25 @@ const getCachedItinerary = unstable_cache(
                 throw new ItineraryError(ErrorType.GENERATION, "Gemini model not available", false, requestId);
             }
 
-        const durationDays = (() => {
-            if (!duration) return null;
-            const match = duration.toString().match(/\d+/);
-            return match ? parseInt(match[0], 10) : null;
-        })();
+            const durationDays = (() => {
+                if (!duration) return null;
+                const match = duration.toString().match(/\d+/);
+                return match ? parseInt(match[0], 10) : null;
+            })();
 
-        const weatherId = weatherData?.weather?.[0]?.id || 0;
-        const temperature = weatherData?.main?.temp || 20;
-        const getWeatherType = (id: number, temp: number): WeatherCondition => {
-            if (id >= 200 && id <= 232) return 'thunderstorm';
-            if ((id >= 300 && id <= 321) || (id >= 500 && id <= 531)) return 'rainy';
-            if (id >= 600 && id <= 622) return 'snow';
-            if (id >= 701 && id <= 781) return 'foggy';
-            if (id === 800) return 'clear';
-            if (id >= 801 && id <= 804) return 'cloudy';
-            if (temp < 15) return 'cold';
-            return 'default';
-        };
-        const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
+            const weatherId = weatherData?.weather?.[0]?.id || 0;
+            const temperature = weatherData?.main?.temp || 20;
+            const getWeatherType = (id: number, temp: number): WeatherCondition => {
+                if (id >= 200 && id <= 232) return 'thunderstorm';
+                if ((id >= 300 && id <= 321) || (id >= 500 && id <= 531)) return 'rainy';
+                if (id >= 600 && id <= 622) return 'snow';
+                if (id >= 701 && id <= 781) return 'foggy';
+                if (id === 800) return 'clear';
+                if (id >= 801 && id <= 804) return 'cloudy';
+                if (temp < 15) return 'cold';
+                return 'default';
+            };
+            const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
 
             const effectiveSampleItinerary = await findAndScoreActivities(prompt, safeInterests, weatherType, durationDays, geminiModel);
             const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, safeInterests, durationDays, safeBudget, safePax);
@@ -105,6 +195,10 @@ const getCachedItinerary = unstable_cache(
 );
 
 export async function POST(req: NextRequest) {
+    if (USE_MULTI_AGENT) {
+        return handleMultiAgentPost(req);
+    }
+
     try {
         // ✅ CREDIT SYSTEM: Check authentication
         const session = await getServerSession(authOptions);
