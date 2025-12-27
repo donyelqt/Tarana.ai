@@ -7,7 +7,12 @@
 ## 🚀 Key Features
 
 ### 🤖 **Agentic AI System**
-- **Multi-Agent Architecture**: AI agents handle query expansion, context optimization, and intelligent decision-making
+- **Multi-Agent Architecture**: Four specialized AI agents work in coordination to generate personalized itineraries
+- **Concierge Agent**: Handles authentication, credit management, and request validation
+- **ContextScout Agent**: Gathers real-time weather and traffic data for contextual awareness
+- **RetrievalStrategist Agent**: Performs intelligent activity search and scoring with traffic-aware filtering
+- **ItineraryComposer Agent**: Generates the final itinerary using AI with structured output guarantees
+- **Pipeline Coordinator**: Orchestrates the entire multi-agent workflow with session management
 - **Autonomous Sub-Query Generation**: AI automatically generates targeted search queries for broader coverage
 - **Real-Time Context Adaptation**: Dynamic adjustment based on traffic, weather, and temporal conditions
 - **Intelligent Fallback Mechanisms**: Multi-tier AI strategies with graceful degradation
@@ -100,8 +105,10 @@
 ### Core System Components
 
 #### 1. **Agentic AI Layer** (`/src/app/api/gemini/itinerary-generator/agent/`)
+- **Multi-Agent Architecture**: Four specialized agents work in coordination (Concierge, ContextScout, RetrievalStrategist, ItineraryComposer)
+- **Pipeline Orchestration**: Pipeline Coordinator manages agent communication and session state
 - **Autonomous Query Expansion**: AI agents automatically generate sub-queries for comprehensive retrieval
-- **Context-Aware Decision Making**: Real-time adaptation based on traffic, weather, and user preferences  
+- **Context-Aware Decision Making**: Real-time adaptation based on traffic, weather, and user preferences
 - **Multi-Modal Intelligence**: Combines vector search, traffic data, weather conditions, and temporal optimization
 - **Intelligent Fallback Strategies**: Multi-tier approach with graceful degradation
 
@@ -540,3 +547,62 @@ npm test
 npm run test -- --testPathPattern=vectorSearch
 npm run test -- --testPathPattern=intelligentSearch
 ```
+
+---
+
+## 🤖 Multi-Agent System Architecture
+
+### Multi-Agent System Flow
+
+```
+User Query → Concierge Agent → ContextScout Agent → RetrievalStrategist Agent → ItineraryComposer Agent → Final Itinerary
+
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────┐    ┌─────────────────────────┐    ┌─────────────────────┐
+│   User Input    │───▶│  Concierge Agent │───▶│ ContextScout Agent  │───▶│ RetrievalStrategist     │───▶│ ItineraryComposer   │
+│ • Query         │    │ • Auth & Credit  │    │ • Weather Data      │    │ • Activity Search       │    │ • Structured        │
+│ • Preferences   │    │ • Validation     │    │ • Traffic Data      │    │ • Traffic-Aware Filter  │    │ • JSON Generation   │
+│ • Constraints   │    │ • Session Init   │    │ • Context Building  │    │ • Activity Scoring      │    │ • Schema Validation │
+└─────────────────┘    └──────────────────┘    └─────────────────────┘    └─────────────────────────┘    └─────────────────────┘
+         │                       │                        │                           │                           │
+         └───────────────────────┼────────────────────────┼───────────────────────────┼───────────────────────────┘
+                                 │                        │                           │
+                                 ▼                        ▼                           ▼
+                    ┌─────────────────────────┐    ┌──────────────────┐    ┌─────────────┐
+                    │   Pipeline Coordinator  │    │  Session Store   │    │   Final Itinerary   │
+                    │ • Agent Orchestration   │    │ • State Mgmt     │    │ • Activities        │
+                    │ • Error Handling        │    │ • Error Tracking │    │ • Timing            │
+                    │ • Status Management     │    │ • Agent Results  │    │ • Traffic Tips      │
+                    └─────────────────────────┘    └──────────────────┘    └─────────────┘
+```
+
+### Multi-Agent Architecture Details
+
+#### **Concierge Agent** ([`/src/agents/conciergeAgent.ts`](src/agents/conciergeAgent.ts:1))
+- Handles user authentication and credit validation
+- Initializes request sessions with user preferences
+- Manages request validation and error handling
+- Coordinates with credit management system
+
+#### **ContextScout Agent** ([`/src/agents/contextScoutAgent.ts`](src/agents/contextScoutAgent.ts:1))
+- Gathers real-time weather data from OpenWeatherMap API
+- Fetches live traffic information from TomTom API for key Baguio locations
+- Builds comprehensive context payload with temporal awareness
+- Integrates Manila timezone peak hours analysis
+
+#### **RetrievalStrategist Agent** ([`/src/agents/retrievalStrategistAgent.ts`](src/agents/retrievalStrategistAgent.ts:1))
+- Performs intelligent activity search using vector embeddings
+- Applies traffic-aware filtering to exclude high-traffic locations
+- Scores and ranks activities based on user preferences and real-time conditions
+- Generates expanded queries when initial results are insufficient
+#### **ItineraryComposer Agent** ([`/src/agents/itineraryComposerAgent.ts`](src/agents/itineraryComposerAgent.ts:1))
+- Builds detailed prompts incorporating all gathered context
+- Uses GuaranteedJsonEngine for 100% reliable JSON output
+- Processes and validates the final itinerary structure
+- Ensures schema compliance and error recovery
+
+
+#### **Pipeline Coordinator** ([`/src/agents/pipelineCoordinator.ts`](src/agents/pipelineCoordinator.ts:1))
+- Orchestrates communication between all agents
+- Manages the execution flow and error propagation
+- Maintains session state throughout the process
+- Ensures proper agent sequencing and data flow
