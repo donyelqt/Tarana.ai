@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useState, Suspense, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AnimatePresence, motion } from "framer-motion"
+import { validatePasswordStrength } from "@/lib/security/inputSanitizer"
 
 // Component that uses useRouter
 function SignUpForm() {
@@ -20,25 +21,57 @@ function SignUpForm() {
     const router = useRouter()
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
-    
+
+    const getStrengthColor = (strengthLevel: string) => {
+        switch (strengthLevel) {
+            case 'very-weak': return '#ff0000'; // Red
+            case 'weak': return '#ff6600';     // Orange
+            case 'medium': return '#ffcc00';   // Yellow
+            case 'strong': return '#66cc00';   // Light Green
+            case 'very-strong': return '#00cc00'; // Green
+            default: return '#ff0000';
+        }
+    };
+
+    const getStrengthLabel = (strengthLevel: string) => {
+        switch (strengthLevel) {
+            case 'very-weak': return 'Very Weak';
+            case 'weak': return 'Weak';
+            case 'medium': return 'Medium';
+            case 'strong': return 'Strong';
+            case 'very-strong': return 'Very Strong';
+            default: return '';
+        }
+    };
+
+    // Memoize the password strength calculation to avoid repeated calls
+    const passwordStrength = useMemo(() => {
+        if (password) {
+            return validatePasswordStrength(password);
+        }
+        return null;
+    }, [password]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
         setIsLoading(true)
-        
+
         // Basic validation
         if (password !== confirmPassword) {
             setError("Passwords do not match")
             setIsLoading(false)
             return
         }
-        
-        if (password.length < 6) {
-            setError("Password must be at least 6 characters long")
+
+        // Check password strength using the same validation as the component
+        const { isValid, errors } = validatePasswordStrength(password);
+        if (!isValid) {
+            setError(errors[0] || "Password does not meet security requirements")
             setIsLoading(false)
             return
         }
-        
+
         try {
             // Make API call to register the user
             const response = await fetch('/api/auth/register', {
@@ -46,13 +79,13 @@ function SignUpForm() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ fullName, email, password }),
             })
-            
+
             const data = await response.json()
-            
+
             if (!response.ok) {
               throw new Error(data.error || 'Registration failed')
             }
-            
+
             // Redirect to sign in page after successful registration
             router.push('/auth/signin?registered=true')
         } catch (error: unknown) {
@@ -96,14 +129,14 @@ function SignUpForm() {
                 </div>
                 <div>
                     <Label htmlFor="password" className="block text-sm font-medium text-black">Password</Label>
-                    <div className="relative">
+                    <div className="relative mt-1">
                         <Input
                             id="password"
                             name="password"
                             type={showPassword ? "text" : "password"}
                             autoComplete="new-password"
                             required
-                            className="mt-1 block w-full px-3 py-2 border bg-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
+                            className="w-full px-3 py-2 border bg-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
                             placeholder="Enter your Password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -116,17 +149,53 @@ function SignUpForm() {
                             )}
                         </span>
                     </div>
+                    {/* Visual strength indicator */}
+                    {passwordStrength && (
+                        <div className="strength-meter mt-2">
+                            <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>Strength: {getStrengthLabel(passwordStrength.strengthLevel)}</span>
+                                <span>{passwordStrength.score}/10</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                    className="strength-bar h-2 rounded-full transition-all duration-300 ease-out"
+                                    style={{
+                                        width: `${Math.min(100, passwordStrength.score * 10)}%`,
+                                        backgroundColor: getStrengthColor(passwordStrength.strengthLevel),
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+                    {/* Feedback messages */}
+                    {passwordStrength && passwordStrength.feedback && passwordStrength.feedback.length > 0 && (
+                        <ul className="password-feedback mt-2 text-sm text-gray-600">
+                            {passwordStrength.feedback.map((msg, index) => (
+                                <li key={index} className="feedback-item flex items-start">
+                                    <span className="mr-2">•</span>
+                                    {msg}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {/* Success message when password is valid */}
+                    {passwordStrength && passwordStrength.isValid && (
+                        <div className="password-success mt-2 text-sm text-green-600 flex items-start">
+                            <span className="mr-2">✓</span>
+                            Strong password
+                        </div>
+                    )}
                 </div>
                 <div>
                     <Label htmlFor="confirmPassword" className="block text-sm font-medium text-black">Confirm Password</Label>
-                    <div className="relative">
+                    <div className="relative mt-1">
                         <Input
                             id="confirmPassword"
                             name="confirmPassword"
                             type={showConfirmPassword ? "text" : "password"}
                             autoComplete="new-password"
                             required
-                            className="mt-1 block w-full px-3 py-2 border bg-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
+                            className="w-full px-3 py-2 border bg-white rounded-xl shadow-sm focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF] pr-10"
                             placeholder="Re-enter your Password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
