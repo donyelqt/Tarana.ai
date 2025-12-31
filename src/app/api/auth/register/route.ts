@@ -19,9 +19,9 @@ export async function POST(request: NextRequest) {
     const rateLimitResult = registerRateLimit(request);
     if (!rateLimitResult.allowed) {
       const response = NextResponse.json(
-        { 
+        {
           error: 'Too many registration attempts. Please try again later.',
-          retryAfter: rateLimitResult.retryAfter 
+          retryAfter: rateLimitResult.retryAfter
         },
         { status: 429 }
       );
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     // Comprehensive input sanitization and validation
     const { sanitized, errors } = sanitizeUserRegistration({ fullName, email, password });
-    
+
     if (errors.length > 0) {
       return applySecurityHeaders(NextResponse.json(
         { error: errors[0] }, // Return first error
@@ -119,12 +119,12 @@ export async function POST(request: NextRequest) {
         }
         // For other errors thrown by createUserInSupabase
         return applySecurityHeaders(NextResponse.json(
-          { error: userError.message }, 
+          { error: userError.message },
           { status: 400 }
         ));
       }
       // If it's not an Error instance, re-throw for the outer catch block to handle as 500
-      throw userError; 
+      throw userError;
     }
   } catch (error) {
     console.error('Registration error:', error);
