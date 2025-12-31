@@ -353,3 +353,75 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* Password Input Component Styles */
+.password-input-container {
+  margin-bottom: 1.5rem;
+}
+
+.password-input-container input.valid,
+.password-input-container .valid {
+  border-color: #00cc00;
+}
+
+.password-input-container input.invalid,
+.password-input-container .invalid {
+  border-color: #ff6600;
+}
+
+.show-password-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+}
+
+/* Strength meter styles */
+.strength-meter {
+  width: 100%;
+  margin: 8px 0;
+}
+
+.strength-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem; /* text-xs */
+  color: #6b7280; /* text-gray-500 */
+  margin-bottom: 0.25rem; /* mb-1 */
+}
+
+.strength-background {
+  width: 100%;
+  background-color: #e5e7eb; /* bg-gray-200 */
+  border-radius: 0.5rem; /* rounded-full */
+  height: 0.5rem; /* h-2 */
+  overflow: hidden;
+}
+
+.strength-bar {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+  border-radius: 0.5rem; /* rounded-full */
+  transition: all 0.3s ease-out;
+}
+
+.password-feedback {
+  margin: 8px 0 0 0;
+  padding-left: 16px;
+  font-size: 0.875rem;
+  color: #ff6600;
+}
+
+.feedback-item {
+  margin-bottom: 4px;
+}
+
+.password-success {
+  color: #00cc00;
+  font-size: 0.875rem;
+  margin-top: 4px;
+}
