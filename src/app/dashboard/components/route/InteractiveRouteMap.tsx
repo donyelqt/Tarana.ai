@@ -51,6 +51,7 @@ export default function InteractiveRouteMap({
   const [currentMapStyle, setCurrentMapStyle] = useState<MapStyle>('main');
   const [isChangingStyle, setIsChangingStyle] = useState(false);
   const plottedRouteCountRef = useRef(0);
+  const markersRef = useRef<any[]>([]);
 
   // Initialize map using the TomTom utility service
   const initializeMap = useCallback(async () => {
@@ -62,7 +63,7 @@ export default function InteractiveRouteMap({
 
       // Get API key from environment or fallback
       const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY || '6Acdv8xeMK2MXLSy3tFQ1qk9s8ovwabD';
-      
+
       if (!apiKey) {
         throw new Error('TomTom API key is required');
       }
@@ -88,18 +89,18 @@ export default function InteractiveRouteMap({
       mapInstanceRef.current = map;
 
       // Set loaded state
-      
+
       setIsMapLoaded(true);
       setIsSdkLoaded(true);
       setMapError(null);
       setRetryCount(0);
-      
+
     } catch (error) {
       console.error('Map initialization error:', error);
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setMapError(`Failed to initialize map: ${errorMessage}`);
-      
+
       // Clean up failed map instance
       if (mapInstanceRef.current) {
         try {
@@ -115,30 +116,30 @@ export default function InteractiveRouteMap({
   // Load TomTom Maps with improved error handling
   useEffect(() => {
     let isMounted = true;
-    
+
     const loadWithRetry = async (attempt: number = 1): Promise<void> => {
       if (!isMounted) return;
-      
+
       try {
         setMapError(null);
-        
+
         // Update SDK status
         const sdkStatus = getTomTomSDKStatus();
         setIsSdkLoaded(sdkStatus.isLoaded);
         setRetryCount(sdkStatus.retryCount);
-        
+
         if (sdkStatus.error) {
           throw new Error(sdkStatus.error);
         }
-        
+
         if (isMounted) {
           await initializeMap();
         }
       } catch (error) {
         console.error(`Map loading attempt ${attempt} failed:`, error);
-        
+
         if (!isMounted) return;
-        
+
         if (attempt < TOMTOM_CONFIG.RETRY_ATTEMPTS) {
           setRetryCount(attempt);
           setTimeout(() => {
@@ -154,7 +155,7 @@ export default function InteractiveRouteMap({
     };
 
     loadWithRetry();
-    
+
     return () => {
       isMounted = false;
     };
@@ -166,7 +167,7 @@ export default function InteractiveRouteMap({
     setIsMapLoaded(false);
     setIsSdkLoaded(false);
     setRetryCount(0);
-    
+
     // Clean up existing map instance
     if (mapInstanceRef.current) {
       try {
@@ -176,10 +177,10 @@ export default function InteractiveRouteMap({
       }
       mapInstanceRef.current = null;
     }
-    
+
     // Reset the TomTom service
     resetTomTomService();
-    
+
     // Trigger re-initialization
     setTimeout(() => {
       initializeMap();
@@ -195,27 +196,27 @@ export default function InteractiveRouteMap({
     try {
       setIsChangingStyle(true);
       const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY || '6Acdv8xeMK2MXLSy3tFQ1qk9s8ovwabD';
-      
+
       console.log(`🎨 Changing map style from ${currentMapStyle} to ${newStyle}`);
-      
+
       // Use the updated changeMapStyle function that recreates the map
       const newMapInstance = await changeMapStyle(
-        mapInstanceRef.current, 
-        newStyle, 
-        apiKey, 
+        mapInstanceRef.current,
+        newStyle,
+        apiKey,
         mapRef.current
       );
-      
+
       // Update the map instance reference
       mapInstanceRef.current = newMapInstance;
       setCurrentMapStyle(newStyle);
-      
+
       console.log(`✅ Successfully changed map style to ${newStyle}`);
     } catch (error) {
       console.error('Failed to change map style:', error);
-      const errorMessage = error instanceof Error ? error.message : 
-                          typeof error === 'string' ? error : 
-                          JSON.stringify(error, null, 2);
+      const errorMessage = error instanceof Error ? error.message :
+        typeof error === 'string' ? error :
+          JSON.stringify(error, null, 2);
       console.error('Detailed error:', errorMessage);
       setMapError(`Failed to change map style: ${errorMessage}`);
     } finally {
@@ -228,22 +229,33 @@ export default function InteractiveRouteMap({
     if (!mapInstanceRef.current || !isMapLoaded) return;
 
     const map = mapInstanceRef.current;
-    
+
     // Skip if we're currently changing styles to prevent flickering
     if (isChangingStyle) return;
 
     // Clear existing markers and routes with proper error handling
     try {
       // Remove existing markers
-      const markers = map.getMarkers?.() || [];
-      markers.forEach((marker: any) => {
-        try {
-          marker.remove();
-        } catch (error) {
-          console.warn('Failed to remove marker:', error);
-        }
-      });
-      
+      // Remove existing markers using tracked ref
+      if (markersRef.current.length > 0) {
+        markersRef.current.forEach((marker: any) => {
+          try {
+            marker.remove();
+          } catch (error) {
+            console.warn('Failed to remove marker:', error);
+          }
+        });
+        markersRef.current = [];
+      }
+
+      // Fallback cleanup (just in case)
+      try {
+        const remainingMarkers = (map as any).getMarkers?.() || [];
+        remainingMarkers.forEach((marker: any) => marker.remove());
+      } catch (e) {
+        // Ignore
+      }
+
       // Clean up any existing glow animations
       if ((map as any)._primaryRouteGlowAnimation) {
         clearInterval((map as any)._primaryRouteGlowAnimation);
@@ -253,19 +265,19 @@ export default function InteractiveRouteMap({
         (map as any)._altRouteGlowAnimations.forEach((id: any) => clearInterval(id));
         (map as any)._altRouteGlowAnimations = [];
       }
-      
+
       // Remove existing route layers safely (including glow layers)
       // First, collect all layer IDs to remove
       const layersToRemove = [
-        'route-primary', 
-        'route-primary-glow-outer', 
-        'route-primary-glow-middle', 
+        'route-primary',
+        'route-primary-glow-outer',
+        'route-primary-glow-middle',
         'route-primary-glow-inner'
       ];
-      
+
       // Use the maximum of current and previous count to ensure we catch everything
       const maxRouteCount = Math.max(alternativeRoutes.length, plottedRouteCountRef.current);
-      
+
       for (let index = 0; index < maxRouteCount; index++) {
         layersToRemove.push(
           `route-alt-${index}`,
@@ -274,7 +286,7 @@ export default function InteractiveRouteMap({
           `route-alt-${index}-glow-inner`
         );
       }
-      
+
       // Step 1: Remove all layers first
       layersToRemove.forEach(layerId => {
         try {
@@ -285,13 +297,13 @@ export default function InteractiveRouteMap({
           console.warn(`Failed to remove layer ${layerId}:`, error);
         }
       });
-      
+
       // Step 2: Remove sources only after all layers are removed
       const sourcesToRemove = ['route-primary'];
       for (let index = 0; index < maxRouteCount; index++) {
         sourcesToRemove.push(`route-alt-${index}`);
       }
-      
+
       sourcesToRemove.forEach(sourceId => {
         try {
           if (map.getSource && map.getSource(sourceId)) {
@@ -310,7 +322,7 @@ export default function InteractiveRouteMap({
       // Create custom origin marker with modern styling
       if (origin && window.tt.Marker && window.tt.Popup) {
         console.log('🟢 Adding modern origin marker:', origin);
-        
+
         // Create custom origin marker element
         const originElement = document.createElement('div');
         originElement.innerHTML = `
@@ -371,7 +383,7 @@ export default function InteractiveRouteMap({
             "></div>
           </div>
         `;
-        
+
         // Add CSS animations
         const style = document.createElement('style');
         style.textContent = `
@@ -387,13 +399,13 @@ export default function InteractiveRouteMap({
           }
         `;
         document.head.appendChild(style);
-        
-        const originMarker = new window.tt.Marker({ 
+
+        const originMarker = new window.tt.Marker({
           element: originElement,
           anchor: 'center'
         })
           .setLngLat([origin.lng, origin.lat])
-          .setPopup(new window.tt.Popup({ 
+          .setPopup(new window.tt.Popup({
             offset: 35,
             closeButton: true,
             closeOnClick: false,
@@ -448,12 +460,14 @@ export default function InteractiveRouteMap({
             </div>
           `))
           .addTo(map);
+
+        markersRef.current.push(originMarker);
       }
 
       // Create custom destination marker with modern styling
       if (destination && window.tt.Marker && window.tt.Popup) {
         console.log('🔴 Adding modern destination marker:', destination);
-        
+
         // Create custom destination marker element
         const destElement = document.createElement('div');
         destElement.innerHTML = `
@@ -514,7 +528,7 @@ export default function InteractiveRouteMap({
             "></div>
           </div>
         `;
-        
+
         // Add CSS animations for destination
         const destStyle = document.createElement('style');
         destStyle.textContent = `
@@ -530,13 +544,13 @@ export default function InteractiveRouteMap({
           }
         `;
         document.head.appendChild(destStyle);
-        
-        const destMarker = new window.tt.Marker({ 
+
+        const destMarker = new window.tt.Marker({
           element: destElement,
           anchor: 'center'
         })
           .setLngLat([destination.lng, destination.lat])
-          .setPopup(new window.tt.Popup({ 
+          .setPopup(new window.tt.Popup({
             offset: 35,
             closeButton: true,
             closeOnClick: false,
@@ -591,13 +605,15 @@ export default function InteractiveRouteMap({
             </div>
           `))
           .addTo(map);
+
+        markersRef.current.push(destMarker);
       }
 
       // Create custom waypoint markers with modern styling
       waypoints.forEach((waypoint, index) => {
         if (waypoint && window.tt.Marker && window.tt.Popup) {
           console.log(`🔵 Adding modern waypoint ${index + 1} marker:`, waypoint);
-          
+
           // Create custom waypoint marker element
           const waypointElement = document.createElement('div');
           waypointElement.innerHTML = `
@@ -660,7 +676,7 @@ export default function InteractiveRouteMap({
               "></div>
             </div>
           `;
-          
+
           // Add CSS animations for waypoints
           const waypointStyle = document.createElement('style');
           waypointStyle.textContent = `
@@ -676,13 +692,13 @@ export default function InteractiveRouteMap({
             }
           `;
           document.head.appendChild(waypointStyle);
-          
-          const waypointMarker = new window.tt.Marker({ 
+
+          const waypointMarker = new window.tt.Marker({
             element: waypointElement,
             anchor: 'center'
           })
             .setLngLat([waypoint.lng, waypoint.lat])
-            .setPopup(new window.tt.Popup({ 
+            .setPopup(new window.tt.Popup({
               offset: 25,
               closeButton: true,
               closeOnClick: false,
@@ -743,30 +759,32 @@ export default function InteractiveRouteMap({
               </div>
             `))
             .addTo(map);
+
+          markersRef.current.push(waypointMarker);
         }
       });
 
       // Auto-fit map to show all markers with enhanced padding for modern UI
       if ((origin || destination || waypoints.length > 0) && window.tt.LngLatBounds) {
         const bounds = new window.tt.LngLatBounds();
-        
+
         if (origin) bounds.extend([origin.lng, origin.lat]);
         if (destination) bounds.extend([destination.lng, destination.lat]);
         waypoints.forEach(waypoint => {
           if (waypoint) bounds.extend([waypoint.lng, waypoint.lat]);
         });
-        
+
         // Fit map to bounds with generous padding for modern marker visibility
-        map.fitBounds(bounds, { 
+        map.fitBounds(bounds, {
           padding: { top: 80, bottom: 80, left: 80, right: 80 },
           maxZoom: 15,
           duration: 1500,
           essential: true
         });
-        
+
         console.log('🗺️ Map fitted to modern marker bounds with smooth animation');
       }
-      
+
       // Add modern popup global styles
       const globalPopupStyle = document.createElement('style');
       globalPopupStyle.textContent = `
@@ -823,20 +841,22 @@ export default function InteractiveRouteMap({
         }
       `;
       document.head.appendChild(globalPopupStyle);
-      
+
     } catch (error) {
       console.warn('Error adding modern markers:', error);
       // Fallback to simple markers if custom ones fail
       try {
         if (origin) {
-          new window.tt.Marker({ color: '#22c55e', scale: 1.2 })
+          const m = new window.tt.Marker({ color: '#22c55e', scale: 1.2 })
             .setLngLat([origin.lng, origin.lat])
             .addTo(map);
+          markersRef.current.push(m);
         }
         if (destination) {
-          new window.tt.Marker({ color: '#ef4444', scale: 1.2 })
+          const m = new window.tt.Marker({ color: '#ef4444', scale: 1.2 })
             .setLngLat([destination.lng, destination.lat])
             .addTo(map);
+          markersRef.current.push(m);
         }
       } catch (fallbackError) {
         console.warn('Fallback marker creation also failed:', fallbackError);
@@ -847,7 +867,7 @@ export default function InteractiveRouteMap({
     alternativeRoutes.forEach((route, index) => {
       if (route.legs && Array.isArray(route.legs)) {
         try {
-          const routeCoordinates = route.legs.flatMap(leg => 
+          const routeCoordinates = route.legs.flatMap(leg =>
             leg.geometry?.coordinates?.map(coord => [coord.lng, coord.lat]) || []
           ).filter(coord => coord.length === 2 && !isNaN(coord[0]) && !isNaN(coord[1]));
 
@@ -907,7 +927,7 @@ export default function InteractiveRouteMap({
     // RENDER PRIMARY ROUTE LAST (so it appears ABOVE alternative routes)
     if (currentRoute && currentRoute.legs && Array.isArray(currentRoute.legs)) {
       try {
-        const routeCoordinates = currentRoute.legs.flatMap(leg => 
+        const routeCoordinates = currentRoute.legs.flatMap(leg =>
           leg.geometry?.coordinates?.map(coord => [coord.lng, coord.lat]) || []
         ).filter(coord => coord.length === 2 && !isNaN(coord[0]) && !isNaN(coord[1]));
 
@@ -938,26 +958,26 @@ export default function InteractiveRouteMap({
               'line-opacity': 1.0
             }
           });
-          
+
           // Add enhanced animated pulsing glow effect for visibility
           const animateRouteGlow = () => {
             if (map.getLayer('route-primary-glow-outer')) {
-              map.setPaintProperty('route-primary-glow-outer', 'line-opacity', 
+              map.setPaintProperty('route-primary-glow-outer', 'line-opacity',
                 0.2 + 0.3 * (1 + Math.sin(Date.now() * 0.003)));
             }
             if (map.getLayer('route-primary-glow-middle')) {
-              map.setPaintProperty('route-primary-glow-middle', 'line-opacity', 
+              map.setPaintProperty('route-primary-glow-middle', 'line-opacity',
                 0.3 + 0.5 * (1 + Math.sin(Date.now() * 0.003 + 0.5)));
             }
             if (map.getLayer('route-primary-glow-inner')) {
-              map.setPaintProperty('route-primary-glow-inner', 'line-opacity', 
+              map.setPaintProperty('route-primary-glow-inner', 'line-opacity',
                 0.5 + 0.7 * (1 + Math.sin(Date.now() * 0.003 + 1)));
             }
           };
-          
+
           // Start animation
           const glowAnimationId = setInterval(animateRouteGlow, 50);
-          
+
           // Store animation ID for cleanup
           (map as any)._primaryRouteGlowAnimation = glowAnimationId;
 
@@ -1003,7 +1023,7 @@ export default function InteractiveRouteMap({
         <div className="text-center p-3 sm:p-6 mx-2 sm:mx-0">
           <div className="text-red-500 text-base sm:text-lg font-medium mb-2">Map Error</div>
           <div className="text-gray-600 text-xs sm:text-sm mb-4 max-w-sm">{mapError}</div>
-          <button 
+          <button
             onClick={retryMapInitialization}
             className="px-3 py-2 sm:px-4 sm:py-2 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={retryCount >= TOMTOM_CONFIG.RETRY_ATTEMPTS}
@@ -1029,8 +1049,8 @@ export default function InteractiveRouteMap({
                 </span>
               </div>
               <div className="text-xs sm:text-sm text-muted-foreground">
-                {!isSdkLoaded 
-                  ? 'Getting map services ready.' 
+                {!isSdkLoaded
+                  ? 'Getting map services ready.'
                   : 'Preparing route visualization.'
                 }
               </div>
@@ -1056,17 +1076,17 @@ export default function InteractiveRouteMap({
 
       {isMapLoaded && (
         <>
-          <RouteSelectionPanel 
-            currentRoute={currentRoute} 
-            alternativeRoutes={alternativeRoutes} 
-            trafficConditions={trafficConditions} 
-            onRouteSelect={handleRouteClick} 
+          <RouteSelectionPanel
+            currentRoute={currentRoute}
+            alternativeRoutes={alternativeRoutes}
+            trafficConditions={trafficConditions}
+            onRouteSelect={handleRouteClick}
           />
           <TrafficLegend trafficConditions={trafficConditions} />
-          <MapStyleSelector 
-            currentMapStyle={currentMapStyle} 
-            isChangingStyle={isChangingStyle} 
-            onStyleChange={handleStyleChange} 
+          <MapStyleSelector
+            currentMapStyle={currentMapStyle}
+            isChangingStyle={isChangingStyle}
+            onStyleChange={handleStyleChange}
           />
         </>
       )}
