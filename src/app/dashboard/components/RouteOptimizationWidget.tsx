@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
+import {
   RouteOptimizationState,
   RouteRequest,
   RouteData,
@@ -17,12 +17,12 @@ import { BAGUIO_COORDINATES } from '@/lib/core/utils';
 import { Route, Navigation, MapPin, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
 import ErrorBoundary from '@/components/ui/error-boundary';
 import TrafficLegend from '@/components/ui/TrafficLegend';
-import { 
-  getTrafficColorFromScore, 
+import {
+  getTrafficColorFromScore,
   getTrafficLevelFromScore,
   getTrafficLevelClasses,
   formatTrafficDelay,
-  getTrafficRecommendation 
+  getTrafficRecommendation
 } from '@/lib/utils/trafficColors';
 
 // Component imports (will be created next)
@@ -142,19 +142,28 @@ const RouteOptimizationWidget: React.FC = () => {
 
   const handleRouteCalculation = useCallback(async (request: RouteRequest) => {
     console.log('🚀 Route Widget: Starting route calculation');
-    
-    // Update origin and destination from the request
-    setOrigin(request.origin);
-    setDestination(request.destination);
-    
+
+    // COMPLETELY RESET ALL ROUTE DATA before new calculation to prevent accumulation
     setState(prev => ({
       ...prev,
       isCalculating: true,
       error: null,
       currentRoute: null,
       alternativeRoutes: [],
-      trafficConditions: null
+      trafficConditions: null,
+      lastUpdated: null,
+      selectedWaypoints: [], // Clear any previous waypoints
+      searchResults: [], // Clear any previous search results
+      activeSearchField: null, // Clear any active search field
+      isMonitoring: false // Stop any previous monitoring
     }));
+
+    // Also clear the route comparison state to prevent accumulation
+    setRouteComparison(null);
+
+    // Update origin and destination from the request AFTER state reset
+    setOrigin(request.origin);
+    setDestination(request.destination);
 
     try {
       // Call route calculation API
@@ -201,7 +210,7 @@ const RouteOptimizationWidget: React.FC = () => {
           }
         });
       } else {
-        // Clear route comparison if no alternatives
+        // Ensure route comparison is cleared if no alternatives
         setRouteComparison(null);
       }
 
@@ -209,9 +218,9 @@ const RouteOptimizationWidget: React.FC = () => {
 
     } catch (error) {
       console.error('❌ Route Widget: Route calculation failed:', error);
-      
+
       let errorMessage = 'Route calculation failed';
-      
+
       if (error instanceof Error) {
         if (error.message.includes('API key')) {
           errorMessage = 'TomTom API key not configured. Please add TOMTOM_API_KEY to your environment variables.';
@@ -223,7 +232,7 @@ const RouteOptimizationWidget: React.FC = () => {
           errorMessage = error.message;
         }
       }
-      
+
       setState(prev => ({
         ...prev,
         error: errorMessage,
@@ -232,7 +241,7 @@ const RouteOptimizationWidget: React.FC = () => {
         alternativeRoutes: [],
         trafficConditions: null
       }));
-      
+
       // Clear route comparison on error
       setRouteComparison(null);
     }
@@ -287,24 +296,24 @@ const RouteOptimizationWidget: React.FC = () => {
         console.log('Route is already selected as primary');
         return prev;
       }
-      
+
       // Preserve the original primary route by adding it to alternatives
       const newAlternatives = [...prev.alternativeRoutes];
-      
+
       // Add current primary route to alternatives if it exists and isn't already there
       if (prev.currentRoute && !newAlternatives.find(r => r.id === prev.currentRoute!.id)) {
         newAlternatives.push(prev.currentRoute);
       }
-      
+
       // Remove the newly selected route from alternatives to prevent duplication
       const filteredAlternatives = newAlternatives.filter(r => r.id !== route.id);
-      
+
       // Additional safety: Ensure no route appears in both current and alternatives
       const finalAlternatives = filteredAlternatives.filter(r => r.id !== route.id);
-      
+
       console.log(`🔄 Route switching: ${prev.currentRoute?.id} → ${route.id}`);
       console.log(`📋 Alternative routes maintained: ${finalAlternatives.length}`);
-      
+
       return {
         ...prev,
         currentRoute: route,
@@ -423,7 +432,7 @@ const RouteOptimizationWidget: React.FC = () => {
           </p>
         </div>
       </div>
-      
+
       <div className="flex items-center space-x-2">
         {state.isCalculating && (
           <div className="flex items-center space-x-2 text-blue-600">
@@ -431,14 +440,14 @@ const RouteOptimizationWidget: React.FC = () => {
             <span className="text-sm font-medium">Analyzing...</span>
           </div>
         )}
-        
+
         {state.trafficConditions && (
           <div className="flex items-center space-x-3 px-3 py-2 rounded-lg border border-green-200">
             <div className="flex items-center space-x-2">
-              <div 
+              <div
                 className="w-3 h-3 rounded-full animate-pulse"
-                style={{ 
-                  backgroundColor: getTrafficColorFromScore(state.trafficConditions.congestionScore).color 
+                style={{
+                  backgroundColor: getTrafficColorFromScore(state.trafficConditions.congestionScore).color
                 }}
               />
               <span className={`font-medium ${getTrafficLevelClasses(getTrafficLevelFromScore(state.trafficConditions.congestionScore))}`}>
@@ -453,7 +462,7 @@ const RouteOptimizationWidget: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         <button
           onClick={() => setIsMinimized(!isMinimized)}
           className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
@@ -519,7 +528,7 @@ const RouteOptimizationWidget: React.FC = () => {
           <div className="p-3 sm:p-4 lg:p-6">
             {renderHeader()}
             {renderError()}
-            
+
             {/* Single Column Layout */}
             <div className="space-y-4 sm:space-y-6">
               {/* Route Input Panel */}
@@ -566,17 +575,17 @@ const RouteOptimizationWidget: React.FC = () => {
                       waypoints={state.selectedWaypoints}
                       onRouteSelect={(routeId: string) => {
                         console.log('🗺️ Map route selection triggered:', routeId);
-                        
+
                         // Safety check: Don't proceed if route is already current
                         if (state.currentRoute?.id === routeId) {
                           console.log('Selected route is already the primary route');
                           return;
                         }
-                        
+
                         // Find the selected route in all available routes
                         const allRoutes = [state.currentRoute, ...state.alternativeRoutes].filter(Boolean);
                         const selectedRoute = allRoutes.find(route => route?.id === routeId);
-                        
+
                         if (selectedRoute) {
                           console.log(`✅ Found route ${routeId}, switching to primary`);
                           // Use the proper handler that preserves all routes
