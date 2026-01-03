@@ -143,7 +143,7 @@ const RouteOptimizationWidget: React.FC = () => {
   const handleRouteCalculation = useCallback(async (request: RouteRequest) => {
     console.log('🚀 Route Widget: Starting route calculation');
 
-    // COMPLETELY RESET ALL ROUTE DATA before new calculation to prevent accumulation
+    // COMPLETELY RESET ALL ROUTE DATA including origin/destination before new calculation to prevent accumulation
     setState(prev => ({
       ...prev,
       isCalculating: true,
@@ -160,6 +160,10 @@ const RouteOptimizationWidget: React.FC = () => {
 
     // Also clear the route comparison state to prevent accumulation
     setRouteComparison(null);
+
+    // Clear origin and destination first, then set new ones
+    setOrigin(null);
+    setDestination(null);
 
     // Update origin and destination from the request AFTER state reset
     setOrigin(request.origin);
