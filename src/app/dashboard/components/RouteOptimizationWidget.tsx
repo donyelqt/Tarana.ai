@@ -136,6 +136,9 @@ const RouteOptimizationWidget: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
 
+  // Key to force re-render when routes change
+  const [routeKey, setRouteKey] = useState(0);
+
   // ============================================================================
   // ROUTE CALCULATION HANDLERS
   // ============================================================================
@@ -143,32 +146,32 @@ const RouteOptimizationWidget: React.FC = () => {
   const handleRouteCalculation = useCallback(async (request: RouteRequest) => {
     console.log('🚀 Route Widget: Starting route calculation');
 
-    // FIRST, clear all route-related state completely
+    // COMPLETELY RESET ALL ROUTE DATA before new calculation to prevent accumulation
     setState(prev => ({
       ...prev,
-      isCalculating: true,
-      error: null,
       currentRoute: null,
       alternativeRoutes: [],
       trafficConditions: null,
-      lastUpdated: null,
+      isCalculating: true,
+      isMonitoring: false,
       selectedWaypoints: [],
       searchResults: [],
       activeSearchField: null,
-      isMonitoring: false
+      error: null,
+      lastUpdated: null
     }));
 
-    // THEN, clear origin and destination state
+    // Clear origin and destination state
     setOrigin(null);
     setDestination(null);
 
-    // FINALLY, clear route comparison state
+    // Clear route comparison state
     setRouteComparison(null);
 
-    // Wait for all state updates to complete
+    // Force React to flush all state updates before continuing
     await new Promise(resolve => setImmediate(resolve));
 
-    // Update origin and destination from the request AFTER all state is cleared
+    // Now set the new origin and destination
     setOrigin(request.origin);
     setDestination(request.destination);
 
@@ -188,11 +191,11 @@ const RouteOptimizationWidget: React.FC = () => {
 
       const data = await response.json();
 
-      // Update state with results
+      // Update state with NEW results, ensuring old routes are completely replaced
       setState(prev => ({
         ...prev,
         currentRoute: data.primaryRoute,
-        alternativeRoutes: data.alternativeRoutes || [],
+        alternativeRoutes: data.alternativeRoutes ? [...data.alternativeRoutes] : [],
         trafficConditions: data.trafficAnalysis,
         lastUpdated: new Date(),
         isCalculating: false
@@ -240,6 +243,7 @@ const RouteOptimizationWidget: React.FC = () => {
         }
       }
 
+      // On error, ensure complete reset
       setState(prev => ({
         ...prev,
         error: errorMessage,

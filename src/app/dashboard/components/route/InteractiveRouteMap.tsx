@@ -50,6 +50,7 @@ export default function InteractiveRouteMap({
   const [retryCount, setRetryCount] = useState(0);
   const [currentMapStyle, setCurrentMapStyle] = useState<MapStyle>('main');
   const [isChangingStyle, setIsChangingStyle] = useState(false);
+  const plottedRouteCountRef = useRef(0);
 
   // Initialize map using the TomTom utility service
   const initializeMap = useCallback(async () => {
@@ -261,14 +262,18 @@ export default function InteractiveRouteMap({
         'route-primary-glow-middle', 
         'route-primary-glow-inner'
       ];
-      alternativeRoutes.forEach((_, index) => {
+      
+      // Use the maximum of current and previous count to ensure we catch everything
+      const maxRouteCount = Math.max(alternativeRoutes.length, plottedRouteCountRef.current);
+      
+      for (let index = 0; index < maxRouteCount; index++) {
         layersToRemove.push(
           `route-alt-${index}`,
           `route-alt-${index}-glow-outer`,
           `route-alt-${index}-glow-middle`,
           `route-alt-${index}-glow-inner`
         );
-      });
+      }
       
       // Step 1: Remove all layers first
       layersToRemove.forEach(layerId => {
@@ -283,9 +288,9 @@ export default function InteractiveRouteMap({
       
       // Step 2: Remove sources only after all layers are removed
       const sourcesToRemove = ['route-primary'];
-      alternativeRoutes.forEach((_, index) => {
+      for (let index = 0; index < maxRouteCount; index++) {
         sourcesToRemove.push(`route-alt-${index}`);
-      });
+      }
       
       sourcesToRemove.forEach(sourceId => {
         try {
@@ -983,7 +988,8 @@ export default function InteractiveRouteMap({
         console.warn('Error adding primary route:', error);
       }
     }
-
+    // Update the plotted count ref for next cleanup
+    plottedRouteCountRef.current = alternativeRoutes.length;
   }, [currentRoute?.id, alternativeRoutes.map(r => r.id).join(','), origin?.lat, origin?.lng, destination?.lat, destination?.lng, waypoints.length, isMapLoaded]);
 
 
