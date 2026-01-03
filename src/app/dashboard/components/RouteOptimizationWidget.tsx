@@ -143,7 +143,7 @@ const RouteOptimizationWidget: React.FC = () => {
   const handleRouteCalculation = useCallback(async (request: RouteRequest) => {
     console.log('🚀 Route Widget: Starting route calculation');
 
-    // COMPLETELY RESET ALL ROUTE DATA including origin/destination before new calculation to prevent accumulation
+    // FIRST, clear all route-related state completely
     setState(prev => ({
       ...prev,
       isCalculating: true,
@@ -152,20 +152,23 @@ const RouteOptimizationWidget: React.FC = () => {
       alternativeRoutes: [],
       trafficConditions: null,
       lastUpdated: null,
-      selectedWaypoints: [], // Clear any previous waypoints
-      searchResults: [], // Clear any previous search results
-      activeSearchField: null, // Clear any active search field
-      isMonitoring: false // Stop any previous monitoring
+      selectedWaypoints: [],
+      searchResults: [],
+      activeSearchField: null,
+      isMonitoring: false
     }));
 
-    // Also clear the route comparison state to prevent accumulation
-    setRouteComparison(null);
-
-    // Clear origin and destination first, then set new ones
+    // THEN, clear origin and destination state
     setOrigin(null);
     setDestination(null);
 
-    // Update origin and destination from the request AFTER state reset
+    // FINALLY, clear route comparison state
+    setRouteComparison(null);
+
+    // Wait for all state updates to complete
+    await new Promise(resolve => setImmediate(resolve));
+
+    // Update origin and destination from the request AFTER all state is cleared
     setOrigin(request.origin);
     setDestination(request.destination);
 
