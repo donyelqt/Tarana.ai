@@ -158,6 +158,15 @@ export default function InteractiveRouteMap({
 
     return () => {
       isMounted = false;
+      // Clean up map instance on unmount to prevent persistence
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove();
+        } catch (e) {
+          console.warn('Error removing map on unmount:', e);
+        }
+        mapInstanceRef.current = null;
+      }
     };
   }, [initializeMap]);
 
@@ -267,52 +276,35 @@ export default function InteractiveRouteMap({
       }
 
       // Remove existing route layers safely (including glow layers)
-      // First, collect all layer IDs to remove
-      const layersToRemove = [
-        'route-primary',
-        'route-primary-glow-outer',
-        'route-primary-glow-middle',
-        'route-primary-glow-inner'
-      ];
-
-      // Use the maximum of current and previous count to ensure we catch everything
-      const maxRouteCount = Math.max(alternativeRoutes.length, plottedRouteCountRef.current);
-
-      for (let index = 0; index < maxRouteCount; index++) {
-        layersToRemove.push(
-          `route-alt-${index}`,
-          `route-alt-${index}-glow-outer`,
-          `route-alt-${index}-glow-middle`,
-          `route-alt-${index}-glow-inner`
-        );
-      }
-
-      // Step 1: Remove all layers first
-      layersToRemove.forEach(layerId => {
-        try {
-          if (map.getLayer && map.getLayer(layerId)) {
-            map.removeLayer(layerId);
-          }
-        } catch (error) {
-          console.warn(`Failed to remove layer ${layerId}:`, error);
+      // AGGRESSIVE CLEANUP: Scan all layers and remove anything related to our routes
+      try {
+        const style = map.getStyle();
+        if (style && style.layers) {
+          style.layers.forEach((layer: any) => {
+            if (layer.id.startsWith('route-') || layer.id.includes('glow')) {
+              try {
+                map.removeLayer(layer.id);
+              } catch (e) {
+                console.warn(`Failed to remove layer ${layer.id}:`, e);
+              }
+            }
+          });
         }
-      });
 
-      // Step 2: Remove sources only after all layers are removed
-      const sourcesToRemove = ['route-primary'];
-      for (let index = 0; index < maxRouteCount; index++) {
-        sourcesToRemove.push(`route-alt-${index}`);
-      }
-
-      sourcesToRemove.forEach(sourceId => {
-        try {
-          if (map.getSource && map.getSource(sourceId)) {
-            map.removeSource(sourceId);
-          }
-        } catch (error) {
-          console.warn(`Failed to remove source ${sourceId}:`, error);
+        if (style && style.sources) {
+          Object.keys(style.sources).forEach((sourceId: string) => {
+            if (sourceId.startsWith('route-')) {
+              try {
+                map.removeSource(sourceId);
+              } catch (e) {
+                console.warn(`Failed to remove source ${sourceId}:`, e);
+              }
+            }
+          });
         }
-      });
+      } catch (scanError) {
+        console.warn('Error scanning/removing layers:', scanError);
+      }
     } catch (error) {
       console.warn('Error during map cleanup:', error);
     }
