@@ -9,7 +9,7 @@
 ### 🤖 **Agentic AI System**
 - **Multi-Agent Architecture**: Four specialized AI agents work in coordination to generate personalized itineraries
 - **Concierge Agent**: Handles authentication, credit management, and request validation
-- **ContextScout Agent**: Gathers real-time weather and traffic data for contextual awareness
+- **ContextScout Agent**: Gathers real-time weather and traffic data for contextual awareness in Itinerary Planning
 - **RetrievalStrategist Agent**: Performs intelligent activity search and scoring with traffic-aware filtering
 - **ItineraryComposer Agent**: Generates the final itinerary using AI with structured output guarantees
 - **Pipeline Coordinator**: Orchestrates the entire multi-agent workflow with session management
