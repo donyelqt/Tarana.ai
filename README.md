@@ -1,4 +1,4 @@
-# Tarana-ai
+# Tarana-ai - Traffic-Aware Autonomous Itinerary Planner
 
 **Tarana-ai** is an enterprise-grade **Agentic AI RAG (Retrieval-Augmented Generation)** travel platform that generates real-time, personalized itineraries for Baguio City. It leverages sophisticated AI agents, vector embeddings, live traffic data, weather intelligence, and multi-modal search to create optimal travel experiences for Baguio City and Beyond the Philippines. The platform uses advanced machine learning to avoid congestion, discover hidden gems, and provide seamless, context-aware recommendations—think of it as the "Intelligent Waze of Tourism."
 
