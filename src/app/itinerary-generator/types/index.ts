@@ -8,6 +8,7 @@ export interface FormData {
   dates: { start: Date | undefined; end: Date | undefined };
   selectedInterests: string[];
   peakHours?: boolean;
+  trafficAware?: boolean; // NEW: traffic-aware planning toggle
 }
 
 export interface Activity {
@@ -58,6 +59,8 @@ export interface ItineraryFormProps {
   remainingCredits?: number;
   nextRefreshTime?: string;
   showOutOfCredits?: boolean;
+  trafficAware: boolean; // NEW: traffic-aware mode toggle
+  setTrafficAware: React.Dispatch<React.SetStateAction<boolean>>; // NEW
 }
 
 export interface ItineraryPreviewProps {

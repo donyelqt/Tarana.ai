@@ -59,6 +59,7 @@ export const generateItinerary = async (
         budget: formData.budget,
         pax: formData.pax,
         sampleItinerary,
+        options: formData.trafficAware !== false ? { trafficAware: true } : { trafficAware: false },
       }),
     });
 
