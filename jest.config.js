@@ -21,9 +21,14 @@ module.exports = {
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest',
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
+      tsconfig: {
+        jsx: 'react-jsx',
+      },
+    }],
     '^.+\\.(js|jsx)$': 'babel-jest',
   },
+  testEnvironment: 'jsdom',
   testPathIgnorePatterns: [
     '/node_modules/',
     '/.next/',

@@ -1,10 +1,13 @@
-// Jest setup file for Tarana.ai password reset tests
+// Jest setup file for Tarana.ai tests
 
 // Mock Next.js environment
 process.env.NODE_ENV = 'test';
 process.env.NEXTAUTH_URL = 'http://localhost:3000';
 process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:3000';
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'test-service-role-key';
+
+// Setup React Testing Library
+require('@testing-library/jest-dom');
 
 // Mock console methods to reduce noise in tests
 global.console = {
