@@ -18,20 +18,22 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/middleware/*": [
-        "./src/middleware/*"
-      ]
-    }
+     "plugins": [
+       {
+         "name": "next"
+       }
+     ],
+     "paths": {
+       "@/*": [
+         "./src/*"
+       ],
+       "@/middleware/*": [
+         "./src/middleware/*"
+       ],
+       "public": [
+         "./public"
+       ]
+     }
   },
   "include": [
     "**/*.ts",
