@@ -35,6 +35,8 @@ export default function ItineraryForm({
   remainingCredits,
   nextRefreshTime,
   showOutOfCredits = false,
+  trafficAware,
+  setTrafficAware,
 }: ItineraryFormProps) {
   const { toast } = useToast();
   // Local state to control the budget popover
@@ -105,7 +107,8 @@ export default function ItineraryForm({
       pax,
       duration,
       dates,
-      selectedInterests
+      selectedInterests,
+      trafficAware, // NEW: include toggle state
     };
     
     onSubmitItinerary(formData);
@@ -238,19 +241,46 @@ export default function ItineraryForm({
         {/* Travel Dates */}
         <div>
           <Label className="block font-medium mb-2 text-gray-900">Travel Dates</Label>
-          <div className="flex gap-3 lg:mr-48">
-            <DatePicker
-              date={dates.start}
-              setDate={(date) => setDates({ ...dates, start: date })}
-              disabled={showPreview}
-              placeholder="Start date"
-            />
-            <DatePicker
-              date={dates.end}
-              setDate={(date) => setDates({ ...dates, end: date })}
-              disabled={showPreview}
-              placeholder="End date"
-            />
+          <div className="relative">
+            <div className="flex gap-3 lg:mr-48">
+              <DatePicker
+                date={dates.start}
+                setDate={(date) => setDates({ ...dates, start: date })}
+                disabled={showPreview}
+                placeholder="Start date"
+              />
+              <DatePicker
+                date={dates.end}
+                setDate={(date) => setDates({ ...dates, end: date })}
+                disabled={showPreview}
+                placeholder="End date"
+              />
+            </div>
+            {/* Traffic-Aware Toggle - positioned with spacing after travel dates */}
+            <div className="absolute top-0" style={{ left: '466px', right: '2rem' }}>
+              <div className="flex items-center justify-between px-4 py-2 bg-blue-50/50 border border-blue-100 rounded-xl h-full w-full">
+                <div>
+                  <div className="font-medium text-gray-900 text-sm">Traffic-Aware Itinerary Planner</div>
+                  <div className="text-xs text-gray-500">
+                    {trafficAware ? 'On' : 'Off'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTrafficAware(!trafficAware)}
+                  className={`relative w-10 h-5 rounded-full transition-colors duration-200 flex-shrink-0 ${
+                    trafficAware ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                  aria-pressed={trafficAware}
+                >
+                  <span
+                    className={`absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+                      trafficAware ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         {/* Travel Interests */}
