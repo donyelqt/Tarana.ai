@@ -45,6 +45,9 @@ export default function ItineraryGenerator() {
     initialBudget: budgetOptions[0],
   });
   
+  // Traffic-aware mode toggle state
+  const [trafficAware, setTrafficAware] = useState<boolean>(true);
+  
   // Initialize itinerary generator hook
   const {
     generatedItinerary,
@@ -105,7 +108,7 @@ export default function ItineraryGenerator() {
       <Sidebar />
       <main className="md:h-screen md:overflow-hidden md:pl-64 flex flex-col md:flex-row">
         <div className="flex-1 md:overflow-y-auto">
-          <ItineraryForm
+          <            ItineraryForm
             showPreview={showPreview}
             isGenerating={isGenerating}
             isLoadingItinerary={isLoadingItinerary}
@@ -130,6 +133,8 @@ export default function ItineraryGenerator() {
             remainingCredits={creditBalance?.remainingToday}
             nextRefreshTime={creditBalance ? new Date(creditBalance.nextRefresh).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined}
             showOutOfCredits={Boolean(creditBalance && creditBalance.remainingToday <= 0)}
+            trafficAware={trafficAware}
+            setTrafficAware={setTrafficAware}
           />
         </div>
         <div className="w-full md:w-[450px] border-l md:overflow-y-auto">
