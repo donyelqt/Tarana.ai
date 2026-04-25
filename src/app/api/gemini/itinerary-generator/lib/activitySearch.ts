@@ -13,7 +13,14 @@ import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
 // Initialize unified intelligent search engine
 const intelligentSearchEngine = new IntelligentSearchEngine();
 
-export async function findAndScoreActivities(prompt: string, interests: string[], weatherType: WeatherCondition, durationDays: number | null, model: any) {
+export async function findAndScoreActivities(
+  prompt: string, 
+  interests: string[], 
+  weatherType: WeatherCondition, 
+  durationDays: number | null, 
+  model: any,
+  trafficAware: boolean = true
+) {
     let effectiveSampleItinerary: any = null;
     
     try {
@@ -48,7 +55,8 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
                 weatherType,
                 durationDays,
                 existingTitles: intelligentResults.map(r => r.activity.title),
-                maxQueries: 2
+                maxQueries: 2,
+                includeTrafficData: trafficAware, // respect the traffic toggle
             });
 
             // Run additional intelligent searches with sub-queries
@@ -185,156 +193,184 @@ export async function findAndScoreActivities(prompt: string, interests: string[]
             .slice(0, 40);
 
         if (filteredSimilar.length > 0) {
-            // Apply traffic-aware activity search with detailed logging
-            console.log(`\n🚦 TRAFFIC-AWARE SEARCH: Processing ${filteredSimilar.length} activities`);
-            const trafficOptions = createDefaultTrafficOptions();
-            const trafficEnhancedActivities = await trafficAwareActivitySearch.enhanceActivitiesWithTraffic(
-                filteredSimilar.map(s => s.metadata),
-                trafficOptions
-            );
-            console.log(`✅ TRAFFIC-AWARE SEARCH: Enhanced ${trafficEnhancedActivities.length} activities with real-time traffic data`);
-            
-            // Log detailed traffic integration results
-            console.log(`\n=== TOMTOM API INTEGRATION RESULTS ===`);
-            const trafficSummary = trafficEnhancedActivities.map(activity => ({
-                name: activity.title,
-                coordinates: activity.trafficAnalysis ? `${activity.trafficAnalysis.lat}, ${activity.trafficAnalysis.lon}` : 'NO_COORDS',
-                trafficLevel: activity.trafficAnalysis?.realTimeTraffic?.trafficLevel || 'NO_DATA',
-                congestionScore: activity.trafficAnalysis?.realTimeTraffic?.congestionScore || 0,
-                recommendationScore: activity.trafficAnalysis?.realTimeTraffic?.recommendationScore || 0,
-                hasRealTimeData: !!activity.trafficAnalysis?.realTimeTraffic
-            }));
-            
-            const successfulTrafficFetches = trafficSummary.filter(a => a.hasRealTimeData).length;
-            const totalActivities = trafficSummary.length;
-            
-            console.log(`🎯 TOMTOM API SUCCESS RATE: ${successfulTrafficFetches}/${totalActivities} (${Math.round(successfulTrafficFetches/totalActivities*100)}%)`);
-            console.log(`📊 DETAILED TRAFFIC DATA:`, trafficSummary);
-            console.log(`=======================================\n`);
+            let finalActivities: any[];
+            let sanitisedAllowedActivities: any[];
 
-            const allowedTrafficLevels = new Set(['VERY_LOW', 'LOW', 'MODERATE']);
-            const trafficFilteredActivities = trafficEnhancedActivities.filter(activity => {
-              const level = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
-              if (!level) {
-                return true;
-              }
-              const isAllowed = allowedTrafficLevels.has(level);
-              if (!isAllowed) {
-                console.log(`🚫 TRAFFIC FILTER: Removing ${activity.title} - level ${level}`);
-              }
-              return isAllowed;
-            });
+            if (trafficAware) {
+                // Apply traffic-aware activity search with detailed logging
+                console.log(`\n🚦 TRAFFIC-AWARE SEARCH: Processing ${filteredSimilar.length} activities`);
+                const trafficOptions = createDefaultTrafficOptions();
+                const trafficEnhancedActivities = await trafficAwareActivitySearch.enhanceActivitiesWithTraffic(
+                    filteredSimilar.map(s => s.metadata),
+                    trafficOptions
+                );
+                console.log(`✅ TRAFFIC-AWARE SEARCH: Enhanced ${trafficEnhancedActivities.length} activities with real-time traffic data`);
+                
+                // Log detailed traffic integration results
+                console.log(`\n=== TOMTOM API INTEGRATION RESULTS ===`);
+                const trafficSummary = trafficEnhancedActivities.map(activity => ({
+                    name: activity.title,
+                    coordinates: activity.trafficAnalysis ? `${activity.trafficAnalysis.lat}, ${activity.trafficAnalysis.lon}` : 'NO_COORDS',
+                    trafficLevel: activity.trafficAnalysis?.realTimeTraffic?.trafficLevel || 'NO_DATA',
+                    congestionScore: activity.trafficAnalysis?.realTimeTraffic?.congestionScore || 0,
+                    recommendationScore: activity.trafficAnalysis?.realTimeTraffic?.recommendationScore || 0,
+                    hasRealTimeData: !!activity.trafficAnalysis?.realTimeTraffic
+                }));
+                
+                const successfulTrafficFetches = trafficSummary.filter(a => a.hasRealTimeData).length;
+                const totalActivities = trafficSummary.length;
+                
+                console.log(`🎯 TOMTOM API SUCCESS RATE: ${successfulTrafficFetches}/${totalActivities} (${Math.round(successfulTrafficFetches/totalActivities*100)}%)`);
+                console.log(`📊 DETAILED TRAFFIC DATA:`, trafficSummary);
+                console.log(`=======================================\n`);
 
-            if (trafficFilteredActivities.length === 0) {
-              console.warn('⚠️ TRAFFIC FILTER: No activities passed traffic-level constraints; itinerary may contain empty slots.');
+                const allowedTrafficLevels = new Set(['VERY_LOW', 'LOW', 'MODERATE']);
+                const trafficFilteredActivities = trafficEnhancedActivities.filter(activity => {
+                    const level = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
+                    if (!level) {
+                        return true;
+                    }
+                    const isAllowed = allowedTrafficLevels.has(level);
+                    if (!isAllowed) {
+                        console.log(`🚫 TRAFFIC FILTER: Removing ${activity.title} - level ${level}`);
+                    }
+                    return isAllowed;
+                });
+
+                if (trafficFilteredActivities.length === 0) {
+                    console.warn('⚠️ TRAFFIC FILTER: No activities passed traffic-level constraints; itinerary may contain empty slots.');
+                }
+
+                // Final activity selection and validation
+                finalActivities = trafficFilteredActivities.slice(0, Math.min(20, trafficFilteredActivities.length));
+                console.log(` FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`);
+
+                // Build sanitised allowed activities (with traffic data)
+                sanitisedAllowedActivities = finalActivities.map(activity => ({
+                    image: activity.image,
+                    title: activity.title,
+                    time: activity.time,
+                    desc: activity.desc,
+                    tags: Array.isArray(activity.tags) ? activity.tags : [],
+                    peakHours: activity.peakHours,
+                    trafficAnalysis: activity.trafficAnalysis ? {
+                        realTimeTraffic: activity.trafficAnalysis.realTimeTraffic,
+                        recommendation: activity.trafficRecommendation,
+                    } : undefined
+                }));
+            } else {
+                // FAST MODE: Skip traffic enhancement, use raw search results
+                console.log(`⚡ FAST MODE: Skipping traffic integration for ${filteredSimilar.length} activities`);
+                finalActivities = filteredSimilar.map(s => ({
+                    ...s.metadata,
+                    relevanceScore: s.relevanceScore,
+                    isCurrentlyPeak: s.isCurrentlyPeak,
+                    searchReasoning: s.reasoning || [],
+                    confidence: s.confidence || 0.7
+                })).slice(0, 20);
+
+                sanitisedAllowedActivities = finalActivities.map((activity: any) => ({
+                    image: activity.image,
+                    title: activity.title,
+                    time: activity.time,
+                    desc: activity.desc,
+                    tags: Array.isArray(activity.tags) ? activity.tags : [],
+                    peakHours: activity.peakHours,
+                }));
             }
 
-            // Final activity selection and validation
-            const finalActivities = trafficFilteredActivities.slice(0, Math.min(20, trafficFilteredActivities.length));
-            console.log(` FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`);
-
+            // Group activities by time period
             const groupByPeriod = () => ({
-              Morning: [] as any[],
-              Afternoon: [] as any[],
-              Evening: [] as any[],
-              Flexible: [] as any[]
+                Morning: [] as any[],
+                Afternoon: [] as any[],
+                Evening: [] as any[],
+                Flexible: [] as any[]
             });
 
             const buckets = groupByPeriod();
 
             const normalizeActivity = (activity: any) => ({
-              image: activity.image || '',
-              title: activity.title,
-              time: activity.time || '',
-              desc: activity.desc || '',
-              tags: Array.isArray(activity.tags) ? [...activity.tags] : [],
-              peakHours: activity.peakHours,
-              trafficAnalysis: activity.trafficAnalysis,
-              trafficRecommendation: activity.trafficRecommendation,
-              combinedTrafficScore: activity.combinedTrafficScore,
-              relevanceScore: activity.relevanceScore,
-              isCurrentlyPeak: activity.isCurrentlyPeak
+                image: activity.image || '',
+                title: activity.title,
+                time: activity.time || '',
+                desc: activity.desc || '',
+                tags: Array.isArray(activity.tags) ? [...activity.tags] : [],
+                peakHours: activity.peakHours,
+                trafficAnalysis: activity.trafficAnalysis,
+                trafficRecommendation: activity.trafficRecommendation,
+                combinedTrafficScore: activity.combinedTrafficScore,
+                relevanceScore: activity.relevanceScore,
+                isCurrentlyPeak: activity.isCurrentlyPeak
             });
 
             const inferPeriod = (timeStr: string) => {
-              const lower = timeStr.toLowerCase();
-              if (lower.includes('morning') || (lower.includes('am') && !lower.includes('pm'))) {
-                return 'Morning';
-              }
-              if (lower.includes('afternoon')) {
-                return 'Afternoon';
-              }
-              if (lower.includes('evening') || lower.includes('night') || lower.includes('pm')) {
-                return 'Evening';
-              }
-              return 'Flexible';
+                const lower = timeStr.toLowerCase();
+                if (lower.includes('morning') || (lower.includes('am') && !lower.includes('pm'))) {
+                    return 'Morning';
+                }
+                if (lower.includes('afternoon')) {
+                    return 'Afternoon';
+                }
+                if (lower.includes('evening') || lower.includes('night') || lower.includes('pm')) {
+                    return 'Evening';
+                }
+                return 'Flexible';
             };
 
             finalActivities.forEach(activity => {
-              const normalized = normalizeActivity(activity);
-              const periodKey = inferPeriod(activity.time || '');
-              buckets[periodKey].push(normalized);
+                const normalized = normalizeActivity(activity);
+                const periodKey = inferPeriod(activity.time || '');
+                buckets[periodKey].push(normalized);
             });
 
             const items: Array<{ period: string; activities: any[] }> = [];
 
             (['Morning', 'Afternoon', 'Evening'] as const).forEach(period => {
-              if (buckets[period].length > 0) {
-                items.push({ period, activities: buckets[period] });
-              }
+                if (buckets[period].length > 0) {
+                    items.push({ period, activities: buckets[period] });
+                }
             });
 
             if (buckets.Flexible.length > 0) {
-              items.push({ period: 'Flexible Time', activities: buckets.Flexible });
+                items.push({ period: "Flexible Time", activities: buckets.Flexible });
             }
 
-            // Log real-time traffic integration success for final activities
-            console.log(`
+            // Log traffic integration for traffic-aware mode only
+            if (trafficAware) {
+                console.log(`
 === FINAL ITINERARY TRAFFIC INTEGRATION ===`);
-            const finalTrafficStats = finalActivities.map(activity => ({
-                activity: activity.title,
-                realTimeTraffic: activity.trafficAnalysis?.realTimeTraffic ? 'INTEGRATED' : 'FALLBACK',
-                trafficLevel: activity.trafficAnalysis?.realTimeTraffic?.trafficLevel || 'UNKNOWN',
-                optimalScore: activity.trafficAnalysis?.realTimeTraffic?.recommendationScore || 0,
-                combinedScore: activity.combinedTrafficScore || 0,
-                recommendation: activity.trafficRecommendation || 'UNKNOWN'
-            }));
-            
-            const integratedCount = finalTrafficStats.filter(a => a.realTimeTraffic === 'INTEGRATED').length;
-            console.log(`🚀 REAL-TIME TRAFFIC INTEGRATION: ${integratedCount}/${finalActivities.length} activities using live TomTom data`);
-            console.log(`📈 TRAFFIC-AWARE ITINERARY:`, finalTrafficStats);
-            console.log(`==========================================\n`);
-            
-            // Add traffic tags to activities based on traffic level
-            const validatedActivities = finalActivities.map(activity => {
-              const trafficLevel = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
-              const tags = [...(activity.tags || [])];
-              
-              // Add traffic tags
-              if (trafficLevel === 'VERY_LOW' || trafficLevel === 'LOW') {
-                tags.push('low-traffic');
-              } else if (trafficLevel === 'MODERATE') {
-                tags.push('moderate-traffic');
-              }
-              
-              return {
-                ...activity,
-                tags
-              };
-            });
+                const finalTrafficStats = finalActivities.map(activity => ({
+                    activity: activity.title,
+                    realTimeTraffic: activity.trafficAnalysis?.realTimeTraffic ? 'INTEGRATED' : 'FALLBACK',
+                    trafficLevel: activity.trafficAnalysis?.realTimeTraffic?.trafficLevel || 'UNKNOWN',
+                    optimalScore: activity.trafficAnalysis?.realTimeTraffic?.recommendationScore || 0,
+                    combinedScore: activity.combinedTrafficScore || 0,
+                    recommendation: activity.trafficRecommendation || 'UNKNOWN'
+                }));
+                
+                const integratedCount = finalTrafficStats.filter(a => a.realTimeTraffic === 'INTEGRATED').length;
+                console.log(`🚀 REAL-TIME TRAFFIC INTEGRATION: ${integratedCount}/${finalActivities.length} activities using live TomTom data`);
+                console.log(`📈 TRAFFIC-AWARE ITINERARY:`, finalTrafficStats);
+                console.log(`==========================================\n`);
+            }
 
-            const sanitisedAllowedActivities = finalActivities.map(activity => ({
-              image: activity.image,
-              title: activity.title,
-              time: activity.time,
-              desc: activity.desc,
-              tags: Array.isArray(activity.tags) ? activity.tags : [],
-              peakHours: activity.peakHours,
-              trafficAnalysis: activity.trafficAnalysis ? {
-                realTimeTraffic: activity.trafficAnalysis.realTimeTraffic,
-                recommendation: activity.trafficRecommendation,
-              } : undefined
-            }));
+            // Add traffic tags only in traffic-aware mode
+            const validatedActivities = trafficAware ? finalActivities.map(activity => {
+                const trafficLevel = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
+                const tags = [...(activity.tags || [])];
+                
+                // Add traffic tags
+                if (trafficLevel === 'VERY_LOW' || trafficLevel === 'LOW') {
+                    tags.push('low-traffic');
+                } else if (trafficLevel === 'MODERATE') {
+                    tags.push('moderate-traffic');
+                }
+                
+                return {
+                    ...activity,
+                    tags
+                };
+            }) : finalActivities;
 
             const subtitleText = intelligentResults.length >= 10 
                 ? "Activities matched using intelligent search with advanced AI algorithms"
