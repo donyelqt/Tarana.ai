@@ -3,8 +3,36 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname),
-  transpilePackages: ['lucide-react'], // Add lucide-react for proper module handling
-  /* other config options here */
+  transpilePackages: ['lucide-react'],
+  
+  // Explicitly set distDir to ensure consistent paths across platforms
+  distDir: '.next',
+  
+  // Webpack configuration to fix Windows HMR issues
+  webpack: (config, { dev, isServer }) => {
+    if (dev) {
+      // Disable webpack cache to prevent chunk manifest corruption on Windows
+      config.cache = false;
+      
+      // Use polling instead of native file watching (more reliable on Windows)
+      config.watchOptions = {
+        poll: 1000, // Check for changes every second
+        aggregateTimeout: 300, // Delay before rebuilding after changes
+        // Use string glob patterns, not RegExp
+        ignored: [
+          '**/node_modules/**',
+          '**/.next/**',
+          '**/public/**',
+        ],
+      };
+    }
+    
+    return config;
+  },
+  
+  // Production build optimization
+  productionBrowserSourceMaps: false,
+  
   images: {
     remotePatterns: [
       {
