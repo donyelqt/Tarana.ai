@@ -55,7 +55,6 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@next/swc-win32-x64-msvc": "15.5.7",
     "@tailwindcss/postcss": "^4.1.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
