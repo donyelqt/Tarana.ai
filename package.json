@@ -15,7 +15,6 @@
     "lint": "next lint",
     "clean": "rimraf .next node_modules/.cache",
     "clean:install": "rimraf .next node_modules/.cache && npm ci",
-    "postbuild": "if exist .next\\routes-manifest.json copy .next\\routes-manifest.json .next\\server\\routes-manifest.json",
     "index-embeddings": "tsx -r dotenv/config scripts/indexSampleItinerary.ts",
     "test": "jest"
   },
