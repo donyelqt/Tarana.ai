@@ -1,6 +1,6 @@
 module.exports = {
   preset: 'ts-jest',
-  testEnvironment: 'node',
+  testEnvironment: 'jsdom',
   testMatch: [
     '**/__tests__/**/*.test.ts',
     '**/__tests__/**/*.test.tsx',
@@ -28,12 +28,14 @@ module.exports = {
     }],
     '^.+\\.(js|jsx)$': 'babel-jest',
   },
-  testEnvironment: 'jsdom',
   testPathIgnorePatterns: [
     '/node_modules/',
     '/.next/',
     '/.swc/',
   ],
+  testEnvironmentOptions: {
+    customExportConditions: [''],
+  },
   coverageThreshold: {
     global: {
       branches: 80,

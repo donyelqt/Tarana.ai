@@ -1,17 +1,7 @@
 import { sendPasswordResetEmail } from '../email/email';
 import * as emailConfig from '../email/emailConfig';
 
-// Mock nodemailer
-const mockSendMail = jest.fn();
-const mockCreateTransport = jest.fn(() => ({
-  sendMail: mockSendMail,
-}));
-
-jest.mock('nodemailer', () => ({
-  default: {
-    createTransport: mockCreateTransport,
-  },
-}));
+// Use global nodemailer mocks from jest.setup.js
 
 // Mock console methods
 const consoleSpy = {
@@ -76,14 +66,14 @@ describe('Email Service', () => {
 
       jest.spyOn(emailConfig, 'getEmailTransportConfig').mockReturnValue(mockTransportConfig);
       jest.spyOn(emailConfig, 'validateEmailConfig').mockReturnValue(mockEmailConfig);
-      
-      mockSendMail.mockResolvedValue({ messageId: 'test-message-id' });
+
+      global.mockSendMail.mockResolvedValue({ messageId: 'test-message-id' });
 
       const result = await sendPasswordResetEmail(testEmail, testResetUrl);
 
       expect(result).toBe(true);
-      expect(mockCreateTransport).toHaveBeenCalledWith(mockTransportConfig);
-      expect(mockSendMail).toHaveBeenCalledWith({
+      expect(global.mockCreateTransport).toHaveBeenCalledWith(mockTransportConfig);
+      expect(global.mockSendMail).toHaveBeenCalledWith({
         from: '"Tarana.ai" <noreply@tarana.ai>',
         to: testEmail,
         subject: 'Reset Your Tarana.ai Password',
@@ -121,12 +111,12 @@ describe('Email Service', () => {
 
       jest.spyOn(emailConfig, 'getEmailTransportConfig').mockReturnValue(mockTransportConfig);
       jest.spyOn(emailConfig, 'validateEmailConfig').mockReturnValue(mockEmailConfig);
-      mockSendMail.mockResolvedValue({ messageId: 'test-message-id' });
+      global.mockSendMail.mockResolvedValue({ messageId: 'test-message-id' });
 
       await sendPasswordResetEmail(testEmail, testResetUrl);
 
-      const emailCall = mockSendMail.mock.calls[0][0];
-      
+      const emailCall = global.mockSendMail.mock.calls[0][0];
+
       // Validate HTML content
       expect(emailCall.html).toContain('Tarana.ai');
       expect(emailCall.html).toContain('Reset Your Password');
@@ -171,9 +161,9 @@ describe('Email Service', () => {
 
       jest.spyOn(emailConfig, 'getEmailTransportConfig').mockReturnValue(mockTransportConfig);
       jest.spyOn(emailConfig, 'validateEmailConfig').mockReturnValue(mockEmailConfig);
-      
+
       const testError = new Error('SMTP connection failed');
-      mockSendMail.mockRejectedValue(testError);
+      global.mockSendMail.mockRejectedValue(testError);
 
       const result = await sendPasswordResetEmail(testEmail, testResetUrl);
 
@@ -248,11 +238,11 @@ describe('Email Service', () => {
 
       jest.spyOn(emailConfig, 'getEmailTransportConfig').mockReturnValue(mockTransportConfig);
       jest.spyOn(emailConfig, 'validateEmailConfig').mockReturnValue(mockEmailConfig);
-      mockSendMail.mockResolvedValue({ messageId: 'test-message-id' });
+      global.mockSendMail.mockResolvedValue({ messageId: 'test-message-id' });
 
       await sendPasswordResetEmail(testEmail, testResetUrl);
 
-      const emailCall = mockSendMail.mock.calls[0][0];
+      const emailCall = global.mockSendMail.mock.calls[0][0];
       expect(emailCall.from).toBe('"Custom Name" <custom@example.com>');
     });
   });
