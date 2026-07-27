@@ -117,31 +117,35 @@ export default function ItineraryForm({
   return (
     <div className="w-full bg-gray-100">
     <div className="w-full rounded-tl-7xl bg-white p-6">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-black">Let&apos;s Plan Your Baguio Adventure</h2>
-        <div className="flex items-center gap-3 px-4 py-2 bg-blue-50/50 border border-blue-100 rounded-xl">
-          <div className="text-right">
-            <div className="font-medium text-gray-900 text-sm whitespace-nowrap">Traffic-Aware Itinerary Planner</div>
-            <div className="text-xs text-gray-500">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <h2 className="text-xl font-bold text-black sm:text-2xl">Let&apos;s Plan Your Baguio Adventure</h2>
+        <label className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/50 px-3 py-2 sm:w-auto sm:justify-end sm:px-4">
+          <div className="min-w-0 flex-1 text-left sm:text-right sm:flex-none">
+            <div className="truncate font-medium text-gray-900 text-xs sm:text-sm">
+              <span className="sm:hidden">Traffic-Aware</span>
+              <span className="hidden sm:inline">Traffic-Aware Itinerary Planner</span>
+            </div>
+            <div className="text-[10px] text-gray-500 sm:text-xs">
               {trafficAware ? 'On' : 'Off'}
             </div>
           </div>
           <button
             type="button"
+            role="switch"
             onClick={() => setTrafficAware(!trafficAware)}
-            className={`relative w-10 h-5 rounded-full transition-colors duration-200 flex-shrink-0 ${
+            className={`relative h-5 w-9 flex-shrink-0 rounded-full transition-colors duration-200 sm:h-5 sm:w-10 ${
               trafficAware ? 'bg-blue-600' : 'bg-gray-300'
             }`}
             aria-pressed={trafficAware}
             aria-label="Toggle Traffic-Aware Itinerary Planner"
           >
             <span
-              className={`absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
-                trafficAware ? 'translate-x-5' : 'translate-x-0'
+              className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                trafficAware ? 'translate-x-4 sm:translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
-        </div>
+        </label>
       </div>
       {showOutOfCredits && (
         <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
