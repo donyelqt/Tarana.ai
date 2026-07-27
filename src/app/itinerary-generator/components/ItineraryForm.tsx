@@ -117,7 +117,32 @@ export default function ItineraryForm({
   return (
     <div className="w-full bg-gray-100">
     <div className="w-full rounded-tl-7xl bg-white p-6">
-      <div className="text-2xl font-bold mb-6 text-black">Let&apos;s Plan Your Baguio Adventure</div>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <h2 className="text-2xl font-bold text-black">Let&apos;s Plan Your Baguio Adventure</h2>
+        <div className="flex items-center gap-3 px-4 py-2 bg-blue-50/50 border border-blue-100 rounded-xl">
+          <div className="text-right">
+            <div className="font-medium text-gray-900 text-sm whitespace-nowrap">Traffic-Aware Itinerary Planner</div>
+            <div className="text-xs text-gray-500">
+              {trafficAware ? 'On' : 'Off'}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTrafficAware(!trafficAware)}
+            className={`relative w-10 h-5 rounded-full transition-colors duration-200 flex-shrink-0 ${
+              trafficAware ? 'bg-blue-600' : 'bg-gray-300'
+            }`}
+            aria-pressed={trafficAware}
+            aria-label="Toggle Traffic-Aware Itinerary Planner"
+          >
+            <span
+              className={`absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+                trafficAware ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
       {showOutOfCredits && (
         <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
           <p className="font-semibold">You&apos;re out of Tarana Gala credits for today.</p>
@@ -201,7 +226,7 @@ export default function ItineraryForm({
         {/* Number of Pax */}
         <div>
           <Label className="block font-medium mb-2 text-gray-900">Number of Pax.</Label>
-          <div className="grid grid-cols-4 gap-3 lg:mr-48">
+          <div className="grid grid-cols-4 gap-3">
             {paxOptions.map(opt => (
               <Button
                 type="button"
@@ -221,7 +246,7 @@ export default function ItineraryForm({
         {/* Duration */}
         <div>
           <Label className="block font-medium mb-2 text-gray-900">Duration</Label>
-          <div className="grid grid-cols-4 gap-3 lg:mr-48">
+          <div className="grid grid-cols-4 gap-3">
             {durationOptions.map(opt => (
               <Button
                 type="button"
@@ -242,7 +267,7 @@ export default function ItineraryForm({
         <div>
           <Label className="block font-medium mb-2 text-gray-900">Travel Dates</Label>
           <div className="relative">
-            <div className="flex gap-3 lg:mr-48">
+            <div className="flex gap-3">
               <DatePicker
                 date={dates.start}
                 setDate={(date) => setDates({ ...dates, start: date })}
@@ -255,31 +280,6 @@ export default function ItineraryForm({
                 disabled={showPreview}
                 placeholder="End date"
               />
-            </div>
-            {/* Traffic-Aware Toggle - positioned with spacing after travel dates */}
-            <div className="absolute top-0" style={{ left: '466px', right: '2rem' }}>
-              <div className="flex items-center justify-between px-4 py-2 bg-blue-50/50 border border-blue-100 rounded-xl h-full w-full">
-                <div>
-                  <div className="font-medium text-gray-900 text-sm">Traffic-Aware Itinerary Planner</div>
-                  <div className="text-xs text-gray-500">
-                    {trafficAware ? 'On' : 'Off'}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setTrafficAware(!trafficAware)}
-                  className={`relative w-10 h-5 rounded-full transition-colors duration-200 flex-shrink-0 ${
-                    trafficAware ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
-                  aria-pressed={trafficAware}
-                >
-                  <span
-                    className={`absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
-                      trafficAware ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
             </div>
           </div>
         </div>
