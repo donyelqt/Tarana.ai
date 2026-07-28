@@ -543,90 +543,125 @@ body {
   transition: all 0.3s ease-out;
 }
 
-/* Route analysis loader — Neural Constellation animation */
+/* Route analysis loader — route-discovery mini-map simulation */
 
-/* Irregular heartbeat-style breathing for the center core */
-@keyframes core-breathe {
-  0%, 100% { transform: scale(1); }
-  20%  { transform: scale(1.35); }
-  35%  { transform: scale(0.85); }
-  50%  { transform: scale(1.25); }
-  65%  { transform: scale(0.92); }
-  80%  { transform: scale(1.15); }
+@keyframes ghost-draw {
+  0% { stroke-dashoffset: 220; opacity: 0; }
+  4% { opacity: 0.5; }
+  18% { opacity: 0; stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
 }
 
-/* Background glow breathing — slightly offset timing so it doesn't sync with core */
-@keyframes glow-breathe {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  30%  { opacity: 0.7; transform: scale(1.04); }
-  55%  { opacity: 0.2; transform: scale(0.97); }
-  80%  { opacity: 0.55; transform: scale(1.02); }
+@keyframes traffic-draw {
+  0%, 30% { stroke-dashoffset: 100; opacity: 0; }
+  35% { opacity: 1; }
+  50%, 88% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
 }
 
-/* Rotating dashed arc rings */
-@keyframes arc-cw {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+@keyframes celebrate-halo {
+  0%, 86% { opacity: 0; }
+  92% { opacity: 0.35; }
+  100% { opacity: 0; }
 }
 
-@keyframes arc-ccw {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(-360deg); }
+@keyframes vehicle-travel {
+  0%, 60% { offset-distance: 0%; opacity: 0; }
+  65% { opacity: 1; }
+  92%, 100% { offset-distance: 100%; opacity: 1; }
 }
 
-/* Satellite orbits — elliptical paths (varying translateX / translateY).
- * Each keyframe step alters the radius so the path is not a perfect circle,
- * making the motion feel organic instead of mechanical.               */
-@keyframes orbit-alpha {
-  0%   { transform: rotate(0deg)    translateX(20px); }
-  25%  { transform: rotate(90deg)   translateX(18px); }
-  50%  { transform: rotate(180deg)  translateX(22px); }
-  75%  { transform: rotate(270deg)  translateX(19px); }
-  100% { transform: rotate(360deg)  translateX(20px); }
+@keyframes marker-pop {
+  0% { transform: scale(0); opacity: 0; }
+  8% { transform: scale(1.18); opacity: 1; }
+  18%, 100% { transform: scale(1); opacity: 1; }
 }
 
-@keyframes orbit-beta {
-  0%   { transform: rotate(0deg)    translateX(12px)    translateY(-6px); }
-  20%  { transform: rotate(-72deg)  translateX(10px)    translateY(-8px); }
-  40%  { transform: rotate(-144deg) translateX(13px)    translateY(-5px); }
-  60%  { transform: rotate(-216deg) translateX(11px)    translateY(-7px); }
-  80%  { transform: rotate(-288deg) translateX(12px)    translateY(-6px); }
-  100% { transform: rotate(-360deg) translateX(12px)    translateY(-6px); }
+@keyframes waypoint-pop {
+  0%, 45% { transform: scale(0); opacity: 0; }
+  55% { transform: scale(1.22); opacity: 1; }
+  65%, 100% { transform: scale(1); opacity: 1; }
 }
 
-@keyframes orbit-gamma {
-  0%   { transform: rotate(0deg)    translateX(26px)     translateY(4px); }
-  33%  { transform: rotate(120deg)  translateX(24px)     translateY(6px); }
-  66%  { transform: rotate(240deg)  translateX(28px)     translateY(3px); }
-  100% { transform: rotate(360deg)  translateX(26px)     translateY(4px); }
+@keyframes badge-pop {
+  0%, 50% { transform: scale(0); opacity: 0; }
+  62% { transform: scale(1.08); opacity: 1; }
+  72%, 100% { transform: scale(1); opacity: 1; }
 }
 
-/* Text label — irregular opacity pulse so it doesn't sync with the core */
-@keyframes text-breathe {
-  0%, 100% { opacity: 0.5; }
-  20%  { opacity: 1; }
-  40%  { opacity: 0.6; }
-  60%  { opacity: 0.92; }
-  80%  { opacity: 0.55; }
+@keyframes marker-ping {
+  0% { transform: scale(1); opacity: 0.55; transform-origin: center; transform-box: fill-box; }
+  75%, 100% { transform: scale(2.6); opacity: 0; transform-origin: center; transform-box: fill-box; }
 }
 
-/* Tiny twinkle near the core — "data spark" effect */
-@keyframes twinkle {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50%  { opacity: 1; transform: scale(1.2); }
+.ghost-route {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke: #94a3b8;
+  stroke-width: 1.5;
+  stroke-dasharray: 220;
+  animation: ghost-draw 4.5s ease-in-out infinite;
 }
 
-/* Utility classes */
-.animate-core-breathe  { animation: core-breathe 1.8s ease-in-out infinite; }
-.animate-glow-breathe  { animation: glow-breathe 2.5s ease-in-out infinite; }
-.animate-arc-cw        { animation: arc-cw 8s linear infinite; }
-.animate-arc-ccw       { animation: arc-ccw 12s linear infinite; }
-.animate-text-breathe  { animation: text-breathe 3s ease-in-out infinite; }
-.animate-twinkle       { animation: twinkle 1.5s ease-in-out infinite; }
+.traffic-segment {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3.5;
+  stroke-dasharray: 100;
+  animation: traffic-draw 4.5s ease-out infinite;
+}
 
-.orbit-alpha { animation: orbit-alpha 2.5s linear infinite; }
-.orbit-beta  { animation: orbit-beta  3.5s linear infinite; }
-.orbit-gamma { animation: orbit-gamma 4.2s linear infinite; }
+.celebrate-halo {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke: #0066FF;
+  stroke-width: 7;
+  stroke-dasharray: 220;
+  filter: blur(3px);
+  animation: traffic-draw 4.5s ease-out infinite, celebrate-halo 4.5s ease-in-out infinite;
+}
+
+.vehicle-dot {
+  offset-path: path('M20,90 Q 50,75 80,65 Q 100,55 120,50 Q 140,45 165,42 L 180,40');
+  offset-rotate: auto;
+  animation: vehicle-travel 4.5s ease-out infinite;
+}
+
+.origin-pin,
+.destination-pin,
+.waypoint-1,
+.waypoint-2,
+.badge-fastest {
+  transform-box: view-box;
+}
+
+.origin-pin,
+.destination-pin {
+  animation: marker-pop 4.5s ease-out infinite;
+}
+
+.waypoint-1,
+.waypoint-2 {
+  animation: waypoint-pop 4.5s ease-out infinite;
+}
+
+.waypoint-1 { animation-delay: 0s; }
+.waypoint-2 { animation-delay: 0.25s; }
+
+.badge-fastest {
+  animation: badge-pop 4.5s ease-out infinite;
+}
+
+.marker-ping {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: marker-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+
 
 .password-feedback {
   margin: 8px 0 0 0;
