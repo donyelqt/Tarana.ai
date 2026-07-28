@@ -123,85 +123,85 @@ const RouteDetailsPanel: React.FC<RouteDetailsPanelProps> = ({
 
   if (!currentRoute) {
     return (
-      <div className="text-center py-6 sm:py-8 px-4">
-        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-          <Route className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+      <div className="text-center py-8 px-4">
+        <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Route className="w-6 h-6 text-gray-400" />
         </div>
-        <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No Route Selected</h3>
-        <p className="text-sm sm:text-base text-gray-600 max-w-sm mx-auto">Calculate a route to see detailed information and traffic analysis.</p>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No Route Selected</h3>
+        <p className="text-sm text-gray-500 max-w-sm mx-auto">Calculate a route to see detailed information and traffic analysis.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-6">
       {/* Main Route Card */}
-      <div className="bg-white border-2 border-blue-200 rounded-xl p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 space-y-3 sm:space-y-0">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-5 gap-4">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-              <Route className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            <div className="w-10 h-10 bg-[#0066FF] rounded-xl flex items-center justify-center shadow-sm">
+              <Route className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-base sm:text-lg text-gray-900">Primary Route</h3>
-              <p className="text-xs sm:text-sm text-gray-600">Optimized for {currentRoute.summary.routeType} travel</p>
+              <h3 className="font-semibold text-base text-gray-900">Primary Route</h3>
+              <p className="text-sm text-gray-500 mt-0.5">Optimized for {currentRoute.summary.routeType} travel</p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               onClick={() => handleSaveRoute(currentRoute.id)}
-              className={`text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2 ${savedRoutes.includes(currentRoute.id) ? 'bg-blue-50 border-blue-300' : ''}`}
+              className={`text-sm ${savedRoutes.includes(currentRoute.id) ? 'bg-blue-50 border-blue-300' : ''}`}
             >
-              <Bookmark className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${savedRoutes.includes(currentRoute.id) ? 'fill-current' : ''}`} />
+              <Bookmark className={`w-4 h-4 mr-1.5 ${savedRoutes.includes(currentRoute.id) ? 'fill-current' : ''}`} />
               {savedRoutes.includes(currentRoute.id) ? 'Saved' : 'Save'}
             </Button>
             
             <Button
               variant="outline"
               onClick={() => handleShareRoute(currentRoute)}
-              className="text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-2"
+              className="text-sm"
             >
-              <Share2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+              <Share2 className="w-4 h-4 mr-1.5" />
               Share
             </Button>
           </div>
         </div>
 
         {/* Route Statistics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div className="bg-blue-50 rounded-lg p-3 sm:p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
             <div className="flex items-center space-x-2 mb-2">
-              <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
-              <span className="text-xs sm:text-sm font-medium text-blue-900">Travel Time</span>
+              <Clock className="w-4 h-4 text-[#0066FF]" />
+              <span className="text-sm font-medium text-blue-900">Travel Time</span>
             </div>
-            <div className="text-lg sm:text-2xl font-bold text-blue-900">
+            <div className="text-2xl font-bold text-blue-900">
               {formatDuration(currentRoute.summary.travelTimeInSeconds)}
             </div>
             {currentRoute.summary.trafficDelayInSeconds > 0 && (
-              <div className="text-xs sm:text-sm text-red-600 mt-1">
+              <div className="text-sm text-red-600 mt-1">
                 +{formatDuration(currentRoute.summary.trafficDelayInSeconds)} delay
               </div>
             )}
           </div>
 
-          <div className="bg-green-50 rounded-lg p-3 sm:p-4">
+          <div className="bg-green-50 rounded-xl p-4 border border-green-100">
             <div className="flex items-center space-x-2 mb-2">
-              <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
-              <span className="text-xs sm:text-sm font-medium text-green-900">Distance</span>
+              <MapPin className="w-4 h-4 text-green-600" />
+              <span className="text-sm font-medium text-green-900">Distance</span>
             </div>
-            <div className="text-lg sm:text-2xl font-bold text-green-900">
+            <div className="text-2xl font-bold text-green-900">
               {formatDistance(currentRoute.summary.lengthInMeters)}
             </div>
           </div>
 
-          <div className="bg-purple-50 rounded-lg p-3 sm:p-4">
+          <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
             <div className="flex items-center space-x-2 mb-2">
-              <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" />
-              <span className="text-xs sm:text-sm font-medium text-purple-900">Route Score</span>
+              <TrendingUp className="w-4 h-4 text-purple-600" />
+              <span className="text-sm font-medium text-purple-900">Route Score</span>
             </div>
-            <div className="text-lg sm:text-2xl font-bold text-purple-900">
+            <div className="text-2xl font-bold text-purple-900">
               {trafficAnalysis?.recommendationScore || 'N/A'}
               {trafficAnalysis?.recommendationScore && '%'}
             </div>
@@ -210,10 +210,12 @@ const RouteDetailsPanel: React.FC<RouteDetailsPanelProps> = ({
 
         {/* Traffic Analysis */}
         {trafficAnalysis && (
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <div className="flex items-center space-x-2 mb-3">
-              <Zap className="w-4 h-4 text-yellow-500" />
-              <span className="font-medium text-gray-900">Traffic Analysis</span>
+          <div className="bg-gray-50/80 rounded-xl p-5 border border-gray-100 mb-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Zap className="w-4 h-4 text-yellow-500" />
+                <span className="font-medium text-gray-900">Traffic Analysis</span>
+              </div>
               {lastUpdated && (
                 <span className="text-xs text-gray-500">
                   Updated {lastUpdated.toLocaleTimeString()}
@@ -276,14 +278,14 @@ const RouteDetailsPanel: React.FC<RouteDetailsPanelProps> = ({
         )}
 
         {/* Route Monitoring */}
-        <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100 gap-4">
           <div className="flex items-center space-x-3">
-            <div className={`w-3 h-3 rounded-full ${isMonitoring ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+            <div className={`w-2.5 h-2.5 rounded-full ${isMonitoring ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
             <div>
               <div className="font-medium text-sm text-gray-900">
                 Real-time Monitoring
               </div>
-              <div className="text-xs text-gray-600">
+              <div className="text-xs text-gray-500">
                 {isMonitoring ? 'Monitoring route for traffic changes' : 'Start monitoring to get live updates'}
               </div>
             </div>
@@ -292,7 +294,7 @@ const RouteDetailsPanel: React.FC<RouteDetailsPanelProps> = ({
           <Button
             variant={isMonitoring ? "outline" : "default"}
             onClick={isMonitoring ? onStopMonitoring : onStartMonitoring}
-            className="px-3 py-2 text-sm"
+            className="px-4 py-2 text-sm"
           >
             {isMonitoring ? (
               <>
@@ -317,10 +319,12 @@ const RouteDetailsPanel: React.FC<RouteDetailsPanelProps> = ({
             className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center space-x-3">
-              <Navigation className="w-5 h-5 text-gray-600" />
+              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Navigation className="w-4 h-4 text-gray-600" />
+              </div>
               <div className="text-left">
                 <h3 className="font-medium text-gray-900">Alternative Routes</h3>
-                <p className="text-sm text-gray-600">{alternativeRoutes.length} alternatives available</p>
+                <p className="text-sm text-gray-500">{alternativeRoutes.length} alternatives available</p>
               </div>
             </div>
             {showAlternatives ? (
@@ -386,27 +390,27 @@ const RouteDetailsPanel: React.FC<RouteDetailsPanelProps> = ({
 
       {/* Route Comparison Summary */}
       {routeComparison && (
-        <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-4 border border-blue-200">
+        <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
           <div className="flex items-center space-x-2 mb-3">
             <CheckCircle className="w-5 h-5 text-green-600" />
             <span className="font-medium text-gray-900">Route Recommendation</span>
           </div>
           
           <div className="space-y-2">
-            <p className="text-sm text-gray-700">{routeComparison.recommendation.message}</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{routeComparison.recommendation.message}</p>
             
             {routeComparison.recommendation.timeSavings && (
               <div className="flex items-center space-x-2 text-sm">
                 <Clock className="w-4 h-4 text-green-600" />
-                <span className="text-green-700">
+                <span className="text-green-700 font-medium">
                   Saves {routeComparison.recommendation.timeSavings} minutes vs alternatives
                 </span>
               </div>
             )}
             
             <div className="flex items-center space-x-2 text-sm">
-              <Info className="w-4 h-4 text-blue-600" />
-              <span className="text-blue-700">
+              <Info className="w-4 h-4 text-[#0066FF]" />
+              <span className="text-[#0066FF]">
                 {routeComparison.recommendation.trafficAdvantage}
               </span>
             </div>
