@@ -100,7 +100,7 @@ class TomTomTrafficService {
       }
 
       const congestionScore = this.calculateCongestionScore(flowData, incidents);
-      const trafficLevel = this.getTrafficLevel(congestionScore, incidents);
+      const trafficLevel = this.getTrafficLevel(congestionScore);
       const recommendationScore = this.calculateRecommendationScore(congestionScore, trafficLevel, incidents);
 
       const result: LocationTrafficData = {
@@ -325,55 +325,62 @@ class TomTomTrafficService {
   /**
    * Calculate congestion score based on flow data and incidents
    */
+  /**
+   * Calculate congestion score (0-100) from TomTom flow data and any
+   * nearby incidents.
+   *
+   * Speed-based score is clamped to 0-80 so the congestion score range
+   * still reflects speed reduction even when incidents push it higher.
+   * Each incident adds 0-30 points depending on magnitudeOfDelay, but
+   * the total is always capped at 100.
+   */
   private calculateCongestionScore(flowData: any, incidents: TrafficIncident[]): number {
     let score = 0;
 
-    // Base score from traffic flow (if available)
     if (flowData && flowData.currentSpeed && flowData.freeFlowSpeed) {
       const speedRatio = flowData.currentSpeed / flowData.freeFlowSpeed;
-      score = Math.max(0, (1 - speedRatio) * 100);
-      console.log(`🚗 TomTom: Speed-based congestion score: ${score.toFixed(1)} (${flowData.currentSpeed}/${flowData.freeFlowSpeed} km/h)`);
+      score = Math.max(0, (1 - speedRatio) * 100) * 0.85;
+      console.log('🚗 TomTom: Speed-based congestion score: ' + score.toFixed(1) + ' (' + flowData.currentSpeed + '/' + flowData.freeFlowSpeed + ' km/h)');
     } else {
-      score = 30; // Default moderate congestion when no flow data
-      console.log(`🚗 TomTom: Using default congestion score: ${score} (no flow data)`);
+      score = 25;
+      console.log('🚗 TomTom: Using default congestion score: ' + score + ' (no flow data)');
     }
 
-    // Adjust score based on incidents
     incidents.forEach(incident => {
       const incidentImpact = Math.min(incident.magnitudeOfDelay * 10, 30);
       score += incidentImpact;
-      console.log(`🚧 TomTom: Incident impact +${incidentImpact} (magnitude: ${incident.magnitudeOfDelay})`);
+      console.log('🚧 TomTom: Incident impact +' + incidentImpact + ' (magnitude: ' + incident.magnitudeOfDelay + ')');
     });
 
     const finalScore = Math.min(100, Math.max(0, Math.round(score)));
-    console.log(`📊 TomTom: Final congestion score: ${finalScore}/100`);
+    console.log('📊 TomTom: Final congestion score: ' + finalScore + '/100');
     
     return finalScore;
   }
 
   /**
-   * Determine traffic level based on congestion score and incidents
+   * Determine traffic level from congestion score.
+   *
+   * Incident impact is already baked into the congestion score by
+   * calculateCongestionScore, so we do NOT override based on raw
+   * incident data.  Thresholds match getTrafficLevelFromScore()
+   * in src/lib/utils/trafficColors.ts.
    */
-  private getTrafficLevel(congestionScore: number, incidents: TrafficIncident[]): 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE' {
-    // Check for severe incidents first
-    const severeIncidents = incidents.filter(i => i.magnitudeOfDelay >= 4);
-    if (severeIncidents.length > 0) {
-      console.log(`🚨 TomTom: SEVERE traffic level due to ${severeIncidents.length} major incidents`);
+  private getTrafficLevel(congestionScore: number): 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE' {
+    if (congestionScore >= 75) {
+      console.log(`🔴 TomTom: SEVERE traffic level (score: ${congestionScore})`);
       return 'SEVERE';
-    }
-
-    // Determine level based on congestion score
-    if (congestionScore >= 80) {
-      console.log(`🔴 TomTom: HIGH traffic level (score: ${congestionScore})`);
-      return 'HIGH';
     } else if (congestionScore >= 50) {
+      console.log(`🟠 TomTom: HIGH traffic level (score: ${congestionScore})`);
+      return 'HIGH';
+    } else if (congestionScore >= 25) {
       console.log(`🟡 TomTom: MODERATE traffic level (score: ${congestionScore})`);
       return 'MODERATE';
-    } else if (congestionScore >= 20) {
+    } else if (congestionScore >= 15) {
       console.log(`🟢 TomTom: LOW traffic level (score: ${congestionScore})`);
       return 'LOW';
     } else {
-      console.log(`🔵 TomTom: VERY LOW traffic level (score: ${congestionScore})`);
+      console.log('🔵 TomTom: VERY LOW traffic level (score: ' + congestionScore + ')');
       return 'VERY_LOW';
     }
   }
@@ -429,7 +436,7 @@ class TomTomTrafficService {
       lon,
       incidents: [],
       trafficLevel: 'LOW',
-      congestionScore: 25,
+      congestionScore: 18,
       recommendationScore: 75,
       lastUpdated: new Date()
     };
@@ -497,3 +504,6 @@ export function getTrafficTimeRecommendation(trafficData: LocationTrafficData): 
     return "Avoid visiting now - heavy traffic 🚫";
   }
 }
+
+
+

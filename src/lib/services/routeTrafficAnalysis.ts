@@ -17,6 +17,7 @@ import {
 } from '@/types/route-optimization';
 
 import { tomtomTrafficService, LocationTrafficData } from '@/lib/traffic/tomtomTraffic';
+import { getTrafficLevelFromScore } from '@/lib/utils/trafficColors';
 import { isPeakHour, getPeakHourMultiplier, getNextPeakHour } from '@/lib/traffic/peakHours';
 
 interface TrafficSegmentAnalysis {
@@ -72,7 +73,7 @@ class RouteTrafficAnalyzer {
       );
 
       const analysis: RouteTrafficAnalysis = {
-        overallTrafficLevel: overallAnalysis.trafficLevel,
+        overallTrafficLevel: getTrafficLevelFromScore(overallAnalysis.congestionScore),
         segmentAnalysis: segmentAnalyses,
         estimatedDelay: overallAnalysis.totalDelay,
         alternativeRecommendation: overallAnalysis.congestionScore > 70,
@@ -510,6 +511,7 @@ class RouteTrafficAnalyzer {
 
   private getTrafficLevelValue(level: TrafficLevel): number {
     switch (level) {
+      case 'VERY_LOW': return 0;
       case 'LOW': return 1;
       case 'MODERATE': return 2;
       case 'HIGH': return 3;
@@ -595,3 +597,4 @@ class RouteTrafficAnalyzer {
 
 // Export singleton instance
 export const routeTrafficAnalyzer = new RouteTrafficAnalyzer();
+
