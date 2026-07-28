@@ -22,7 +22,8 @@ import {
   Search,
   LocateFixed,
   ArrowRight,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -131,8 +132,8 @@ const LocationInput: React.FC<LocationInputProps> = ({
   }, []);
 
   return (
-    <div className="space-y-2">
-      <Label className="text-xs sm:text-sm font-medium text-gray-700">{label}</Label>
+    <div className="space-y-1.5">
+      <Label className="text-sm font-medium text-gray-700">{label}</Label>
       <div className="relative">
         <div className="relative">
           <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
@@ -146,18 +147,18 @@ const LocationInput: React.FC<LocationInputProps> = ({
             onChange={handleInputChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            className="pl-10 pr-10 text-xs sm:text-sm"
+            className="pl-10 pr-10 text-sm"
           />
           {isSearching && (
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#0066FF] border-t-transparent"></div>
             </div>
           )}
         </div>
 
         {/* Search Results */}
         {(showResults && searchResults.length > 0) && (
-          <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
             {searchResults.map((result, index) => (
               <button
                 key={index}
@@ -180,10 +181,10 @@ const LocationInput: React.FC<LocationInputProps> = ({
                   lat: result.coordinates?.lat || 0,
                   lng: result.coordinates?.lng || 0
                 })}
-                className="w-full px-3 py-2 text-left hover:bg-blue-50 hover:text-blue-900 border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-blue-50"
+                className="w-full px-3 py-2.5 text-left hover:bg-blue-50 text-left border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-blue-50"
               >
-                <div className="font-medium text-xs sm:text-sm text-gray-900">{result.name}</div>
-                <div className="text-xs text-gray-600">{result.address}</div>
+                <div className="font-medium text-sm text-gray-900">{result.name}</div>
+                <div className="text-xs text-gray-500">{result.address}</div>
               </button>
             ))}
           </div>
@@ -193,7 +194,7 @@ const LocationInput: React.FC<LocationInputProps> = ({
         {(showPopular && popularLocations.length > 0) && (
           <div 
             ref={resultsRef}
-            className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+            className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"
           >
             <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
               Recent Locations
@@ -207,10 +208,10 @@ const LocationInput: React.FC<LocationInputProps> = ({
                   handleLocationSelect(location);
                 }}
                 onClick={() => handleLocationSelect(location)}
-                className="w-full px-3 py-2 text-left hover:bg-blue-50 hover:text-blue-900 border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-blue-50"
+                className="w-full px-3 py-2.5 text-left hover:bg-blue-50 text-left border-b border-gray-100 last:border-b-0 transition-colors focus:outline-none focus:bg-blue-50"
               >
-                <div className="font-medium text-xs sm:text-sm text-gray-900">{location.name}</div>
-                <div className="text-xs text-gray-600">{location.address}</div>
+                <div className="font-medium text-sm text-gray-900">{location.name}</div>
+                <div className="text-xs text-gray-500">{location.address}</div>
               </button>
             ))}
           </div>
@@ -306,17 +307,17 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
   ];
 
   return (
-    <Card className="h-fit">
-      <CardHeader className="pb-3 sm:pb-6">
-        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-          <Navigation className="w-4 h-4 sm:w-5 sm:h-5" />
+    <Card>
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Navigation className="w-4 h-4" />
           Route Planning
         </CardTitle>
-        <CardDescription className="text-xs sm:text-sm">
+        <CardDescription className="text-sm">
           Plan your optimal route with traffic-aware navigation
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 sm:space-y-6">
+      <CardContent className="space-y-5">
         {/* Location Inputs */}
         <div className="space-y-4">
           <LocationInput
@@ -333,15 +334,17 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
 
           {/* Swap Button */}
           <div className="flex justify-center">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={handleSwapLocations}
-              className="p-2 text-gray-400 hover:text-blue-600 transition-colors bg-white border border-gray-300 rounded-full shadow-sm hover:shadow-md"
               title="Swap locations"
               disabled={!origin || !destination}
+              className="rounded-full border border-gray-300 hover:border-[#0066FF] hover:text-[#0066FF]"
             >
-              <ArrowRight className="w-4 h-4 transform rotate-90" />
-            </button>
+              <ArrowRight className="w-4 h-4 rotate-90" />
+            </Button>
           </div>
 
           <LocationInput
@@ -383,25 +386,25 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
         )}
 
         {/* Route Type Selection */}
-        <div className="space-y-2 sm:space-y-3">
-          <Label className="text-xs sm:text-sm font-medium text-gray-700">Route Type</Label>
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-gray-700">Route Type</Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {routeTypeOptions.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => onPreferencesChange({ routeType: option.value })}
-                className={`p-2 sm:p-3 border rounded-lg text-left transition-colors ${
+                className={`p-3 border rounded-xl text-left transition-all duration-200 ${
                   preferences.routeType === option.value
-                    ? 'border-blue-500 bg-blue-50 text-blue-900'
-                    : 'border-gray-300 hover:bg-gray-50'
+                    ? 'border-[#0066FF] bg-blue-50 text-blue-900 shadow-sm'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center space-x-2 mb-1">
                   {option.icon}
-                  <span className="font-medium text-xs sm:text-sm">{option.label}</span>
+                  <span className="font-medium text-sm">{option.label}</span>
                 </div>
-                <div className="text-xs text-gray-600">{option.description}</div>
+                <div className="text-xs text-gray-500">{option.description}</div>
               </button>
             ))}
           </div>
@@ -411,12 +414,12 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center space-x-2 text-xs sm:text-sm text-blue-600 hover:text-blue-800 transition-colors"
+          className="flex items-center space-x-2 text-sm text-[#0066FF] hover:text-[#0052cc] transition-colors"
         >
-          <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
+          <Settings className="w-4 h-4" />
           <span>Advanced Options</span>
-          <div className={`transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`}>
-            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className={`transform transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </div>
@@ -424,20 +427,20 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
 
         {/* Advanced Options */}
         {showAdvanced && (
-          <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
+          <div className="space-y-5 p-4 bg-gray-50/80 rounded-xl border border-gray-100">
             {/* Vehicle Type */}
             <div className="space-y-2">
-              <Label className="text-xs sm:text-sm font-medium text-gray-700">Vehicle Type</Label>
+              <Label className="text-sm font-medium text-gray-700">Vehicle Type</Label>
               <div className="flex flex-wrap gap-2">
                 {vehicleTypeOptions.map((option) => (
                   <button
                     key={option.value}
                     type="button"
                     onClick={() => onPreferencesChange({ vehicleType: option.value })}
-                    className={`flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg transition-colors text-xs sm:text-sm ${
+                    className={`flex items-center space-x-1.5 px-3 py-2 border rounded-xl transition-all duration-200 text-sm ${
                       preferences.vehicleType === option.value
-                        ? 'border-blue-500 bg-blue-50 text-blue-900'
-                        : 'border-gray-300 hover:bg-gray-50'
+                        ? 'border-[#0066FF] bg-blue-50 text-blue-900'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-white'
                     }`}
                   >
                     {option.icon}
@@ -449,8 +452,8 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
 
             {/* Sustainable Mode */}
             <div className="space-y-2">
-              <Label className="text-xs sm:text-sm font-medium text-green-700 flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <Label className="text-sm font-medium text-green-700 flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
                 Sustainable Mode
               </Label>
               <div className="flex flex-wrap gap-2">
@@ -459,10 +462,10 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
                     key={option.value}
                     type="button"
                     onClick={() => onPreferencesChange({ vehicleType: option.value })}
-                    className={`flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 border rounded-lg transition-colors text-xs sm:text-sm ${
+                    className={`flex items-center space-x-1.5 px-3 py-2 border rounded-xl transition-all duration-200 text-sm ${
                       preferences.vehicleType === option.value
                         ? 'border-green-500 bg-green-50 text-green-900'
-                        : 'border-gray-300 hover:bg-green-50'
+                        : 'border-gray-200 hover:border-green-200 hover:bg-green-50/50'
                     }`}
                   >
                     {option.icon}
@@ -474,7 +477,7 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
 
             {/* Departure Time */}
             <div className="space-y-2">
-              <Label htmlFor="departure-time" className="text-xs sm:text-sm font-medium text-gray-700">
+              <Label htmlFor="departure-time" className="text-sm font-medium text-gray-700">
                 Departure Time (Optional)
               </Label>
               <Input
@@ -482,61 +485,58 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
                 type="datetime-local"
                 value={departureTime}
                 onChange={(e) => setDepartureTime(e.target.value)}
-                className="w-full text-xs sm:text-sm"
+                className="w-full text-sm"
               />
             </div>
 
             {/* Avoid Options */}
             <div className="space-y-2">
-              <Label className="text-xs sm:text-sm font-medium text-gray-700">Avoid</Label>
-              <div className="space-y-1.5 sm:space-y-2">
-                <label className="flex items-center space-x-2">
+              <Label className="text-sm font-medium text-gray-700">Avoid</Label>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={preferences.avoidTolls || false}
                     onChange={(e) => onPreferencesChange({ avoidTolls: e.target.checked })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-[#0066FF] focus:ring-[#0066FF]"
                   />
-                  <span className="text-xs sm:text-sm text-gray-700">Toll roads</span>
+                  <span className="text-sm text-gray-700">Toll roads</span>
                 </label>
-                <label className="flex items-center space-x-2">
+                <label className="flex items-center space-x-2.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={preferences.avoidFerries || false}
                     onChange={(e) => onPreferencesChange({ avoidFerries: e.target.checked })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-[#0066FF] focus:ring-[#0066FF]"
                   />
-                  <span className="text-xs sm:text-sm text-gray-700">Ferries</span>
+                  <span className="text-sm text-gray-700">Ferries</span>
                 </label>
-                <label className="flex items-center space-x-2">
+                <label className="flex items-center space-x-2.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={preferences.avoidTrafficJams || false}
                     onChange={(e) => onPreferencesChange({ avoidTrafficJams: e.target.checked })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-[#0066FF] focus:ring-[#0066FF]"
                   />
-                  <span className="text-xs sm:text-sm text-gray-700">Traffic jams</span>
+                  <span className="text-sm text-gray-700">Traffic jams</span>
                 </label>
               </div>
             </div>
           </div>
         )}
       </CardContent>
-      <CardFooter className="pt-3 sm:pt-6">
+      <CardFooter className="pt-4">
         {/* Calculate Button */}
         <Button
           onClick={handleCalculateRoute}
           disabled={!origin || !destination || isCalculating}
-          className="w-full text-xs sm:text-sm"
+          className="w-full bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-medium"
         >
           {isCalculating ? (
-            <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-2 border-white border-t-transparent"></div>
-              <span>Analyzing Route...</span>
-            </div>
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <div className="flex items-center space-x-2">
-              <Navigation className="w-3 h-3 sm:w-4 sm:h-4" />
+              <Navigation className="w-4 h-4" />
               <span>Find Optimal Route</span>
             </div>
           )}
@@ -547,3 +547,4 @@ const RouteInputPanel: React.FC<RouteInputPanelProps> = ({
 };
 
 export default RouteInputPanel;
+

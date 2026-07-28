@@ -21,7 +21,7 @@ export default function MapStyleSelector({ currentMapStyle, isChangingStyle, onS
             variant="outline" 
             size="icon" 
             disabled={isChangingStyle}
-            className="shadow-lg backdrop-blur-sm bg-white/90 hover:bg-white/95 border-gray-200/80"
+            className="shadow-md bg-white/90 hover:bg-white/95 border-gray-200 rounded-xl"
           >
             {isChangingStyle ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapIcon className="h-4 w-4" />}
             <span className="sr-only">Change Map Style</span>
