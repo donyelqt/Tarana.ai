@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { RouteData, RouteTrafficAnalysis, LocationPoint } from '@/types/route-optimization';
 import { createTomTomMap, getTomTomSDKStatus, resetTomTomService, changeMapStyle, type TomTomMapConfig, type MapStyle, MAP_STYLES, BAGUIO_CITY_COORDINATES, ZOOM_LEVELS } from '@/lib/integrations/tomtomMapUtils';
 import { MapStyleSelector, RouteSelectionPanel, TrafficLegend } from './MapUI';
+import RouteAnalysisLoader from './RouteAnalysisLoader';
 import { Loader2 } from 'lucide-react';
 
 interface InteractiveRouteMapProps {
@@ -311,22 +312,14 @@ export default function InteractiveRouteMap({
 
     // Add modern, sleek markers with glassmorphism effects
     try {
-      // Create custom origin marker with modern styling
-      if (origin && window.tt.Marker && window.tt.Popup) {
-        console.log('🟢 Adding modern origin marker:', origin);
+        // Create custom origin marker with modern styling
+        if (origin && window.tt.Marker && window.tt.Popup) {
+          console.log('🟢 Adding modern origin marker:', origin);
 
-        // Create custom origin marker element
-        const originElement = document.createElement('div');
-        originElement.innerHTML = `
-          <div class="origin-marker" style="
-            position: relative;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            transform-origin: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          ">
-            <!-- Outer glow ring -->
+          // Create custom origin marker element
+          const originElement = document.createElement('div');
+          originElement.className = 'origin-marker';
+          originElement.innerHTML = `
             <div style="
               position: absolute;
               top: -8px;
@@ -338,7 +331,6 @@ export default function InteractiveRouteMap({
               animation: pulse-origin 2s ease-in-out infinite;
             "></div>
             
-            <!-- Main marker body -->
             <div style="
               position: absolute;
               top: 0;
@@ -362,7 +354,6 @@ export default function InteractiveRouteMap({
               </svg>
             </div>
             
-            <!-- Inner shine effect -->
             <div style="
               position: absolute;
               top: 4px;
@@ -373,105 +364,82 @@ export default function InteractiveRouteMap({
               background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
               pointer-events: none;
             "></div>
-          </div>
-        `;
+          `;
 
-        // Add CSS animations
-        const style = document.createElement('style');
-        style.textContent = `
-          @keyframes pulse-origin {
-            0%, 100% { transform: scale(1); opacity: 0.6; }
-            50% { transform: scale(1.1); opacity: 0.3; }
-          }
-          .origin-marker:hover {
-            transform: scale(1.1) !important;
-          }
-          .origin-marker:hover > div:first-child {
-            animation-duration: 1s !important;
-          }
-        `;
-        document.head.appendChild(style);
-
-        const originMarker = new window.tt.Marker({
-          element: originElement,
-          anchor: 'center'
-        })
-          .setLngLat([origin.lng, origin.lat])
-          .setPopup(new window.tt.Popup({
-            offset: 35,
-            closeButton: true,
-            closeOnClick: false,
-            className: 'modern-popup'
-          }).setHTML(`
-            <div style="
-              padding: 16px 20px;
-              min-width: 220px;
-              background: rgba(255, 255, 255, 0.95);
-              backdrop-filter: blur(20px);
-              border-radius: 16px;
-              border: 1px solid rgba(255, 255, 255, 0.2);
-              box-shadow: 
-                0 20px 40px rgba(0, 0, 0, 0.1),
-                0 8px 16px rgba(0, 0, 0, 0.06),
-                inset 0 1px 0 rgba(255, 255, 255, 0.4);
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            ">
-              <div style="
-                display: flex;
-                align-items: center;
-                margin-bottom: 12px;
-                gap: 8px;
-              ">
+          const originMarker = new window.tt.Marker({
+            element: originElement,
+            anchor: 'center'
+          })
+            .setLngLat([origin.lng, origin.lat])
+            .setPopup(new window.tt.Popup({
+              offset: 35,
+              closeButton: true,
+              closeOnClick: false,
+              className: 'modern-popup'
+            }).setHTML(`
+              <div class="modern-popup-content">
                 <div style="
-                  width: 8px;
-                  height: 8px;
-                  background: linear-gradient(135deg, #22c55e, #16a34a);
-                  border-radius: 50%;
-                  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
-                "></div>
-                <div style="
-                  font-weight: 600;
-                  color: #1f2937;
-                  font-size: 14px;
-                  letter-spacing: -0.01em;
-                ">Starting Point</div>
+                  padding: 16px 20px;
+                  min-width: 220px;
+                  background: rgba(255, 255, 255, 0.95);
+                  backdrop-filter: blur(20px);
+                  border-radius: 16px;
+                  border: 1px solid rgba(255, 255, 255, 0.2);
+                  box-shadow: 
+                    0 20px 40px rgba(0, 0, 0, 0.1),
+                    0 8px 16px rgba(0, 0, 0, 0.06),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                ">
+                  <div style="
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 12px;
+                    gap: 8px;
+                  ">
+                    <div style="
+                      width: 8px;
+                      height: 8px;
+                      background: linear-gradient(135deg, #22c55e, #16a34a);
+                      border-radius: 50%;
+                      box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+                    "></div>
+                    <div style="
+                      font-weight: 600;
+                      color: #1f2937;
+                      font-size: 14px;
+                      letter-spacing: -0.01em;
+                    ">Starting Point</div>
+                  </div>
+                  <div style="
+                    font-size: 15px;
+                    color: #111827;
+                    font-weight: 500;
+                    margin-bottom: 6px;
+                    line-height: 1.4;
+                  ">${origin.name || 'Origin'}</div>
+                  <div style="
+                    font-size: 13px;
+                    color: #6b7280;
+                    line-height: 1.3;
+                    opacity: 0.8;
+                  ">${origin.address || 'Starting location'}</div>
+                </div>
               </div>
-              <div style="
-                font-size: 15px;
-                color: #111827;
-                font-weight: 500;
-                margin-bottom: 6px;
-                line-height: 1.4;
-              ">${origin.name || 'Origin'}</div>
-              <div style="
-                font-size: 13px;
-                color: #6b7280;
-                line-height: 1.3;
-                opacity: 0.8;
-              ">${origin.address || 'Starting location'}</div>
-            </div>
-          `))
-          .addTo(map);
+            `))
+            .addTo(map);
 
-        markersRef.current.push(originMarker);
-      }
+          markersRef.current.push(originMarker);
+        }
 
-      // Create custom destination marker with modern styling
-      if (destination && window.tt.Marker && window.tt.Popup) {
-        console.log('🔴 Adding modern destination marker:', destination);
+        // Create custom destination marker with modern styling
+        if (destination && window.tt.Marker && window.tt.Popup) {
+          console.log('🔴 Adding modern destination marker:', destination);
 
-        // Create custom destination marker element
-        const destElement = document.createElement('div');
-        destElement.innerHTML = `
-          <div class="destination-marker" style="
-            position: relative;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            transform-origin: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          ">
-            <!-- Outer glow ring -->
+          // Create custom destination marker element
+          const destElement = document.createElement('div');
+          destElement.className = 'destination-marker';
+          destElement.innerHTML = `
             <div style="
               position: absolute;
               top: -8px;
@@ -483,7 +451,6 @@ export default function InteractiveRouteMap({
               animation: pulse-destination 2s ease-in-out infinite;
             "></div>
             
-            <!-- Main marker body -->
             <div style="
               position: absolute;
               top: 0;
@@ -507,7 +474,6 @@ export default function InteractiveRouteMap({
               </svg>
             </div>
             
-            <!-- Inner shine effect -->
             <div style="
               position: absolute;
               top: 4px;
@@ -518,88 +484,73 @@ export default function InteractiveRouteMap({
               background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
               pointer-events: none;
             "></div>
-          </div>
-        `;
+          `;
 
-        // Add CSS animations for destination
-        const destStyle = document.createElement('style');
-        destStyle.textContent = `
-          @keyframes pulse-destination {
-            0%, 100% { transform: scale(1); opacity: 0.6; }
-            50% { transform: scale(1.1); opacity: 0.3; }
-          }
-          .destination-marker:hover {
-            transform: scale(1.1) !important;
-          }
-          .destination-marker:hover > div:first-child {
-            animation-duration: 1s !important;
-          }
-        `;
-        document.head.appendChild(destStyle);
-
-        const destMarker = new window.tt.Marker({
-          element: destElement,
-          anchor: 'center'
-        })
-          .setLngLat([destination.lng, destination.lat])
-          .setPopup(new window.tt.Popup({
-            offset: 35,
-            closeButton: true,
-            closeOnClick: false,
-            className: 'modern-popup'
-          }).setHTML(`
-            <div style="
-              padding: 16px 20px;
-              min-width: 220px;
-              background: rgba(255, 255, 255, 0.95);
-              backdrop-filter: blur(20px);
-              border-radius: 16px;
-              border: 1px solid rgba(255, 255, 255, 0.2);
-              box-shadow: 
-                0 20px 40px rgba(0, 0, 0, 0.1),
-                0 8px 16px rgba(0, 0, 0, 0.06),
-                inset 0 1px 0 rgba(255, 255, 255, 0.4);
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            ">
-              <div style="
-                display: flex;
-                align-items: center;
-                margin-bottom: 12px;
-                gap: 8px;
-              ">
+          const destMarker = new window.tt.Marker({
+            element: destElement,
+            anchor: 'center'
+          })
+            .setLngLat([destination.lng, destination.lat])
+            .setPopup(new window.tt.Popup({
+              offset: 35,
+              closeButton: true,
+              closeOnClick: false,
+              className: 'modern-popup'
+            }).setHTML(`
+              <div class="modern-popup-content">
                 <div style="
-                  width: 8px;
-                  height: 8px;
-                  background: linear-gradient(135deg, #ef4444, #dc2626);
-                  border-radius: 50%;
-                  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
-                "></div>
-                <div style="
-                  font-weight: 600;
-                  color: #1f2937;
-                  font-size: 14px;
-                  letter-spacing: -0.01em;
-                ">Destination</div>
+                  padding: 16px 20px;
+                  min-width: 220px;
+                  background: rgba(255, 255, 255, 0.95);
+                  backdrop-filter: blur(20px);
+                  border-radius: 16px;
+                  border: 1px solid rgba(255, 255, 255, 0.2);
+                  box-shadow: 
+                    0 20px 40px rgba(0, 0, 0, 0.1),
+                    0 8px 16px rgba(0, 0, 0, 0.06),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                ">
+                  <div style="
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 12px;
+                    gap: 8px;
+                  ">
+                    <div style="
+                      width: 8px;
+                      height: 8px;
+                      background: linear-gradient(135deg, #ef4444, #dc2626);
+                      border-radius: 50%;
+                      box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+                    "></div>
+                    <div style="
+                      font-weight: 600;
+                      color: #1f2937;
+                      font-size: 14px;
+                      letter-spacing: -0.01em;
+                    ">Destination</div>
+                  </div>
+                  <div style="
+                    font-size: 15px;
+                    color: #111827;
+                    font-weight: 500;
+                    margin-bottom: 6px;
+                    line-height: 1.4;
+                  ">${destination.name || 'Destination'}</div>
+                  <div style="
+                    font-size: 13px;
+                    color: #6b7280;
+                    line-height: 1.3;
+                    opacity: 0.8;
+                  ">${destination.address || 'End location'}</div>
+                </div>
               </div>
-              <div style="
-                font-size: 15px;
-                color: #111827;
-                font-weight: 500;
-                margin-bottom: 6px;
-                line-height: 1.4;
-              ">${destination.name || 'Destination'}</div>
-              <div style="
-                font-size: 13px;
-                color: #6b7280;
-                line-height: 1.3;
-                opacity: 0.8;
-              ">${destination.address || 'End location'}</div>
-            </div>
-          `))
-          .addTo(map);
+            `))
+            .addTo(map);
 
-        markersRef.current.push(destMarker);
-      }
+          markersRef.current.push(destMarker);
+        }
 
       // Create custom waypoint markers with modern styling
       waypoints.forEach((waypoint, index) => {
@@ -608,82 +559,55 @@ export default function InteractiveRouteMap({
 
           // Create custom waypoint marker element
           const waypointElement = document.createElement('div');
+          waypointElement.className = 'waypoint-marker';
           waypointElement.innerHTML = `
-            <div class="waypoint-marker" style="
-              position: relative;
+            <div style="
+              position: absolute;
+              top: -6px;
+              left: -6px;
+              width: 44px;
+              height: 44px;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.03) 70%, transparent 100%);
+              animation: pulse-waypoint 2.5s ease-in-out infinite;
+            "></div>
+            
+            <div style="
+              position: absolute;
+              top: 0;
+              left: 0;
               width: 32px;
               height: 32px;
-              cursor: pointer;
-              transform-origin: center;
-              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+              border-radius: 50%;
+              box-shadow: 
+                0 3px 15px rgba(59, 130, 246, 0.3),
+                0 1px 6px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+              border: 2px solid rgba(255, 255, 255, 0.9);
+              backdrop-filter: blur(8px);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-weight: 700;
+              color: white;
+              font-size: 12px;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             ">
-              <!-- Outer glow ring -->
-              <div style="
-                position: absolute;
-                top: -6px;
-                left: -6px;
-                width: 44px;
-                height: 44px;
-                border-radius: 50%;
-                background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.03) 70%, transparent 100%);
-                animation: pulse-waypoint 2.5s ease-in-out infinite;
-              "></div>
-              
-              <!-- Main marker body -->
-              <div style="
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 32px;
-                height: 32px;
-                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-                border-radius: 50%;
-                box-shadow: 
-                  0 3px 15px rgba(59, 130, 246, 0.3),
-                  0 1px 6px rgba(0, 0, 0, 0.1),
-                  inset 0 1px 0 rgba(255, 255, 255, 0.2);
-                border: 2px solid rgba(255, 255, 255, 0.9);
-                backdrop-filter: blur(8px);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: 700;
-                color: white;
-                font-size: 12px;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              ">
-                ${index + 1}
-              </div>
-              
-              <!-- Inner shine effect -->
-              <div style="
-                position: absolute;
-                top: 3px;
-                left: 3px;
-                width: 26px;
-                height: 26px;
-                border-radius: 50%;
-                background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
-                pointer-events: none;
-              "></div>
+              ${index + 1}
             </div>
+            
+            <div style="
+              position: absolute;
+              top: 3px;
+              left: 3px;
+              width: 26px;
+              height: 26px;
+              border-radius: 50%;
+              background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
+              pointer-events: none;
+            "></div>
           `;
-
-          // Add CSS animations for waypoints
-          const waypointStyle = document.createElement('style');
-          waypointStyle.textContent = `
-            @keyframes pulse-waypoint {
-              0%, 100% { transform: scale(1); opacity: 0.5; }
-              50% { transform: scale(1.05); opacity: 0.25; }
-            }
-            .waypoint-marker:hover {
-              transform: scale(1.15) !important;
-            }
-            .waypoint-marker:hover > div:first-child {
-              animation-duration: 1.2s !important;
-            }
-          `;
-          document.head.appendChild(waypointStyle);
 
           const waypointMarker = new window.tt.Marker({
             element: waypointElement,
@@ -696,58 +620,60 @@ export default function InteractiveRouteMap({
               closeOnClick: false,
               className: 'modern-popup'
             }).setHTML(`
-              <div style="
-                padding: 14px 18px;
-                min-width: 200px;
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(20px);
-                border-radius: 14px;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                box-shadow: 
-                  0 15px 30px rgba(0, 0, 0, 0.08),
-                  0 6px 12px rgba(0, 0, 0, 0.05),
-                  inset 0 1px 0 rgba(255, 255, 255, 0.4);
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              ">
+              <div class="modern-popup-content">
                 <div style="
-                  display: flex;
-                  align-items: center;
-                  margin-bottom: 10px;
-                  gap: 8px;
+                  padding: 14px 18px;
+                  min-width: 200px;
+                  background: rgba(255, 255, 255, 0.95);
+                  backdrop-filter: blur(20px);
+                  border-radius: 14px;
+                  border: 1px solid rgba(255, 255, 255, 0.2);
+                  box-shadow: 
+                    0 15px 30px rgba(0, 0, 0, 0.08),
+                    0 6px 12px rgba(0, 0, 0, 0.05),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 ">
                   <div style="
-                    width: 20px;
-                    height: 20px;
-                    background: linear-gradient(135deg, #3b82f6, #2563eb);
-                    border-radius: 50%;
                     display: flex;
                     align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-size: 11px;
-                    font-weight: 700;
-                    box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
-                  ">${index + 1}</div>
+                    margin-bottom: 10px;
+                    gap: 8px;
+                  ">
+                    <div style="
+                      width: 20px;
+                      height: 20px;
+                      background: linear-gradient(135deg, #3b82f6, #2563eb);
+                      border-radius: 50%;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      color: white;
+                      font-size: 11px;
+                      font-weight: 700;
+                      box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
+                    ">${index + 1}</div>
+                    <div style="
+                      font-weight: 600;
+                      color: #1f2937;
+                      font-size: 13px;
+                      letter-spacing: -0.01em;
+                    ">Waypoint ${index + 1}</div>
+                  </div>
                   <div style="
-                    font-weight: 600;
-                    color: #1f2937;
-                    font-size: 13px;
-                    letter-spacing: -0.01em;
-                  ">Waypoint ${index + 1}</div>
+                    font-size: 14px;
+                    color: #111827;
+                    font-weight: 500;
+                    margin-bottom: 5px;
+                    line-height: 1.4;
+                  ">${waypoint.name || `Stop ${index + 1}`}</div>
+                  <div style="
+                    font-size: 12px;
+                    color: #6b7280;
+                    line-height: 1.3;
+                    opacity: 0.8;
+                  ">${waypoint.address || `Waypoint ${index + 1}`}</div>
                 </div>
-                <div style="
-                  font-size: 14px;
-                  color: #111827;
-                  font-weight: 500;
-                  margin-bottom: 5px;
-                  line-height: 1.4;
-                ">${waypoint.name || `Stop ${index + 1}`}</div>
-                <div style="
-                  font-size: 12px;
-                  color: #6b7280;
-                  line-height: 1.3;
-                  opacity: 0.8;
-                ">${waypoint.address || `Waypoint ${index + 1}`}</div>
               </div>
             `))
             .addTo(map);
@@ -776,63 +702,6 @@ export default function InteractiveRouteMap({
 
         console.log('🗺️ Map fitted to modern marker bounds with smooth animation');
       }
-
-      // Add modern popup global styles
-      const globalPopupStyle = document.createElement('style');
-      globalPopupStyle.textContent = `
-        .mapboxgl-popup .mapboxgl-popup-content,
-        .modern-popup .mapboxgl-popup-content {
-          padding: 0 !important;
-          border-radius: 16px !important;
-          background: transparent !important;
-          box-shadow: none !important;
-        }
-        .mapboxgl-popup .mapboxgl-popup-tip,
-        .modern-popup .mapboxgl-popup-tip {
-          border-top-color: rgba(255, 255, 255, 0.95) !important;
-        }
-        .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
-        .modern-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
-          border-bottom-color: rgba(255, 255, 255, 0.95) !important;
-          border-top-color: transparent !important;
-        }
-        
-        /* Modern close button styling */
-        .modern-popup .mapboxgl-popup-close-button {
-          position: absolute;
-          right: 8px;
-          top: 8px;
-          width: 24px;
-          height: 24px;
-          background: rgba(255, 255, 255, 0.9);
-          border: 1px solid rgba(0, 0, 0, 0.1);
-          border-radius: 50%;
-          color: #6b7280;
-          font-size: 16px;
-          font-weight: 500;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          backdrop-filter: blur(10px);
-          transition: all 0.2s ease;
-          z-index: 10;
-          padding: 0;
-          line-height: 1;
-        }
-        
-        .modern-popup .mapboxgl-popup-close-button:hover {
-          background: rgba(239, 68, 68, 0.1);
-          color: #ef4444;
-          border-color: rgba(239, 68, 68, 0.2);
-          transform: scale(1.05);
-        }
-        
-        .modern-popup .mapboxgl-popup-close-button:active {
-          transform: scale(0.95);
-        }
-      `;
-      document.head.appendChild(globalPopupStyle);
 
     } catch (error) {
       console.warn('Error adding modern markers:', error);
@@ -1011,13 +880,13 @@ export default function InteractiveRouteMap({
 
   if (mapError) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50 rounded-lg">
-        <div className="text-center p-3 sm:p-6 mx-2 sm:mx-0">
-          <div className="text-red-500 text-base sm:text-lg font-medium mb-2">Map Error</div>
-          <div className="text-gray-600 text-xs sm:text-sm mb-4 max-w-sm">{mapError}</div>
+      <div className="h-full flex items-center justify-center bg-gray-50 rounded-xl">
+        <div className="text-center p-6 mx-2">
+          <div className="text-red-500 text-lg font-medium mb-2">Map Error</div>
+          <div className="text-gray-600 text-sm mb-4 max-w-sm">{mapError}</div>
           <button
             onClick={retryMapInitialization}
-            className="px-3 py-2 sm:px-4 sm:py-2 bg-blue-500 text-white text-xs sm:text-sm rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-[#0066FF] text-white text-sm rounded-xl hover:bg-[#0052cc] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={retryCount >= TOMTOM_CONFIG.RETRY_ATTEMPTS}
           >
             {retryCount > 0 ? `Retry (${retryCount}/${TOMTOM_CONFIG.RETRY_ATTEMPTS})` : 'Retry'}
@@ -1028,19 +897,16 @@ export default function InteractiveRouteMap({
   }
 
   return (
-    <div className="relative h-full bg-gray-100 rounded-lg overflow-hidden">
+    <div className="relative h-full bg-gray-100 rounded-xl overflow-hidden">
       {/* Map Container */}
       <div ref={mapRef} className="w-full h-full">
         {!isMapLoaded && !mapError && (
           <div className="h-full flex items-center justify-center bg-muted/50">
-            <div className="text-center p-3 sm:p-6 bg-background rounded-lg shadow-md mx-2 sm:mx-0">
-              <div className="flex items-center justify-center space-x-2 sm:space-x-3 mb-3 sm:mb-4">
-                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
-                <span className="text-sm sm:text-lg font-medium text-foreground">
-                  {!isSdkLoaded ? 'Loading Resources...' : 'Initializing Map...'}
-                </span>
+            <div className="text-center p-6 bg-background rounded-xl shadow-md mx-2">
+              <div className="flex items-center justify-center space-x-3 mb-4">
+                <RouteAnalysisLoader size="md" showText={false} />
               </div>
-              <div className="text-xs sm:text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 {!isSdkLoaded
                   ? 'Getting map services ready.'
                   : 'Preparing route visualization.'
@@ -1059,10 +925,7 @@ export default function InteractiveRouteMap({
       {/* Loading Overlay */}
       {isLoading && isMapLoaded && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
-          <div className="flex items-center space-x-2 sm:space-x-3 p-3 sm:p-4 bg-background rounded-lg shadow-lg border mx-2 sm:mx-0">
-            <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-primary" />
-            <span className="text-xs sm:text-sm font-medium text-foreground">Analyzing routes...</span>
-          </div>
+          <RouteAnalysisLoader size="md" text="Analyzing routes..." showText={true} />
         </div>
       )}
 
@@ -1085,3 +948,6 @@ export default function InteractiveRouteMap({
     </div>
   );
 }
+
+
+

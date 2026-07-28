@@ -354,6 +354,140 @@ body {
   user-select: none;
 }
 
+/* Map marker animations */
+@keyframes pulse-origin {
+  0% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.1); opacity: 0.3; }
+  100% { transform: scale(1); opacity: 0.6; }
+}
+
+@keyframes pulse-destination {
+  0% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.1); opacity: 0.3; }
+  100% { transform: scale(1); opacity: 0.6; }
+}
+
+@keyframes pulse-waypoint {
+  0% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 0.25; }
+  100% { transform: scale(1); opacity: 0.5; }
+}
+
+.origin-marker {
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  position: relative;
+  transform-origin: center center;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform;
+}
+
+.origin-marker:hover {
+  transform: scale(1.1);
+}
+
+.origin-marker:focus-visible {
+  outline: 2px solid #0066FF;
+  outline-offset: 4px;
+  border-radius: 50%;
+}
+
+.destination-marker {
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  position: relative;
+  transform-origin: center center;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform;
+}
+
+.destination-marker:hover {
+  transform: scale(1.1);
+}
+
+.destination-marker:focus-visible {
+  outline: 2px solid #0066FF;
+  outline-offset: 4px;
+  border-radius: 50%;
+}
+
+.waypoint-marker {
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  position: relative;
+  transform-origin: center center;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform;
+}
+
+.waypoint-marker:hover {
+  transform: scale(1.15);
+}
+
+.waypoint-marker:focus-visible {
+  outline: 2px solid #0066FF;
+  outline-offset: 4px;
+  border-radius: 50%;
+}
+
+/* Map popup styles */
+.mapboxgl-popup .mapboxgl-popup-content,
+.modern-popup .mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 16px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.mapboxgl-popup .mapboxgl-popup-tip,
+.modern-popup .mapboxgl-popup-tip {
+  border-top-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
+.modern-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+  border-bottom-color: rgba(255, 255, 255, 0.95) !important;
+  border-top-color: transparent !important;
+}
+
+/* Modern close button styling */
+.modern-popup .mapboxgl-popup-close-button {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  z-index: 10;
+  padding: 0;
+  line-height: 1;
+}
+
+.modern-popup .mapboxgl-popup-close-button:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.2);
+  transform: scale(1.05);
+}
+
+.modern-popup .mapboxgl-popup-close-button:active {
+  transform: scale(0.95);
+}
+
 /* Password Input Component Styles */
 .password-input-container {
   margin-bottom: 1.5rem;
@@ -409,6 +543,91 @@ body {
   transition: all 0.3s ease-out;
 }
 
+/* Route analysis loader — Neural Constellation animation */
+
+/* Irregular heartbeat-style breathing for the center core */
+@keyframes core-breathe {
+  0%, 100% { transform: scale(1); }
+  20%  { transform: scale(1.35); }
+  35%  { transform: scale(0.85); }
+  50%  { transform: scale(1.25); }
+  65%  { transform: scale(0.92); }
+  80%  { transform: scale(1.15); }
+}
+
+/* Background glow breathing — slightly offset timing so it doesn't sync with core */
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  30%  { opacity: 0.7; transform: scale(1.04); }
+  55%  { opacity: 0.2; transform: scale(0.97); }
+  80%  { opacity: 0.55; transform: scale(1.02); }
+}
+
+/* Rotating dashed arc rings */
+@keyframes arc-cw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes arc-ccw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+/* Satellite orbits — elliptical paths (varying translateX / translateY).
+ * Each keyframe step alters the radius so the path is not a perfect circle,
+ * making the motion feel organic instead of mechanical.               */
+@keyframes orbit-alpha {
+  0%   { transform: rotate(0deg)    translateX(20px); }
+  25%  { transform: rotate(90deg)   translateX(18px); }
+  50%  { transform: rotate(180deg)  translateX(22px); }
+  75%  { transform: rotate(270deg)  translateX(19px); }
+  100% { transform: rotate(360deg)  translateX(20px); }
+}
+
+@keyframes orbit-beta {
+  0%   { transform: rotate(0deg)    translateX(12px)    translateY(-6px); }
+  20%  { transform: rotate(-72deg)  translateX(10px)    translateY(-8px); }
+  40%  { transform: rotate(-144deg) translateX(13px)    translateY(-5px); }
+  60%  { transform: rotate(-216deg) translateX(11px)    translateY(-7px); }
+  80%  { transform: rotate(-288deg) translateX(12px)    translateY(-6px); }
+  100% { transform: rotate(-360deg) translateX(12px)    translateY(-6px); }
+}
+
+@keyframes orbit-gamma {
+  0%   { transform: rotate(0deg)    translateX(26px)     translateY(4px); }
+  33%  { transform: rotate(120deg)  translateX(24px)     translateY(6px); }
+  66%  { transform: rotate(240deg)  translateX(28px)     translateY(3px); }
+  100% { transform: rotate(360deg)  translateX(26px)     translateY(4px); }
+}
+
+/* Text label — irregular opacity pulse so it doesn't sync with the core */
+@keyframes text-breathe {
+  0%, 100% { opacity: 0.5; }
+  20%  { opacity: 1; }
+  40%  { opacity: 0.6; }
+  60%  { opacity: 0.92; }
+  80%  { opacity: 0.55; }
+}
+
+/* Tiny twinkle near the core — "data spark" effect */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%  { opacity: 1; transform: scale(1.2); }
+}
+
+/* Utility classes */
+.animate-core-breathe  { animation: core-breathe 1.8s ease-in-out infinite; }
+.animate-glow-breathe  { animation: glow-breathe 2.5s ease-in-out infinite; }
+.animate-arc-cw        { animation: arc-cw 8s linear infinite; }
+.animate-arc-ccw       { animation: arc-ccw 12s linear infinite; }
+.animate-text-breathe  { animation: text-breathe 3s ease-in-out infinite; }
+.animate-twinkle       { animation: twinkle 1.5s ease-in-out infinite; }
+
+.orbit-alpha { animation: orbit-alpha 2.5s linear infinite; }
+.orbit-beta  { animation: orbit-beta  3.5s linear infinite; }
+.orbit-gamma { animation: orbit-gamma 4.2s linear infinite; }
+
 .password-feedback {
   margin: 8px 0 0 0;
   padding-left: 16px;
@@ -425,3 +644,4 @@ body {
   font-size: 0.875rem;
   margin-top: 4px;
 }
+

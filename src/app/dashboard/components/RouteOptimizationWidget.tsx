@@ -15,8 +15,10 @@ import {
 } from '@/types/route-optimization';
 import { BAGUIO_COORDINATES } from '@/lib/core/utils';
 import { Route, Navigation, MapPin, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import ErrorBoundary from '@/components/ui/error-boundary';
 import TrafficLegend from '@/components/ui/TrafficLegend';
+import { Card } from '@/components/ui/card';
 import {
   getTrafficColorFromScore,
   getTrafficLevelFromScore,
@@ -431,42 +433,42 @@ const RouteOptimizationWidget: React.FC = () => {
   // ============================================================================
 
   const renderHeader = () => (
-    <div className="flex items-center justify-between mb-6 px-1">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
       <div className="flex items-center space-x-3">
-        <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg">
+        <div className="flex items-center justify-center w-10 h-10 bg-[#0066FF] rounded-xl shadow-md">
           <Route className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h2 className="font-semibold text-xl text-gray-900">Route Optimization</h2>
-          <p className="text-sm text-gray-500">
-            <span className="font-medium text-blue-600"></span> Smart traffic-aware navigation for Baguio City
+          <h2 className="font-semibold text-xl text-gray-900 tracking-tight">Route Optimization</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Smart traffic-aware navigation for Baguio City
           </p>
         </div>
       </div>
 
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-2">
         {state.isCalculating && (
-          <div className="flex items-center space-x-2 text-blue-600">
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+          <div className="flex items-center space-x-2 text-[#0066FF]">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#0066FF] border-t-transparent"></div>
             <span className="text-sm font-medium">Analyzing...</span>
           </div>
         )}
 
         {state.trafficConditions && (
-          <div className="flex items-center space-x-3 px-3 py-2 rounded-lg border border-green-200">
+          <div className="flex items-center space-x-3 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center space-x-2">
               <div
-                className="w-3 h-3 rounded-full animate-pulse"
+                className="w-2.5 h-2.5 rounded-full animate-pulse"
                 style={{
                   backgroundColor: getTrafficColorFromScore(state.trafficConditions.congestionScore).color
                 }}
               />
-              <span className={`font-medium ${getTrafficLevelClasses(getTrafficLevelFromScore(state.trafficConditions.congestionScore))}`}>
+              <span className={`font-medium text-sm ${getTrafficLevelClasses(getTrafficLevelFromScore(state.trafficConditions.congestionScore))}`}>
                 {getTrafficLevelFromScore(state.trafficConditions.congestionScore)} Traffic
               </span>
             </div>
-            <div className="flex items-center space-x-1 text-gray-700">
-              <TrendingUp className="w-4 h-4 text-blue-600" />
+            <div className="hidden sm:flex items-center space-x-1 text-gray-700">
+              <TrendingUp className="w-4 h-4 text-[#0066FF]" />
               <span className="text-sm font-medium">
                 {state.trafficConditions.congestionScore}% congestion
               </span>
@@ -474,9 +476,11 @@ const RouteOptimizationWidget: React.FC = () => {
           </div>
         )}
 
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => setIsMinimized(!isMinimized)}
-          className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+          className="h-8 w-8 text-gray-400 hover:text-gray-600"
           aria-label={isMinimized ? "Expand" : "Minimize"}
         >
           {isMinimized ? (
@@ -488,7 +492,7 @@ const RouteOptimizationWidget: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
             </svg>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -498,20 +502,20 @@ const RouteOptimizationWidget: React.FC = () => {
     if (!state.error) return null;
 
     return (
-      <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-        <div className="flex items-center space-x-2">
-          <AlertTriangle className="w-5 h-5 text-red-600" />
-          <div>
-            <h4 className="font-medium text-red-900">Route Calculation Failed</h4>
-            <p className="text-sm text-red-700">{state.error}</p>
+      <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+        <div className="flex items-start space-x-3">
+          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <h4 className="font-medium text-red-900 text-sm">Route Calculation Failed</h4>
+            <p className="text-sm text-red-700 mt-1">{state.error}</p>
+            <button
+              onClick={() => setState(prev => ({ ...prev, error: null }))}
+              className="mt-2 text-sm text-red-600 hover:text-red-800 underline underline-offset-2"
+            >
+              Dismiss
+            </button>
           </div>
         </div>
-        <button
-          onClick={() => setState(prev => ({ ...prev, error: null }))}
-          className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
-        >
-          Dismiss
-        </button>
       </div>
     );
   };
@@ -520,7 +524,7 @@ const RouteOptimizationWidget: React.FC = () => {
   if (isMinimized) {
     return (
       <div className="mb-8">
-        <div className="bg-white rounded-2xl border-2 border-gray-200 p-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
           {renderHeader()}
         </div>
       </div>
@@ -531,17 +535,15 @@ const RouteOptimizationWidget: React.FC = () => {
     <ErrorBoundary
       onError={(error, errorInfo) => {
         console.error('Route Optimization Widget Error:', error, errorInfo);
-        // You could send this to an error reporting service here
       }}
     >
-      <div className="mb-4 sm:mb-6 lg:mb-8">
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 sm:border-2 overflow-hidden">
-          <div className="p-3 sm:p-4 lg:p-6">
+      <div className="mb-6">
+        <Card className="overflow-hidden">
+          <div className="p-6">
             {renderHeader()}
             {renderError()}
 
-            {/* Single Column Layout */}
-            <div className="space-y-4 sm:space-y-6">
+            <div className="space-y-6">
               {/* Route Input Panel */}
               <div>
                 <ErrorBoundary fallback={
@@ -568,7 +570,7 @@ const RouteOptimizationWidget: React.FC = () => {
 
               {/* Interactive Map */}
               <div>
-                <div className="h-96 sm:h-[100px] md:h-[500px] lg:h-[600px] bg-gray-100 rounded-lg overflow-hidden relative">
+                <div className="h-[400px] sm:h-[500px] md:h-[550px] lg:h-[600px] bg-gray-100 rounded-xl overflow-hidden relative">
                   <ErrorBoundary fallback={
                     <div className="h-full flex items-center justify-center p-4 sm:p-8">
                       <div className="text-center">
@@ -612,12 +614,11 @@ const RouteOptimizationWidget: React.FC = () => {
               </div>
             </div>
 
-
             {/* Route Details Panel - Full Width Below Grid */}
             {(state.currentRoute || state.alternativeRoutes.length > 0) && (
-              <div className="mt-4 sm:mt-6 lg:mt-8">
+              <div className="mt-6">
                 <ErrorBoundary fallback={
-                  <div className="p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
                     <p className="text-red-700 text-sm">Failed to load route details. Please refresh the page.</p>
                   </div>
                 }>
@@ -638,7 +639,7 @@ const RouteOptimizationWidget: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
+        </Card>
       </div>
     </ErrorBoundary>
   );
