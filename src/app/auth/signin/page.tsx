@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { AnimatePresence, motion } from "framer-motion"
 import { GeminiSparkles, FadingDotGrid } from "@/components/auth/GeminiSparkles"
+import { Home } from "lucide-react"
 
 // Component that uses useSearchParams
 function StatusMessage() {
@@ -134,8 +135,14 @@ const SignIn = () => {
               {/* Fading dot grid — top-right, matches bryllim.com reference */}
               <FadingDotGrid dotColor="#93c5fd" dotSize={3} gap={14} widthFraction={0.55} heightFraction={0.6} />
 
-              {/* Mobile Back to Home Button */}
-              <Link href="/" className="md:hidden absolute top-4 left-4 bg-white text-[#0066FF] font-medium rounded-xl px-6 py-2 text-base shadow-md hover:bg-gray-100 transition z-10">Back to Home</Link>
+              {/* Mobile Back to Home */}
+              <Link
+                href="/"
+                className="md:hidden absolute top-4 left-4 z-10 inline-flex items-center gap-1.5 bg-[#0066FF] text-white font-medium rounded-full px-4 py-1.5 text-sm shadow-sm active:scale-95 transition-transform"
+              >
+                <Home size={16} strokeWidth={2.5} />
+                Home
+              </Link>
               <div className="w-full max-w-md space-y-8 p-10 mx-4 relative z-10">
                     <div>
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back to Tarana.ai</h2>
