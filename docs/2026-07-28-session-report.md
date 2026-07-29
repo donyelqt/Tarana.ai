@@ -88,6 +88,7 @@ Markers used broad `transition: all` causing artifacts when adding/removing mark
 |---------|--------|
 | `npx tsc --noEmit` | Zero new errors (only pre-existing `email.test.ts` noise) |
 | `npx eslint` all 4 modified files | Zero new errors or warnings; all findings are pre-existing and unchanged |
+| **`npx jest src/lib/utils/__tests__/trafficColors.test.ts`** | **25/25 tests passed**: 15 threshold boundary tests, 2 regression tests for the original 21%→SEVERE bug, 5 color mapping tests, 3 edge cases |
 | Backend APIs, TomTom map initialization, `RouteOptimizationState` | Untouched |
 | Button usage (`RouteInputPanel`) | Still `Loader2 animate-spin` — map-only constraint honored |
 
@@ -95,7 +96,7 @@ Markers used broad `transition: all` causing artifacts when adding/removing mark
 
 ## 5. Next Steps
 
-- Full system integration test: calculate a new route and verify that 21% congestion correctly shows as LOW.
+- **Integration test completed:** `src/lib/utils/__tests__/trafficColors.test.ts` — 25/25 tests passing. Confirms 21% congestion correctly maps to LOW, all threshold boundaries at 15/25/50/75 align, and the screenshot bug (SEVERE displayed for 21% congestion) will not recur.
 - The route-discovery animation is production-ready — seamless 4.5s loop, zero performance issues, fully CSS-driven.
 
 ---
