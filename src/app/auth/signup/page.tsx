@@ -280,25 +280,29 @@ const SignUp = () => {
                 Home
               </Link>
               <div className="w-full max-w-md space-y-8 p-10 mx-4 relative z-10">
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Tarana.ai</h2>
-                        <p className="text-sm text-gray-600 mb-6">Please Sign up to Continue</p>
-                        <div className="flex justify-center mb-6">
-                            <Link href="/auth/signin" className="px-8 py-2 rounded-full bg-blue-50 text-[#0066FF] font-medium hover:bg-blue-100 transition">Login</Link>
-                            <AnimatePresence mode="wait">
-                                <motion.button
-                                    key="register-active"
-                                    type="button"
-                                    className="px-8 py-2 rounded-full bg-[#0066FF] text-white font-medium shadow-md focus:outline-none ml-2"
-                                    initial={{ opacity: 0, x: 40 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -40 }}
-                                    transition={{ duration: 0.4, ease: "easeInOut" }}
-                                >
-                                    Register
-                                </motion.button>
-                            </AnimatePresence>
-                        </div>
+                    <div className="text-center mb-8">
+                      {/* Brand accent */}
+                      <div className="w-8 h-1 bg-[#0066FF] rounded-full mx-auto mb-5" />
+                      <h2 className="text-[28px] font-semibold text-gray-900 tracking-tight leading-tight">
+                        Welcome<span className="text-[#0066FF]"> to Tarana.ai</span>
+                      </h2>
+                      <p className="text-sm text-gray-500 mt-2">Create your account</p>
+                      <div className="flex justify-center gap-2 mt-6">
+                          <Link href="/auth/signin" className="px-7 py-2 rounded-full bg-blue-50 text-[#0066FF] font-medium text-sm hover:bg-blue-100 transition">Login</Link>
+                          <AnimatePresence mode="wait">
+                              <motion.button
+                                  key="register-active"
+                                  type="button"
+                                  className="px-7 py-2 rounded-full bg-[#0066FF] text-white font-medium text-sm focus:outline-none"
+                                  initial={{ opacity: 0, x: 40 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  exit={{ opacity: 0, x: -40 }}
+                                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                              >
+                                  Register
+                              </motion.button>
+                          </AnimatePresence>
+                      </div>
                     </div>
                     {/* Wrap the component that uses useRouter in Suspense */}
                     <Suspense fallback={<div className="h-10">Loading...</div>}>
