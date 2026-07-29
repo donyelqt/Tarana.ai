@@ -103,7 +103,7 @@ function SignUpForm() {
         <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
                 <div>
-                    <Label htmlFor="fullName" className="block text-sm font-medium text-black">Full Name</Label>
+                    <Label htmlFor="fullName" className="block text-sm font-medium text-gray-700">Full Name</Label>
                     <Input
                         id="fullName"
                         name="fullName"
@@ -117,7 +117,7 @@ function SignUpForm() {
                     />
                 </div>
                 <div>
-                    <Label htmlFor="email" className="block text-sm font-medium text-black">Email</Label>
+                    <Label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</Label>
                     <Input
                         id="email"
                         name="email"
@@ -131,7 +131,7 @@ function SignUpForm() {
                     />
                 </div>
                 <div>
-                    <Label htmlFor="password" className="block text-sm font-medium text-black">Password</Label>
+                    <Label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</Label>
                     <div className="relative mt-1">
                         <Input
                             id="password"
@@ -190,7 +190,7 @@ function SignUpForm() {
                     )}
                 </div>
                 <div>
-                    <Label htmlFor="confirmPassword" className="block text-sm font-medium text-black">Confirm Password</Label>
+                    <Label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</Label>
                     <div className="relative mt-1">
                         <Input
                             id="confirmPassword"
