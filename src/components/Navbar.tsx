@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import Image from "next/image"
+import taranaai2 from "../../public/images/taranaai2.png"
 
 const Navbar = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -23,8 +25,8 @@ const Navbar = () => {
     return (
         <nav className="flex items-center justify-between p-4 max-w-7xl mx-auto relative">
             <div className="flex items-center">
-                <Link href="/" className="text-2xl font-bold">
-                    Tarana.<span className="text-blue-500">ai</span>
+                <Link href="/" className="flex items-center">
+                    <Image src={taranaai2} alt="Tarana.ai" width={120} height={20} />
                 </Link>
             </div>
 
