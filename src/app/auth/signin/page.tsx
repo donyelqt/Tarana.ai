@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { signIn } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { AnimatePresence, motion } from "framer-motion"
+import { GeminiSparkles, FadingDotGrid } from "@/components/auth/GeminiSparkles"
 
 // Component that uses useSearchParams
 function StatusMessage() {
@@ -100,18 +102,41 @@ const SignIn = () => {
     return (
         <div className="min-h-screen flex">
             {/* Left Panel */}
-            <div className="hidden md:flex w-1/2 bg-[#0066FF] flex-col justify-center items-center text-white">
-                <div className="max-w-xs text-left">
-                    <div className="text-4xl font-bold mb-2">Tarana.ai</div>
-                    <div className="mb-6 text-sm">Your ai-powered Baguio travel companion</div>
-                    <Link href="/" className="inline-block bg-white text-[#0066FF] font-medium rounded-xl px-8 py-3 text-base shadow-md hover:bg-gray-100 transition">Back to Home</Link>
+            <div className="hidden md:flex w-1/2 bg-[#0066FF] flex-col justify-center items-center text-white relative overflow-hidden">
+              {/* Gemini sparkles — white dots on blue */}
+              <GeminiSparkles variant="white" count={45} minSize={2} maxSize={7} />
+
+              {/* Referral logo watermark — matches dashboard styling */}
+              <img
+                src="/images/referafriend.png"
+                alt=""
+                className="absolute top-1/2 right-0 transform -translate-y-1/2 translate-x-1/4 h-[100%] w-auto z-0 opacity-35"
+                style={{
+                  filter:
+                    'brightness(0) saturate(100%) invert(70%) sepia(79%) saturate(2351%) hue-rotate(185deg) brightness(102%) contrast(101%)',
+                }}
+              />
+
+              <div className="max-w-xs text-left relative z-10">
+                <div className="mb-4">
+                  <div className="bg-white rounded-2xl p-4 shadow-md inline-block">
+                    <Image src="/images/taranaai2.png" alt="Tarana.ai" width={125} height={125} priority />
+                  </div>
                 </div>
+                <div className="mb-6 text-sm">Your ai-powered Baguio travel companion</div>
+                <Link href="/" className="inline-block bg-white text-[#0066FF] font-medium rounded-xl px-8 py-3 text-base shadow-md hover:bg-gray-100 transition">Back to Home</Link>
+              </div>
             </div>
             {/* Right Panel */}
-            <div className="flex flex-1 items-center justify-center bg-gray-100 relative">
-                {/* Mobile Back to Home Button */}
-                <Link href="/" className="md:hidden absolute top-4 left-4 bg-white text-[#0066FF] font-medium rounded-xl px-6 py-2 text-base shadow-md hover:bg-gray-100 transition z-10">Back to Home</Link>
-                <div className="w-full max-w-md space-y-8 p-10 mx-4">
+            <div className="flex flex-1 items-center justify-center bg-white relative">
+              {/* Gemini sparkles — blue/violet dots on white */}
+              <GeminiSparkles variant="blue" count={35} minSize={2} maxSize={7} />
+              {/* Fading dot grid — top-right, matches bryllim.com reference */}
+              <FadingDotGrid dotColor="#93c5fd" dotSize={3} gap={14} widthFraction={0.55} heightFraction={0.6} />
+
+              {/* Mobile Back to Home Button */}
+              <Link href="/" className="md:hidden absolute top-4 left-4 bg-white text-[#0066FF] font-medium rounded-xl px-6 py-2 text-base shadow-md hover:bg-gray-100 transition z-10">Back to Home</Link>
+              <div className="w-full max-w-md space-y-8 p-10 mx-4 relative z-10">
                     <div>
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back to Tarana.ai</h2>
                         <p className="text-sm text-gray-600 mb-6">Please Sign in to Continue</p>

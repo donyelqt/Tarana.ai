@@ -680,3 +680,30 @@ body {
   margin-top: 4px;
 }
 
+/* ── GeminiSparkles ──────────────────────────────────────────── */
+@keyframes gemini-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: var(--dot-base-opacity, 0.4);
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: calc(var(--dot-base-opacity, 0.4) * 1.6);
+  }
+}
+
+@keyframes gemini-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  25%  { transform: translate(3px, -4px) scale(1.1); }
+  50%  { transform: translate(-2px, -7px) scale(0.95); }
+  75%  { transform: translate(-4px, -2px) scale(1.08); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+.gemini-dot {
+  animation:
+    gemini-pulse var(--duration, 5s) ease-in-out infinite,
+    gemini-drift var(--duration, 5s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s), var(--delay, 0s);
+}
+
