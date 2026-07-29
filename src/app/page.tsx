@@ -12,8 +12,8 @@ export default function Home() {
       <Navbar />
       <main>
         <HeroSection />
-        <WhyUseSection />
         <HowItWorksSection />
+        <WhyUseSection />
         <TravelersSection />
         <Footer />
       </main>
