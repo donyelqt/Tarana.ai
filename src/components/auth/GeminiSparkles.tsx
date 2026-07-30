@@ -92,7 +92,7 @@ export function GeminiSparkles({
 /* ── FadingDotGrid ─────────────────────────────────────────────
  *  Pure-CSS dot-grid background with a radial opacity fade,
  *  inspired by the bryllim.com hero pattern.
- *  Placed at the top-right of the container.
+ *  Default corner is top-right; pass corner="top-left" to mirror.
  * ───────────────────────────────────────────────────────────── */
 interface FadingDotGridProps {
   /** Dot colour — use a CSS colour string. Default: light blue-grey. */
@@ -105,6 +105,8 @@ interface FadingDotGridProps {
   widthFraction?: number
   /** Height of the grid region as a fraction of container height. Default: 0.6 (60%) */
   heightFraction?: number
+  /** Which corner the grid anchors to. Default: "top-right" */
+  corner?: "top-right" | "top-left"
   /** Extra class on root */
   className?: string
 }
@@ -115,6 +117,7 @@ export function FadingDotGrid({
   gap = 14,
   widthFraction = 0.55,
   heightFraction = 0.6,
+  corner = "top-right",
   className = "",
 }: FadingDotGridProps) {
   // radial-gradient: small circle at each grid intersection
@@ -123,21 +126,26 @@ export function FadingDotGrid({
     return `radial-gradient(circle at ${half}px ${half}px, ${dotColor} ${half}px, transparent ${half}px)`
   }, [dotColor, dotSize])
 
+  const isLeft = corner === "top-left"
+
   const style: React.CSSProperties = {
     position: "absolute",
     top: 0,
-    right: 0,
+    left: isLeft ? 0 : "auto",
+    right: isLeft ? "auto" : 0,
     width: `${widthFraction * 100}%`,
     height: `${heightFraction * 100}%`,
     backgroundImage: dotPattern,
     backgroundSize: `${gap}px ${gap}px`,
-    backgroundPosition: "top right",
+    backgroundPosition: isLeft ? "top left" : "top right",
     backgroundRepeat: "repeat",
-    /* mask fades the grid to transparent at all edges */
-    WebkitMaskImage:
-      "radial-gradient(ellipse 70% 70% at 70% 20%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 55%, transparent 100%)",
-    maskImage:
-      "radial-gradient(ellipse 70% 70% at 70% 20%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 55%, transparent 100%)",
+    /* mask fades the grid to transparent at all edges; origin flips per corner */
+    WebkitMaskImage: isLeft
+      ? "radial-gradient(ellipse 70% 70% at 30% 20%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 55%, transparent 100%)"
+      : "radial-gradient(ellipse 70% 70% at 70% 20%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 55%, transparent 100%)",
+    maskImage: isLeft
+      ? "radial-gradient(ellipse 70% 70% at 30% 20%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 55%, transparent 100%)"
+      : "radial-gradient(ellipse 70% 70% at 70% 20%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 55%, transparent 100%)",
     pointerEvents: "none",
     zIndex: 0,
   }
