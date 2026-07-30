@@ -240,6 +240,21 @@ const SignUp = () => {
         <div className="min-h-screen flex">
             {/* Left Panel */}
             <div className="hidden md:flex w-1/2 bg-[#0066FF] flex-col justify-center items-center text-white relative overflow-hidden">
+              {/* ── Apple Liquid Glass coating ── */}
+              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+                {/* 1. Glass tint — slightly lighter blue simulating glass thickness over solid color */}
+                <div className="absolute inset-0" style={{
+                  background: 'rgba(255, 255, 255, 0.06)',
+                }} />
+
+                {/* 2. Top-edge specular highlight — Apple's signature: a thin bright line at the very top where virtual light hits the glass surface */}
+                <div className="absolute top-0 left-0 right-0 h-px" style={{
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)',
+                  boxShadow: '0 1px 12px rgba(255,255,255,0.4)',
+                }} />
+              </div>
+              {/* ── End Liquid Glass coating ── */}
+
               {/* Gemini sparkles — white dots on blue */}
               <GeminiSparkles variant="white" count={45} minSize={2} maxSize={7} />
 
