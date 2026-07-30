@@ -7,7 +7,29 @@ import { goodtaste, taranaai2 } from "../../public"
 
 const HeroSection = () => {
     return (
-        <section className="w-full bg-white">
+        <section className="w-full bg-white relative overflow-hidden">
+            {/* Fading dot grids */}
+            <div
+                className="absolute top-0 right-0 w-48 h-48 md:w-96 md:h-96 pointer-events-none"
+                style={{
+                    backgroundImage: 'radial-gradient(circle, #0066FF 1.5px, transparent 1.5px)',
+                    backgroundSize: '24px 24px',
+                    opacity: 0.25,
+                    maskImage: 'radial-gradient(circle at top right, black 0%, transparent 70%)',
+                    WebkitMaskImage: 'radial-gradient(circle at top right, black 0%, transparent 70%)'
+                }}
+            />
+            <div
+                className="absolute bottom-0 left-0 w-48 h-48 md:w-96 md:h-96 pointer-events-none"
+                style={{
+                    backgroundImage: 'radial-gradient(circle, #0066FF 1.5px, transparent 1.5px)',
+                    backgroundSize: '24px 24px',
+                    opacity: 0.25,
+                    maskImage: 'radial-gradient(circle at bottom left, black 0%, transparent 70%)',
+                    WebkitMaskImage: 'radial-gradient(circle at bottom left, black 0%, transparent 70%)'
+                }}
+            />
+
             {/* Hero content */}
             <div className="max-w-7xl mx-auto px-4 pt-16 pb-12 md:pt-24 md:pb-16">
                 <div className="flex flex-col items-center text-center">
