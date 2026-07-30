@@ -10,7 +10,7 @@ interface TravelerType {
   image: StaticImageData | string;
 }
 
-const TravelersSection = () => {
+const TravelersSection = ({ id }: { id?: string }) => {
   const [travelers] = useState<TravelerType[]>([
     {
       title: "Solo Traveler",
@@ -39,7 +39,7 @@ const TravelersSection = () => {
   ]);
 
   return (
-    <section className="py-16 px-4 bg-white">
+    <section id={id} className="py-16 px-4 bg-white">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-5xl font-medium text-center mb-16 bg-gradient-to-b from-blue-700 to-blue-500 bg-clip-text text-transparent">Perfect for All Travelers</h2>
 
