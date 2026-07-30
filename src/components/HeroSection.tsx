@@ -11,7 +11,7 @@ const HeroSection = ({ id }: { id?: string }) => {
             {/* Flat 4-layer dot lines aligned with text */}
             {/* Above "Your 1 Day Itinerary" - outside mockup, aligned with right panel */}
             <div
-                className="absolute pointer-events-none flex flex-col top-[320px] -right-[20px] md:top-[400px] md:right-[340px]"
+                className="absolute pointer-events-none flex flex-col top-[360px] -right-[20px] md:top-[440px] md:right-[340px]"
             >
                 <div className="relative w-[200px] h-[52px] md:w-[280px] md:h-[52px]" style={{ maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 70%)', WebkitMaskImage: 'radial-gradient(ellipse at center, black 40%, transparent 70%)' }}>
                     {[0, 13, 26, 39].map((y, i) => (
@@ -28,7 +28,7 @@ const HeroSection = ({ id }: { id?: string }) => {
 
             {/* Above "Plan Your" - aligned with heading text */}
             <div
-                className="absolute pointer-events-none flex flex-col top-[20px] -left-[50px] md:left-[320px] md:top-[50px]"
+                className="absolute pointer-events-none flex flex-col top-[70px] -left-[50px] md:left-[320px] md:top-[100px]"
             >
                 <div className="relative w-[200px] h-[52px] md:w-[280px] md:h-[52px]" style={{ maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 70%)', WebkitMaskImage: 'radial-gradient(ellipse at center, black 40%, transparent 70%)' }}>
                     {[0, 13, 26, 39].map((y, i) => (
@@ -44,7 +44,7 @@ const HeroSection = ({ id }: { id?: string }) => {
             </div>
 
             {/* Hero content */}
-            <div className="max-w-7xl mx-auto px-4 pt-16 pb-12 md:pt-24 md:pb-16">
+            <div className="max-w-7xl mx-auto px-4 pt-32 pb-12 md:pt-40 md:pb-16">
                 <div className="flex flex-col items-center text-center">
                     {/* Heading */}
                     <h1 className="text-4xl md:text-6xl font-bold text-center mb-6 max-w-4xl">
