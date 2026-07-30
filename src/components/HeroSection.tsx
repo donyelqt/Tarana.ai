@@ -5,30 +5,43 @@ import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { goodtaste, taranaai2 } from "../../public"
 
-const HeroSection = () => {
+const HeroSection = ({ id }: { id?: string }) => {
     return (
-        <section className="w-full bg-white relative overflow-hidden">
-            {/* Fading dot grids */}
+        <section id={id} className="w-full bg-white relative overflow-hidden">
+            {/* Flat 4-layer dot lines aligned with text */}
+            {/* Above "Your 1 Day Itinerary" - outside mockup, aligned with right panel */}
             <div
-                className="absolute top-0 right-0 w-48 h-48 md:w-96 md:h-96 pointer-events-none"
-                style={{
-                    backgroundImage: 'radial-gradient(circle, #0066FF 1.5px, transparent 1.5px)',
-                    backgroundSize: '24px 24px',
-                    opacity: 0.25,
-                    maskImage: 'radial-gradient(circle at top right, black 0%, transparent 70%)',
-                    WebkitMaskImage: 'radial-gradient(circle at top right, black 0%, transparent 70%)'
-                }}
-            />
+                className="absolute pointer-events-none flex flex-col top-[320px] -right-[20px] md:top-[400px] md:right-[340px]"
+            >
+                <div className="relative w-[200px] h-[52px] md:w-[280px] md:h-[52px]" style={{ maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 70%)', WebkitMaskImage: 'radial-gradient(ellipse at center, black 40%, transparent 70%)' }}>
+                    {[0, 13, 26, 39].map((y, i) => (
+                        <div key={i} className="absolute left-0 w-full" style={{
+                            top: `${y}px`,
+                            height: '13px',
+                            backgroundImage: 'radial-gradient(circle, #0066FF 1.5px, transparent 1.5px)',
+                            backgroundSize: '16px 13px',
+                            opacity: 0.4
+                        }} />
+                    ))}
+                </div>
+            </div>
+
+            {/* Above "Plan Your" - aligned with heading text */}
             <div
-                className="absolute bottom-0 left-0 w-48 h-48 md:w-96 md:h-96 pointer-events-none"
-                style={{
-                    backgroundImage: 'radial-gradient(circle, #0066FF 1.5px, transparent 1.5px)',
-                    backgroundSize: '24px 24px',
-                    opacity: 0.25,
-                    maskImage: 'radial-gradient(circle at bottom left, black 0%, transparent 70%)',
-                    WebkitMaskImage: 'radial-gradient(circle at bottom left, black 0%, transparent 70%)'
-                }}
-            />
+                className="absolute pointer-events-none flex flex-col top-[20px] -left-[50px] md:left-[320px] md:top-[50px]"
+            >
+                <div className="relative w-[200px] h-[52px] md:w-[280px] md:h-[52px]" style={{ maskImage: 'radial-gradient(ellipse at center, black 40%, transparent 70%)', WebkitMaskImage: 'radial-gradient(ellipse at center, black 40%, transparent 70%)' }}>
+                    {[0, 13, 26, 39].map((y, i) => (
+                        <div key={i} className="absolute left-0 w-full" style={{
+                            top: `${y}px`,
+                            height: '13px',
+                            backgroundImage: 'radial-gradient(circle, #0066FF 1.5px, transparent 1.5px)',
+                            backgroundSize: '16px 13px',
+                            opacity: 0.4
+                        }} />
+                    ))}
+                </div>
+            </div>
 
             {/* Hero content */}
             <div className="max-w-7xl mx-auto px-4 pt-16 pb-12 md:pt-24 md:pb-16">

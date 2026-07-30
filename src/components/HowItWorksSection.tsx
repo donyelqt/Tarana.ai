@@ -1,9 +1,9 @@
 import Image from 'next/image';
 import { explore, letai, set } from '../../public';
 
-const HowItWorksSection = () => {
+const HowItWorksSection = ({ id }: { id?: string }) => {
   return (
-    <section className="bg-gradient-to-b from-blue-700 lg:h-full to-blue-500 text-white pt-16 pb-24">
+    <section id={id} className="bg-gradient-to-b from-blue-700 to-blue-500 text-white pt-16 pb-24">
       <div className="max-w-7xl mx-auto px-4">
         <h2 className="text-4xl md:text-5xl font-medium text-center mb-16 font-sans">How it Works</h2>
 
