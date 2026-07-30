@@ -255,8 +255,11 @@ const SignUp = () => {
               </div>
               {/* ── End Liquid Glass coating ── */}
 
-              {/* Gemini sparkles — white dots on blue */}
-              <GeminiSparkles variant="white" count={45} minSize={2} maxSize={7} />
+              {/* Gemini sparkles — sparse white dots on blue (texture, not competing with grid) */}
+              <GeminiSparkles variant="white" count={20} minSize={2} maxSize={7} />
+
+              {/* Fading dot grid — top-left, mirrors right panel's top-right; primary texture layer */}
+              <FadingDotGrid dotColor="#cce4ff" dotSize={3} gap={14} widthFraction={0.55} heightFraction={0.6} corner="top-left" />
 
               {/* Referral logo watermark — matches dashboard styling */}
               <img
@@ -271,12 +274,12 @@ const SignUp = () => {
 
               <div className="max-w-xs text-left relative z-10">
                 <div className="mb-4">
-                  <div className="bg-white rounded-2xl p-4 shadow-md inline-block">
+                  <div className="bg-white rounded-xl p-4 shadow-md inline-block">
                     <Image src="/images/taranaai2.png" alt="Tarana.ai" width={125} height={125} priority />
                   </div>
                 </div>
                 <div className="mb-6 text-sm">Your ai-powered Baguio travel companion</div>
-                <Link href="/" className="inline-block bg-white text-[#0066FF] font-medium rounded-xl px-8 py-3 text-base shadow-md hover:bg-gray-100 transition">Back to Home</Link>
+                <Link href="/" className="inline-block bg-white text-[#0066FF] font-medium rounded-xl px-7 py-3 text-base shadow-md hover:bg-gray-100 transition">Back to Home</Link>
               </div>
             </div>
             {/* Right Panel */}
