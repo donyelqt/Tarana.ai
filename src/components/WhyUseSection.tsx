@@ -55,7 +55,7 @@ const MOBILE_SMALL = {
     } as const,
 }
 
-const BASE_CARD_CLASSES = "flex flex-col items-start text-start bg-white shadow-[5px_5px_10px_theme(colors.sky.300/50%),_-5px_-5px_10px_theme(colors.white/70%)] hover:shadow-[5px_5px_10px_rgb(0,0,255,0.5),_-5px_-5px_10px_rgb(255,255,255,0.7)] focus-visible:shadow-[5px_5px_10px_rgb(0,0,255,0.5),_-5px_-5px_10px_rgb(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 ease-out transform cursor-pointer rounded-2xl"
+const BASE_CARD_CLASSES = "flex flex-col items-start text-start bg-white shadow-[5px_5px_10px_theme(colors.sky.300/50%),_-5px_-5px_10px_theme(colors.white/70%)] hover:shadow-[5px_5px_10px_rgb(0,0,255,0.5),_-5px_-5px_10px_rgb(255,255,255,0.7)] focus-visible:shadow-[5px_5px_10px_rgb(0,0,255,0.5),_-5px_-5px_10px_rgb(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 hover:scale-[1.02] active:scale-[0.98] transition-[transform,opacity,box-shadow] duration-500 ease-out transform will-change-transform origin-center cursor-pointer rounded-2xl"
 
 const WhyUseSection = ({ id }: { id?: string }) => {
     const [mounted, setMounted] = useState(false)
@@ -217,3 +217,5 @@ const WhyUseSection = ({ id }: { id?: string }) => {
 }
 
 export default WhyUseSection
+
+
