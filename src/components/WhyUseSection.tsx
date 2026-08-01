@@ -14,6 +14,8 @@ type CardData = {
     iconHeight: number
     iconWidthMobile: number
     iconHeightMobile: number
+    iconWidthSmall: number
+    iconHeightSmall: number
 }
 
 // Desktop dimensions & transforms (≥768px)
@@ -28,17 +30,28 @@ const DESKTOP = {
     } as const,
 }
 
-// Mobile dimensions & transforms (<768px) — scaled-down replica of desktop scattered layout
-// Cards sized to be readable while still fitting 3 overlapping cards in a 375px viewport
-// Edges clip cleanly via overflow-hidden, creating the same "cards peeking out" aesthetic as Bryl Lim
+// Mobile dimensions & transforms (480–767px) — standard mobile, wider phones
 const MOBILE = {
-    width: 220,
+    width: 260,
     height: 240,
     padding: 'p-5',
     slots: {
-        0: { tx: -10, ty: 10, rot: -5, zIndex: 10, ml: '0px', mr: '-80px' },   // left
+        0: { tx: -8, ty: 8, rot: -5, zIndex: 10, ml: '0px', mr: '-60px' },    // left
         1: { tx: 0, ty: 0, rot: 0, zIndex: 30, ml: '0px', mr: '0px' },         // center
-        2: { tx: 10, ty: 10, rot: 5, zIndex: 10, ml: '-80px', mr: '0px' },    // right
+        2: { tx: 8, ty: 8, rot: 5, zIndex: 10, ml: '-60px', mr: '0px' },     // right
+    } as const,
+}
+
+// Small mobile dimensions & transforms (<480px) — iPhone 12 Pro (390px), Samsung S21 (360px), iPhone SE (375px)
+// Aggressive scaling + tighter overlap so cards fit naturally in narrow viewports without heavy clipping
+const MOBILE_SMALL = {
+    width: 180,
+    height: 200,
+    padding: 'p-4',
+    slots: {
+        0: { tx: -5, ty: 6, rot: -5, zIndex: 10, ml: '0px', mr: '-70px' },    // left
+        1: { tx: 0, ty: 0, rot: 0, zIndex: 30, ml: '0px', mr: '0px' },         // center
+        2: { tx: 5, ty: 6, rot: 5, zIndex: 10, ml: '-70px', mr: '0px' },     // right
     } as const,
 }
 
@@ -46,11 +59,16 @@ const BASE_CARD_CLASSES = "flex flex-col items-start text-start bg-white shadow-
 
 const WhyUseSection = ({ id }: { id?: string }) => {
     const [mounted, setMounted] = useState(false)
-    const [isMobile, setIsMobile] = useState(false)
+    const [viewportTier, setViewportTier] = useState<'desktop' | 'mobile' | 'small'>('desktop')
 
     useEffect(() => {
         setMounted(true)
-        const checkViewport = () => setIsMobile(window.innerWidth < 768)
+        const checkViewport = () => {
+            const width = window.innerWidth
+            if (width < 480) setViewportTier('small')
+            else if (width < 768) setViewportTier('mobile')
+            else setViewportTier('desktop')
+        }
         checkViewport()
         window.addEventListener('resize', checkViewport)
         return () => window.removeEventListener('resize', checkViewport)
@@ -67,6 +85,8 @@ const WhyUseSection = ({ id }: { id?: string }) => {
             iconHeight: 42,
             iconWidthMobile: 60,
             iconHeightMobile: 32,
+            iconWidthSmall: 42,
+            iconHeightSmall: 22,
         },
         {
             id: 2,
@@ -78,6 +98,8 @@ const WhyUseSection = ({ id }: { id?: string }) => {
             iconHeight: 42,
             iconWidthMobile: 38,
             iconHeightMobile: 32,
+            iconWidthSmall: 26,
+            iconHeightSmall: 22,
         },
         {
             id: 3,
@@ -89,6 +111,8 @@ const WhyUseSection = ({ id }: { id?: string }) => {
             iconHeight: 42,
             iconWidthMobile: 60,
             iconHeightMobile: 32,
+            iconWidthSmall: 42,
+            iconHeightSmall: 22,
         },
     ])
 
@@ -102,12 +126,24 @@ const WhyUseSection = ({ id }: { id?: string }) => {
         })
     }
 
-    // Use mobile config after hydration, desktop during SSR (prevents hydration mismatch)
-    const config = mounted && isMobile ? MOBILE : DESKTOP
+    // Use viewport-appropriate config after hydration, desktop during SSR (prevents hydration mismatch)
+    const config =
+        !mounted ? DESKTOP :
+        viewportTier === 'small' ? MOBILE_SMALL :
+        viewportTier === 'mobile' ? MOBILE :
+        DESKTOP
     const cardWidth = config.width
     const cardHeight = config.height
     const paddingClass = config.padding
     const slotStyles = config.slots
+
+    // Icon dimensions based on viewport tier
+    const getIconDimensions = (card: CardData) => {
+        if (!mounted) return { w: card.iconWidth, h: card.iconHeight }
+        if (viewportTier === 'small') return { w: card.iconWidthSmall, h: card.iconHeightSmall }
+        if (viewportTier === 'mobile') return { w: card.iconWidthMobile, h: card.iconHeightMobile }
+        return { w: card.iconWidth, h: card.iconHeight }
+    }
 
     return (
         <section id={id} className="py-20 px-4 overflow-hidden">
@@ -158,8 +194,8 @@ const WhyUseSection = ({ id }: { id?: string }) => {
                                     <Image
                                         src={card.icon}
                                         alt={card.iconAlt}
-                                        width={mounted && isMobile ? card.iconWidthMobile : card.iconWidth}
-                                        height={mounted && isMobile ? card.iconHeightMobile : card.iconHeight}
+                                        width={getIconDimensions(card).w}
+                                        height={getIconDimensions(card).h}
                                         className="object-contain"
                                         quality={100}
                                     />
