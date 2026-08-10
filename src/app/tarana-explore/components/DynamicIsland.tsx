@@ -10,9 +10,9 @@ import { motion } from "framer-motion"
  *  - Spring: m=1, stiffness=210, damping=23  -> damping ratio ζ≈0.794 (slightly
  *    underdamped). Measured overshoot ≈1.2%, settle ≈0.26s. Transfers 1:1 because
  *    framer-motion's spring uses the same m·x'' + c·x' + k·(x-target)=0 ODE.
-  *  - Silhouette: compact uses border-radius:9999px (=> perfect pill, radius = h/2).
-  *    Expanded uses a fixed 28px radius so the grown card reads as a clean DI panel
-  *    (not a lozenge). borderRadius is animated alongside width/height for the morph.
+ *  - Silhouette: compact uses border-radius:9999px (=> perfect pill, radius = h/2).
+ *    Expanded uses a fixed 28px radius so the grown card reads as a clean DI panel
+ *    (not a lozenge). borderRadius is animated alongside width/height for the morph.
  *  - Content is clipped to the pill ONLY while morphing (overflow:hidden), then released
  *    to `visible` so child dropdowns (search results) can escape the rounded clip.
  */
@@ -20,7 +20,9 @@ import { motion } from "framer-motion"
 // Verified DI spring preset — DO NOT retune without re-running the harness.
 const DI_SPRING = { type: "spring" as const, stiffness: 210, damping: 23, mass: 1 }
 
-const COMPACT = { width: 240, height: 52 }
+const COMPACT_HEIGHT = 52
+/** Narrowest the collapsed pill is ever allowed to be. */
+const COMPACT_MIN_WIDTH = 240
 
 export interface DynamicIslandProps {
   expanded: boolean
@@ -28,6 +30,14 @@ export interface DynamicIslandProps {
   children: ReactNode
   /** Compact pill summary shown when collapsed (e.g. a search affordance). */
   compact: ReactNode
+  /**
+   * Collapsed pill width in px. Defaults to the minimum; pass a larger value when
+   * the compact slot carries a summary that needs the room. Always clamped to the
+   * available (viewport) width so the pill can never overflow on small screens.
+   */
+  compactWidth?: number
+  /** Accessible name for the collapsed pill button. */
+  compactLabel?: string
   /** Max expanded width in px (clamped to viewport). */
   maxWidth?: number
   /** Called when the collapsed pill is tapped (e.g. focus the first field). */
@@ -38,19 +48,21 @@ const DynamicIsland: React.FC<DynamicIslandProps> = ({
   expanded,
   children,
   compact,
+  compactWidth = COMPACT_MIN_WIDTH,
+  compactLabel = "Open search",
   maxWidth = 448,
   onCompactClick,
 }) => {
   const contentRef = useRef<HTMLDivElement>(null)
   const [availW, setAvailW] = useState(maxWidth)
-  const [contentH, setContentH] = useState(COMPACT.height)
+  const [contentH, setContentH] = useState(COMPACT_HEIGHT)
   const [clip, setClip] = useState(true)
 
   // Available width = min(maxWidth, viewport - margins). Keeps the island on-screen.
   useLayoutEffect(() => {
     const recompute = () => {
       const vw = typeof window !== "undefined" ? window.innerWidth : maxWidth
-      setAvailW(Math.min(maxWidth, Math.max(COMPACT.width, vw - 24)))
+      setAvailW(Math.min(maxWidth, Math.max(COMPACT_MIN_WIDTH, vw - 24)))
     }
     recompute()
     window.addEventListener("resize", recompute)
@@ -68,8 +80,8 @@ const DynamicIsland: React.FC<DynamicIslandProps> = ({
   }, [])
 
   const target = expanded
-    ? { width: availW, height: Math.max(contentH, COMPACT.height) }
-    : COMPACT
+    ? { width: availW, height: Math.max(contentH, COMPACT_HEIGHT) }
+    : { width: Math.min(compactWidth, availW), height: COMPACT_HEIGHT }
 
   return (
     <motion.div
@@ -116,7 +128,7 @@ const DynamicIsland: React.FC<DynamicIslandProps> = ({
           type="button"
           onClick={onCompactClick}
           className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium text-gray-600"
-          aria-label="Open search"
+          aria-label={compactLabel}
           style={{ borderRadius: "inherit" }}
         >
           {compact}
