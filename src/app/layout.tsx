@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 // import { Inter } from "next/font/google" 
 import "./globals.css"
 import { SessionProvider } from '@/components/providers/SessionProvider'
@@ -10,6 +10,15 @@ import SmokeEffect from "@/components/ui/SmokeEffect";
 import { ReferralTracker } from "@/components/ReferralTracker";
 
 // const inter = Inter({ subsets: ["latin"] })
+
+// Explicit viewport: keep user scaling ENABLED so pinch-to-zoom (2 fingers)
+// and the in-app "+" zoom button still work. We do NOT set maximum-scale or
+// userScalable:false -- that would disable pinch, which we want to keep.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+}
 
 export const metadata: Metadata = {
   title: "Tarana-ai | Plan Your Perfect Baguio Trip",

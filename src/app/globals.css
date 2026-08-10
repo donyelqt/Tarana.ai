@@ -254,6 +254,30 @@ body {
   * {
     @apply border-border;
   }
+
+  html {
+    /* Native mobile feel: kill the browser tap / double-tap-to-zoom gesture
+       and the 300ms tap delay, WITHOUT disabling pinch-to-zoom or the in-app
+       + zoom control. manipulation == pan + pinch-zoom, but removes
+       double-tap zoom, so taps on buttons/cards/markers never zoom the page. */
+    touch-action: manipulation;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* iOS Safari zooms the viewport when focusing a form control whose
+     computed font-size is < 16px. On touch devices we force 16px so tapping
+     an input never zooms, while pinch-to-zoom (2 fingers) and the in-app +
+     button keep working because user scaling stays enabled. Scoped to coarse
+     pointers so the desktop layout is untouched. !important is required to
+     beat Tailwind text-size utilities on form controls. */
+  @media (pointer: coarse) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+  }
 }
 
 @keyframes progress {
