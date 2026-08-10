@@ -230,8 +230,23 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
       cardRef.current?.querySelector<HTMLInputElement>("input")?.focus(),
     )
   }, [])
-  const expanded =
-    focused || !!origin || !!destination || isCalculating || showOptions
+  // Expand only on interaction/data-calc, NOT merely because fields are filled.
+  // This lets the card return to the compact "Where to?" phase after a route is found.
+  const expanded = focused || isCalculating || showOptions
+
+  // When a route calculation completes, collapse back to "Where to?" while keeping
+  // the user's origin/destination/preferences (those live in parent state, untouched).
+  const wasCalculating = useRef(isCalculating)
+  useEffect(() => {
+    if (wasCalculating.current && !isCalculating) {
+      setFocused(false)
+      setShowOptions(false)
+      if (typeof document !== "undefined") {
+        ;(document.activeElement as HTMLElement | null)?.blur()
+      }
+    }
+    wasCalculating.current = isCalculating
+  }, [isCalculating])
 
   const handleSearch = useCallback(async (q: string) => {
     setIsSearching(true)
