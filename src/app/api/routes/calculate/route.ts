@@ -45,13 +45,17 @@ export async function POST(request: NextRequest) {
       routeType: routeRequest.preferences.routeType
     });
 
+    // Forward the browser's Referer so TomTom's Referer allowlist accepts the
+    // server-side call (the browser already sends an allowed Referer for the map).
+    const forwardedReferer = request.headers.get('referer') || request.headers.get('origin') || undefined;
+
     // Calculate primary route
-    const primaryRoute = await tomtomRoutingService.calculateRoute(routeRequest);
+    const primaryRoute = await tomtomRoutingService.calculateRoute(routeRequest, forwardedReferer);
     console.log(`✅ API: Primary route calculated - ${primaryRoute.id}`);
 
     // Calculate alternative routes (parallel to traffic analysis)
     const [alternativeRoutes, trafficAnalysis] = await Promise.all([
-      tomtomRoutingService.getAlternativeRoutes(routeRequest).catch(error => {
+      tomtomRoutingService.getAlternativeRoutes(routeRequest, forwardedReferer).catch(error => {
         console.warn('⚠️ API: Alternative routes calculation failed:', error);
         return [];
       }),

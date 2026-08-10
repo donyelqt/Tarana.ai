@@ -186,6 +186,13 @@ class TomTomRoutingService {
       maxAlternatives: 3
     };
 
+    const keySource = primaryApiKey
+      ? 'TOMTOM_API_KEY (server)'
+      : fallbackPublicApiKey
+        ? 'NEXT_PUBLIC_TOMTOM_API_KEY (public fallback)'
+        : 'NONE';
+    console.log(`[tomtomRouting] Resolved API key source: ${keySource}`);
+
     if (!this.config.apiKey) {
       console.warn('⚠️ TomTom API key not found. Routing features will use fallback data.');
     }
@@ -194,7 +201,7 @@ class TomTomRoutingService {
   /**
    * Calculate optimal route with traffic analysis
    */
-  async calculateRoute(request: RouteRequest): Promise<RouteData> {
+  async calculateRoute(request: RouteRequest, referer?: string): Promise<RouteData> {
     console.log('🗺️ TomTom: Calculating route from', request.origin.name, 'to', request.destination.name);
 
     if (!this.config.apiKey) {
@@ -222,7 +229,7 @@ class TomTomRoutingService {
       
       console.log('🌐 TomTom: Requesting route calculation:', url);
 
-      const response = await this.makeRequest(url, routeParams);
+      const response = await this.makeRequest(url, routeParams, referer);
       const routeData = await response.json() as TomTomRouteResponse;
 
       if (!routeData.routes || routeData.routes.length === 0) {
@@ -268,7 +275,7 @@ class TomTomRoutingService {
   /**
    * Get alternative routes for comparison
    */
-  async getAlternativeRoutes(request: RouteRequest): Promise<RouteData[]> {
+  async getAlternativeRoutes(request: RouteRequest, referer?: string): Promise<RouteData[]> {
     console.log('🛣️ TomTom: Getting alternative routes');
 
     if (!this.config.apiKey) {
@@ -285,7 +292,7 @@ class TomTomRoutingService {
       
       const url = `${this.config.baseUrl}/routing/${this.config.version}/calculateRoute/${locations}/json`;
       
-      const response = await this.makeRequest(url, routeParams);
+      const response = await this.makeRequest(url, routeParams, referer);
       const routeData = await response.json() as TomTomRouteResponse;
 
       const alternatives = routeData.routes.slice(1).map((route, index) => {
@@ -306,7 +313,7 @@ class TomTomRoutingService {
   /**
    * Search locations with autocomplete
    */
-  async searchLocations(query: string, bounds?: BoundingBox): Promise<SearchResult[]> {
+  async searchLocations(query: string, bounds?: BoundingBox, referer?: string): Promise<SearchResult[]> {
     console.log('🔍 TomTom: Searching for locations:', query);
 
     if (!this.config.apiKey || !query.trim()) {
@@ -342,7 +349,7 @@ class TomTomRoutingService {
 
       const url = `${this.config.baseUrl}/search/2/search/${encodeURIComponent(query)}.json`;
       
-      const response = await this.makeRequest(url, Object.fromEntries(params));
+      const response = await this.makeRequest(url, Object.fromEntries(params), referer);
       const searchData = await response.json() as TomTomSearchResponse;
 
       const results = searchData.results.map(this.transformSearchResult);
@@ -365,7 +372,7 @@ class TomTomRoutingService {
   /**
    * Reverse geocoding - coordinates to address
    */
-  async reverseGeocode(coordinates: Coordinates): Promise<AddressResult | null> {
+  async reverseGeocode(coordinates: Coordinates, referer?: string): Promise<AddressResult | null> {
     console.log('🏠 TomTom: Reverse geocoding:', coordinates);
 
     if (!this.config.apiKey) {
@@ -387,7 +394,7 @@ class TomTomRoutingService {
 
       const url = `${this.config.baseUrl}/search/2/reverseGeocode/${coordinates.lat},${coordinates.lng}.json`;
       
-      const response = await this.makeRequest(url, Object.fromEntries(params));
+      const response = await this.makeRequest(url, Object.fromEntries(params), referer);
       const data = await response.json() as TomTomSearchResponse;
 
       if (!data.results || data.results.length === 0) {
@@ -413,14 +420,14 @@ class TomTomRoutingService {
   /**
    * Batch geocoding for multiple addresses
    */
-  async batchGeocode(addresses: string[]): Promise<GeocodeResult[]> {
+  async batchGeocode(addresses: string[], referer?: string): Promise<GeocodeResult[]> {
     console.log('📍 TomTom: Batch geocoding', addresses.length, 'addresses');
 
     const results: GeocodeResult[] = [];
 
     for (const address of addresses) {
       try {
-        const searchResults = await this.searchLocations(address);
+        const searchResults = await this.searchLocations(address, undefined, referer);
         results.push({
           query: address,
           results: searchResults,
@@ -511,7 +518,24 @@ class TomTomRoutingService {
     }
   }
 
-  private async makeRequest(url: string, params: Record<string, string>): Promise<Response> {
+  private buildRequestHeaders(referer?: string): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'User-Agent': 'Tarana.ai/1.0'
+    };
+    if (referer) {
+      headers['Referer'] = referer;
+      try {
+        const origin = new URL(referer).origin;
+        if (origin) headers['Origin'] = origin;
+      } catch {
+        // referer is not a parseable URL; forward it as Referer anyway
+      }
+    }
+    return headers;
+  }
+
+  private async makeRequest(url: string, params: Record<string, string>, referer?: string): Promise<Response> {
     const fullUrl = `${url}?${new URLSearchParams(params).toString()}`;
     
     const controller = new AbortController();
@@ -520,16 +544,27 @@ class TomTomRoutingService {
     try {
       const response = await fetch(fullUrl, {
         signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Tarana.ai/1.0'
-        }
+        headers: this.buildRequestHeaders(referer)
       });
 
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error(`TomTom API error: ${response.status} ${response.statusText}`);
+        let detail = '';
+        try {
+          const body = await response.json() as {
+            detailedError?: { code?: string; message?: string };
+            errorText?: string;
+          };
+          if (body?.detailedError) {
+            detail = ` (${body.detailedError.code}: ${body.detailedError.message})`;
+          } else if (body?.errorText) {
+            detail = ` (${body.errorText})`;
+          }
+        } catch {
+          // Body is not JSON; fall back to status text below.
+        }
+        throw new Error(`TomTom API error: ${response.status} ${response.statusText}${detail}`);
       }
 
       return response;

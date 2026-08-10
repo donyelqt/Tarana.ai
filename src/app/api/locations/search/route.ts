@@ -36,8 +36,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Forward the browser's Referer so TomTom's Referer allowlist accepts the
+    // server-side call.
+    const forwardedReferer = request.headers.get('referer') || request.headers.get('origin') || undefined;
+
     // Search for locations using TomTom service
-    const searchResults = await tomtomRoutingService.searchLocations(query.trim(), bounds);
+    const searchResults = await tomtomRoutingService.searchLocations(query.trim(), bounds, forwardedReferer);
     
     // Generate search suggestions based on results
     const suggestions = generateSearchSuggestions(searchResults, query);
