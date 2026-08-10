@@ -544,30 +544,52 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   }, [isCalculating, close])
 
   /**
-   * Opening from the pill lands on the field that still needs an answer, so a
-   * half-filled route resumes where the user left off instead of re-focusing
-   * "From". focus() is synchronous to stay inside the tap's user activation.
+   * Opening from the pill. The actual focus is deferred to the effect below so
+   * it lands on the *expanded* input, not the still-collapsed DOM node that
+   * exists at the moment of the click. It lands on whichever endpoint is still
+   * empty, so a half-filled route resumes where the user left off. When both are
+   * already set the card expands silently rather than summoning the keyboard.
    */
   const openIsland = useCallback(() => {
     setIsOpen(true)
-    if (!origin) focusEl(originRef.current)
-    else if (!destination) focusEl(destinationRef.current)
-    // Both already set: expand silently rather than summoning the keyboard.
-  }, [origin, destination])
+  }, [])
 
   /**
-   * Auto-advance. `origin`/`destination` in these closures are the values from
-   * *before* the commit that triggered them, so each handler only ever inspects
-   * the endpoint it did not just fill.
+   * Move focus to the right field *after* the card has committed its expanded
+   * layout to the DOM (and the relevant input actually exists/is visible). Done
+   * synchronously inside the click the input is still the collapsed node and the
+   * focus silently no-ops, taking the field's own onFocus (and its suggestion
+   * list) with it.
+   */
+  const pendingFocus = useRef<'origin' | 'destination' | 'submit' | null>(null)
+  useEffect(() => {
+    if (!isOpen) return
+    const target = pendingFocus.current
+    pendingFocus.current = null
+    if (target === 'origin') focusEl(originRef.current)
+    else if (target === 'destination') focusEl(destinationRef.current)
+    else if (target === 'submit') focusEl(submitRef.current)
+    else if (origin && destination) focusEl(submitRef.current)
+    else if (!origin) focusEl(originRef.current)
+    else if (!destination) focusEl(destinationRef.current)
+  }, [isOpen, origin, destination])
+
+  /**
+   * Auto-advance. A commit changes origin/destination, so the deferred focus
+   * effect (keyed on those values) re-runs and lands on the field the user has
+   * not yet filled — or on submit once both are set. Going through the effect
+   * (rather than focusing mid-click) keeps it reliable in every environment,
+   * including jsdom, where a synchronous focus on the still-present node can
+   * race the re-render that swaps the committed text.
    */
   const handleOriginCommit = useCallback(() => {
-    if (!destination) focusEl(destinationRef.current)
-    else focusEl(submitRef.current)
+    if (!destination) pendingFocus.current = 'destination'
+    else pendingFocus.current = 'submit'
   }, [destination])
 
   const handleDestinationCommit = useCallback(() => {
-    if (!origin) focusEl(originRef.current)
-    else focusEl(submitRef.current)
+    if (!origin) pendingFocus.current = 'origin'
+    else pendingFocus.current = 'submit'
   }, [origin])
 
   const swap = () => {
