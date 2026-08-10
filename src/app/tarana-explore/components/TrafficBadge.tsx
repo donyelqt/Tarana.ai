@@ -25,7 +25,7 @@ const TrafficBadge: React.FC<{ trafficConditions: RouteTrafficAnalysis | null }>
   if (!trafficConditions) return null
   const color = TRAFFIC_COLORS[trafficConditions.overallTrafficLevel] ?? 'bg-gray-400'
   return (
-    <div className="absolute top-3 left-3 z-20 pointer-events-none">
+    <div className="absolute top-20 left-3 z-20 pointer-events-none lg:top-3">
       <div className="pointer-events-auto bg-white/95 backdrop-blur-md rounded-full shadow-md border border-gray-200 px-3 py-1.5 flex items-center gap-2">
         <span className={`w-2 h-2 rounded-full ${color}`} />
         <span className="text-xs font-semibold text-gray-900">
