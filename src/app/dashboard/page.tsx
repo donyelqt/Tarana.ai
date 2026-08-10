@@ -4,7 +4,6 @@ import React from "react"
 import Image from "next/image"
 import Sidebar from "../../components/Sidebar"
 import SuggestedSpots from "./components/SuggestedSpots"
-import RouteOptimizationWidget from "./components/RouteOptimizationWidget"
 import RecommendedCafes from "./components/RecommendedCafes"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
@@ -279,7 +278,17 @@ const DashboardContent = () => {
             </Popover>
           </div>
           <SuggestedSpots />
-          <RouteOptimizationWidget />
+
+          {/* Tarana Explore navigation card */}
+          <div
+            onClick={() => router.push("/tarana-explore")}
+            className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition mb-8"
+          >
+            <MapPin size={28} className="mb-2 text-blue-500 animate-icon-interactive" />
+            <div className="font-semibold text-lg">Explore Routes</div>
+            <div className="text-gray-500 text-sm mt-1">Smart traffic-aware navigation</div>
+          </div>
+
           <RecommendedCafes />
         </div>
         {/* Right Sidebar */}
