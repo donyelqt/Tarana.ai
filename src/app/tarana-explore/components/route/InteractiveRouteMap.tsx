@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { RouteData, RouteTrafficAnalysis, LocationPoint } from '@/types/route-optimization';
 import { createTomTomMap, getTomTomSDKStatus, resetTomTomService, changeMapStyle, type TomTomMapConfig, type MapStyle, MAP_STYLES, BAGUIO_CITY_COORDINATES, ZOOM_LEVELS } from '@/lib/integrations/tomtomMapUtils';
-import { MapStyleSelector, RouteSelectionPanel, TrafficLegend } from './MapUI';
 import RouteAnalysisLoader from './RouteAnalysisLoader';
 import { Loader2 } from 'lucide-react';
 
@@ -16,6 +15,11 @@ interface InteractiveRouteMapProps {
   waypoints: LocationPoint[];
   isLoading: boolean;
   onRouteSelect?: (routeId: string) => void;
+  currentMapStyle?: MapStyle;
+  onStyleChange?: (style: MapStyle) => void;
+  onStyleChanging?: (changing: boolean) => void;
+  recenterSignal?: number;
+  styleControlRef?: React.MutableRefObject<{ changeStyle: (style: MapStyle) => void } | null>;
 }
 
 declare global {
@@ -41,7 +45,12 @@ export default function InteractiveRouteMap({
   destination,
   waypoints,
   isLoading,
-  onRouteSelect
+  onRouteSelect,
+  currentMapStyle: externalStyle,
+  onStyleChange,
+  onStyleChanging,
+  recenterSignal,
+  styleControlRef,
 }: InteractiveRouteMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -49,10 +58,33 @@ export default function InteractiveRouteMap({
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isSdkLoaded, setIsSdkLoaded] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const [currentMapStyle, setCurrentMapStyle] = useState<MapStyle>('main');
+  const [currentMapStyle, setCurrentMapStyle] = useState<MapStyle>(externalStyle ?? 'main');
   const [isChangingStyle, setIsChangingStyle] = useState(false);
   const plottedRouteCountRef = useRef(0);
   const markersRef = useRef<any[]>([]);
+
+
+  // Recenter to Baguio (or refit active route) when the signal changes
+  useEffect(() => {
+    if (recenterSignal === undefined || !mapInstanceRef.current || !isMapLoaded) return;
+    const map = mapInstanceRef.current;
+    if (currentRoute?.legs && Array.isArray(currentRoute.legs)) {
+      const coords = currentRoute.legs
+        .flatMap((leg) => leg.geometry?.coordinates?.map((c) => [c.lng, c.lat]) || [])
+        .filter((c) => c.length === 2 && !isNaN(c[0]) && !isNaN(c[1]));
+      if (coords.length > 0) {
+        const bounds = new window.tt.LngLatBounds();
+        coords.forEach((c) => bounds.extend(c));
+        map.fitBounds(bounds, { padding: 60, duration: 600 });
+        return;
+      }
+    }
+    map.easeTo?.({
+      center: [BAGUIO_CITY_COORDINATES[0], BAGUIO_CITY_COORDINATES[1]],
+      zoom: ZOOM_LEVELS.CITY,
+      duration: 600,
+    });
+  }, [recenterSignal, isMapLoaded, currentRoute]);
 
   // Initialize map using the TomTom utility service
   const initializeMap = useCallback(async () => {
@@ -203,6 +235,8 @@ export default function InteractiveRouteMap({
       return;
     }
 
+    onStyleChanging?.(true);
+
     try {
       setIsChangingStyle(true);
       const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY || '6Acdv8xeMK2MXLSy3tFQ1qk9s8ovwabD';
@@ -220,6 +254,7 @@ export default function InteractiveRouteMap({
       // Update the map instance reference
       mapInstanceRef.current = newMapInstance;
       setCurrentMapStyle(newStyle);
+      onStyleChange?.(newStyle);
 
       console.log(`✅ Successfully changed map style to ${newStyle}`);
     } catch (error) {
@@ -231,8 +266,20 @@ export default function InteractiveRouteMap({
       setMapError(`Failed to change map style: ${errorMessage}`);
     } finally {
       setIsChangingStyle(false);
+      onStyleChanging?.(false);
     }
-  }, [currentMapStyle, isChangingStyle]);
+  }, [currentMapStyle, isChangingStyle, onStyleChange, onStyleChanging]);
+
+  // Expose the internal style-change handler to the parent via ref so the
+  // page-level control triggers it directly (the proven-working path).
+  useEffect(() => {
+    if (styleControlRef) {
+      styleControlRef.current = { changeStyle: (s: MapStyle) => { void handleStyleChange(s); } };
+    }
+    return () => {
+      if (styleControlRef) styleControlRef.current = null;
+    };
+  }, [styleControlRef, handleStyleChange]);
 
   // Update map with route data
   useEffect(() => {
@@ -874,10 +921,6 @@ export default function InteractiveRouteMap({
   }, [currentRoute?.id, alternativeRoutes.map(r => r.id).join(','), origin?.lat, origin?.lng, destination?.lat, destination?.lng, waypoints.length, isMapLoaded]);
 
 
-  const handleRouteClick = (routeId: string) => {
-    onRouteSelect?.(routeId);
-  };
-
   if (mapError) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 rounded-xl">
@@ -897,7 +940,7 @@ export default function InteractiveRouteMap({
   }
 
   return (
-    <div className="relative h-full bg-gray-100 rounded-xl overflow-hidden">
+    <div className="relative h-full w-full bg-gray-100">
       {/* Map Container */}
       <div ref={mapRef} className="w-full h-full">
         {!isMapLoaded && !mapError && (
@@ -929,22 +972,7 @@ export default function InteractiveRouteMap({
         </div>
       )}
 
-      {isMapLoaded && (
-        <>
-          <RouteSelectionPanel
-            currentRoute={currentRoute}
-            alternativeRoutes={alternativeRoutes}
-            trafficConditions={trafficConditions}
-            onRouteSelect={handleRouteClick}
-          />
-          <TrafficLegend trafficConditions={trafficConditions} />
-          <MapStyleSelector
-            currentMapStyle={currentMapStyle}
-            isChangingStyle={isChangingStyle}
-            onStyleChange={handleStyleChange}
-          />
-        </>
-      )}
+      {isMapLoaded && null /* floating overlays moved to page level */}
     </div>
   );
 }
