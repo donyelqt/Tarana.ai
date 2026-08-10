@@ -707,3 +707,14 @@ body {
   animation-delay: var(--delay, 0s), var(--delay, 0s);
 }
 
+
+
+/* TomTom built-in map controls (zoom in/out, fullscreen, pitch) render inside
+   .mapboxgl-ctrl-top-right (TomTom SDK v6 uses Mapbox GL class names). On mobile
+   the centered FloatingSearchCard spans the full width at the top and would cover
+   them, so drop the container below the card. Restored at lg (>=1024px). */
+@media (max-width: 1023px) {
+  .mapboxgl-ctrl-top-right {
+    top: 5rem !important; /* 80px - clears the ~68px-tall search card */
+  }
+}
