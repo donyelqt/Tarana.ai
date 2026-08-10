@@ -174,8 +174,12 @@ class TomTomRoutingService {
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
+    const primaryApiKey = process.env.TOMTOM_API_KEY;
+    const fallbackPublicApiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY;
+    const resolvedApiKey = primaryApiKey || fallbackPublicApiKey || '';
+
     this.config = {
-      apiKey: process.env.TOMTOM_API_KEY || '',
+      apiKey: resolvedApiKey,
       baseUrl: 'https://api.tomtom.com',
       timeout: 15000,
       version: '1',
