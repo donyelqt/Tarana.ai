@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { signOut } from "next-auth/react"
 import { motion, Variants } from "framer-motion"
-import { Settings, Donut, Utensils, MapPinCheck } from 'lucide-react'
+import { Settings, Donut, Utensils, MapPinCheck, Route } from 'lucide-react'
 
 import Image from "next/image"
 import taranaai2 from "../../public/images/taranaai2.png"
@@ -138,6 +138,12 @@ const Sidebar = () => {
                 <Donut size={20} />
               </span>
               Tarana Eats
+            </Link>
+            <Link href="/tarana-explore" className={`flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/tarana-explore" ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-blue-50"}`}>
+              <span className="mr-3 animate-icon-interactive">
+                <Route size={20} />
+              </span>
+              Tarana Explore
             </Link>
             {/* SAVED PLANS section */}
             <div className="px-4 pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Saved Plans</div>
