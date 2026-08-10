@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   title: "Tarana-ai | Plan Your Perfect Baguio Trip",
   description:
     "We craft your perfect itinerary — personalized to your budget, interests, group size, and real-time traffic conditions.",
+  icons: {
+    icon: "/images/taranaai.png",
+  },
 }
 
 export default function RootLayout({
