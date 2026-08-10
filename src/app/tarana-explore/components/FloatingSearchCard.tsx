@@ -17,6 +17,7 @@ import {
   Plus,
 } from 'lucide-react'
 import { LocationPoint, RoutePreferences, RouteType, VehicleType, SearchResult } from '@/types/route-optimization'
+import { motion } from 'framer-motion'
 import DynamicIsland from './DynamicIsland'
 
 interface FloatingSearchCardProps {
@@ -32,18 +33,77 @@ interface FloatingSearchCardProps {
   disabled?: boolean
 }
 
-const ROUTE_TYPE_OPTIONS: Array<{ value: RouteType; label: string; icon: React.ReactNode }> = [
+type SegmentedOption<T extends string> = {
+  value: T
+  label: string
+  icon: React.ReactNode
+  /** On small viewports hide the text label and show the icon only. */
+  iconOnly?: boolean
+}
+
+/**
+ * Apple-style segmented control: a single white "thumb" pill that slides
+ * smoothly between options (both left and right) via framer-motion shared
+ * layout (layoutId) - the same feel as the iOS Control Center switcher.
+ */
+const SlidingSegmented = <T extends string>({
+  options,
+  value,
+  onChange,
+  layoutId,
+  className = '',
+}: {
+  options: SegmentedOption<T>[]
+  value: T | undefined
+  onChange: (v: T) => void
+  layoutId: string
+  className?: string
+}) => {
+  return (
+    <div className={`flex items-center bg-gray-100 rounded-full p-0.5 ${className}`}>
+      {options.map((opt) => {
+        const active = opt.value === value
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            title={opt.label}
+            aria-pressed={active}
+            className={`relative flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors duration-200 ${
+              active ? 'text-gray-900' : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            {active && (
+              <motion.span
+                layoutId={layoutId}
+                className="absolute inset-0 rounded-full bg-white shadow-sm ring-1 ring-black/5"
+                transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1">
+              {opt.icon}
+              <span className={opt.iconOnly ? 'hidden sm:inline' : ''}>{opt.label}</span>
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+const ROUTE_TYPE_OPTIONS: SegmentedOption<RouteType>[] = [
   { value: 'fastest', label: 'Fastest', icon: <Zap className="w-3.5 h-3.5" /> },
   { value: 'shortest', label: 'Shortest', icon: <Navigation className="w-3.5 h-3.5" /> },
   { value: 'thrilling', label: 'Scenic', icon: <Clock className="w-3.5 h-3.5" /> },
 ]
 
-const VEHICLE_OPTIONS: Array<{ value: VehicleType; label: string; icon: React.ReactNode }> = [
-  { value: 'car', label: 'Drive', icon: <Car className="w-4 h-4" /> },
-  { value: 'walk', label: 'Walk', icon: <PersonStanding className="w-4 h-4" /> },
-  { value: 'bicycle', label: 'Bike', icon: <Bike className="w-4 h-4" /> },
-  { value: 'motorcycle', label: 'Ride', icon: <Bike className="w-4 h-4" /> },
-  { value: 'truck', label: 'Truck', icon: <Truck className="w-4 h-4" /> },
+const VEHICLE_OPTIONS: SegmentedOption<VehicleType>[] = [
+  { value: 'car', label: 'Drive', icon: <Car className="w-4 h-4" />, iconOnly: true },
+  { value: 'walk', label: 'Walk', icon: <PersonStanding className="w-4 h-4" />, iconOnly: true },
+  { value: 'bicycle', label: 'Bike', icon: <Bike className="w-4 h-4" />, iconOnly: true },
+  { value: 'motorcycle', label: 'Ride', icon: <Bike className="w-4 h-4" />, iconOnly: true },
+  { value: 'truck', label: 'Truck', icon: <Truck className="w-4 h-4" />, iconOnly: true },
 ]
 
 const LocationField: React.FC<{
@@ -333,45 +393,22 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
 
         {/* Transport mode — full-width row */}
         <div className="px-3 py-2">
-          <div className="flex items-center justify-center bg-gray-100 rounded-full p-0.5">
-            {VEHICLE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => onPreferencesChange({ vehicleType: opt.value })}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                  preferences.vehicleType === opt.value
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-                title={opt.label}
-              >
-                {opt.icon}
-                <span className="hidden sm:inline">{opt.label}</span>
-              </button>
-            ))}
-          </div>
+          <SlidingSegmented
+            layoutId="vehicle-seg"
+            value={preferences.vehicleType}
+            onChange={(v) => onPreferencesChange({ vehicleType: v })}
+            options={VEHICLE_OPTIONS}
+          />
         </div>
 
         {/* Route type — full-width row */}
         <div className="px-3 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            {ROUTE_TYPE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => onPreferencesChange({ routeType: opt.value })}
-                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                  preferences.routeType === opt.value
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                {opt.icon}
-                <span>{opt.label}</span>
-              </button>
-            ))}
-          </div>
+          <SlidingSegmented
+            layoutId="route-seg"
+            value={preferences.routeType}
+            onChange={(v) => onPreferencesChange({ routeType: v })}
+            options={ROUTE_TYPE_OPTIONS}
+          />
           <button
             type="button"
             onClick={() => setShowOptions((v) => !v)}
