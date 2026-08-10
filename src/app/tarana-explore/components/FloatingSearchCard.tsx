@@ -306,12 +306,12 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
             popularLocations={popularLocations}
             dotColor="bg-emerald-500"
           />
-          <div className="absolute left-7 top-1/2 -translate-y-1/2 h-5 w-px bg-gray-200" />
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-px bg-gray-200" />
           <button
             type="button"
             onClick={swap}
             aria-label="Swap origin and destination"
-            className="absolute left-7 top-1/2 -translate-y-1/2 z-10 -ml-2 mt-3 p-1 rounded-full bg-white border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-300 transition-colors"
+            className="absolute left-4 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 p-1 rounded-full bg-white border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-300 transition-colors shadow-sm"
           >
             <ArrowUpDown className="w-3 h-3" />
           </button>
