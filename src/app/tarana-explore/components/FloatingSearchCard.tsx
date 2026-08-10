@@ -17,6 +17,7 @@ import {
   Plus,
 } from 'lucide-react'
 import { LocationPoint, RoutePreferences, RouteType, VehicleType, SearchResult } from '@/types/route-optimization'
+import DynamicIsland from './DynamicIsland'
 
 interface FloatingSearchCardProps {
   origin: LocationPoint | null
@@ -221,6 +222,16 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const openIsland = useCallback(() => {
+    setFocused(true)
+    requestAnimationFrame(() =>
+      cardRef.current?.querySelector<HTMLInputElement>("input")?.focus(),
+    )
+  }, [])
+  const expanded =
+    focused || !!origin || !!destination || isCalculating || showOptions
 
   const handleSearch = useCallback(async (q: string) => {
     setIsSearching(true)
@@ -248,8 +259,25 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   const canSubmit = !!origin && !!destination && !isCalculating && !disabled
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-md px-3 pointer-events-none">
-      <div className="pointer-events-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_28px_rgba(0,0,0,0.18)] border border-gray-200 overflow-hidden">
+    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+      <DynamicIsland
+        expanded={expanded}
+        onCompactClick={openIsland}
+        compact={
+          <>
+            <Search className="w-4 h-4 text-gray-500" />
+            <span>Where to?</span>
+          </>
+        }
+      >
+        <div
+          ref={cardRef}
+          className="pointer-events-auto"
+          onFocusCapture={() => setFocused(true)}
+          onBlurCapture={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false)
+          }}
+        >
         {/* Origin / Destination stack */}
         <div className="relative px-1.5 py-1">
           <LocationField
@@ -288,9 +316,9 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
 
         <div className="border-t border-gray-100" />
 
-        {/* Transport mode + route type */}
-        <div className="px-3 py-2.5 flex items-center gap-2">
-          <div className="flex items-center bg-gray-100 rounded-full p-0.5">
+        {/* Transport mode — full-width row */}
+        <div className="px-3 py-2">
+          <div className="flex items-center justify-center bg-gray-100 rounded-full p-0.5">
             {VEHICLE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -308,8 +336,11 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
               </button>
             ))}
           </div>
+        </div>
 
-          <div className="ml-auto flex items-center gap-1">
+        {/* Route type — full-width row */}
+        <div className="px-3 pb-2 flex items-center justify-between">
+          <div className="flex items-center gap-1">
             {ROUTE_TYPE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -325,18 +356,18 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
                 <span>{opt.label}</span>
               </button>
             ))}
-            <button
-              type="button"
-              onClick={() => setShowOptions((v) => !v)}
-              className={`p-1.5 rounded-full transition-colors ${
-                showOptions ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:text-gray-900'
-              }`}
-              aria-label="More options"
-              aria-expanded={showOptions}
-            >
-              <Settings2 className="w-4 h-4" />
-            </button>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowOptions((v) => !v)}
+            className={`p-1.5 rounded-full transition-colors flex-shrink-0 ${
+              showOptions ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:text-gray-900'
+            }`}
+            aria-label="More options"
+            aria-expanded={showOptions}
+          >
+            <Settings2 className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Options drawer */}
@@ -410,7 +441,8 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
             )}
           </button>
         </div>
-      </div>
+        </div>
+      </DynamicIsland>
     </div>
   )
 }
