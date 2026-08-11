@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { RouteData, RouteTrafficAnalysis, LocationPoint } from '@/types/route-optimization';
-import { createTomTomMap, getTomTomSDKStatus, resetTomTomService, changeMapStyle, type TomTomMapConfig, type MapStyle, MAP_STYLES, BAGUIO_CITY_COORDINATES, ZOOM_LEVELS } from '@/lib/integrations/tomtomMapUtils';
+import { createTomTomMap, getTomTomSDKStatus, resetTomTomService, changeMapStyle, type TomTomMapConfig, type MapStyle, MAP_STYLES, BAGUIO_CITY_COORDINATES, ZOOM_LEVELS, DEFAULT_MAP_PITCH } from '@/lib/integrations/tomtomMapUtils';
 import RouteAnalysisLoader from './RouteAnalysisLoader';
 import { Loader2 } from 'lucide-react';
 
@@ -19,6 +19,7 @@ interface InteractiveRouteMapProps {
   onStyleChange?: (style: MapStyle) => void;
   onStyleChanging?: (changing: boolean) => void;
   recenterSignal?: number;
+  tiltOn?: boolean;
   styleControlRef?: React.MutableRefObject<{ changeStyle: (style: MapStyle) => void } | null>;
 }
 
@@ -50,6 +51,7 @@ export default function InteractiveRouteMap({
   onStyleChange,
   onStyleChanging,
   recenterSignal,
+  tiltOn = true,
   styleControlRef,
 }: InteractiveRouteMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -85,6 +87,16 @@ export default function InteractiveRouteMap({
       duration: 600,
     });
   }, [recenterSignal, isMapLoaded, currentRoute]);
+
+  // Apply or remove the camera tilt (3D perspective) when the tilt toggle changes
+  useEffect(() => {
+    if (!mapInstanceRef.current || !isMapLoaded) return;
+    const map = mapInstanceRef.current;
+    map.easeTo?.({
+      pitch: tiltOn ? DEFAULT_MAP_PITCH : 0,
+      duration: 600,
+    });
+  }, [tiltOn, isMapLoaded]);
 
   // Initialize map using the TomTom utility service
   const initializeMap = useCallback(async () => {
