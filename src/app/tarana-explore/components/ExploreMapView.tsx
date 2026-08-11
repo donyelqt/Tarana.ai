@@ -44,6 +44,7 @@ const ExploreMapView: React.FC = () => {
   const [mapStyle, setMapStyle] = useState<MapStyle>('main')
   const [isChangingStyle, setIsChangingStyle] = useState(false)
   const [recenterSignal, setRecenterSignal] = useState(0)
+  const [tiltOn, setTiltOn] = useState(true)
   const styleControlRef = useRef<{ changeStyle: (style: MapStyle) => void } | null>(null);
 
   const { state, calculate, selectAlternative, refreshTraffic, clear } = useRouteCalculation()
@@ -80,6 +81,10 @@ const ExploreMapView: React.FC = () => {
     setRecenterSignal((n) => n + 1)
   }, [])
 
+  const handleToggleTilt = useCallback(() => {
+    setTiltOn((v) => !v)
+  }, [])
+
   // Silent 5-minute traffic refresh — no UI button (matches Google Maps' silent updates)
   useEffect(() => {
     if (!state.currentRoute) return
@@ -104,6 +109,7 @@ const ExploreMapView: React.FC = () => {
         onStyleChange={setMapStyle}
         onStyleChanging={setIsChangingStyle}
         recenterSignal={recenterSignal}
+        tiltOn={tiltOn}
         styleControlRef={styleControlRef}
       />
 
@@ -127,6 +133,8 @@ const ExploreMapView: React.FC = () => {
         isChangingStyle={isChangingStyle}
         onStyleChange={(next) => styleControlRef.current?.changeStyle(next)}
         onRecenter={handleRecenter}
+        tiltOn={tiltOn}
+        onToggleTilt={handleToggleTilt}
       />
 
       <BottomRouteSheet
