@@ -33,6 +33,9 @@ export const ZOOM_LEVELS = {
   BUILDING: 18
 } as const;
 
+// Default camera tilt (degrees) for the pseudo-3D "tilted city" perspective.
+export const DEFAULT_MAP_PITCH = 55;
+
 export const MAP_STYLES: Record<MapStyle, { name: string; description: string; tomtomStyle: string; requiresApiKey: boolean }> = {
   main: {
     name: 'Standard',
@@ -297,7 +300,7 @@ class TomTomMapService {
         boxZoom: true,
         doubleClickZoom: true,
         keyboard: true,
-        pitch: 0,
+        pitch: DEFAULT_MAP_PITCH,
         bearing: 0
       };
       
@@ -582,7 +585,7 @@ class TomTomMapService {
           boxZoom: true,
           doubleClickZoom: true,
           keyboard: true,
-          pitch: 0,
+          pitch: DEFAULT_MAP_PITCH,
           bearing: 0
         };
 
