@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react'
-import { Compass, Map as MapIcon, Loader2 } from 'lucide-react'
+import { Compass, Map as MapIcon, Loader2, Box, Square } from 'lucide-react'
 import { MapStyle, MAP_STYLES } from '@/lib/integrations/tomtomMapUtils'
 
 interface MapControlsProps {
@@ -9,6 +9,8 @@ interface MapControlsProps {
   isChangingStyle: boolean
   onStyleChange: (style: MapStyle) => void
   onRecenter: () => void
+  tiltOn: boolean
+  onToggleTilt: () => void
   styleOptions?: MapStyle[]
 }
 
@@ -19,6 +21,8 @@ const MapControls: React.FC<MapControlsProps> = ({
   isChangingStyle,
   onStyleChange,
   onRecenter,
+  tiltOn,
+  onToggleTilt,
   styleOptions = DEFAULT_STYLES,
 }) => {
   return (
@@ -31,6 +35,16 @@ const MapControls: React.FC<MapControlsProps> = ({
         title="Recenter"
       >
         <Compass className="w-5 h-5" />
+      </button>
+
+      <button
+        type="button"
+        onClick={onToggleTilt}
+        className={tiltOn ? 'w-10 h-10 rounded-full shadow-md border flex items-center justify-center transition-colors bg-blue-600 border-blue-600 text-white' : 'w-10 h-10 rounded-full shadow-md border flex items-center justify-center transition-colors bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-blue-600'}
+        aria-label={tiltOn ? 'Turn off 3D tilt' : 'Turn on 3D tilt'}
+        title={tiltOn ? '3D tilt: On' : '3D tilt: Off'}
+      >
+        {tiltOn ? <Box className="w-5 h-5" /> : <Square className="w-5 h-5" />}
       </button>
 
       <div className="w-10 bg-white rounded-full shadow-md border border-gray-200 overflow-hidden flex flex-col">
