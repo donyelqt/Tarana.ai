@@ -85,7 +85,7 @@ const SlidingSegmented = <T extends string>({
   className?: string
 }) => {
   return (
-    <div className={`flex items-center bg-gray-100 rounded-full p-0.5 ${className}`}>
+    <div className={`flex items-center bg-gray-50 rounded-full p-0.5 ring-1 ring-black/[0.04] ${className}`}>
       {options.map((opt) => {
         const active = opt.value === value
         return (
@@ -730,7 +730,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
 
           {/* Options drawer */}
           {showOptions && (
-            <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-gray-50/60">
+            <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-white">
               <div>
                 <label
                   htmlFor="route-departure"

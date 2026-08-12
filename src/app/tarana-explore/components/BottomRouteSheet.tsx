@@ -86,7 +86,7 @@ const BottomRouteSheet: React.FC<BottomRouteSheetProps> = ({
   return (
     <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
       <div className="mx-auto max-w-2xl px-3 pb-3 pointer-events-auto">
-        <div className="bg-white rounded-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.18)] border border-gray-200 overflow-hidden">
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border border-gray-200/70 overflow-hidden">
           {/* Drag handle */}
           <button
             type="button"
@@ -157,7 +157,7 @@ const BottomRouteSheet: React.FC<BottomRouteSheetProps> = ({
                     key={alt.id}
                     type="button"
                     onClick={() => onSelectAlternative(alt.id)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium flex-shrink-0 transition-colors"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-medium flex-shrink-0 transition-colors"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
                     {formatDuration(alt.summary.travelTimeInSeconds)} · {formatDistance(alt.summary.lengthInMeters)}
