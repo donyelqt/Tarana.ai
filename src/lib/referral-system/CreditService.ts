@@ -243,6 +243,72 @@ export class CreditService {
   }
 
   /**
+   * Refund credits after a generation that was charged but failed to deliver.
+   * Best-effort: a failure here is logged but never masks the original error.
+   */
+  static async refundCredits(request: {
+    userId: string;
+    amount: number;
+    service: string;
+    description?: string;
+  }): Promise<void> {
+    if (unlimitedIds.has(request.userId)) return;
+
+    if (!supabaseAdmin) {
+      console.warn(`[CreditService] refundCredits skipped: supabaseAdmin not available for ${request.userId}`);
+      return;
+    }
+
+    const { userId, amount, service, description } = request;
+
+    try {
+      console.log(`[CreditService] Refunding ${amount} credit(s) for ${userId} (${service})`);
+
+      const { data: profile, error: readError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('credits_used_today, daily_credits')
+        .eq('id', userId)
+        .single();
+
+      if (readError) {
+        console.error(`[CreditService] refundCredits profile read failed for ${userId}:`, readError);
+        return;
+      }
+
+      const usedToday = profile?.credits_used_today ?? 0;
+      const restored = Math.max(0, usedToday - amount);
+
+      const { error: updateError } = await supabaseAdmin
+        .from('user_profiles')
+        .update({ credits_used_today: restored })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error(`[CreditService] refundCredits profile update failed for ${userId}:`, updateError);
+        return;
+      }
+
+      const { error: txError } = await supabaseAdmin.from('credit_transactions').insert({
+        user_id: userId,
+        transaction_type: 'refund',
+        amount: amount,
+        service_used: service,
+        description: description || `Refund ${amount} credit(s) for ${service}`,
+        balance_after: Math.max(0, (profile?.daily_credits ?? 0) - restored),
+      });
+
+      if (txError) {
+        console.error(`[CreditService] refundCredits transaction insert failed for ${userId}:`, txError);
+        return;
+      }
+
+      console.log(`[CreditService] ✅ Refunded credits for ${userId}`);
+    } catch (error: any) {
+      console.error(`[CreditService] ❌ Exception during refundCredits for ${userId}:`, error?.message || error);
+    }
+  }
+
+  /**
    * Refresh daily credits (called at midnight or manually)
    */
   static async refreshDailyCredits(userId: string): Promise<RefreshCreditsResult> {
@@ -375,3 +441,4 @@ export class CreditService {
     }
   }
 }
+

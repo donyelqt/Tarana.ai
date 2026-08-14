@@ -8,6 +8,9 @@ import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
  * Test credit consumption with proper service name
  */
 export async function POST(req: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   try {
     const session = await getServerSession(authOptions);
     
