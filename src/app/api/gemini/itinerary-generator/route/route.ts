@@ -111,6 +111,8 @@ const getCachedItinerary = unstable_cache(
 );
 
 export async function POST(req: NextRequest) {
+    let userId = '';
+    let charged = false;
     try {
         // ✅ CREDIT SYSTEM: Check authentication
         const session = await getServerSession(authOptions);
@@ -121,10 +123,8 @@ export async function POST(req: NextRequest) {
             }, { status: 401 });
         }
 
-        const userId = session.user.id;
-
-        // ✅ CREDIT SYSTEM: Check available credits
-        try {
+        userId = session.user.id;
+        // ✅ CREDIT SYSTEM: Check available credits (fail-closed)
             const balance = await CreditService.getCurrentBalance(userId);
             if (balance.remainingToday < 1) {
                 return NextResponse.json({ 
@@ -135,10 +135,6 @@ export async function POST(req: NextRequest) {
                     nextRefresh: balance.nextRefresh
                 }, { status: 402 });
             }
-        } catch (creditError) {
-            console.error("Error checking credits:", creditError);
-            // Continue without credit check if service is unavailable
-        }
 
         const requestBody = await req.json();
         const { prompt } = requestBody;
@@ -152,41 +148,59 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
         }
 
+        // Charge BEFORE generating (TOCTOU / wasted-compute fix, mirrors the
+        // optimized route). consumeCredits is an atomic check-and-deduct RPC,
+        // so concurrent same-user requests are serialized with no over-spend.
+        try {
+            await CreditService.consumeCredits({
+                userId,
+                amount: 1,
+                service: 'tarana_gala',
+                description: `Generated itinerary: ${prompt?.substring(0, 50) || 'Itinerary generation'}`,
+            });
+            charged = true;
+        } catch (creditErr: any) {
+            if (creditErr instanceof InsufficientCreditsError) {
+                return NextResponse.json({
+                    error: "Insufficient credits",
+                    text: "",
+                    required: creditErr.required,
+                    available: creditErr.available,
+                }, { status: 402 });
+            }
+            throw creditErr;
+        }
         // Generate a stable cache key from the request body
         const hash = createHash('sha256').update(JSON.stringify(requestBody)).digest('hex');
 
         // Call the cached function with a stable key
         const responseData = await getCachedItinerary(requestBody, hash);
 
-        // ✅ CREDIT SYSTEM: Consume 1 credit for successful generation
-        try {
-            console.log(`🔄 Attempting to consume 1 credit for user ${userId} - Tarana Gala`);
-            const consumeResult = await CreditService.consumeCredits({
-                userId,
-                amount: 1,
-                service: 'tarana_gala',
-                description: `Generated itinerary: ${prompt?.substring(0, 50) || 'Itinerary generation'}`
-            });
-            console.log(`✅ Credit consumed successfully for user ${userId}`, consumeResult);
-        } catch (creditConsumeError: any) {
-            console.error("❌ CREDIT CONSUMPTION FAILED:", {
-                userId,
-                service: 'tarana_gala',
-                error: creditConsumeError?.message || creditConsumeError
-            });
-            // Don't block response if credit consumption fails
-        }
 
         return NextResponse.json(responseData);
 
     } catch (e: any) {
-        const requestId = createHash('sha256').update(JSON.stringify(req.body || {})).digest('hex').substring(0, 8);
+        // If we charged but generation failed, refund so the user isn't billed
+        // for an itinerary we couldn't deliver.
+        if (charged) {
+            try {
+                await CreditService.refundCredits({
+                    userId,
+                    amount: 1,
+                    service: 'tarana_gala',
+                    description: `Refund: failed generation ${userId}`,
+                });
+            } catch {
+                // best-effort; swallow refund errors
+            }
+        }
+        // req.body is a ReadableStream in the App Router (JSON.stringify() yields
+        // "{}"), so never derive a correlation id from it. Use userId + URL.
+        const requestId = createHash('sha256').update(`${userId || 'anon'}:${req.url}`).digest('hex').substring(0, 8);
         const errorDetails = ErrorHandler.handleError(e, requestId);
-        
         console.error("Error in itinerary generation pipeline:", errorDetails);
-        
-        return NextResponse.json({ 
-            text: "", 
+        return NextResponse.json({
+            text: "",
             error: errorDetails.message,
             errorType: errorDetails.type,
             requestId: errorDetails.requestId,
