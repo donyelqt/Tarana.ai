@@ -9,7 +9,7 @@ import Link from "next/link";
 import { ItineraryFormProps, FormData } from "../types";
 import { useEffect, useState } from "react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { ChevronDown, MapPin, Mountain, Waves, Building2, Map, Globe } from "lucide-react";
+import { ChevronDown, MapPin, Mountain, Waves, Building2, Map, Globe, Activity } from "lucide-react";
 import { DollarSign, PiggyBank, CreditCard, Wallet, Coins, Gem } from "lucide-react";
 
 const CITY_OPTIONS: { id: "baguio"|"cebu"|"manila"|"davao"|"ph-wide"|"world"; label: string; sublabel: string; Icon: any }[] = [
@@ -129,33 +129,39 @@ export default function ItineraryForm({
   return (
     <div className="w-full bg-gray-100">
     <div className="w-full rounded-tl-7xl bg-white p-6">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <h2 className="text-xl font-bold text-black sm:text-2xl">
-          Let&apos;s Plan Your {selectedCity === "baguio" ? "Baguio" : selectedCity === "cebu" ? "Cebu" : selectedCity === "manila" ? "Manila" : selectedCity === "davao" ? "Davao" : selectedCity === "ph-wide" ? "Philippines" : "World"} Adventure
-        </h2>
-        <label className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/50 px-3 py-2 sm:w-auto sm:justify-end sm:px-4">
-          <div className="min-w-0 flex-1 text-left sm:text-right sm:flex-none">
-            <div className="truncate font-medium text-gray-900 text-xs sm:text-sm">
-              <span className="sm:hidden">Traffic-Aware</span>
-              <span className="hidden sm:inline">Traffic-Aware Itinerary Planner</span>
-            </div>
-            <div className="text-[10px] text-gray-500 sm:text-xs">
-              {trafficAware ? 'On' : 'Off'}
-            </div>
-          </div>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <div>
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-600">
+            Tarana Gala
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-[1.75rem]">
+            Plan Your {CITY_OPTIONS.find(c => c.id === selectedCity)?.label ?? "Baguio"} Adventure
+          </h2>
+        </div>
+        <label
+          className={cn(
+            "flex cursor-pointer select-none items-center justify-between gap-3 self-start rounded-full border py-2 pl-4 pr-2 transition-colors sm:self-auto",
+            trafficAware
+              ? "border-blue-200 bg-blue-50 hover:bg-blue-100/70"
+              : "border-gray-200 bg-white hover:border-gray-300"
+          )}
+        >
+          <span className={`flex items-center gap-2 text-sm font-medium ${trafficAware ? "text-blue-700" : "text-gray-500"}`}>
+            <Activity className={`h-4 w-4 ${trafficAware ? "text-blue-600" : "text-gray-400"}`} aria-hidden="true" />
+            Traffic-aware
+          </span>
           <button
             type="button"
             role="switch"
             onClick={() => setTrafficAware(!trafficAware)}
-            className={`relative h-5 w-9 flex-shrink-0 rounded-full transition-colors duration-200 sm:h-5 sm:w-10 ${
+            className={`relative h-5 w-9 flex-shrink-0 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
               trafficAware ? 'bg-blue-600' : 'bg-gray-300'
             }`}
-            aria-pressed={trafficAware}
-            aria-label="Toggle Traffic-Aware Itinerary Planner"
+            aria-checked={trafficAware}
           >
             <span
               className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${
-                trafficAware ? 'translate-x-4 sm:translate-x-5' : 'translate-x-0'
+                trafficAware ? 'translate-x-4' : 'translate-x-0'
               }`}
             />
           </button>
