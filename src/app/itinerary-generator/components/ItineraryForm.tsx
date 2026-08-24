@@ -9,8 +9,17 @@ import Link from "next/link";
 import { ItineraryFormProps, FormData } from "../types";
 import { useEffect, useState } from "react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MapPin, Mountain, Waves, Building2, Map, Globe } from "lucide-react";
 import { DollarSign, PiggyBank, CreditCard, Wallet, Coins, Gem } from "lucide-react";
+
+const CITY_OPTIONS: { id: "baguio"|"cebu"|"manila"|"davao"|"ph-wide"|"world"; label: string; sublabel: string; Icon: any }[] = [
+  { id: "baguio", label: "Baguio", sublabel: "City of Pines", Icon: Mountain },
+  { id: "cebu", label: "Cebu", sublabel: "Queen City", Icon: Waves },
+  { id: "manila", label: "Manila", sublabel: "Capital", Icon: Building2 },
+  { id: "davao", label: "Davao", sublabel: "Durian City", Icon: MapPin },
+  { id: "ph-wide", label: "Philippines", sublabel: "Anywhere PH", Icon: Map },
+  { id: "world", label: "World", sublabel: "Global", Icon: Globe },
+]
 
 export default function ItineraryForm({
   showPreview,
@@ -37,6 +46,8 @@ export default function ItineraryForm({
   showOutOfCredits = false,
   trafficAware,
   setTrafficAware,
+  selectedCity,
+  setSelectedCity,
 }: ItineraryFormProps) {
   const { toast } = useToast();
   // Local state to control the budget popover
@@ -108,7 +119,8 @@ export default function ItineraryForm({
       duration,
       dates,
       selectedInterests,
-      trafficAware, // NEW: include toggle state
+      trafficAware,
+      cityId: selectedCity,
     };
     
     onSubmitItinerary(formData);
@@ -118,7 +130,9 @@ export default function ItineraryForm({
     <div className="w-full bg-gray-100">
     <div className="w-full rounded-tl-7xl bg-white p-6">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <h2 className="text-xl font-bold text-black sm:text-2xl">Let&apos;s Plan Your Baguio Adventure</h2>
+        <h2 className="text-xl font-bold text-black sm:text-2xl">
+          Let&apos;s Plan Your {selectedCity === "baguio" ? "Baguio" : selectedCity === "cebu" ? "Cebu" : selectedCity === "manila" ? "Manila" : selectedCity === "davao" ? "Davao" : selectedCity === "ph-wide" ? "Philippines" : "World"} Adventure
+        </h2>
         <label className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/50 px-3 py-2 sm:w-auto sm:justify-end sm:px-4">
           <div className="min-w-0 flex-1 text-left sm:text-right sm:flex-none">
             <div className="truncate font-medium text-gray-900 text-xs sm:text-sm">
@@ -167,6 +181,37 @@ export default function ItineraryForm({
         </div>
       )}
       <form className="space-y-8" onSubmit={handleSubmit}>
+        {/* Destination — strict city scope */}
+        <div>
+          <Label className="block font-medium mb-2 text-gray-900">Destination</Label>
+          <p className="text-xs text-gray-500 mb-3">Choose where to generate — Baguio uses curated guides, others use live locations + accurate images. Strict: only the selected area is used.</p>
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+            {CITY_OPTIONS.map(({ id, label, sublabel, Icon }) => {
+              const isSelected = selectedCity === id
+              return (
+                <button
+                  type="button"
+                  key={id}
+                  onClick={() => !(showPreview || disabled) && setSelectedCity(id)}
+                  disabled={showPreview || disabled}
+                  aria-pressed={isSelected}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-1 rounded-xl border py-3 px-2 text-center transition",
+                    isSelected
+                      ? "bg-gradient-to-b from-blue-700 to-blue-500 text-white border-blue-500 shadow-md"
+                      : "bg-white border-gray-300 text-gray-700 hover:border-blue-300 hover:text-blue-600",
+                    (showPreview || disabled) && "cursor-not-allowed opacity-60"
+                  )}
+                >
+                  <Icon className={cn("h-5 w-5", isSelected ? "text-white" : "text-gray-500")} />
+                  <span className="text-xs font-semibold leading-none">{label}</span>
+                  <span className={cn("text-[10px] leading-none", isSelected ? "text-blue-100" : "text-gray-400")}>{sublabel}</span>
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-[10px] text-gray-400 mt-2">Strict scope: Cebu shows only Cebu, Baguio only Baguio. `ph-wide` searches anywhere in PH.</p>
+        </div>
         {/* Budget Range */}
         <div>
           <Label htmlFor="budget" className="block font-medium mb-2 text-gray-900">Budget Range</Label>

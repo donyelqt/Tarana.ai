@@ -42,6 +42,7 @@ const itineraryRequestSchema = z.object({
     duration: z.union([z.string().max(100), z.number().int().positive()]).optional(),
     budget: z.string().max(100).optional(),
     pax: z.union([z.string().max(50), z.number().int().positive()]).optional(),
+    cityId: z.enum(["baguio","cebu","manila","davao","ph-wide","world"]).optional(),
     options: z.object({
         trafficAware: z.boolean().default(true).optional(),
     }).optional(),
@@ -127,6 +128,7 @@ const getCachedItinerary = unstable_cache(
         
         return await ErrorHandler.withRetry(async () => {
             const { prompt, weatherData, interests, duration, budget, pax, options } = requestBody;
+            const cityId = (requestBody as any)?.cityId || "baguio";
             const safeInterests = interests ?? [];
             const safeBudget = budget === undefined || budget === null ? undefined : String(budget);
             const safePax = pax === undefined || pax === null ? undefined : String(pax);
@@ -162,7 +164,8 @@ const getCachedItinerary = unstable_cache(
               weatherType, 
               durationDays, 
               geminiModel,
-              trafficAware
+              trafficAware,
+              cityId
             );
             const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, safeInterests, durationDays, safeBudget, safePax);
             
@@ -302,6 +305,7 @@ export async function POST(req: NextRequest) {
             // Generate fresh itinerary without cache
             responseData = await ErrorHandler.withRetry(async () => {
                 const { prompt, weatherData, interests, duration, budget, pax, options } = requestBody;
+                const cityId = (requestBody as any)?.cityId || "baguio";
                 const safeInterests = interests ?? [];
                 const safeBudget = budget === undefined || budget === null ? undefined : String(budget);
                 const safePax = pax === undefined || pax === null ? undefined : String(pax);
@@ -337,7 +341,8 @@ export async function POST(req: NextRequest) {
               weatherType, 
               durationDays, 
               geminiModel,
-              trafficAware
+              trafficAware,
+              cityId
             );
                 const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, safeInterests, durationDays, safeBudget, safePax);
                 

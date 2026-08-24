@@ -1,10 +1,13 @@
 // Removed legacy vector search import - now using unified intelligent search
 import { proposeSubqueries } from "../agent/agent";
-import { getManilaTime } from "@/lib/traffic";
+import { getCityTime } from "@/lib/traffic/peakHours";
 
 import { WEATHER_TAG_FILTERS } from "./config";
 import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/traffic";
 import { IntelligentSearchEngine } from "@/lib/search";
+import { enrichActivitiesWithImages } from "@/lib/services/imageService";
+import { getCityConfig } from "@/lib/data/cityConfig";
+import { tomtomRoutingService } from "@/lib/services/tomtomRouting";
 import type { WeatherCondition } from "../types/types";
 import type { SearchContext } from "@/lib/search";
 import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
@@ -19,7 +22,8 @@ export async function findAndScoreActivities(
   weatherType: WeatherCondition, 
   durationDays: number | null, 
   model: any,
-  trafficAware: boolean = true
+  trafficAware: boolean = true,
+  cityId: string = "baguio"
 ) {
     let effectiveSampleItinerary: any = null;
     
@@ -28,11 +32,11 @@ export async function findAndScoreActivities(
         const searchContext: SearchContext = {
             interests: Array.isArray(interests) ? interests : [],
             weatherCondition: weatherType,
-            timeOfDay: determineTimeOfDay(),
+            timeOfDay: determineTimeOfDay(cityId),
             budget: 'mid-range',
             groupSize: 2,
             duration: durationDays || 1,
-            currentTime: getManilaTime(),
+            currentTime: getCityTime(cityId),
             userPreferences: {}
         };
         
@@ -187,10 +191,127 @@ export async function findAndScoreActivities(
             };
         });
 
-        const filteredSimilar = scoredSimilar
+        let filteredSimilar = scoredSimilar
             .filter(s => s.interestMatch && s.weatherMatch)
             .sort((a, b) => b.relevanceScore - a.relevanceScore)
             .slice(0, 40);
+
+        // ── Strict city scoping: Baguio stays Baguio, other cities use ONLY TomTom for that city ──
+        // User selects "Manila" → only Manila places. Zero results = honest empty (NEVER Baguio leakage).
+        if (cityId !== "baguio") {
+          try {
+            const city = getCityConfig(cityId)
+            const bounds = {
+              topLeft: { lat: city.bounds.north, lng: city.bounds.west },
+              bottomRight: { lat: city.bounds.south, lng: city.bounds.east },
+            }
+            // Compact queries beat verbose prompts for TomTom POI search.
+            // Map UI interest labels to TomTom-friendly category terms (literal
+            // labels like "Culture & Arts" match only same-named POIs).
+            const safeInterests = Array.isArray(interests) ? interests.filter(i => i && i !== "Random") : []
+            const INTEREST_QUERY_MAP: Record<string, string> = {
+              "Food & Culinary": "restaurants",
+              "Nature & Scenery": "park viewpoint",
+              "Culture & Arts": "museum landmark",
+              "Shopping & Local Finds": "shopping market",
+              "Adventure": "outdoor attraction",
+            }
+            const genericQuery = `tourist attractions ${city.name}`
+            const queryCandidates = safeInterests.length > 0
+              ? [
+                  `${safeInterests.slice(0, 2).map(i => INTEREST_QUERY_MAP[i] ?? i).join(" ")} ${city.name}`,
+                  ...safeInterests.slice(0, 2).map(i => `${INTEREST_QUERY_MAP[i] ?? i} ${city.name}`),
+                  genericQuery,
+                ]
+              : [genericQuery]
+            const seenTitles = new Set<string>()
+            let tomResults: Array<{ name: string;[k: string]: any }> = []
+            for (const q of queryCandidates) {
+              if (tomResults.length >= 12) break
+              try {
+                const batch = await tomtomRoutingService.searchLocations(q, bounds as any)
+                for (const r of batch) {
+                  const key = r.name.toLowerCase().trim()
+                  if (!seenTitles.has(key)) { seenTitles.add(key); tomResults.push(r) }
+                }
+                console.log(`🌍 STRICT CITY: query "${q}" → ${batch.length} results (cumulative ${tomResults.length})`)
+              } catch (qErr) {
+                console.warn(`STRICT CITY query "${q}" failed`, qErr)
+              }
+            }
+            if (tomResults.length > 0) {
+              filteredSimilar = tomResults.slice(0, 20).map(r => ({
+                activity_id: r.name,
+                similarity: (r.relevanceScore ?? 50) / 100,
+                metadata: {
+                  title: r.name,
+                  desc: r.address || `${r.category} in ${city.name}`,
+                  tags: [r.category || "Travel", ...(Array.isArray(interests) ? interests.slice(0,2) : [])].slice(0,4),
+                  time: "Anytime",
+                  image: "",
+                  peakHours: "",
+                  lat: r.coordinates.lat,
+                  lon: r.coordinates.lng,
+                },
+                relevanceScore: (r.relevanceScore ?? 50) / 100,
+                reasoning: [`TomTom ${city.name} search`],
+                confidence: 0.6,
+                searchScores: { vector:0, semantic:0, fuzzy:0, contextual:0, temporal:0, diversity:0 },
+                interestMatch: true,
+                weatherMatch: true,
+                searchMethod: 'tomtom_strict',
+                vectorScore:0, semanticScore:0, confidenceLevel:0.6,
+              }))
+              console.log(`🌍 STRICT CITY: ${cityId} → ${filteredSimilar.length} TomTom places (Baguio vector ignored)`)
+            } else {
+              // STRICT: honest empty — do NOT leak Baguio results into another city
+              console.warn(`⚠️ STRICT CITY: TomTom returned 0 for ${cityId} after retry — returning EMPTY (no Baguio leakage)`)
+              filteredSimilar = []
+            }
+          } catch (e) {
+            console.warn(`⚠️ STRICT CITY: TomTom failed for ${cityId} — returning EMPTY (no Baguio leakage)`, e)
+            filteredSimilar = []
+          }
+        } else if (filteredSimilar.length < 8) {
+          // Baguio fallback: supplement with Baguio TomTom when vector insufficient
+          try {
+            const city = getCityConfig("baguio")
+            const bounds = {
+              topLeft: { lat: city.bounds.north, lng: city.bounds.west },
+              bottomRight: { lat: city.bounds.south, lng: city.bounds.east },
+            }
+            const tomResults = await tomtomRoutingService.searchLocations(prompt, bounds as any)
+            const seen = new Set(filteredSimilar.map(s => s.metadata.title.toLowerCase()))
+            const hybrid = tomResults.slice(0, 10).map(r => ({
+              activity_id: r.name,
+              similarity: (r.relevanceScore ?? 50) / 100,
+              metadata: {
+                title: r.name,
+                desc: r.address || `${r.category} in ${city.name}`,
+                tags: [r.category || "Travel", ...(Array.isArray(interests) ? interests.slice(0,2) : [])].slice(0,4),
+                time: "Anytime",
+                image: "",
+                peakHours: "",
+                lat: r.coordinates.lat,
+                lon: r.coordinates.lng,
+              },
+              relevanceScore: (r.relevanceScore ?? 50) / 100,
+              reasoning: ["TomTom Baguio supplement"],
+              confidence: 0.6,
+              searchScores: { vector:0, semantic:0, fuzzy:0, contextual:0, temporal:0, diversity:0 },
+              interestMatch: true,
+              weatherMatch: true,
+              searchMethod: 'tomtom_hybrid',
+              vectorScore:0, semanticScore:0, confidenceLevel:0.6,
+            })).filter(h => !seen.has((h.metadata.title as string).toLowerCase()))
+            if (hybrid.length > 0) {
+              filteredSimilar = [...filteredSimilar, ...hybrid].slice(0, 40)
+              console.log(`🌍 BAGUIO SUPPLEMENT: Added ${hybrid.length} TomTom → total ${filteredSimilar.length}`)
+            }
+          } catch (e) {
+            console.warn("Baguio TomTom supplement failed", e)
+          }
+        }
 
         if (filteredSimilar.length > 0) {
             let finalActivities: any[];
@@ -224,25 +345,26 @@ export async function findAndScoreActivities(
                 console.log(`📊 DETAILED TRAFFIC DATA:`, trafficSummary);
                 console.log(`=======================================\n`);
 
-                const allowedTrafficLevels = new Set(['VERY_LOW', 'LOW', 'MODERATE']);
-                const trafficFilteredActivities = trafficEnhancedActivities.filter(activity => {
-                    const level = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
-                    if (!level) {
-                        return true;
-                    }
-                    const isAllowed = allowedTrafficLevels.has(level);
-                    if (!isAllowed) {
-                        console.log(`🚫 TRAFFIC FILTER: Removing ${activity.title} - level ${level}`);
-                    }
-                    return isAllowed;
-                });
-
-                if (trafficFilteredActivities.length === 0) {
-                    console.warn('⚠️ TRAFFIC FILTER: No activities passed traffic-level constraints; itinerary may contain empty slots.');
-                }
+                // Soft traffic ranking — keep all, rank by combinedTrafficScore instead of hard drop
+                // Previously hard-filtered HIGH/SEVERE → 0 results on congested PH days (retention killer)
+                // Now we rank: VERY_LOW/LOW/MODERATE naturally score higher, HIGH/SEVERE penalized via trafficAwareActivitySearch
+                const trafficFilteredActivities = trafficEnhancedActivities
+                // Log soft penalty for observability (not filter)
+                trafficFilteredActivities.forEach(a => {
+                  const lvl = a.trafficAnalysis?.realTimeTraffic?.trafficLevel
+                  if (lvl === 'HIGH' || lvl === 'SEVERE') {
+                    console.log(`⚠️ TRAFFIC SOFT PENALTY: ${a.title} level ${lvl} will rank lower (not dropped)`)
+                  }
+                })
 
                 // Final activity selection and validation
                 finalActivities = trafficFilteredActivities.slice(0, Math.min(20, trafficFilteredActivities.length));
+                // Enrich with accurate per-location images (Tier 0 curated for Baguio, Tier 1-3 for PH/world)
+                try {
+                    finalActivities = await enrichActivitiesWithImages(finalActivities as any, { concurrency: 5 }) as any
+                } catch (e) {
+                    console.warn("Image enrichment failed, keeping original images", e)
+                }
                 console.log(` FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`);
 
                 // Build sanitised allowed activities (with traffic data)
@@ -269,6 +391,12 @@ export async function findAndScoreActivities(
                     confidence: s.confidence || 0.7
                 })).slice(0, 20);
 
+                // Enrich fast-mode images as well (curated stays, new places get fetched)
+                try {
+                    finalActivities = await enrichActivitiesWithImages(finalActivities as any, { concurrency: 5 }) as any
+                } catch (e) {
+                    console.warn("Image enrichment (fast mode) failed", e)
+                }
                 sanitisedAllowedActivities = finalActivities.map((activity: any) => ({
                     image: activity.image,
                     title: activity.title,
@@ -355,6 +483,7 @@ export async function findAndScoreActivities(
             }
 
             // Add traffic tags only in traffic-aware mode
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const validatedActivities = trafficAware ? finalActivities.map(activity => {
                 const trafficLevel = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
                 const tags = [...(activity.tags || [])];
@@ -443,11 +572,11 @@ export async function findAndScoreActivities(
 }
 
 /**
- * Determine time of day based on current Manila time
+ * Determine time of day based on city time (defaults to Baguio/Manila for backward compat)
  */
-function determineTimeOfDay(): 'morning' | 'afternoon' | 'evening' | 'anytime' {
-    const manilaTime = getManilaTime();
-    const hour = manilaTime.getHours();
+function determineTimeOfDay(cityId: string = "baguio"): 'morning' | 'afternoon' | 'evening' | 'anytime' {
+    const cityTime = getCityTime(cityId);
+    const hour = cityTime.getHours();
     
     if (hour >= 6 && hour < 12) return 'morning';
     if (hour >= 12 && hour < 18) return 'afternoon';

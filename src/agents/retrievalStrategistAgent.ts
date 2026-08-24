@@ -19,7 +19,9 @@ export class RetrievalStrategistAgent {
         session.preferences.interests,
         weatherType,
         session.preferences.durationDays,
-        this.deps.geminiModel
+        this.deps.geminiModel,
+        true, // trafficAware
+        session.preferences.cityId ?? "baguio"
       );
 
       const candidates = this.extractCandidates(sampleItinerary);

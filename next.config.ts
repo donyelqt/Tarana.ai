@@ -70,6 +70,21 @@ const nextConfig: NextConfig = {
         hostname: '**.fbcdn.net',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'maps.googleapis.com',
+        pathname: '/maps/api/place/photo/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.tomtom.com',
+        pathname: '/map/1/staticimage/**',
+      },
     ],
   },
   eslint: {

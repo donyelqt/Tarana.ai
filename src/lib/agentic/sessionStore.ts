@@ -57,6 +57,7 @@ export interface RequestPreferences {
   durationDays: number | null;
   budget?: string;
   pax?: string;
+  cityId?: string; // strict geographic scope for retrieval
 }
 
 export interface RequestSession {

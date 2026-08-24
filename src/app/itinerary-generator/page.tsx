@@ -17,6 +17,7 @@ import {
 } from "./data/itineraryData";
 import { FormData } from "./types";
 import { WeatherData } from "@/lib/core";
+import { getCityCenter, CITY_CONFIGS } from "@/lib/data/cityConfig";
 
 export default function ItineraryGenerator() {
   // Get weather data
@@ -47,6 +48,8 @@ export default function ItineraryGenerator() {
   
   // Traffic-aware mode toggle state
   const [trafficAware, setTrafficAware] = useState<boolean>(true);
+  // Geographic scope — strict city selection (default Baguio, preserves existing behavior)
+  const [selectedCity, setSelectedCity] = useState<"baguio"|"cebu"|"manila"|"davao"|"ph-wide"|"world">("baguio");
   
   // Initialize itinerary generator hook
   const {
@@ -59,15 +62,16 @@ export default function ItineraryGenerator() {
     isOutOfCredits,
   } = useItineraryGenerator();
   
-  // Fetch weather data on component mount
+  // Fetch weather for the SELECTED destination — refetches when city changes
   useEffect(() => {
+    const { lat, lon } = getCityCenter(selectedCity);
     const getWeather = async () => {
-      const data = await fetchWeatherData();
+      const data = await fetchWeatherData(lat, lon);
       setWeatherData(data);
     };
 
     getWeather();
-  }, []);
+  }, [selectedCity]);
   
   // Handler for form submission
   const onSubmitItinerary = async (formData: FormData) => {
@@ -135,6 +139,8 @@ export default function ItineraryGenerator() {
             showOutOfCredits={Boolean(creditBalance && creditBalance.remainingToday <= 0)}
             trafficAware={trafficAware}
             setTrafficAware={setTrafficAware}
+            selectedCity={selectedCity}
+            setSelectedCity={setSelectedCity}
           />
         </div>
         <div className="w-full md:w-[450px] border-l md:overflow-y-auto">
@@ -145,6 +151,7 @@ export default function ItineraryGenerator() {
             weatherData={weatherData}
             onSave={onSaveItinerary}
             taranaaiLogo={taranaai}
+            cityName={CITY_CONFIGS[selectedCity]?.name}
           />
         </div>
       </main>

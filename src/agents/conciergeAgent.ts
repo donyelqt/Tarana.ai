@@ -13,6 +13,7 @@ export type ConciergePayload = {
   budget?: string | number | null;
   pax?: string | number | null;
   weatherData?: unknown;
+  cityId?: string;
 };
 
 export interface ConciergeDependencies {
@@ -105,6 +106,7 @@ export class ConciergeAgent {
       durationDays,
       budget: data.budget != null ? String(data.budget) : undefined,
       pax: data.pax != null ? String(data.pax) : undefined,
+      cityId: typeof (data as any).cityId === "string" ? (data as any).cityId : "baguio",
     };
   }
 

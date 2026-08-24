@@ -523,14 +523,15 @@ class TomTomRoutingService {
       'Accept': 'application/json',
       'User-Agent': 'Tarana.ai/1.0'
     };
-    if (referer) {
-      headers['Referer'] = referer;
-      try {
-        const origin = new URL(referer).origin;
-        if (origin) headers['Origin'] = origin;
-      } catch {
-        // referer is not a parseable URL; forward it as Referer anyway
-      }
+    // TomTom keys with referer restrictions reject requests without a matching Referer.
+    // Internal server-side calls (activitySearch strict-city) pass none — fall back to registered origin.
+    const effectiveReferer = referer || process.env.TOMTOM_REFERER || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://tarana-ai.vercel.app';
+    headers['Referer'] = effectiveReferer;
+    try {
+      const origin = new URL(effectiveReferer).origin;
+      if (origin) headers['Origin'] = origin;
+    } catch {
+      // referer is not a parseable URL; forward it as Referer anyway
     }
     return headers;
   }

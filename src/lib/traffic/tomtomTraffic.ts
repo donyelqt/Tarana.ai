@@ -142,6 +142,23 @@ class TomTomTrafficService {
   /**
    * Get traffic flow data from TomTom Flow API
    */
+  /**
+   * Headers for TomTom API requests.
+   * Keys with referer restrictions reject requests without a matching Referer —
+   * server-side calls send none by default, so fall back to the registered app origin.
+   */
+  private tomTomHeaders(): Record<string, string> {
+    const referer = process.env.TOMTOM_REFERER || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://tarana-ai.vercel.app';
+    let origin = referer;
+    try { origin = new URL(referer).origin; } catch { /* keep raw */ }
+    return {
+      'Accept': 'application/json',
+      'User-Agent': 'Tarana.ai/1.0',
+      'Referer': referer,
+      'Origin': origin
+    };
+  }
+
   private async getTrafficFlow(lat: number, lon: number): Promise<any> {
     if (!this.config.apiKey) {
       console.log(`⚠️ TomTom: No API key, skipping flow data for ${lat}, ${lon}`);
@@ -164,10 +181,7 @@ class TomTomTrafficService {
 
       const response = await fetch(`${url}?${params.toString()}`, {
         signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Tarana.ai/1.0'
-        }
+        headers: this.tomTomHeaders()
       });
 
       clearTimeout(timeoutId);
@@ -223,10 +237,7 @@ class TomTomTrafficService {
 
       const response = await fetch(`${url}?${params.toString()}`, {
         signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Tarana.ai/1.0'
-        }
+        headers: this.tomTomHeaders()
       });
 
       clearTimeout(timeoutId);
@@ -283,10 +294,7 @@ class TomTomTrafficService {
       console.log(`🌐 TomTom: Trying simplified incidents request: ${url}?${params.toString()}`);
 
       const response = await fetch(`${url}?${params.toString()}`, {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Tarana.ai/1.0'
-        }
+        headers: this.tomTomHeaders()
       });
 
       console.log(`📡 TomTom: Simple incidents API response status: ${response.status}`);

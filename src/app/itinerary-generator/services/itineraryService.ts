@@ -14,10 +14,19 @@ export const generateItinerary = async (
 ): Promise<{ itinerary: ItineraryData | null; error: string | null }> => {
   try {
     // Create a more detailed prompt that will help with semantic search
-    let promptDetails = [];
+    const promptDetails = [];
     
-    // Add basic request
-    promptDetails.push(`Create a personalized ${formData.duration}-day itinerary for Baguio City, Philippines`);
+    // Add basic request — strict city scope (cityId determines bounds, TomTom, timezone)
+    const cityLabelMap: Record<string, string> = {
+      baguio: "Baguio City, Philippines",
+      cebu: "Cebu City, Philippines",
+      manila: "Manila, Philippines",
+      davao: "Davao City, Philippines",
+      "ph-wide": "the Philippines",
+      world: "the selected destination",
+    }
+    const cityLabel = cityLabelMap[formData.cityId || "baguio"] || "Baguio City, Philippines"
+    promptDetails.push(`Create a personalized ${formData.duration}-day itinerary for ${cityLabel}`);
     
     // Add interests for better semantic matching
     if (formData.selectedInterests.length > 0) {
@@ -47,8 +56,8 @@ export const generateItinerary = async (
     // Combine all details into a rich semantic query
     const prompt = promptDetails.join(" ");
 
-    // Call Gemini API via backend route with enhanced prompt
-    const response = await fetch("/api/gemini/itinerary-generator/route", {
+    // Call main charge-first endpoint (NOT legacy /route — that one ignores cityId)
+    const response = await fetch("/api/gemini/itinerary-generator", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -59,6 +68,7 @@ export const generateItinerary = async (
         budget: formData.budget,
         pax: formData.pax,
         sampleItinerary,
+        cityId: formData.cityId || "baguio",
         options: formData.trafficAware !== false ? { trafficAware: true } : { trafficAware: false },
       }),
     });
@@ -118,33 +128,37 @@ export const enhanceItinerary = (
         // Preserve relevance score if it exists
         const relevanceScore = activity.relevanceScore !== undefined ? activity.relevanceScore : null;
         
-        // Use the image provided by the backend if present; otherwise attempt to find a match in the local sample DB.
-        let matchingImage: any = activity.image || "burnham";
-        let bestMatchScore = 0;
-        for (const sampleSection of sampleItinerary.items) {
-          for (const sampleActivity of sampleSection.activities) {
-            let currentScore = 0;
-            if (activity.title && sampleActivity.title) {
-              const activityTitle = activity.title.toLowerCase();
-              const sampleTitle = sampleActivity.title.toLowerCase();
-              if (activityTitle === sampleTitle) currentScore += 10;
-              else if (activityTitle.includes(sampleTitle) || sampleTitle.includes(activityTitle)) currentScore += 5;
-              else {
-                const activityWords = activityTitle.split(/\s+/);
-                const sampleWords = sampleTitle.split(/\s+/);
-                for (const word of activityWords) {
-                  if (word.length > 3 && sampleWords.includes(word)) currentScore += 2;
+        // Preserve the server-provided accurate image (curated Baguio / Unsplash / Wikimedia /
+        // TomTom map). Fuzzy-match against the local catalog ONLY when the server sent no image,
+        // otherwise Manila/Cebu places get overwritten with unrelated Baguio photos.
+        let matchingImage: any = activity.image || null;
+        if (!matchingImage) {
+          let bestMatchScore = 0;
+          for (const sampleSection of sampleItinerary.items) {
+            for (const sampleActivity of sampleSection.activities) {
+              let currentScore = 0;
+              if (activity.title && sampleActivity.title) {
+                const activityTitle = activity.title.toLowerCase();
+                const sampleTitle = sampleActivity.title.toLowerCase();
+                if (activityTitle === sampleTitle) currentScore += 10;
+                else if (activityTitle.includes(sampleTitle) || sampleTitle.includes(activityTitle)) currentScore += 5;
+                else {
+                  const activityWords = activityTitle.split(/\s+/);
+                  const sampleWords = sampleTitle.split(/\s+/);
+                  for (const word of activityWords) {
+                    if (word.length > 3 && sampleWords.includes(word)) currentScore += 2;
+                  }
                 }
               }
-            }
-            if (activity.tags && sampleActivity.tags) {
-              for (const tag of activity.tags) {
-                if (sampleActivity.tags.includes(tag)) currentScore += 3;
+              if (activity.tags && sampleActivity.tags) {
+                for (const tag of activity.tags) {
+                  if (sampleActivity.tags.includes(tag)) currentScore += 3;
+                }
               }
-            }
-            if (currentScore > bestMatchScore) {
-              bestMatchScore = currentScore;
-              matchingImage = sampleActivity.image || matchingImage;
+              if (currentScore > bestMatchScore) {
+                bestMatchScore = currentScore;
+                matchingImage = sampleActivity.image || matchingImage;
+              }
             }
           }
         }
@@ -160,10 +174,12 @@ export const enhanceItinerary = (
           tags.push("Weather-Flexible");
         }
         
-        // Include relevance score in the enhanced activity if it exists
-        return relevanceScore !== null 
-          ? { ...activity, image: matchingImage, tags, relevanceScore } 
-          : { ...activity, image: matchingImage, tags };
+        // Include relevance score in the enhanced activity if it exists.
+        // Never render a falsy/placeholder-less src — fall back to comingsoon.
+        const finalImage = matchingImage || "/images/comingsoon.png";
+        return relevanceScore !== null
+          ? { ...activity, image: finalImage, tags, relevanceScore }
+          : { ...activity, image: finalImage, tags };
       }),
     })),
   };

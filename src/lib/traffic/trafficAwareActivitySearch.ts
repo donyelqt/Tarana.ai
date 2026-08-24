@@ -44,8 +44,8 @@ class TrafficAwareActivitySearchService {
 
     const enhancedActivities: TrafficEnhancedActivity[] = [];
 
-    // Process activities in batches for better performance
-    const batchSize = 40;
+    // Process activities in batches — 5 concurrent to respect TomTom rate limits (was 40 → 429s)
+    const batchSize = 5;
     for (let i = 0; i < activities.length; i += batchSize) {
       const batch = activities.slice(i, i + batchSize);
       
@@ -53,8 +53,11 @@ class TrafficAwareActivitySearchService {
 
       const batchPromises = batch.map(async (activity) => {
         try {
-          // Get coordinates for the activity
-          const coordinates = getActivityCoordinates(activity.title);
+          // Get coordinates for the activity — prefer lat/lon from search (world/PH) over Baguio lookup
+          const coordsFromActivity = (activity.lat != null && activity.lon != null)
+            ? { lat: activity.lat, lon: activity.lon, name: activity.title, category: (activity as any).category || 'search' } as any
+            : null
+          const coordinates = coordsFromActivity || getActivityCoordinates(activity.title);
           if (!coordinates) {
             console.warn(`⚠️ Traffic Enhancement: No coordinates found for "${activity.title}"`);
             return this.createFallbackEnhancedActivity(activity);
@@ -103,9 +106,9 @@ class TrafficAwareActivitySearchService {
         }
       });
 
-      // Small delay between batches to respect API rate limits
+      // Small delay between batches to respect API rate limits (200ms when batch=5)
       if (i + batchSize < activities.length) {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
@@ -122,38 +125,20 @@ class TrafficAwareActivitySearchService {
   ): TrafficEnhancedActivity[] {
     console.log(`🔍 Traffic Filtering: Starting with ${activities.length} activities`);
 
-    // BALANCED filtering: Allow LOW and MODERATE traffic activities
-    let filtered = activities.filter(activity => {
-      // Accept VERY_LOW, LOW and MODERATE traffic levels
-      if (activity.trafficAnalysis?.realTimeTraffic.trafficLevel) {
-        const trafficLevel = activity.trafficAnalysis.realTimeTraffic.trafficLevel;
-        
-        // CRITICAL TRAFFIC-ONLY FILTERING - STRICTLY ENFORCED
-        // ABSOLUTELY FORBIDDEN: ANY activity with HIGH or SEVERE traffic
-        // ONLY VERY_LOW, LOW and MODERATE traffic ACTIVITIES ALLOWED
-        // ZERO TOLERANCE: No exceptions for HIGH or SEVERE traffic
-        // QUALITY OVER QUANTITY: Return fewer activities rather than compromising
-        if (!['VERY_LOW', 'LOW', 'MODERATE'].includes(trafficLevel)) {
-          console.log(`🚫 STRICT TRAFFIC FILTERING: Excluding "${activity.title}" - traffic level ${trafficLevel} (ONLY VERY_LOW, LOW and MODERATE TRAFFIC ALLOWED)`);
-          return false;
-        }
+    // Soft ranking: keep all activities, penalize HIGH/SEVERE via combinedTrafficScore (no hard drop)
+    // Previously hard-filtered HIGH/SEVERE/AVOID_NOW → 0 results on congested days
+    const filtered = activities.filter(activity => {
+      const lvl = activity.trafficAnalysis?.realTimeTraffic.trafficLevel
+      if (lvl === 'HIGH' || lvl === 'SEVERE') {
+        console.log(`⚠️ SOFT PENALTY: "${activity.title}" traffic ${lvl} will rank lower (not dropped)`)
       }
-
-      // Balanced crowd filtering: Exclude only VERY_HIGH crowds
       if (activity.crowdLevel === 'VERY_HIGH') {
-        console.log(`🚫 CROWD FILTERING: Excluding "${activity.title}" - crowd level ${activity.crowdLevel} (VERY HIGH CROWDS NOT ALLOWED)`);
-        return false;
+        console.log(`⚠️ SOFT PENALTY: "${activity.title}" crowd VERY_HIGH will rank lower`)
       }
-
-      // Balanced recommendation filtering - exclude only AVOID_NOW
       if (activity.trafficRecommendation === 'AVOID_NOW') {
-        console.log(`🚫 RECOMMENDATION FILTERING: Excluding "${activity.title}" - recommendation ${activity.trafficRecommendation} (AVOID_NOW NOT ALLOWED)`);
-        return false;
+        console.log(`⚠️ SOFT PENALTY: "${activity.title}" AVOID_NOW will rank lower`)
       }
-
-      // Accept activities with LOW/MODERATE traffic and reasonable recommendations
-      console.log(`✅ FILTERING PASSED: "${activity.title}" - traffic level: ${activity.trafficAnalysis?.realTimeTraffic.trafficLevel || 'UNKNOWN'}, crowd: ${activity.crowdLevel || 'UNKNOWN'}, recommendation: ${activity.trafficRecommendation || 'UNKNOWN'}`);
-      return true;
+      return true // keep all — sorting will penalize via combinedTrafficScore
     });
 
     console.log(`📊 Traffic Filtering: ${filtered.length} activities passed filters`);

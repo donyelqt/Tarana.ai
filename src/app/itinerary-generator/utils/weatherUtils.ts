@@ -1,13 +1,18 @@
 import { WeatherData, fetchWeatherFromAPI } from "@/lib/core";
 
 /**
- * Hook to fetch and process weather data
+ * Fetch and process weather data for a location
+ * @param lat Latitude (defaults to Baguio for backward compat)
+ * @param lon Longitude (defaults to Baguio for backward compat)
  * @returns Promise with weather data or null
  */
-export const fetchWeatherData = async (): Promise<WeatherData | null> => {
+export const fetchWeatherData = async (
+  lat?: number,
+  lon?: number
+): Promise<WeatherData | null> => {
   try {
-    const data = await fetchWeatherFromAPI();
-    console.log("Weather data fetched:", data);
+    const data = await fetchWeatherFromAPI(lat, lon);
+    console.log(`Weather data fetched${lat != null ? ` for ${lat.toFixed(3)}, ${lon?.toFixed(3)}` : ""}:`, data);
     return data;
   } catch (error) {
     console.error("Failed to fetch weather data:", error);

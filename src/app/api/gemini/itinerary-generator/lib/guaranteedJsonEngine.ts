@@ -258,12 +258,12 @@ export class GuaranteedJsonEngine {
       // All strategies failed - use guaranteed fallback
       console.log(`🆘 GUARANTEED ENGINE: All strategies failed, using fallback`);
       this.metrics.fallbackUsed++;
-      return this.createIntelligentFallback(sampleItinerary, requestId);
+      return this.createIntelligentFallback(sampleItinerary, requestId, prompt);
 
     } catch (error: any) {
       console.error(`💥 GUARANTEED ENGINE: Critical error for ${requestId}:`, error);
       this.metrics.fallbackUsed++;
-      return this.createIntelligentFallback(sampleItinerary, requestId);
+      return this.createIntelligentFallback(sampleItinerary, requestId, prompt);
     }
   }
 
@@ -303,6 +303,17 @@ export class GuaranteedJsonEngine {
       // Validate the result
       const validation = ItinerarySchema.safeParse(result);
       if (validation.success) {
+        // Poison filter: StructuredOutputEngine's internal error-fallback returns a
+        // schema-valid itinerary with ZERO activities. Accepting it lets the empty
+        // shell win the race and discard perfectly good retrieved candidates.
+        const totalActivities = validation.data.items.reduce(
+          (sum, s) => sum + (Array.isArray(s.activities) ? s.activities.length : 0),
+          0
+        );
+        if (totalActivities === 0) {
+          console.warn(`⚠️ GUARANTEED ENGINE: Structured result contains 0 activities — rejecting as poisoned fallback`);
+          return null;
+        }
         console.log(`🎯 GUARANTEED ENGINE: Structured output validation passed`);
         return validation.data;
       } else {
@@ -595,14 +606,25 @@ export class GuaranteedJsonEngine {
    */
   private static createIntelligentFallback(
     sampleItinerary: any,
-    requestId: string
+    requestId: string,
+    prompt: string = ""
   ): StructuredItinerary {
     
     console.log(`🆘 GUARANTEED ENGINE: Creating intelligent fallback for ${requestId}`);
-    
+
     // Try to extract activities from sample itinerary
     const activities = this.extractActivitiesFromSample(sampleItinerary);
-    
+
+    // Derive city label from the detailed prompt (client prompt includes "for <City>, ...")
+    const CITY_LABELS: Array<[RegExp, string]> = [
+      [/for Cebu/i, "Cebu City"],
+      [/for Manila/i, "Manila"],
+      [/for Davao/i, "Davao City"],
+      [/for the Philippines|Anywhere PH|ph-wide/i, "Philippines"],
+      [/for Baguio/i, "Baguio City"],
+    ];
+    const cityLabel = CITY_LABELS.find(([re]) => re.test(prompt))?.[1] ?? "Baguio City";
+
     if (activities.length > 0) {
       // Create a proper itinerary structure with all time periods
       const itineraryItems = [];
@@ -635,7 +657,7 @@ export class GuaranteedJsonEngine {
       });
       
       return {
-        title: "Baguio City Itinerary",
+        title: `${cityLabel} Itinerary`,
         subtitle: "Curated recommendations based on your preferences",
         items: itineraryItems
       };
@@ -643,7 +665,7 @@ export class GuaranteedJsonEngine {
 
     // Ultimate fallback with reason fields for empty periods
     return {
-      title: "Baguio City Itinerary",
+      title: `${cityLabel} Itinerary`,
       subtitle: "Unable to generate custom itinerary - please try again",
       items: [{
         period: "Day 1 - Morning",

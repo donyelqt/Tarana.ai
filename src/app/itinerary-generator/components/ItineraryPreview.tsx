@@ -71,7 +71,8 @@ export default function ItineraryPreview({
   generatedItinerary,
   weatherData,
   onSave,
-  taranaaiLogo
+  taranaaiLogo,
+  cityName
 }: ItineraryPreviewProps) {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
 
@@ -172,7 +173,7 @@ export default function ItineraryPreview({
               />
             </div>
             <div>
-              <div className="text-sm font-medium text-white">Current Weather in Baguio</div>
+              <div className="text-sm font-medium text-white">Current Weather in {cityName || "Baguio"}</div>
               <div className="text-xs text-gray-100">
                 {getWeatherDescription(weatherData)}
               </div>

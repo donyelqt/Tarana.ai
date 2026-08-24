@@ -1,6 +1,8 @@
 import { StaticImageData } from "next/image";
 import { WeatherData } from "@/lib/core";
 
+export type CityId = "baguio" | "cebu" | "manila" | "davao" | "ph-wide" | "world"
+
 export interface FormData {
   budget: string;
   pax: string;
@@ -9,6 +11,7 @@ export interface FormData {
   selectedInterests: string[];
   peakHours?: boolean;
   trafficAware?: boolean; // NEW: traffic-aware planning toggle
+  cityId?: CityId; // NEW: strict geographic scope — only this city is generated
 }
 
 export interface Activity {
@@ -61,6 +64,8 @@ export interface ItineraryFormProps {
   showOutOfCredits?: boolean;
   trafficAware: boolean; // NEW: traffic-aware mode toggle
   setTrafficAware: React.Dispatch<React.SetStateAction<boolean>>; // NEW
+  selectedCity: CityId;
+  setSelectedCity: React.Dispatch<React.SetStateAction<CityId>>;
 }
 
 export interface ItineraryPreviewProps {
@@ -70,6 +75,7 @@ export interface ItineraryPreviewProps {
   weatherData: WeatherData | null;
   onSave: () => void;
   taranaaiLogo: StaticImageData | string;
+  cityName?: string; // destination label for the weather card
 }
 
 export interface SavedItineraryItem {
