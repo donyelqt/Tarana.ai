@@ -1,5 +1,5 @@
 # Tarana Gala — PH → World Scale Plan
-**Status:** Draft — Principal Review (45y, Osnami Agent Skills)
+**Status:** IMPLEMENTED 2026-08-25 (Slices 0–4 shipped; deltas vs this draft: see `git log 2040982..be0d5e0` — includes poison-filter, TOMTOM_REFERER fix, strict city scoping, city-aware weather. Slices 5–6 [cache unification, Explore map reuse] still open.)
 **Date:** 2026-08-23 | **Branch:** local only (MCP gitignored) | **Mode:** Build
 **Scope:** Keep UI/function/purpose identical, make arch fast + scalable beyond Baguio
 
