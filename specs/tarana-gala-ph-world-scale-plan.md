@@ -5,27 +5,6 @@
 
 ---
 
-## 0. Skill Trace (Using Agent Skills)
-
-| Phase | Skill Applied | Evidence |
-|---|---|---|
-| Define | `interview-me` | Extracted: you want `web search by coords → filter traffic low` for entire PH/world, accurate per-location image, scale beyond `supabase.itinerary_embeddings` Baguio 40 |
-| Define | `idea-refine` | Rejected web-search primitive → TomTom Places is faster/more accurate (see §2) |
-| Spec | `spec-driven-development` | This doc is the spec — acceptance criteria §7 |
-| Plan | `planning-and-task-breakdown` | §6 slices with verifiable exits |
-| Build | `incremental-implementation` | Thin slice 1 shipped: `src/lib/services/imageService.ts` + wiring in `activitySearch.ts:8` |
-| Build | `context-engineering` | Explored 3 subagents: Gala, Explore, traffic/places (11+ files each) |
-| Build | `source-driven-development` | Verified TomTom Search/Routing/StaticMap endpoints vs `supabase.com/docs` + TomTom docs |
-| Verify | `doubt-driven-development` | Brutal challenge §2 — adversarial review of your web-search idea |
-| Verify | `test-driven-development` | Probe live DB `vryamakpawtzmvgnifie` with `service_role` — refund + concurrent `consume_credits` |
-| Review | `code-review-and-quality` | 5-axis review of `tomtomTraffic.ts:152`, `trafficAwareActivitySearch.ts:126`, `baguioCoordinates.ts:14` |
-| Ship | `git-workflow-and-versioning` | `.gitignore:45` MCP ignore verified via `git check-ignore` |
-| Ship | `observability-and-instrumentation` | RED metrics + cache hit rate plan §7 |
-
-Core behaviors enforced: Surface Assumptions, Manage Confusion, Push Back, Enforce Simplicity, Scope Discipline, Verify Don't Assume.
-
----
-
 ## 1. ASSUMPTIONS I'M MAKING
 
 1. **Latency SLO:** `POST /api/gemini/itinerary-generator` P50 <2.0s at PH/world (currently 2.8s Baguio)
