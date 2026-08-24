@@ -26,10 +26,11 @@ export interface WeatherData {
   dt: number;
 }
 
-// Baguio City coordinates
+// Baguio City coordinates — now delegates to cityConfig (single source of truth)
+// Kept for backward compat; new code should use getCityCenter('baguio')
+import { getCityCenter } from '@/lib/data/cityConfig'
 export const BAGUIO_COORDINATES = {
-  lat: 16.4023,
-  lon: 120.5960,
+  ...getCityCenter('baguio'),
   name: 'Baguio City'
 }
 

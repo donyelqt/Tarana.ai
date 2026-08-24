@@ -1,3 +1,5 @@
+import { getCityCenter as getCityCenterCfg, isWithinCityBounds as isWithinCityBoundsCfg } from "./cityConfig"
+
 /**
  * Baguio City Activity Coordinates Database
  * Precise latitude/longitude coordinates for all activities in the itinerary system
@@ -323,11 +325,13 @@ export function findNearbyActivities(
 
 /**
  * Get the center point of Baguio City
+ * @deprecated Use getCityCenter('baguio') from cityConfig — kept for backward compat
  */
 export function getBaguioCityCenter(): ActivityCoordinates {
+  const c = getCityCenterCfg("baguio")
   return {
-    lat: 16.4134,
-    lon: 120.5934,
+    lat: c.lat,
+    lon: c.lon,
     name: "Baguio City Center",
     category: "center"
   };
@@ -335,16 +339,11 @@ export function getBaguioCityCenter(): ActivityCoordinates {
 
 /**
  * Validate if coordinates are within Baguio City bounds
+ * @deprecated Use isWithinCityBounds(lat,lon,'baguio') — kept for backward compat
  */
 export function isWithinBaguioBounds(lat: number, lon: number): boolean {
-  // Baguio City and La Trinidad approximate bounds
-  const bounds = {
-    north: 16.47,  // Extended to include La Trinidad (Mt. Kalugong, Valley of Colors)
-    south: 16.35,
-    east: 120.65,
-    west: 120.55
-  };
-  
-  return lat >= bounds.south && lat <= bounds.north && 
-         lon >= bounds.west && lon <= bounds.east;
+  return isWithinCityBoundsCfg(lat, lon, "baguio")
 }
+
+// ── World-scale helpers (thin wrappers over cityConfig) ──
+export { isWithinCityBounds, getCityCenter, getCityBounds } from "./cityConfig"

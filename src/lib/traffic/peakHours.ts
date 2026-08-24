@@ -1,3 +1,5 @@
+import { getCityTimezone } from "@/lib/data/cityConfig"
+
 /**
  * Peak Hours Management for Manila Timezone
  * Handles peak hours detection and low-traffic activity suggestions
@@ -14,10 +16,19 @@ export interface ActivityPeakHours {
 }
 
 /**
+ * Get current time for a city (defaults to Manila for backward compat)
+ */
+export function getCityTime(cityId: string = "baguio"): Date {
+  const tz = getCityTimezone(cityId)
+  return new Date(new Date().toLocaleString("en-US", { timeZone: tz }))
+}
+
+/**
  * Get current Manila time
+ * @deprecated Use getCityTime('baguio') — kept for backward compat
  */
 export function getManilaTime(): Date {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+  return getCityTime("baguio")
 }
 
 /**
