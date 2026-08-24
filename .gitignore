@@ -41,6 +41,22 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# opencode + Supabase MCP - local only (never push to prod)
+.mcp.json
+.mcp.local.json
+opencode.json
+opencode.jsonc
+.opencode/
+.mcp/
+
+# supabase CLI local state
+supabase/.temp/
+
+# local agent skills (installed via `skills add`, not source)
+.agents/
+.claude/
+skills-lock.json
+
 # kilo session config (not project source)
 .kilo/
 
