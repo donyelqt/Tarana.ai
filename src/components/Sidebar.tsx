@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
 import { motion, useReducedMotion } from "framer-motion"
-import { Settings, Donut, Utensils, MapPinCheck, Route } from 'lucide-react'
+import { Settings, Donut, Utensils, MapPinCheck, Route, LogOut } from 'lucide-react'
 
 import Image from "next/image"
 import taranaai2 from "../../public/images/taranaai2.png"
@@ -119,13 +119,14 @@ const Sidebar = () => {
             </div>
           </nav>
         </div>
-        <div className="relative">
+        <div className="border-t border-zinc-100 pt-4">
           <button
+            type="button"
             onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-            className="flex items-center text-gray-400 hover:text-blue-500 transition"
+            className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium tracking-tight text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:scale-[0.98]"
           >
-            <span className="mr-2">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" /></svg>
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-100 text-zinc-500 transition-colors group-hover:bg-white group-hover:text-zinc-900">
+              <LogOut size={14} strokeWidth={1.75} />
             </span>
             Log out
           </button>
