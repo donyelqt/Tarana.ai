@@ -193,7 +193,7 @@ const DashboardContent = () => {
           <Popover>
               <PopoverTrigger asChild>
                 <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
-                  <Plus size={28} className="mb-2 text-blue-500 animate-icon-interactive" />
+                  <Plus size={28} className="mb-2 text-blue-500 feature-icon-float" />
                   <div className="font-semibold text-lg">Create New Plan</div>
                   <div className="text-gray-500 text-sm mt-1">AI-powered trip and food planning</div>
                 </div>
@@ -235,7 +235,7 @@ const DashboardContent = () => {
             <Popover>
               <PopoverTrigger asChild>
                 <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
-                  <div className="mb-2 animate-icon-interactive">
+                  <div className="mb-2 feature-icon-float" style={{ animationDelay: '0.8s' }}>
                     <Bookmark size={28} className="text-blue-500 fill-blue-500" />
                   </div>
                   <div className="font-semibold text-lg">View Saved Plans</div>
@@ -284,7 +284,7 @@ const DashboardContent = () => {
             onClick={() => router.push("/tarana-explore")}
             className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition mb-8"
           >
-            <MapPin size={28} className="mb-2 text-blue-500 animate-icon-interactive" />
+            <MapPin size={28} className="mb-2 text-blue-500 feature-icon-float" style={{ animationDelay: '1.6s' }} />
             <div className="font-semibold text-lg">Explore Routes</div>
             <div className="text-gray-500 text-sm mt-1">Smart traffic-aware navigation</div>
           </div>

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
 import { motion, useReducedMotion } from "framer-motion"
-import { Settings, Donut, Utensils, MapPinCheck, Route, LogOut } from 'lucide-react'
+import { Settings, Donut, Utensils, MapPinCheck, Route, LogOut, LayoutDashboard, Sparkles } from 'lucide-react'
 
 import Image from "next/image"
 import taranaai2 from "../../public/images/taranaai2.png"
@@ -64,54 +64,50 @@ const Sidebar = () => {
             <Image src={taranaai2} alt="Logo" width={120} height={120} />
           </div>
           <nav className="space-y-2 relative">
-            <Link href="/dashboard" className={`relative isolate flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/dashboard" ? "text-blue-600" : "text-gray-700 hover:bg-gray-100"}`}>
+            <Link href="/dashboard" className={`relative isolate group flex items-center px-4 py-3 rounded-lg font-medium text-sm tracking-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${pathname === "/dashboard" ? "text-blue-600 nav-item-active" : "text-gray-700 hover:bg-gray-100"}`}>
               {pathname === "/dashboard" && <ActivePill />}
-              <span className="mr-3 animate-icon-interactive">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7m-9 2v8m4-8v8m5 0a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2h14z" /></svg>
-              </span>
+              <span className="mr-3 transition-transform duration-200 ease-out group-hover:scale-110 group-hover:translate-x-0.5 motion-reduce:transform-none"><LayoutDashboard size={20} strokeWidth={2} /></span>
               Dashboard
             </Link>
-            <Link href="/itinerary-generator" className={`relative isolate flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/itinerary-generator" ? "text-blue-600" : "text-gray-700 hover:bg-gray-100"}`}>
+            <Link href="/itinerary-generator" className={`relative isolate group flex items-center px-4 py-3 rounded-lg font-medium text-sm tracking-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${pathname === "/itinerary-generator" ? "text-blue-600 nav-item-active" : "text-gray-700 hover:bg-gray-100"}`}>
               {pathname === "/itinerary-generator" && <ActivePill />}
-              <span className="mr-3 animate-icon-interactive">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a4 4 0 014-4h4m0 0V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h5" /></svg>
-              </span>
+              <span className="mr-3 transition-transform duration-200 ease-out group-hover:scale-110 group-hover:translate-x-0.5 motion-reduce:transform-none"><Sparkles size={20} strokeWidth={2} /></span>
               Tarana Gala
             </Link>
-            <Link href="/tarana-eats" className={`relative isolate flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/tarana-eats" ? "text-blue-600" : "text-gray-700 hover:bg-gray-100"}`}>
+            <Link href="/tarana-eats" className={`relative isolate group flex items-center px-4 py-3 rounded-lg font-medium text-sm tracking-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${pathname === "/tarana-eats" ? "text-blue-600 nav-item-active" : "text-gray-700 hover:bg-gray-100"}`}>
               {pathname === "/tarana-eats" && <ActivePill />}
-              <span className="mr-3 animate-icon-interactive">
+              <span className="mr-3 transition-transform duration-200 ease-out group-hover:scale-110 group-hover:translate-x-0.5 motion-reduce:transform-none">
                 <Donut size={20} />
               </span>
               Tarana Eats
             </Link>
-            <Link href="/tarana-explore" className={`relative isolate flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/tarana-explore" ? "text-blue-600" : "text-gray-700 hover:bg-gray-100"}`}>
+            <Link href="/tarana-explore" className={`relative isolate group flex items-center px-4 py-3 rounded-lg font-medium text-sm tracking-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${pathname === "/tarana-explore" ? "text-blue-600 nav-item-active" : "text-gray-700 hover:bg-gray-100"}`}>
               {pathname === "/tarana-explore" && <ActivePill />}
-              <span className="mr-3 animate-icon-interactive">
+              <span className="mr-3 transition-transform duration-200 ease-out group-hover:scale-110 group-hover:translate-x-0.5 motion-reduce:transform-none">
                 <Route size={20} />
               </span>
               Tarana Explore
             </Link>
             {/* SAVED PLANS section */}
-            <div className="px-4 pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Saved Plans</div>
-            <Link href="/saved-trips" className={`relative isolate flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/saved-trips" ? "text-blue-600" : "text-gray-700 hover:bg-gray-100"}`}>
+            <div className="px-4 pt-4 pb-2 text-[11px] font-medium text-gray-400 tracking-wide">Saved Plans</div>
+            <Link href="/saved-trips" className={`relative isolate group flex items-center px-4 py-3 rounded-lg font-medium text-sm tracking-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${pathname === "/saved-trips" ? "text-blue-600 nav-item-active" : "text-gray-700 hover:bg-gray-100"}`}>
               {pathname === "/saved-trips" && <ActivePill />}
-              <span className="mr-3 animate-icon-interactive">
+              <span className="mr-3 transition-transform duration-200 ease-out group-hover:scale-110 group-hover:translate-x-0.5 motion-reduce:transform-none">
                 <MapPinCheck size={20} />
               </span>
               Itineraries
             </Link>
-            <Link href="/saved-meals" className={`relative isolate flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/saved-meals" ? "text-blue-600" : "text-gray-700 hover:bg-gray-100"}`}>
+            <Link href="/saved-meals" className={`relative isolate group flex items-center px-4 py-3 rounded-lg font-medium text-sm tracking-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${pathname === "/saved-meals" ? "text-blue-600 nav-item-active" : "text-gray-700 hover:bg-gray-100"}`}>
               {pathname === "/saved-meals" && <ActivePill />}
-              <span className="mr-3 animate-icon-interactive">
+              <span className="mr-3 transition-transform duration-200 ease-out group-hover:scale-110 group-hover:translate-x-0.5 motion-reduce:transform-none">
                 <Utensils size={20} />
               </span>
               Meals
             </Link>
             <div className="pt-4">
-              <Link href="/settings" className={`relative isolate flex items-center px-4 py-3 rounded-lg font-medium transition ${pathname === "/settings" ? "text-blue-600" : "text-gray-700 hover:bg-gray-100"}`}>
+              <Link href="/settings" className={`relative isolate group flex items-center px-4 py-3 rounded-lg font-medium text-sm tracking-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${pathname === "/settings" ? "text-blue-600 nav-item-active" : "text-gray-700 hover:bg-gray-100"}`}>
                 {pathname === "/settings" && <ActivePill />}
-                <span className="mr-3 animate-icon-interactive">
+                <span className="mr-3 transition-transform duration-200 ease-out group-hover:scale-110 group-hover:translate-x-0.5 motion-reduce:transform-none">
                   <Settings size={20} />
                 </span>
                 Settings
@@ -119,14 +115,14 @@ const Sidebar = () => {
             </div>
           </nav>
         </div>
-        <div className="border-t border-zinc-100 pt-4">
+        <div className="border-t border-gray-100 pt-4">
           <button
             type="button"
             onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-            className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium tracking-tight text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:scale-[0.98]"
+            className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium tracking-tight text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:scale-[0.98]"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-100 text-zinc-500 transition-colors group-hover:bg-white group-hover:text-zinc-900">
-              <LogOut size={14} strokeWidth={1.75} />
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gray-100 text-gray-500 transition-colors group-hover:bg-gray-200 group-hover:text-gray-900">
+              <LogOut size={14} strokeWidth={2} />
             </span>
             Log out
           </button>

@@ -246,9 +246,32 @@ body {
   25% { transform: translate(0, 0) scale(1.15); }
 }
 
-.animate-icon-interactive {
-  animation: icon-vibrate-and-pulse 3s ease-in-out infinite;
-}
+  .animate-icon-interactive {
+    animation: icon-vibrate-and-pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes featureIconFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-5px) scale(1.05); }
+  }
+  .feature-icon-float {
+    animation: featureIconFloat 3.5s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .feature-icon-float { animation: none; }
+  }
+
+  @keyframes navIconPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+  .nav-item-active svg {
+    animation: navIconPulse 3s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-item-active svg { animation: none; }
+  }
+
 
 @layer base {
   * {
