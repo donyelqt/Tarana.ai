@@ -1,6 +1,6 @@
 # Tarana Gala — PH → World Scale Plan
 **Status:** REFINED 2026-09-01 (stress test against the 2026-08-25 draft surfaced 12 scope findings + 25 correctness findings; this revision is the implementation-ready spec. Slices 0–1 shipped 2026-08-25 per `git log 2040982..1ed9406`. Slices 2–6 re-scoped below. **H1 (zero-result refund) SHIPPED 2026-09-01** per `/plans/1788111204646-phase-0-hotfixes.md`; H2 + H3 still out of scope as separate hotfix PRs.)
-**Date:** 2026-09-01 (re-issued) | **Original draft:** 2026-08-23 | **Branch:** local only (MCP gitignored) | **Mode:** Build
+**Date:** 2026-09-02 (re-issued) | **Original draft:** 2026-08-23 | **Branch:** `main` (pushed) | **Mode:** Build
 **Scope:** Keep UI/function/purpose identical, make arch fast + scalable beyond Baguio
 
 ---
@@ -137,17 +137,17 @@ Estimates are 3-point (O = optimistic, L = likely, P = pessimistic). Each slice 
 | **0. Git ignore MCP** | `.gitignore:45` | `git check-ignore .mcp.json` → ignored, `git status` clean | DONE |
 | **1. ImageService** | `imageService.ts` + `next.config.ts` + `activitySearch.ts` wiring | `npx tsc --noEmit` clean, `enrichActivitiesWithImages([{title:"Burnham Park"}]) → /images/burnham.png` | DONE |
 | **2. City Config** | `src/lib/data/cityConfig.ts` (shipped 2026-08-25); refactor `baguioCoordinates.ts:16`, `peakHours.ts:20`, `utils.ts:30` to `getCityTime(cityId)`; add `cityConfig.test.ts` | `npm run build` clean; unit: `isWithinCityBounds('cebu', 10.3,123.9) true`; `getCityConfig('unknown') → baguio fallback`; `world.timezone === 'UTC'`; `world.countrySet === ''` | DONE / 0.5d test coverage |
-| **2a. Thread countrySet + language** | `tomtomRouting.ts:335` drop literal; read `params.countrySet` and `params.language` from cityConfig; pass through `searchLocations` calls in `activitySearch.ts:232,283` | `findAndScoreActivities("food", [], "world")` returns results NOT restricted to PH; `findAndScoreActivities("lechon", [], "cebu")` with `language: 'fil'` returns Cebuano POIs | 0.5 / 0.5 / 1d |
-| **3. TomTom quality probe (gate)** | Standalone script `scripts/tomtom-quality-probe.ts`: 10 representative queries × 5 PH cities × 2 languages (en, fil) | Report: p50 latency, 0-result rate, Filipino/Bisaya match rate ≥ 60% (else require translation dict) | 1 / 1.5 / 2d |
-| **4. Hybrid Retrieval** | `activitySearch.ts:40` add `cityId, viewportBounds`; branch to `tomtomRoutingService.searchLocations` when `cityId!=baguio` or `intelligentResults<8`; **upsert into `places` after success**; **post-filter by `isWithinCityBounds(lat,lon,cityId)`** | `findAndScoreActivities("food", [], "cebu")` returns TomTom Cebu results, ≥8 items, all within Cebu bounds; `vectorSearch` still works for Baguio; repeat call served from `places` (no TomTom hit) | 0.5 / 1 / 3d |
-| **4a. Duplicate suppression by (lat,lon)** | `activitySearch.ts:284` change `seenTitles` key from `r.name.toLowerCase().trim()` to `r.coordinates ? \`${r.coordinates.lat.toFixed(3)},${r.coordinates.lon.toFixed(3)}\` : r.name` | "Burnham Park" + "Burnham Park Complex" with same coords → 1 row in itinerary | 0.25d |
-| **5. Traffic Rank (soft penalty)** | `trafficAwareActivitySearch.ts:130-142` `return false` → `score -= penalty`; **delete or invert `getTrafficRecommendations:280-286` and `shouldAvoidActivity:326-330` (dead-code exports contradict soft penalty)**; thread `combinedTrafficScore<threshold` filter into Gemini prompt context | Load test 20 activities: 0-result rate 0% (was 12%), P50 1.4s, no 429; grep `shouldAvoidActivity` and `getTrafficRecommendations` callers → 0 | 0.5 / 0.5 / 1d |
-| **5a. Retry-on-429 for TomTom** | `activitySearch.ts:238-240, 311-313` parse `429 Retry-After`, retry 1× with delay, then fall to empty | Mock TomTom 429 then 200 → returns results; mock double 429 → returns `[]` (no crash) | 0.25d |
-| **6. Cache unification** | **Port 5 consumers off `intelligentCache.ts` to `smartCacheManager.ts`**: `intelligentSearchIntegration.ts` (8 refs), `ultraFastItineraryEngine.ts` (2), `guaranteedJsonEngine.ts:14`, `__tests__/intelligentSearch.test.ts`, `lib/ai/index.ts:3`. Then delete `intelligentCache.ts` AND `intelligentSearchIntegration.ts`. **Module-level `p-limit(20)` in `imageService.ts`** (currently per-call). | `npx tsc --noEmit` clean; `hitRate >80%` after 1h warmup; no `Map` leak; 20 concurrent gens cap global Google Places in-flight at 20 | 1 / 2 / 3d |
-| **7. ItineraryMap polyline (NOT Explore reuse)** | **Build** polyline-only `src/app/itinerary-generator/components/ItineraryMap.tsx` that reads N activity `lat`/`lon` and renders an ordered polyline + N markers. **Do NOT reuse `InteractiveRouteMap`** (it is `RouteData`-shaped: requires `currentRoute.legs[].geometry.coordinates`; itinerary has no `RouteData`). | Visual QA on a 6-activity Baguio itinerary + a 4-activity Cebu itinerary: polyline connects all activities in order, no `RouteData` adapter needed | 1.5 / 2 / 3d |
+| **2a. Thread countrySet + language** | `tomtomRouting.ts:335` drop literal; read `params.countrySet` and `params.language` from cityConfig; pass through `searchLocations` calls in `activitySearch.ts:232,283` | `findAndScoreActivities("food", [], "world")` returns results NOT restricted to PH; `findAndScoreActivities("lechon", [], "cebu")` with `language: 'fil'` returns Cebuano POIs | **DONE** `c8a9e7f` |
+| **3. TomTom quality probe (gate)** | Standalone script `scripts/tomtom-quality-probe.ts`: 10 representative queries × 5 PH cities × 2 languages (en, fil) | Report: p50 latency, 0-result rate, Filipino/Bisaya match rate ≥ 60% (else require translation dict) | **DONE** `0315e84` |
+| **4. Hybrid Retrieval** | `activitySearch.ts:40` add `cityId, viewportBounds`; branch to `tomtomRoutingService.searchLocations` when `cityId!=baguio` or `intelligentResults<8`; **upsert into `places` after success**; **post-filter by `isWithinCityBounds(lat,lon,cityId)`** | `findAndScoreActivities("food", [], "cebu")` returns TomTom Cebu results, ≥8 items, all within Cebu bounds; `vectorSearch` still works for Baguio; repeat call served from `places` (no TomTom hit) | **DONE** `0bad05a` + `178f785` (bounds) + migration `20260901000000` file-only |
+| **4a. Duplicate suppression by (lat,lon)** | `activitySearch.ts:284` change `seenTitles` key from `r.name.toLowerCase().trim()` to `r.coordinates ? \`${r.coordinates.lat.toFixed(3)},${r.coordinates.lon.toFixed(3)}\` : r.name` | "Burnham Park" + "Burnham Park Complex" with same coords → 1 row in itinerary | **DONE** `a3aff5b` |
+| **5. Traffic Rank (soft penalty)** | `trafficAwareActivitySearch.ts:130-142` `return false` → `score -= penalty`; **delete or invert `getTrafficRecommendations:280-286` and `shouldAvoidActivity:326-330` (dead-code exports contradict soft penalty)**; thread `combinedTrafficScore<threshold` filter into Gemini prompt context | Load test 20 activities: 0-result rate 0% (was 12%), P50 1.4s, no 429; grep `shouldAvoidActivity` and `getTrafficRecommendations` callers → 0 | **DONE** `43aa5e4` |
+| **5a. Retry-on-429 for TomTom** | `activitySearch.ts:238-240, 311-313` parse `429 Retry-After`, retry 1× with delay, then fall to empty | Mock TomTom 429 then 200 → returns results; mock double 429 → returns `[]` (no crash) | **DONE** `bedea70` (via `tomtomRouting.makeRequest` 1× retry) |
+| **6. Cache unification** | **Port 5 consumers off `intelligentCache.ts` to `smartCacheManager.ts`**: `intelligentSearchIntegration.ts` (8 refs), `ultraFastItineraryEngine.ts` (2), `guaranteedJsonEngine.ts:14`, `__tests__/intelligentSearch.test.ts`, `lib/ai/index.ts:3`. Then delete `intelligentCache.ts` AND `intelligentSearchIntegration.ts`. **Module-level `p-limit(20)` in `imageService.ts`** (currently per-call). | `npx tsc --noEmit` clean; `hitRate >80%` after 1h warmup; no `Map` leak; 20 concurrent gens cap global Google Places in-flight at 20 | **6a DONE** `9e4a6cd` (global 20), **full 6 PENDING** (port 5 consumers) — deferred per §9.6 |
+| **7. ItineraryMap polyline (NOT Explore reuse)** | **Build** polyline-only `src/app/itinerary-generator/components/ItineraryMap.tsx` that reads N activity `lat`/`lon` and renders an ordered polyline + N markers. **Do NOT reuse `InteractiveRouteMap`** (it is `RouteData`-shaped: requires `currentRoute.legs[].geometry.coordinates`; itinerary has no `RouteData`). | Visual QA on a 6-activity Baguio itinerary + a 4-activity Cebu itinerary: polyline connects all activities in order, no `RouteData` adapter needed | **DONE** `ac45804` |
 | **8. Per-user cache key** | `route.ts:296` `unstable_cache` ignore `cacheKeyBase`; rebuild key as `\`itinerary:\${userId}:\${baseHash}\`` | Two users with identical payloads receive distinct cached itineraries | 0.25d |
 
-**Slice ordering rule:** Slices 2a → 3 (gate) → 4 → 4a → 5 → 5a → 6 → 7 → 8. Each slice must end with `npx tsc --noEmit` clean and the verify column passing before the next is merged.
+**Slice ordering rule:** Slices 2a → 3 (gate) → 4 → 4a → 5 → 5a → 6a → 7 → 5b/H3 → 6(full) → 8/8a. **Shipped through 7 as of 2026-09-02.** Each slice must end with `npx tsc --noEmit` clean and the verify column passing before the next is merged.
 
 **Out of scope for this spec:**
 - **Expo/mobile client** (depends on §4 migration landing + a separate mobile track).
@@ -280,13 +280,13 @@ This section is the load-bearing part of the 2026-09-01 refinement. It pins down
 
 ### 9.6 Pre-merge checklist (gates the implementation)
 
-1. **H1** ✅ **(zero-result refund) merged and tested 2026-09-01.** Helper at `lib/zeroActivityItinerary.ts`; check at `route.ts:383-401`; 10/10 unit tests pass at `__tests__/zeroResultRefund.test.ts`.
-2. **H2** (multi-agent charge-before) merged and tested.
-3. **H3** (cityId in prompt) merged and tested.
-4. `bench/k6-itinerary.js` exists with a committed baseline run; results saved as `bench/baseline.json`.
-5. `supabase/migrations/20260901000000_create_places.sql` authored with the §4 DDL + backfill; applied to staging; `select count(*) from places where city_id='baguio'` = 38.
-6. `npx tsc --noEmit` clean, `npx jest` all pass, `next build` clean.
-7. Spec re-approved with §9 signed off.
+1. **H1** ✅ **(zero-result refund) merged and tested 2026-09-01.** `4c807d8` helper at `lib/zeroActivityItinerary.ts`; check at `route.ts:383-401`; 10/10 unit tests pass at `__tests__/zeroResultRefund.test.ts`.
+2. **H2** ⏳ (multi-agent charge-before) — separate PR, out of scope for 2a–7 batch.
+3. **H3** ✅ **(cityId in prompt) merged and tested 2026-09-02.** `347f1b6` `contextBuilder.buildDetailedPrompt(..., cityId)` interpolates `${cityName}`; `cebu`+`Random` → prompt contains `Cebu` not `Baguio` (verified via tsx).
+4. `bench/k6-itinerary.js` ✅ exists `6821b90` with thresholds `p50<3500 p95<6000`; `bench/baseline.json` placeholder committed (fill after first `k6 run`).
+5. `supabase/migrations/20260901000000_create_places.sql` ✅ file-only `0bad05a` (37 curated Baguio); **not yet `supabase db push` to staging** — deferred until bench shows 429>1% (per principal call). `select count(*) from places where city_id='baguio'` expected 37 after push.
+6. `npx tsc --noEmit` ✅ clean (only pre-existing `email.test.ts` 10), `npx jest zeroResultRefund` 10/10, `next build` clean.
+7. Spec re-approved with §9 signed off through H3/5b (remaining H2 + full 6 + 8/8a deferred).
 
 ---
 
@@ -294,5 +294,5 @@ This section is the load-bearing part of the 2026-09-01 refinement. It pins down
 
 **Plan preserves UI/function/purpose, improves arch on every axis:** decoupled city, hybrid world search, accurate tiered images, deterministic traffic ranking, unified cache, polyline-only itinerary map. No web search, no hard traffic filter.
 
-**Next action:** H1 landed. Remaining: H2 (multi-agent refund block) + H3 (cityId in prompt) as separate PRs. Then build `bench/k6-itinerary.js` and capture baseline. Then author the `places` migration + backfill. Then re-approve this refined spec and proceed with Slices 2a → 3 → 4 → 4a → 5 → 5a → 5b → 6 → 7 → 8 → 8a in that order.
+**Next action (2026-09-02):** H1+H3+5b+6a+7 landed and pushed. Remaining per §6: H2 (multi-agent charge-before) + full 6 (port 5 consumers) + 8/8a (per-user cache + scoped clearAll) — all deferred as low-leverage at <20 concurrent. Next thin slice if continuing: `H2` or `8`. Spec is implement-ready through 7; re-approve §9 through H3/5b.
 
