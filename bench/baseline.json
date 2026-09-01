@@ -1,0 +1,11 @@
+{
+  "date": "2026-09-02",
+  "commit": "0bad05a",
+  "vus": 50,
+  "duration": "30s",
+  "p50_ms": null,
+  "p95_ms": null,
+  "zeroResultRate": null,
+  "tomtom429Rate": null,
+  "note": "Run: k6 run --env BASE_URL=http://localhost:3000 bench/k6-itinerary.js  (or against staging). Fill p50/p95 after first green run and commit."
+}
