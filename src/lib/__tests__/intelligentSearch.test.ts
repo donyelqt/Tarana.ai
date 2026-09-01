@@ -9,7 +9,7 @@
 import { IntelligentSearchEngine, type SearchContext } from '../search/intelligentSearch';
 import { QueryProcessor, SearchOptimizer } from '../search/searchOptimizer';
 import { SearchIndexManager, TextProcessor } from '../search/searchIndex';
-import { IntelligentCacheManager } from '../ai/intelligentCache';
+import { SmartCacheManager } from '../performance/smartCacheManager';
 import type { Activity } from '@/app/itinerary-generator/data/itineraryData';
 
 // Mock activities for testing
@@ -226,11 +226,12 @@ describe('SearchIndexManager', () => {
   });
 });
 
-describe('IntelligentCacheManager', () => {
-  let cacheManager: IntelligentCacheManager;
+describe('SmartCacheManager', () => {
+  let cacheManager: SmartCacheManager;
 
   beforeEach(() => {
-    cacheManager = new IntelligentCacheManager();
+    cacheManager = SmartCacheManager.getInstance();
+    cacheManager.clearAll();
   });
 
   afterEach(() => {
@@ -388,12 +389,13 @@ describe('SearchOptimizer', () => {
 
 describe('Integration Tests', () => {
   let searchEngine: IntelligentSearchEngine;
-  let cacheManager: IntelligentCacheManager;
+  let cacheManager: SmartCacheManager;
   let indexManager: SearchIndexManager;
 
   beforeEach(async () => {
     searchEngine = new IntelligentSearchEngine();
-    cacheManager = new IntelligentCacheManager();
+    cacheManager = SmartCacheManager.getInstance();
+    cacheManager.clearAll();
     indexManager = new SearchIndexManager();
     
     await indexManager.buildIndex(mockActivities);

@@ -667,3 +667,11 @@ export class SmartCacheManager {
 
 // Export singleton instance
 export const smartCacheManager = SmartCacheManager.getInstance();
+
+// Compat aliases for intelligentCache port (full 6) - intelligent used getCacheStats/warmupCache, smart uses getStats/ensureWarmup
+if (!(smartCacheManager as any).getCacheStats) {
+  (smartCacheManager as any).getCacheStats = () => (smartCacheManager as any).getStats();
+}
+if (!(smartCacheManager as any).warmupCache) {
+  (smartCacheManager as any).warmupCache = (...args: any[]) => (smartCacheManager as any).ensureWarmup?.(...args) ?? Promise.resolve();
+}

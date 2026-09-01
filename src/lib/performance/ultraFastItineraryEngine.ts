@@ -11,7 +11,7 @@ import { createHash } from "crypto";
 import { IntelligentSearchEngine } from "@/lib/search";
 import { trafficAwareActivitySearch } from "@/lib/traffic";
 import { agenticTrafficAnalyzer } from "@/lib/traffic";
-import { intelligentCacheManager } from "@/lib/ai";
+import { smartCacheManager as intelligentCacheManager } from "@/lib/performance/smartCacheManager";
 import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
 import { getManilaTime, isCurrentlyPeakHours } from "@/lib/traffic";
 import { getActivityCoordinates } from "@/lib/data";
