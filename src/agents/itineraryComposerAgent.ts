@@ -24,7 +24,9 @@ export class ItineraryComposerAgent {
         session.preferences.interests,
         session.preferences.durationDays,
         session.preferences.budget,
-        session.preferences.pax
+        session.preferences.pax,
+        true,
+        session.preferences.cityId ?? "baguio"
       );
 
       const weatherContext = this.composeWeatherContext(session);

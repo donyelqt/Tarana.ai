@@ -1,5 +1,6 @@
 import { getPeakHoursContext } from "@/lib/traffic";
 import { INTEREST_DETAILS, WEATHER_CONTEXTS } from "./config";
+import { getCityConfig } from "@/lib/data/cityConfig";
 import type { WeatherCondition } from "../types/types";
 
 /**
@@ -35,7 +36,8 @@ export function buildDetailedPrompt(
   durationDays: number | null,
   budget?: string,
   pax?: string,
-  restrictToSampleActivities: boolean = true
+  restrictToSampleActivities: boolean = true,
+  cityId: string = "baguio"
 ): string {
     const weatherId = weatherData?.weather?.[0]?.id || 0;
     const weatherDescription = weatherData?.weather?.[0]?.description || "";
@@ -54,6 +56,9 @@ export function buildDetailedPrompt(
 
     const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
     const weatherContext = WEATHER_CONTEXTS[weatherType](temperature, weatherDescription);
+    const city = getCityConfig(cityId);
+    const cityName = city.name;
+    const cityContext = `Location: ${cityName} (${cityId}). Generate itinerary strictly for ${cityName}; do not include activities from other cities.`;
 
     const budgetCategory = (() => {
         if (!budget) return null;
@@ -106,7 +111,7 @@ export function buildDetailedPrompt(
       `;
     } else {
       interestsContext = `
-        The visitor hasn't specified particular interests, so provide a balanced mix of Baguio's highlights across different categories.
+        The visitor hasn't specified particular interests, so provide a balanced mix of ${cityName} highlights across different categories.
         Select a variety of activities from the sample itinerary database that cover different interest areas.
       `;
     }
@@ -152,6 +157,7 @@ export function buildDetailedPrompt(
 ${prompt}
 
 ${sampleItineraryContext}
+${cityContext}
 ${weatherContext}
 ${peakHoursContext}
 ${trafficContext}
