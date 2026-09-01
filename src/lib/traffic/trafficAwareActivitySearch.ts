@@ -45,7 +45,7 @@ class TrafficAwareActivitySearchService {
     const enhancedActivities: TrafficEnhancedActivity[] = [];
 
     // Process activities in batches — 5 concurrent to respect TomTom rate limits (was 40 → 429s)
-    const batchSize = 5;
+    const batchSize = 3; // p-limit(3) per-instance PH peak cap (was 5, spec 9.3/5b)
     for (let i = 0; i < activities.length; i += batchSize) {
       const batch = activities.slice(i, i + batchSize);
       
@@ -105,11 +105,7 @@ class TrafficAwareActivitySearchService {
           enhancedActivities.push(this.createFallbackEnhancedActivity(batch[index]));
         }
       });
-
-      // Small delay between batches to respect API rate limits (200ms when batch=5)
-      if (i + batchSize < activities.length) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
+      // 5b: 200ms sleep removed (floor breaker)
     }
 
     console.log(`✅ Traffic Enhancement: Completed processing ${enhancedActivities.length} activities`);
