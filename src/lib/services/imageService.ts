@@ -26,6 +26,22 @@ type CachedEntry = { url: string; expiry: number }
 // In-memory cache (per-instance). For prod, back with Supabase `place_images` table.
 const cache = new Map<string, CachedEntry>()
 
+// Global cap (spec 9.1 #9): 20 concurrent image fetches across all generations
+const GLOBAL_IMAGE_CONCURRENCY = 20;
+let globalRunning = 0;
+const globalWaiters: Array<() => void> = [];
+async function withGlobalImageLimit<T>(fn: () => Promise<T>): Promise<T> {
+  if (globalRunning >= GLOBAL_IMAGE_CONCURRENCY) {
+    await new Promise<void>((r) => globalWaiters.push(r));
+  }
+  globalRunning++;
+  try { return await fn(); } finally {
+    globalRunning--;
+    const next = globalWaiters.shift();
+    if (next) next();
+  }
+}
+
 // Curated Baguio title → public image path map (Tier 0). Import lazy to avoid bundle bloat.
 const CURATED_IMAGE_MAP: Record<string, string> = {
   "Burnham Park": "/images/burnham.png",
@@ -281,12 +297,12 @@ export async function enrichActivitiesWithImages<T extends { title: string; lat?
         // Skip if already has curated image
         if (CURATED_IMAGE_MAP[act.title]) return
         try {
-          const url = await getAccurateImageForPlace({
+          const url = await withGlobalImageLimit(() => getAccurateImageForPlace({
             title: act.title,
             lat: act.lat,
             lon: act.lon,
             city: options.city,
-          })
+          }))
           results[idx] = { ...act, image: url }
         } catch {
           // Keep original image on failure
