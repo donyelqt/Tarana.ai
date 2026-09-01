@@ -6,6 +6,7 @@ import { WEATHER_TAG_FILTERS } from "./config";
 import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/traffic";
 import { IntelligentSearchEngine, type IntelligentSearchResult } from "@/lib/search";
 import { enrichActivitiesWithImages } from "@/lib/services/imageService";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getCityConfig, isWithinCityBounds } from "@/lib/data/cityConfig";
 import type { SearchResult, BoundingBox } from "@/types/route-optimization";
 import { tomtomRoutingService } from "@/lib/services/tomtomRouting";
@@ -13,6 +14,40 @@ import type { WeatherCondition } from "../types/types";
 import type { SearchContext } from "@/lib/search";
 import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itineraryData";
 import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
+import type { StaticImageData } from "next/image";
+
+type ProcessedResult = {
+  activity_id: string;
+  similarity: number;
+  metadata: {
+    title: string;
+    desc: string;
+    tags: string[];
+    time: string;
+    image: string | StaticImageData;
+    peakHours: string | undefined;
+    lat?: number;
+    lon?: number;
+  };
+  relevanceScore: number;
+  reasoning: string[];
+  confidence: number;
+  searchScores: { vector: number; semantic: number; fuzzy: number; contextual: number; temporal: number; diversity: number };
+  interestMatch?: boolean;
+  weatherMatch?: boolean;
+  isCurrentlyPeak?: boolean;
+  searchMethod?: string;
+  vectorScore?: number;
+  semanticScore?: number;
+  confidenceLevel?: number;
+};
+
+type EffectiveItinerary = {
+  title: string;
+  subtitle: string;
+  items: Array<{ period: string; activities: Array<Activity & { trafficAnalysis?: unknown; combinedTrafficScore?: number; relevanceScore?: number }> }>;
+  searchMetadata?: { searchMethod: string; totalResults: number; processingTime: number; allowedActivities?: Array<{ title: string; [k: string]: unknown }> };
+} | null;
 
 // Initialize unified intelligent search engine
 const intelligentSearchEngine = new IntelligentSearchEngine();
@@ -22,11 +57,11 @@ export async function findAndScoreActivities(
   interests: string[], 
   weatherType: WeatherCondition, 
   durationDays: number | null, 
-  model: any,
+  model: unknown,
   trafficAware: boolean = true,
   cityId: string = "baguio"
 ) {
-    let effectiveSampleItinerary: any = null;
+    let effectiveSampleItinerary: EffectiveItinerary = null;
     
     try {
         // Create search context for unified intelligent search
@@ -54,7 +89,7 @@ export async function findAndScoreActivities(
             
             // Generate AI sub-queries to expand search coverage
             const subqueries = await proposeSubqueries({
-                model,
+                model: model as unknown as ReturnType<GoogleGenerativeAI["getGenerativeModel"]>,
                 userPrompt: prompt,
                 interests: Array.isArray(interests) ? interests : undefined,
                 weatherType,
@@ -126,7 +161,7 @@ export async function findAndScoreActivities(
         let similar = processedResults;
 
         if (interestSet.size === 0) {
-            const mergedByTitle = new Map<string, any>();
+            const mergedByTitle = new Map<string, ProcessedResult>();
             similar.forEach(item => mergedByTitle.set(item.activity_id.toLowerCase(), item));
 
             databaseActivities.forEach((activity: Activity) => {
@@ -165,7 +200,7 @@ export async function findAndScoreActivities(
         // Apply unified intelligent filtering and optimization
         const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as unknown as Record<string, string[]>)[weatherType] ?? [];
 
-        const scoredSimilar = similar.map((s: any) => {
+        const scoredSimilar = similar.map((s: ProcessedResult) => {
             const tags = Array.isArray(s.metadata?.tags) ? s.metadata.tags : [];
             const interestMatch = interestSet.size === 0 || tags.some((t: string) => interestSet.has(t));
             const weatherMatch = allowedWeatherTags.length === 0 || tags.some((t: string) => allowedWeatherTags.includes(t));
@@ -258,15 +293,15 @@ export async function findAndScoreActivities(
             try {
               const { supabaseAdmin } = await import("@/lib/data/supabaseAdmin");
               if (supabaseAdmin && tomResults.length > 0) {
-                const rows = tomResults.map((r: any) => ({
+                const rows = tomResults.map((r: SearchResult) => ({
                   id: `${cityId}:${r.id ?? r.name}`,
                   city_id: cityId,
                   title: r.name,
                   lat: r.coordinates.lat,
                   lon: r.coordinates.lng,
-                  category: (r as any).category ?? null,
+                  category: r.category ?? null,
                   source: "tomtom" as const,
-                  metadata: { address: (r as any).address, category: (r as any).category },
+                  metadata: { address: r.address, category: r.category },
                   updated_at: new Date().toISOString(),
                 }));
                 const { error } = await supabaseAdmin.from("places").upsert(rows, { onConflict: "id" });
@@ -351,8 +386,8 @@ export async function findAndScoreActivities(
         }
 
         if (filteredSimilar.length > 0) {
-            let finalActivities: any[];
-            let sanitisedAllowedActivities: any[];
+            let finalActivities: Array<Activity & { trafficAnalysis?: unknown; combinedTrafficScore?: number; relevanceScore?: number; isCurrentlyPeak?: boolean }>;
+            let sanitisedAllowedActivities: Array<{ image: string | StaticImageData; title: string; time: string; desc: string; tags: string[]; peakHours?: string; trafficAnalysis?: unknown }>;
 
             if (trafficAware) {
                 // Apply traffic-aware activity search with detailed logging
@@ -398,7 +433,7 @@ export async function findAndScoreActivities(
                 finalActivities = trafficFilteredActivities.slice(0, Math.min(20, trafficFilteredActivities.length));
                 // Enrich with accurate per-location images (Tier 0 curated for Baguio, Tier 1-3 for PH/world)
                 try {
-                    finalActivities = await enrichActivitiesWithImages(finalActivities as any, { concurrency: 5 }) as any
+                    finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5 }) as unknown as typeof finalActivities
                 } catch (e) {
                     console.warn("Image enrichment failed, keeping original images", e)
                 }
@@ -430,11 +465,11 @@ export async function findAndScoreActivities(
 
                 // Enrich fast-mode images as well (curated stays, new places get fetched)
                 try {
-                    finalActivities = await enrichActivitiesWithImages(finalActivities as any, { concurrency: 5 }) as any
+                    finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5 }) as unknown as typeof finalActivities
                 } catch (e) {
                     console.warn("Image enrichment (fast mode) failed", e)
                 }
-                sanitisedAllowedActivities = finalActivities.map((activity: any) => ({
+                sanitisedAllowedActivities = finalActivities.map((activity: Activity & { trafficAnalysis?: unknown }) => ({
                     image: activity.image,
                     title: activity.title,
                     time: activity.time,
@@ -454,7 +489,7 @@ export async function findAndScoreActivities(
 
             const buckets = groupByPeriod();
 
-            const normalizeActivity = (activity: any) => ({
+            const normalizeActivity = (activity: Activity & { trafficAnalysis?: unknown; trafficRecommendation?: unknown; combinedTrafficScore?: number; relevanceScore?: number; isCurrentlyPeak?: boolean }) => ({
                 image: activity.image || '',
                 title: activity.title,
                 time: activity.time || '',
@@ -488,7 +523,7 @@ export async function findAndScoreActivities(
                 buckets[periodKey].push(normalized);
             });
 
-            const items: Array<{ period: string; activities: any[] }> = [];
+            const items: Array<{ period: string; activities: Array<Activity & { trafficAnalysis?: unknown }> }> = [];
 
             (['Morning', 'Afternoon', 'Evening'] as const).forEach(period => {
                 if (buckets[period].length > 0) {
