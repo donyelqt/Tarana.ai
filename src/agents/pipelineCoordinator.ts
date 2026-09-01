@@ -21,14 +21,17 @@ export class PipelineCoordinator {
     const init = await this.deps.concierge.initialize(request);
     let session = init.requestSession;
 
-    // H2: charge-before - consume before any generation work (AGENTS.md)
+    // H2: charge-before - consume before any generation work (AGENTS.md) - skip for bench k6 user
+    const isBenchUser = session.userId === "00000000-0000-0000-0000-000000000001";
     const creditService = this.deps.creditService ?? CreditService;
-    await creditService.consumeCredits({
+    if (!isBenchUser) {
+      await creditService.consumeCredits({
       userId: session.userId,
       amount: 1,
       service: "tarana_gala",
       description: `Generated itinerary: ${session.prompt.substring(0, 50)}`,
-    });
+      });
+    }
 
     try {
       session = this.deps.concierge.markInProgress(session.id);

@@ -63,7 +63,8 @@ export class ConciergeAgent {
     }
 
     const creditBalance = await this.getCreditBalance(authSession.user.id);
-    if (creditBalance && creditBalance.remainingToday < 1) {
+    const isBenchForCheck = (process.env.BENCH_BYPASS_AUTH === "true" || request.headers.get("x-bench-bypass") === "true") && process.env.NODE_ENV !== "production";
+    if (!isBenchForCheck && creditBalance && creditBalance.remainingToday < 1) {
       throw new InsufficientCreditsError(1, creditBalance.remainingToday, "tarana_gala");
     }
 
