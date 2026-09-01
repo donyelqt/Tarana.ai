@@ -1,5 +1,5 @@
 # Tarana Gala — PH → World Scale Plan
-**Status:** REFINED 2026-09-01 (stress test against the 2026-08-25 draft surfaced 12 scope findings + 25 correctness findings; this revision is the implementation-ready spec. Slices 0–1 shipped 2026-08-25 per `git log 2040982..1ed9406`. Slices 2–6 re-scoped below. **H1 (zero-result refund) SHIPPED 2026-09-01** per `.kilo/plans/1788111204646-phase-0-hotfixes.md`; H2 + H3 still out of scope as separate hotfix PRs.)
+**Status:** REFINED 2026-09-01 (stress test against the 2026-08-25 draft surfaced 12 scope findings + 25 correctness findings; this revision is the implementation-ready spec. Slices 0–1 shipped 2026-08-25 per `git log 2040982..1ed9406`. Slices 2–6 re-scoped below. **H1 (zero-result refund) SHIPPED 2026-09-01** per `/plans/1788111204646-phase-0-hotfixes.md`; H2 + H3 still out of scope as separate hotfix PRs.)
 **Date:** 2026-09-01 (re-issued) | **Original draft:** 2026-08-23 | **Branch:** local only (MCP gitignored) | **Mode:** Build
 **Scope:** Keep UI/function/purpose identical, make arch fast + scalable beyond Baguio
 
