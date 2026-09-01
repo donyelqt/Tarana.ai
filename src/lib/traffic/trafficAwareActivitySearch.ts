@@ -250,58 +250,6 @@ class TrafficAwareActivitySearchService {
     };
   }
 
-  /**
-   * Get traffic recommendations for multiple activities
-   */
-  async getTrafficRecommendations(
-    activities: Activity[],
-    options: TrafficAwareSearchOptions = {
-      prioritizeTraffic: true,
-      avoidCrowds: false, // Allow more variety
-      flexibleTiming: true,
-      maxTrafficLevel: 'MODERATE' // Allow VERY_LOW, LOW and MODERATE traffic
-    }
-  ): Promise<{
-    recommended: TrafficEnhancedActivity[];
-    avoid: TrafficEnhancedActivity[];
-    summary: {
-      totalAnalyzed: number;
-      recommendedCount: number;
-      avoidCount: number;
-      averageTrafficScore: number;
-    };
-  }> {
-    console.log(`🎯 Traffic Recommendations: Analyzing ${activities.length} activities`);
-
-    const enhanced = await this.enhanceActivitiesWithTraffic(activities, options);
-    const filtered = this.filterAndSortByTraffic(enhanced, options);
-
-    // Enhanced strict filtering - only VISIT_NOW activities allowed
-    const recommended = filtered.filter(a => 
-      a.trafficRecommendation === 'VISIT_NOW'
-    );
-
-    const avoid = enhanced.filter(a => 
-      a.trafficRecommendation !== 'VISIT_NOW'
-    );
-
-    const averageTrafficScore = enhanced.reduce((sum, a) => sum + a.combinedTrafficScore, 0) / enhanced.length;
-
-    const summary = {
-      totalAnalyzed: enhanced.length,
-      recommendedCount: recommended.length,
-      avoidCount: avoid.length,
-      averageTrafficScore: Math.round(averageTrafficScore)
-    };
-
-    console.log(`📊 Traffic Recommendations: Summary:`, summary);
-
-    return {
-      recommended,
-      avoid,
-      summary
-    };
-  }
 }
 
 // Export singleton instance
@@ -318,13 +266,4 @@ export function createDefaultTrafficOptions(): TrafficAwareSearchOptions {
     maxTrafficLevel: 'MODERATE', // Allow VERY_LOW, LOW and MODERATE traffic
     weatherCondition: undefined
   };
-}
-
-/**
- * Utility function to check if an activity should be avoided based on traffic
- */
-export function shouldAvoidActivity(activity: TrafficEnhancedActivity): boolean {
-  return activity.trafficRecommendation === 'AVOID_NOW' || 
-         activity.crowdLevel === 'VERY_HIGH' ||
-         (activity.trafficAnalysis?.realTimeTraffic.trafficLevel === 'SEVERE');
 }
