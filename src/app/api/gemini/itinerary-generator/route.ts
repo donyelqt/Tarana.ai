@@ -11,6 +11,7 @@ import { findAndScoreActivities } from "./lib/activitySearch";
 import { generateItinerary, handleItineraryProcessing, parseAndCleanJson } from "./lib/responseHandler";
 import { ErrorHandler, ErrorType, ItineraryError } from "./lib/errorHandler";
 import { GuaranteedJsonEngine } from "./lib/guaranteedJsonEngine";
+import { isZeroActivityItinerary } from "./lib/zeroActivityItinerary";
 import type { WeatherCondition } from "./types/types";
 import { z } from "zod";
 import { PipelineCoordinator } from "@/agents/pipelineCoordinator";
@@ -72,6 +73,10 @@ async function consumeCredit(userId: string, prompt: string) {
         description: `Generated itinerary: ${prompt?.substring(0, 50) || "Itinerary generation"}`,
     });
 }
+
+// H1 hotfix (2026-09-01): detect zero-activity itineraries so we can refund the
+// credit on a happy-path zero result. Imported from ./lib/zeroActivityItinerary
+// so the unit test can exercise it without pulling in next/server.
 
 async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
     if (!API_KEY) {
@@ -370,6 +375,30 @@ export async function POST(req: NextRequest) {
             responseData = await getCachedItinerary(requestBody, cacheKeyBase);
         }
 
+
+        // H1 hotfix (2026-09-01): detect zero-activity itineraries after both
+        // cached and refresh paths and refund the credit on the happy-path zero.
+        // Runs on every POST() (not inside the cache wrapper) so it always fires,
+        // including on cache hits that return an empty result.
+        if (isZeroActivityItinerary(responseData?.text)) {
+            if (charged) {
+                try {
+                    await CreditService.refundCredits({
+                        userId,
+                        amount: 1,
+                        service: 'tarana_gala',
+                        description: `Refund: zero-activity itinerary ${userId}`,
+                    });
+                } catch {
+                    // best-effort; swallow refund errors
+                }
+            }
+            return NextResponse.json({
+                text: responseData?.text ?? "",
+                refunded: true,
+                reason: 'no_activities_matched',
+            }, { status: 200 });
+        }
 
         return NextResponse.json(responseData);
 
