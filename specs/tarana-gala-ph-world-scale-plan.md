@@ -281,7 +281,7 @@ This section is the load-bearing part of the 2026-09-01 refinement. It pins down
 ### 9.6 Pre-merge checklist (gates the implementation)
 
 1. **H1** ✅ **(zero-result refund) merged and tested 2026-09-01.** `4c807d8` helper at `lib/zeroActivityItinerary.ts`; check at `route.ts:383-401`; 10/10 unit tests pass at `__tests__/zeroResultRefund.test.ts`.
-2. **H2** ⏳ (multi-agent charge-before) — separate PR, out of scope for 2a–7 batch.
+2. **H2** ✅ **(multi-agent charge-before) merged 2026-09-02.** `251516f` consume before `pipelineCoordinator.handleRequest` via `CreditService.consumeCredits` in `pipelineCoordinator.ts`; `route.ts` no longer consumes after generation.
 3. **H3** ✅ **(cityId in prompt) merged and tested 2026-09-02.** `347f1b6` `contextBuilder.buildDetailedPrompt(..., cityId)` interpolates `${cityName}`; `cebu`+`Random` → prompt contains `Cebu` not `Baguio` (verified via tsx).
 4. `bench/k6-itinerary.js` ✅ exists `6821b90` with thresholds `p50<3500 p95<6000`; `bench/baseline.json` placeholder committed (fill after first `k6 run`).
 5. `supabase/migrations/20260901000000_create_places.sql` ✅ file-only `0bad05a` (37 curated Baguio); **not yet `supabase db push` to staging** — deferred until bench shows 429>1% (per principal call). `select count(*) from places where city_id='baguio'` expected 37 after push.
@@ -294,5 +294,5 @@ This section is the load-bearing part of the 2026-09-01 refinement. It pins down
 
 **Plan preserves UI/function/purpose, improves arch on every axis:** decoupled city, hybrid world search, accurate tiered images, deterministic traffic ranking, unified cache, polyline-only itinerary map. No web search, no hard traffic filter.
 
-**Next action (2026-09-02):** H1+H3+5b+6a+7 landed and pushed. Remaining per §6: H2 (multi-agent charge-before) + full 6 (port 5 consumers) + 8/8a (per-user cache + scoped clearAll) — all deferred as low-leverage at <20 concurrent. Next thin slice if continuing: `H2` or `8`. Spec is implement-ready through 7; re-approve §9 through H3/5b.
+**Next action (2026-09-02):** H1+H2+H3+5b+6a+7 landed and pushed (`251516f`). Remaining per §6: full 6 (port 5 consumers off `intelligentCache`) + 8/8a (per-user cache + scoped clearAll) — deferred as low-leverage at <20 concurrent. Next thin slice if continuing: `8` or full `6` with adapter. Spec is implement-ready through H2/H3/5b.
 
