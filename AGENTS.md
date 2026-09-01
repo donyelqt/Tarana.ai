@@ -1,6 +1,6 @@
 # AGENTS.md — tarana.ai
 
-Conventions for AI coding agents (Kilo / OpenCode). Read this before editing. Stay consistent with the established architecture.
+Conventions for AI coding agents. Read this before editing. Stay consistent with the established architecture.
 
 ## Stack
 - Next.js (App Router) + TypeScript + Tailwind/PostCSS. Primary app lives under src/app.
