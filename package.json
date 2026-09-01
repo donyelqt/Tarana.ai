@@ -16,7 +16,9 @@
     "clean": "rimraf .next node_modules/.cache",
     "clean:install": "rimraf .next node_modules/.cache && npm ci",
     "index-embeddings": "tsx -r dotenv/config scripts/indexSampleItinerary.ts",
-    "test": "jest"
+    "test": "jest",
+    "bench": "k6 run --env BASE_URL=http://localhost:3000 bench/k6-itinerary.js",
+    "bench:staging": "k6 run --env BASE_URL=https://tarana-ai.vercel.app bench/k6-itinerary.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
