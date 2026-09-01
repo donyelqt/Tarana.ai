@@ -1,6 +1,6 @@
 # Tarana Gala — PH → World Scale Plan
-**Status:** REFINED 2026-09-01 (stress test against the 2026-08-25 draft surfaced 12 scope findings + 25 correctness findings; this revision is the implementation-ready spec. Slices 0–1 shipped 2026-08-25 per `git log 2040982..1ed9406`. Slices 2–6 re-scoped below. **H1 (zero-result refund) SHIPPED 2026-09-01** per `/plans/1788111204646-phase-0-hotfixes.md`; H2 + H3 still out of scope as separate hotfix PRs.)
-**Date:** 2026-09-02 (re-issued) | **Original draft:** 2026-08-23 | **Branch:** `main` (pushed) | **Mode:** Build
+**Status:** IMPLEMENTING 2026-09-02 (Slices 0,1,2,2a,3,4,4a,5,5a,6a,7, H1, H2, H3, 5b shipped per `git log c8a9e7f..cd9931a` on `main` → `origin/main@cd9931a`. Remaining: full 6 + 8/8a per §6. **H1 SHIPPED 2026-09-01** `4c807d8` 10/10, **H2 SHIPPED 2026-09-02** `251516f+cd9931a` (injectable, 2/2 tests), **H3 SHIPPED 2026-09-02** `347f1b6`, **5b SHIPPED 59c06e6**, **migration 20260901000000_create_places.sql file-only @0bad05a** (not yet `supabase db push`); bench `bench/k6-itinerary.js` @6821b90)
+**Date:** 2026-09-02 (re-issued) | **Original draft:** 2026-08-23 | **Branch:** `main` (pushed `origin/main@cd9931a`) | **Mode:** Build
 **Scope:** Keep UI/function/purpose identical, make arch fast + scalable beyond Baguio
 
 ---
