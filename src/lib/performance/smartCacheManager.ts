@@ -546,6 +546,30 @@ export class SmartCacheManager {
   }
 
   /**
+   * Clear by key prefix (8a: scoped clear to avoid thundering herd)
+   * e.g. clearByPrefix(`optimized:${userId}:`) clears only that user's entries
+   */
+  clearByPrefix(prefix: string): number {
+    let cleared = 0;
+    for (const cache of [this.hotCache, this.warmCache, this.coldCache] as const) {
+      for (const key of Array.from(cache.keys())) {
+        if (key.startsWith(prefix)) {
+          cache.delete(key as string);
+          cleared++;
+        }
+      }
+    }
+    if (cleared > 0) {
+      this.stats.totalEntries = this.hotCache.size + this.warmCache.size + this.coldCache.size;
+    }
+    return cleared;
+  }
+
+  clearForUser(userId: string): number {
+    return this.clearByPrefix(`optimized:${userId}:`) + this.clearByPrefix(`${userId}:`);
+  }
+
+  /**
    * Optimize cache performance
    */
   optimize(): void {
