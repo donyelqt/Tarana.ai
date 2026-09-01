@@ -1,6 +1,6 @@
 # Tarana Gala — PH → World Scale Plan
-**Status:** IMPLEMENTING 2026-09-02 (Slices 0,1,2,2a,3,4,4a,5,5a,6,6a,7,8,8a, H1, H2, H3, 5b shipped per `git log c8a9e7f..fe6f3f9` on `main` → `origin/main@fe6f3f9`. **H1 SHIPPED 2026-09-01** `4c807d8` 10/10, **H2 SHIPPED 2026-09-02** `251516f+cd9931a` (injectable, 2/2 tests), **H3 SHIPPED 2026-09-02** `347f1b6`, **5b SHIPPED 59c06e6**, **6 SHIPPED f064353** (911 deletions), **8 SHIPPED fe6f3f9** (2/2 per-user), **8a SHIPPED bd13b92**, **migration 20260901000000_create_places.sql file-only @0bad05a** (not yet `supabase db push`); bench `bench/k6-itinerary.js` @6821b90)
-**Date:** 2026-09-02 (re-issued) | **Original draft:** 2026-08-23 | **Branch:** `main` (pushed `origin/main@cd9931a`) | **Mode:** Build
+**Status:** IMPLEMENTING 2026-09-02 (Slices 0,1,2,2a,3,4,4a,5,5a,6,6a,7,8,8a, H1, H2, H3, 5b shipped per `git log c8a9e7f..1d83c15` on `main` → `origin/main@1d83c15`. **H1 SHIPPED 2026-09-01** `4c807d8` 10/10, **H2 SHIPPED 2026-09-02** `251516f+cd9931a` (injectable, 2/2 tests), **H3 SHIPPED 2026-09-02** `347f1b6`, **5b SHIPPED 59c06e6**, **6 SHIPPED f064353** (911 deletions), **8 SHIPPED fe6f3f9** (2/2 per-user), **8a SHIPPED bd13b92**, **fixes 7bc6bf8** (strict-city `lng` vs `lon` crash → Manila 500→200) + **1d83c15** (barrel export for deleted `intelligentSearchIntegration`), **migration 20260901000000_create_places.sql file-only @0bad05a** (not yet `supabase db push`); bench `bench/k6-itinerary.js` @6821b90)
+**Date:** 2026-09-02 (re-issued) | **Original draft:** 2026-08-23 | **Branch:** `main` (pushed `origin/main@1d83c15`) | **Mode:** Build
 **Scope:** Keep UI/function/purpose identical, make arch fast + scalable beyond Baguio
 
 ---
