@@ -3,6 +3,7 @@ import { ConciergeAgent } from "./conciergeAgent";
 import { ContextScoutAgent } from "./contextScoutAgent";
 import { RetrievalStrategistAgent } from "./retrievalStrategistAgent";
 import { ItineraryComposerAgent } from "./itineraryComposerAgent";
+import { CreditService } from "@/lib/referral-system";
 import type { RequestSession } from "@/lib/agentic/sessionStore";
 
 export interface PipelineCoordinatorDeps {
@@ -18,6 +19,14 @@ export class PipelineCoordinator {
   async handleRequest(request: NextRequest): Promise<RequestSession> {
     const init = await this.deps.concierge.initialize(request);
     let session = init.requestSession;
+
+    // H2: charge-before - consume before any generation work (AGENTS.md)
+    await CreditService.consumeCredits({
+      userId: session.userId,
+      amount: 1,
+      service: "tarana_gala",
+      description: `Generated itinerary: ${session.prompt.substring(0, 50)}`,
+    });
 
     try {
       session = this.deps.concierge.markInProgress(session.id);

@@ -93,7 +93,7 @@ async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
             throw new Error("Itinerary generation returned no result");
         }
 
-        await consumeCredit(session.userId, session.prompt);
+        // H2: charge-before moved into pipelineCoordinator.handleRequest (before generation)
 
         const responsePayload = { text: JSON.stringify(session.itinerary.json) };
         return NextResponse.json(responsePayload);
