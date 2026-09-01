@@ -42,7 +42,7 @@ export default function () {
   });
 
   const res = http.post(`${BASE_URL}/api/gemini/itinerary-generator`, body, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-bench-bypass": "true" },
   });
 
   const ok = check(res, {

@@ -31,9 +31,9 @@ export class ConciergeAgent {
   constructor(private readonly deps: ConciergeDependencies) {}
 
   async initialize(request: NextRequest): Promise<ConciergeInitializeResult> {
-    console.log("[concierge] BENCH check", JSON.stringify({ bench: process.env.BENCH_BYPASS_AUTH, header: request.headers.get("x-bench-bypass"), nodeEnv: process.env.NODE_ENV }));
+    console.log("[concierge] BENCH check", JSON.stringify({ bench: process.env.BENCH_BYPASS_AUTH?.trim(), header: request.headers.get("x-bench-bypass"), nodeEnv: process.env.NODE_ENV }));
     // Bench bypass for k6 (non-prod only) - allows k6 without NextAuth session
-    if ((process.env.BENCH_BYPASS_AUTH === "true" || request.headers.get("x-bench-bypass") === "true") && process.env.NODE_ENV !== "production") {
+    if ((process.env.BENCH_BYPASS_AUTH?.trim() === "true" || request.headers.get("x-bench-bypass") === "true") && process.env.NODE_ENV !== "production") {
       const rawBody = await request.clone().json().catch(() => ({} as any));
       const parsed = this.deps.requestSchema.safeParse(rawBody);
       if (!parsed.success) throw this.formatSchemaError(parsed.error);
@@ -63,7 +63,7 @@ export class ConciergeAgent {
     }
 
     const creditBalance = await this.getCreditBalance(authSession.user.id);
-    const isBenchForCheck = (process.env.BENCH_BYPASS_AUTH === "true" || request.headers.get("x-bench-bypass") === "true") && process.env.NODE_ENV !== "production";
+    const isBenchForCheck = (process.env.BENCH_BYPASS_AUTH?.trim() === "true" || request.headers.get("x-bench-bypass") === "true") && process.env.NODE_ENV !== "production";
     if (!isBenchForCheck && creditBalance && creditBalance.remainingToday < 1) {
       throw new InsufficientCreditsError(1, creditBalance.remainingToday, "tarana_gala");
     }
