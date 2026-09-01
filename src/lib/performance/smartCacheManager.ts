@@ -663,6 +663,14 @@ export class SmartCacheManager {
       memoryUsage: memoryUsagePercent
     };
   }
+  // Compat alias for intelligentCache port (full 6) — intelligent used getCacheStats/warmupCache
+  getCacheStats(): any {
+    return this.getStats();
+  }
+
+  warmupCache(..._args: any[]): Promise<void> {
+    return (this as any).ensureWarmup?.(..._args) ?? Promise.resolve();
+  }
 }
 
 // Export singleton instance
