@@ -1,8 +1,3 @@
-/**
- * City Config — Single source of truth for city-specific geography
- * Abstracts Baguio hardcodes to support PH/world scale without code duplication
- */
-
 export type CityId = "baguio" | "cebu" | "manila" | "davao" | "ph-wide" | "world"
 
 export interface CityBounds {
@@ -17,9 +12,10 @@ export interface CityConfig {
   name: string
   center: { lat: number; lon: number }
   bounds: CityBounds
-  timezone: string // IANA e.g. Asia/Manila
-  countrySet: string // TomTom countrySet, e.g. "PH"
-  defaultRadiusMeters: number // TomTom search fallback radius
+  timezone: string
+  countrySet: string
+  language: string
+  defaultRadiusMeters: number
 }
 
 export const CITY_CONFIGS: Record<CityId, CityConfig> = {
@@ -30,6 +26,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     bounds: { north: 16.47, south: 16.35, east: 120.65, west: 120.55 },
     timezone: "Asia/Manila",
     countrySet: "PH",
+    language: "en-US",
     defaultRadiusMeters: 50000,
   },
   cebu: {
@@ -39,6 +36,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     bounds: { north: 10.45, south: 10.18, east: 124.05, west: 123.75 },
     timezone: "Asia/Manila",
     countrySet: "PH",
+    language: "en-US",
     defaultRadiusMeters: 50000,
   },
   manila: {
@@ -48,6 +46,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     bounds: { north: 14.8, south: 14.4, east: 121.15, west: 120.85 },
     timezone: "Asia/Manila",
     countrySet: "PH",
+    language: "en-US",
     defaultRadiusMeters: 50000,
   },
   davao: {
@@ -57,6 +56,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     bounds: { north: 7.35, south: 7.05, east: 125.6, west: 125.3 },
     timezone: "Asia/Manila",
     countrySet: "PH",
+    language: "en-US",
     defaultRadiusMeters: 50000,
   },
   "ph-wide": {
@@ -66,6 +66,7 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     bounds: { north: 21.0, south: 4.5, east: 127.0, west: 116.0 },
     timezone: "Asia/Manila",
     countrySet: "PH",
+    language: "en-US",
     defaultRadiusMeters: 100000,
   },
   world: {
@@ -74,7 +75,8 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     center: { lat: 0, lon: 0 },
     bounds: { north: 85, south: -85, east: 180, west: -180 },
     timezone: "UTC",
-    countrySet: "", // empty = global TomTom search
+    countrySet: "",
+    language: "en-US",
     defaultRadiusMeters: 100000,
   },
 }
@@ -104,4 +106,8 @@ export function getCityTime(cityId: string = "baguio"): Date {
 
 export function getCityTimezone(cityId: string = "baguio"): string {
   return getCityConfig(cityId).timezone
+}
+
+export function getCityLanguage(cityId: string = "baguio"): string {
+  return getCityConfig(cityId).language
 }

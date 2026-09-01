@@ -313,7 +313,7 @@ class TomTomRoutingService {
   /**
    * Search locations with autocomplete
    */
-  async searchLocations(query: string, bounds?: BoundingBox, referer?: string): Promise<SearchResult[]> {
+  async searchLocations(query: string, bounds?: BoundingBox, referer?: string, options?: { countrySet?: string; language?: string }): Promise<SearchResult[]> {
     console.log('🔍 TomTom: Searching for locations:', query);
 
     if (!this.config.apiKey || !query.trim()) {
@@ -321,7 +321,9 @@ class TomTomRoutingService {
     }
 
     try {
-      const cacheKey = `search_${query}_${bounds ? JSON.stringify(bounds) : 'global'}`;
+      const countrySet = options?.countrySet ?? 'PH'
+      const language = options?.language ?? 'en-US'
+      const cacheKey = `search_${query}_${bounds ? JSON.stringify(bounds) : 'global'}_${countrySet}_${language}`;
       const cached = this.cache.get(cacheKey);
       
       if (cached && Date.now() < cached.expiry) {
@@ -332,9 +334,9 @@ class TomTomRoutingService {
         key: this.config.apiKey,
         query: query.trim(),
         limit: '10',
-        countrySet: 'PH', // Focus on Philippines
-        language: 'en-US'
+        language,
       });
+      if (countrySet) params.set('countrySet', countrySet);
 
       // Add bounds if provided
       if (bounds) {

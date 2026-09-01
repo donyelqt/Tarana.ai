@@ -229,7 +229,7 @@ export async function findAndScoreActivities(
             for (const q of queryCandidates) {
               if (tomResults.length >= 12) break
               try {
-                const batch = await tomtomRoutingService.searchLocations(q, bounds as any)
+                const batch = await tomtomRoutingService.searchLocations(q, bounds as any, undefined, { countrySet: city.countrySet, language: city.language })
                 for (const r of batch) {
                   const key = r.name.toLowerCase().trim()
                   if (!seenTitles.has(key)) { seenTitles.add(key); tomResults.push(r) }
@@ -280,7 +280,7 @@ export async function findAndScoreActivities(
               topLeft: { lat: city.bounds.north, lng: city.bounds.west },
               bottomRight: { lat: city.bounds.south, lng: city.bounds.east },
             }
-            const tomResults = await tomtomRoutingService.searchLocations(prompt, bounds as any)
+            const tomResults = await tomtomRoutingService.searchLocations(prompt, bounds as any, undefined, { countrySet: city.countrySet, language: city.language })
             const seen = new Set(filteredSimilar.map(s => s.metadata.title.toLowerCase()))
             const hybrid = tomResults.slice(0, 10).map(r => ({
               activity_id: r.name,
