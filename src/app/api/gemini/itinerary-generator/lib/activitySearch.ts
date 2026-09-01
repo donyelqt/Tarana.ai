@@ -7,6 +7,7 @@ import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/t
 import { IntelligentSearchEngine } from "@/lib/search";
 import { enrichActivitiesWithImages } from "@/lib/services/imageService";
 import { getCityConfig, isWithinCityBounds } from "@/lib/data/cityConfig";
+import type { SearchResult, BoundingBox } from "@/types/route-optimization";
 import { tomtomRoutingService } from "@/lib/services/tomtomRouting";
 import type { WeatherCondition } from "../types/types";
 import type { SearchContext } from "@/lib/search";
@@ -162,7 +163,7 @@ export async function findAndScoreActivities(
         }
 
         // Apply unified intelligent filtering and optimization
-        const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as any)[weatherType] ?? [];
+        const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as unknown as Record<string, string[]>)[weatherType] ?? [];
 
         const scoredSimilar = similar.map((s: any) => {
             const tags = Array.isArray(s.metadata?.tags) ? s.metadata.tags : [];
@@ -225,13 +226,13 @@ export async function findAndScoreActivities(
                 ]
               : [genericQuery]
             const seenTitles = new Set<string>()
-            let tomResults: Array<{ name: string;[k: string]: any }> = []
+            let tomResults: SearchResult[] = []
             for (const q of queryCandidates) {
               if (tomResults.length >= 12) break
               try {
-                const batch = await tomtomRoutingService.searchLocations(q, bounds as any, undefined, { countrySet: city.countrySet, language: city.language })
+                const batch = await tomtomRoutingService.searchLocations(q, bounds as BoundingBox, undefined, { countrySet: city.countrySet, language: city.language })
                 for (const r of batch) {
-                  const _c = (r as any).coordinates ?? (r as any).position; const _lat = _c?.lat; const _lng = _c?.lng ?? _c?.lon; const key = (_lat != null && _lng != null) ? `${Number(_lat).toFixed(3)},${Number(_lng).toFixed(3)}` : r.name.toLowerCase().trim()
+                  const key = `${r.coordinates.lat.toFixed(3)},${r.coordinates.lng.toFixed(3)}`
                   if (!seenTitles.has(key)) { seenTitles.add(key); tomResults.push(r) }
                 }
                 console.log(`🌍 STRICT CITY: query "${q}" → ${batch.length} results (cumulative ${tomResults.length})`)
@@ -243,8 +244,8 @@ export async function findAndScoreActivities(
             {
               const beforeBounds = tomResults.length;
               const filteredByBounds = tomResults.filter(r => {
-                const lat = (r as any).coordinates?.lat ?? (r as any).position?.lat;
-                const lon = (r as any).coordinates?.lng ?? (r as any).coordinates?.lon ?? (r as any).position?.lon;
+                const lat = r.coordinates.lat;
+                const lon = r.coordinates.lng;
                 if (lat == null || lon == null) return false;
                 return isWithinCityBounds(lat, lon, cityId);
               });
@@ -261,14 +262,14 @@ export async function findAndScoreActivities(
                   id: `${cityId}:${r.id ?? r.name}`,
                   city_id: cityId,
                   title: r.name,
-                  lat: (r as any).coordinates?.lat ?? (r as any).position?.lat,
-                  lon: (r as any).coordinates?.lng ?? (r as any).coordinates?.lon ?? (r as any).position?.lon,
+                  lat: r.coordinates.lat,
+                  lon: r.coordinates.lng,
                   category: (r as any).category ?? null,
                   source: "tomtom" as const,
                   metadata: { address: (r as any).address, category: (r as any).category },
                   updated_at: new Date().toISOString(),
                 }));
-                const { error } = await (supabaseAdmin as any).from("places").upsert(rows, { onConflict: "id" });
+                const { error } = await supabaseAdmin.from("places").upsert(rows, { onConflict: "id" });
                 if (error) console.warn("places upsert warning", error.message);
               }
             } catch (e) {
@@ -316,7 +317,7 @@ export async function findAndScoreActivities(
               topLeft: { lat: city.bounds.north, lng: city.bounds.west },
               bottomRight: { lat: city.bounds.south, lng: city.bounds.east },
             }
-            const tomResults = await tomtomRoutingService.searchLocations(prompt, bounds as any, undefined, { countrySet: city.countrySet, language: city.language })
+            const tomResults = await tomtomRoutingService.searchLocations(prompt, bounds as BoundingBox, undefined, { countrySet: city.countrySet, language: city.language })
             const seen = new Set(filteredSimilar.map(s => s.metadata.title.toLowerCase()))
             const hybrid = tomResults.slice(0, 10).map(r => ({
               activity_id: r.name,
@@ -445,10 +446,10 @@ export async function findAndScoreActivities(
 
             // Group activities by time period
             const groupByPeriod = () => ({
-                Morning: [] as any[],
-                Afternoon: [] as any[],
-                Evening: [] as any[],
-                Flexible: [] as any[]
+                Morning: [] as Activity[],
+                Afternoon: [] as Activity[],
+                Evening: [] as Activity[],
+                Flexible: [] as Activity[]
             });
 
             const buckets = groupByPeriod();
@@ -570,7 +571,7 @@ export async function findAndScoreActivities(
                     processingTime: Date.now(),
                     allowedActivities: sanitisedAllowedActivities
                 }
-            } as any;
+            } as unknown as typeof effectiveSampleItinerary;
         }
     } catch (searchErr) {
         console.warn("Intelligent search failed, falling back to basic search", searchErr);
