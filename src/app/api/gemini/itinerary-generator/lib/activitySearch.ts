@@ -6,7 +6,7 @@ import { WEATHER_TAG_FILTERS } from "./config";
 import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/traffic";
 import { IntelligentSearchEngine } from "@/lib/search";
 import { enrichActivitiesWithImages } from "@/lib/services/imageService";
-import { getCityConfig } from "@/lib/data/cityConfig";
+import { getCityConfig, isWithinCityBounds } from "@/lib/data/cityConfig";
 import { tomtomRoutingService } from "@/lib/services/tomtomRouting";
 import type { WeatherCondition } from "../types/types";
 import type { SearchContext } from "@/lib/search";
@@ -225,7 +225,7 @@ export async function findAndScoreActivities(
                 ]
               : [genericQuery]
             const seenTitles = new Set<string>()
-            const tomResults: Array<{ name: string;[k: string]: any }> = []
+            let tomResults: Array<{ name: string;[k: string]: any }> = []
             for (const q of queryCandidates) {
               if (tomResults.length >= 12) break
               try {
@@ -239,6 +239,21 @@ export async function findAndScoreActivities(
                 console.warn(`STRICT CITY query "${q}" failed`, qErr)
               }
             }
+            // Bounds post-filter (spec 9.1 #7): TomTom bbox is bias not hard filter
+            {
+              const beforeBounds = tomResults.length;
+              const filteredByBounds = tomResults.filter(r => {
+                const lat = (r as any).coordinates?.lat;
+                const lon = (r as any).coordinates?.lon;
+                if (lat == null || lon == null) return false;
+                return isWithinCityBounds(lat, lon, cityId);
+              });
+              if (beforeBounds !== filteredByBounds.length) {
+                console.log(`STRICT CITY: bounds filter removed ${beforeBounds - filteredByBounds.length} out-of-bounds for ${cityId}`);
+              }
+              tomResults = filteredByBounds;
+            }
+
             if (tomResults.length > 0) {
               filteredSimilar = tomResults.slice(0, 20).map(r => ({
                 activity_id: r.name,
