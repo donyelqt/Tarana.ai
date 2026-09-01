@@ -4,7 +4,7 @@ import { getCityTime } from "@/lib/traffic/peakHours";
 
 import { WEATHER_TAG_FILTERS } from "./config";
 import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/traffic";
-import { IntelligentSearchEngine } from "@/lib/search";
+import { IntelligentSearchEngine, type IntelligentSearchResult } from "@/lib/search";
 import { enrichActivitiesWithImages } from "@/lib/services/imageService";
 import { getCityConfig, isWithinCityBounds } from "@/lib/data/cityConfig";
 import type { SearchResult, BoundingBox } from "@/types/route-optimization";
@@ -65,7 +65,7 @@ export async function findAndScoreActivities(
             });
 
             // Run additional intelligent searches with sub-queries
-            const expandedResults: any[] = [];
+            const expandedResults: IntelligentSearchResult[] = [];
             for (const subquery of subqueries) {
                 const subResults = await intelligentSearchEngine.search(subquery, searchContext);
                 expandedResults.push(...subResults);
@@ -91,7 +91,7 @@ export async function findAndScoreActivities(
 
         // Process unified intelligent search results - only use activities that exist in the database
         const databaseActivities = sampleItineraryCombined.items[0].activities;
-        const databaseTitles = new Set(databaseActivities.map((act: any) => act.title.toLowerCase()));
+        const databaseTitles = new Set(databaseActivities.map((act: Activity) => act.title.toLowerCase()));
         
         const processedResults = finalResults
             .filter(result => databaseTitles.has(result.activity.title.toLowerCase()))

@@ -668,6 +668,14 @@ export class SmartCacheManager {
     return this.getStats();
   }
 
+  cacheEmbedding(key: string, embedding: number[]): void {
+    this.set(`emb:${key}`, embedding, 60 * 60 * 1000);
+  }
+
+  getCachedEmbedding(key: string): number[] | null {
+    return this.get<number[]>(`emb:${key}`);
+  }
+
   warmupCache(..._args: any[]): Promise<void> {
     return (this as any).ensureWarmup?.(..._args) ?? Promise.resolve();
   }
