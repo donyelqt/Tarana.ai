@@ -538,7 +538,7 @@ class TomTomRoutingService {
     return headers;
   }
 
-  private async makeRequest(url: string, params: Record<string, string>, referer?: string): Promise<Response> {
+  private async makeRequest(url: string, params: Record<string, string>, referer?: string, attempt = 0): Promise<Response> {
     const fullUrl = `${url}?${new URLSearchParams(params).toString()}`;
     
     const controller = new AbortController();
@@ -551,6 +551,13 @@ class TomTomRoutingService {
       });
 
       clearTimeout(timeoutId);
+
+      if (!response.ok && response.status === 429 && attempt === 0) {
+        const retryAfter = response.headers.get("Retry-After");
+        const delayMs = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000 || 1200, 5000) : 1200;
+        await new Promise((r) => setTimeout(r, delayMs));
+        return this.makeRequest(url, params, referer, 1);
+      }
 
       if (!response.ok) {
         let detail = '';
