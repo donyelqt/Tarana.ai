@@ -225,13 +225,13 @@ export async function findAndScoreActivities(
                 ]
               : [genericQuery]
             const seenTitles = new Set<string>()
-            let tomResults: Array<{ name: string;[k: string]: any }> = []
+            const tomResults: Array<{ name: string;[k: string]: any }> = []
             for (const q of queryCandidates) {
               if (tomResults.length >= 12) break
               try {
                 const batch = await tomtomRoutingService.searchLocations(q, bounds as any, undefined, { countrySet: city.countrySet, language: city.language })
                 for (const r of batch) {
-                  const key = r.name.toLowerCase().trim()
+                  const key = (r as any).coordinates ? `${(r as any).coordinates.lat.toFixed(3)},${(r as any).coordinates.lon.toFixed(3)}` : r.name.toLowerCase().trim()
                   if (!seenTitles.has(key)) { seenTitles.add(key); tomResults.push(r) }
                 }
                 console.log(`🌍 STRICT CITY: query "${q}" → ${batch.length} results (cumulative ${tomResults.length})`)
