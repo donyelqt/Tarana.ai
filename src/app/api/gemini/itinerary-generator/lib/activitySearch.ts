@@ -231,7 +231,7 @@ export async function findAndScoreActivities(
               try {
                 const batch = await tomtomRoutingService.searchLocations(q, bounds as any, undefined, { countrySet: city.countrySet, language: city.language })
                 for (const r of batch) {
-                  const key = (r as any).coordinates ? `${(r as any).coordinates.lat.toFixed(3)},${(r as any).coordinates.lon.toFixed(3)}` : r.name.toLowerCase().trim()
+                  const _c = (r as any).coordinates ?? (r as any).position; const _lat = _c?.lat; const _lng = _c?.lng ?? _c?.lon; const key = (_lat != null && _lng != null) ? `${Number(_lat).toFixed(3)},${Number(_lng).toFixed(3)}` : r.name.toLowerCase().trim()
                   if (!seenTitles.has(key)) { seenTitles.add(key); tomResults.push(r) }
                 }
                 console.log(`🌍 STRICT CITY: query "${q}" → ${batch.length} results (cumulative ${tomResults.length})`)
@@ -243,8 +243,8 @@ export async function findAndScoreActivities(
             {
               const beforeBounds = tomResults.length;
               const filteredByBounds = tomResults.filter(r => {
-                const lat = (r as any).coordinates?.lat;
-                const lon = (r as any).coordinates?.lon;
+                const lat = (r as any).coordinates?.lat ?? (r as any).position?.lat;
+                const lon = (r as any).coordinates?.lng ?? (r as any).coordinates?.lon ?? (r as any).position?.lon;
                 if (lat == null || lon == null) return false;
                 return isWithinCityBounds(lat, lon, cityId);
               });
@@ -261,8 +261,8 @@ export async function findAndScoreActivities(
                   id: `${cityId}:${r.id ?? r.name}`,
                   city_id: cityId,
                   title: r.name,
-                  lat: (r as any).coordinates.lat,
-                  lon: (r as any).coordinates.lon,
+                  lat: (r as any).coordinates?.lat ?? (r as any).position?.lat,
+                  lon: (r as any).coordinates?.lng ?? (r as any).coordinates?.lon ?? (r as any).position?.lon,
                   category: (r as any).category ?? null,
                   source: "tomtom" as const,
                   metadata: { address: (r as any).address, category: (r as any).category },
