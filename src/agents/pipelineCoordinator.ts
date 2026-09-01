@@ -11,6 +11,7 @@ export interface PipelineCoordinatorDeps {
   contextScout: ContextScoutAgent;
   retrievalStrategist: RetrievalStrategistAgent;
   itineraryComposer: ItineraryComposerAgent;
+  creditService?: { consumeCredits: (args: { userId: string; amount: number; service: string; description?: string }) => Promise<unknown> };
 }
 
 export class PipelineCoordinator {
@@ -21,7 +22,8 @@ export class PipelineCoordinator {
     let session = init.requestSession;
 
     // H2: charge-before - consume before any generation work (AGENTS.md)
-    await CreditService.consumeCredits({
+    const creditService = this.deps.creditService ?? CreditService;
+    await creditService.consumeCredits({
       userId: session.userId,
       amount: 1,
       service: "tarana_gala",

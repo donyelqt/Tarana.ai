@@ -68,6 +68,7 @@ describe("PipelineCoordinator", () => {
       contextScout: contextScout as any,
       retrievalStrategist: retrievalStrategist as any,
       itineraryComposer: itineraryComposer as any,
+      creditService: { consumeCredits: jest.fn().mockResolvedValue({}) } as any,
     });
 
     const result = await coordinator.handleRequest(createMockRequest());
@@ -117,6 +118,7 @@ describe("PipelineCoordinator", () => {
       contextScout: contextScout as any,
       retrievalStrategist: retrievalStrategist as any,
       itineraryComposer: itineraryComposer as any,
+      creditService: { consumeCredits: jest.fn().mockResolvedValue({}) } as any,
     });
 
     await expect(coordinator.handleRequest(createMockRequest())).rejects.toThrow("retrieval failed");
