@@ -313,37 +313,36 @@ const DashboardContent = () => {
               </div>
             ) : weatherData ? (
               <div className="bg-gradient-to-b from-blue-700 to-blue-500 rounded-xl p-4 flex flex-col text-white shadow-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center">
-                    <span className="text-4xl font-bold mr-2">{Math.round(weatherData.main.temp)}°C</span>
-                    <span className="capitalize text-sm opacity-90">{weatherData.weather[0].description}</span>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-4xl font-bold tracking-tight leading-none tabular-nums">{Math.round(weatherData.main.temp)}°C</div>
+                    <div className="capitalize text-sm font-medium opacity-90 mt-1">{weatherData.weather[0].description}</div>
                   </div>
                   {weatherData.weather[0].icon && (
-                    <Image 
-                      src={getWeatherIconUrl(weatherData.weather[0].icon)} 
-                      alt={weatherData.weather[0].description} 
-                      width={50} 
-                      height={50} 
+                    <Image
+                      src={getWeatherIconUrl(weatherData.weather[0].icon)}
+                      alt={weatherData.weather[0].description}
+                      width={52}
+                      height={52}
                       className="object-contain drop-shadow-md"
                     />
                   )}
                 </div>
-                <div className="text-sm opacity-90 space-y-1 mb-3">
-                  <div className="flex justify-between">
-                    <span>Feels like:</span>
-                    <span className="font-medium">{Math.round(weatherData.main.feels_like)}°C</span>
+                <div className="mt-3 divide-y divide-white/10 text-sm">
+                  <div className="flex items-center justify-between py-1">
+                    <span className="opacity-80">Feels like:</span>
+                    <span className="font-semibold tabular-nums">{Math.round(weatherData.main.feels_like)}°C</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Humidity:</span>
-                    <span className="font-medium">{weatherData.main.humidity}%</span>
+                  <div className="flex items-center justify-between py-1">
+                    <span className="opacity-80">Humidity:</span>
+                    <span className="font-semibold tabular-nums">{weatherData.main.humidity}%</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Location:</span>
-                    <span className="font-medium">{BAGUIO_COORDINATES.name}</span>
+                  <div className="flex items-center justify-between py-1">
+                    <span className="opacity-80">Location:</span>
+                    <span className="font-semibold">{BAGUIO_COORDINATES.name}</span>
                   </div>
                 </div>
-                <div className="text-xs opacity-70 text-right mt-auto">
-                  {/* Placeholder for last updated time - implement logic to update this */}
+                <div className="mt-2 pt-2 text-xs opacity-70 text-right border-t border-white/10 tabular-nums">
                   Last updated: {weatherData.dt ? new Date(weatherData.dt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                 </div>
               </div>
