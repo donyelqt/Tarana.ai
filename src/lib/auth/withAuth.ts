@@ -29,6 +29,10 @@ export type AuthedHandler = (
 
 export function withAuth(handler: AuthedHandler) {
   return async function (req: NextRequest): Promise<NextResponse> {
+    if (process.env.BENCH_BYPASS_AUTH === "true" && process.env.NODE_ENV !== "production") {
+      const benchUserId = process.env.BENCH_USER_ID || "bench-user";
+      return handler(req, benchUserId);
+    }
     const userId = await getUserId(req);
     if (!userId) return unauthorized();
     return handler(req, userId);
