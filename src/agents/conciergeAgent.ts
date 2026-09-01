@@ -31,6 +31,26 @@ export class ConciergeAgent {
   constructor(private readonly deps: ConciergeDependencies) {}
 
   async initialize(request: NextRequest): Promise<ConciergeInitializeResult> {
+    console.log("[concierge] BENCH check", JSON.stringify({ bench: process.env.BENCH_BYPASS_AUTH, header: request.headers.get("x-bench-bypass"), nodeEnv: process.env.NODE_ENV }));
+    // Bench bypass for k6 (non-prod only) - allows k6 without NextAuth session
+    if ((process.env.BENCH_BYPASS_AUTH === "true" || request.headers.get("x-bench-bypass") === "true") && process.env.NODE_ENV !== "production") {
+      const rawBody = await request.clone().json().catch(() => ({} as any));
+      const parsed = this.deps.requestSchema.safeParse(rawBody);
+      if (!parsed.success) throw this.formatSchemaError(parsed.error);
+      const preferences = this.extractPreferences(parsed.data);
+      const session = createSession({
+        userId: process.env.BENCH_USER_ID || "00000000-0000-0000-0000-000000000001",
+        prompt: parsed.data.prompt,
+        preferences,
+        status: "pending",
+      });
+      return {
+        authSession: { user: { id: session.userId, name: "Bench User", email: "bench@tarana.ai" } } as any,
+        creditBalance: undefined,
+        requestBody: parsed.data,
+        requestSession: session,
+      };
+    }
     const authSession = await getServerSession(authOptions);
     if (!authSession?.user?.id) {
       throw new Error("Authentication required");
