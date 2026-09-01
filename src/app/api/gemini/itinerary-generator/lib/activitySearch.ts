@@ -253,6 +253,27 @@ export async function findAndScoreActivities(
               }
               tomResults = filteredByBounds;
             }
+            // Upsert into places (spec 9.1 #5) - best-effort, requires 20260901000000 migration
+            try {
+              const { supabaseAdmin } = await import("@/lib/data/supabaseAdmin");
+              if (supabaseAdmin && tomResults.length > 0) {
+                const rows = tomResults.map((r: any) => ({
+                  id: `${cityId}:${r.id ?? r.name}`,
+                  city_id: cityId,
+                  title: r.name,
+                  lat: (r as any).coordinates.lat,
+                  lon: (r as any).coordinates.lon,
+                  category: (r as any).category ?? null,
+                  source: "tomtom" as const,
+                  metadata: { address: (r as any).address, category: (r as any).category },
+                  updated_at: new Date().toISOString(),
+                }));
+                const { error } = await (supabaseAdmin as any).from("places").upsert(rows, { onConflict: "id" });
+                if (error) console.warn("places upsert warning", error.message);
+              }
+            } catch (e) {
+              console.warn("places upsert failed (migration not yet applied?)", e);
+            }
 
             if (tomResults.length > 0) {
               filteredSimilar = tomResults.slice(0, 20).map(r => ({
