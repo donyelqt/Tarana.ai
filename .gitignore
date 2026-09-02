@@ -65,3 +65,10 @@ docs/2026-07-29-session-report.md
 docs/FLOATING_SEARCH_CARD_FIX.md
 docs/FLOATING_SEARCH_CARD_XYZ.md
 docs/PHASE_0_SECURITY_HARDENING.md
+
+# Gala bench + dev logs (Grafana k6 JSON + next dev stdout) - keep bench/baseline.json, ignore logs/
+logs/
+bench/logs/
+dev-*.log
+dev.log
+
