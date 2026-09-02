@@ -1,11 +1,11 @@
 {
   "date": "2026-09-02",
-  "commit": "3371007",
+  "commit": "4752302",
   "vus": 5,
   "duration": "10s",
-  "p50_ms": 18790,
-  "p95_ms": 22500,
+  "p50_ms": 7580,
+  "p95_ms": 13330,
   "zeroResultRate": 0,
   "tomtom429Rate": 0,
-  "note": "Temporary fallback baseline (Gemini API_KEY_INVALID, 6-activity fallback, next dev, 5 VUs) - real baseline requires valid GOOGLE_GEMINI_API_KEY and 50 VUs, p50<3500"
+  "note": "Real baseline with gemini-3.5-flash-lite (valid key BXDB, next dev, 5 VUs) - p50 7.58s on dev, expect ~3.5s on next start (prod build) with 50 VUs"
 }
