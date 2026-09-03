@@ -8,7 +8,7 @@ import RecommendedCafes from "./components/RecommendedCafes"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
 import { useSession } from "next-auth/react"
-import { BAGUIO_COORDINATES, WeatherData, fetchWeatherFromAPI, getWeatherIconUrl } from "@/lib/core/utils"
+import { BAGUIO_COORDINATES, WeatherData, getWeatherIconUrl } from "@/lib/core/utils"
 import { Bookmark, Plus, MapPin, Car, Utensils, Wand2, Link, Share2 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
@@ -20,8 +20,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   getReferralDisplay,
   isFallbackWeather,
-  mapReferralStatsResponse,
-  type ReferralStatsView,
+  referralQueryOptions,
+  weatherQueryOptions,
 } from "./utils"
 
 const DashboardContent = () => {
@@ -61,16 +61,9 @@ const DashboardContent = () => {
     data: weatherData,
     isLoading: loading,
     isError: weatherIsError,
-  } = useQuery<WeatherData | null>({
-    queryKey: ["weather", "baguio"],
-    queryFn: () => fetchWeatherFromAPI(),
-    enabled: status === "authenticated",
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-    // Provider default is refetchOnMount: false (would serve stale weather
-    // forever). true = refetch on mount only when stale (>10min).
-    refetchOnMount: true,
-  })
+  } = useQuery<WeatherData | null>(
+    weatherQueryOptions(status === "authenticated")
+  )
   // fetchWeatherFromAPI swallows errors and returns a fallback WeatherData, so
   // weatherIsError is effectively unreachable in practice. Keep the local string
   // for any future queryFn change that lets the error propagate.
@@ -78,21 +71,11 @@ const DashboardContent = () => {
 
   // Referral stats: /api/referrals/stats is the production-safe endpoint
   // (/api/referrals/debug 404s in production — debug/route.ts:10-12).
-  // Mapping lives in ./utils (unit-tested); thresholds/benefits come from the
-  // server tierProgress, not a hardcoded ladder in the render layer.
+  // Config lives in ./utils (unit-tested, shared with the cache test).
   // Cached 60s; invalidated after a successful trackReferralAfterSignup.
-  const { data: referralStats } = useQuery<ReferralStatsView | null>({
-    queryKey: ["referral-stats", session?.user?.id],
-    queryFn: async () => {
-      const r = await fetch("/api/referrals/stats")
-      if (!r.ok) throw new Error(`Referral stats error: ${r.status}`)
-      return mapReferralStatsResponse(await r.json())
-    },
-    // Match saved-meals convention (saved-meals/page.tsx:36): gate on id so we
-    // don't fetch+cache ["referral-stats", undefined] then refetch on id arrival.
-    enabled: status === "authenticated" && !!session?.user?.id,
-    staleTime: 60 * 1000,
-  })
+  const { data: referralStats } = useQuery(
+    referralQueryOptions(status, session?.user?.id)
+  )
 
   // Track referral after signup (with delay to allow profile creation)
   useEffect(() => {
