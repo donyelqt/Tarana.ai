@@ -30,6 +30,12 @@ export interface WeatherData {
    * isFallbackWeather() before presenting data as live.
    */
   isFallback?: boolean;
+  /**
+   * One-line machine-safe reason the fallback was served (e.g.
+   * "proxy 502 (upstream 400)", "proxy 500 (not configured)", "network").
+   * Shown under the dashboard badge so the next screenshot IS the diagnosis.
+   */
+  fallbackReason?: string;
 }
 
 // Baguio City coordinates — now delegates to cityConfig (single source of truth)
@@ -66,14 +72,17 @@ export async function fetchWeatherData(lat: number, lon: number, apiKey: string)
 }
 
 export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, lon: number = BAGUIO_COORDINATES.lon): Promise<WeatherData | null> {
+  // Short machine-safe cause, surfaced on the fallback object so the UI can
+  // display WHY live data is missing (no console spelunking required).
+  let fallbackReason = 'network';
   try {
     // Add a timestamp to prevent caching issues
     const timestamp = new Date().getTime();
     // Use absolute URL in server context, relative in client
-    const baseUrl = typeof window === 'undefined' 
+    const baseUrl = typeof window === 'undefined'
       ? (process.env.NEXTAUTH_URL || 'http://localhost:3000')
       : '';
-    
+
     const response = await fetch(`${baseUrl}/api/weather?lat=${lat}&lon=${lon}&_t=${timestamp}`, {
       method: 'GET',
       headers: {
@@ -81,12 +90,13 @@ export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, 
       },
       cache: 'no-store' // Disable caching
     });
-    
+
     if (!response.ok) {
       // Single actionable log line (the route already logged server-side with
       // upstream status/message): proxy status + upstream detail, then fall
       // through to the fallback below.
       const errorText = await response.text().catch(() => 'No error details');
+      fallbackReason = summariseProxyFailure(response.status, errorText);
       console.warn(`Weather proxy ${response.status}: ${errorText.slice(0, 300)} — serving fallback`);
       throw new Error(`Weather API error: ${response.status}`);
     }
@@ -120,8 +130,33 @@ export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, 
       },
       dt: Math.floor(Date.now() / 1000), // Add current timestamp
       isFallback: true, // Lets the UI badge this as typical, not live, weather
+      fallbackReason, // Shown under the badge — the next screenshot is the diagnosis
     };
   }
+}
+
+/**
+ * Compress a proxy failure into a badge-sized reason. Parses the route's JSON
+ * error shape ({ error, upstreamStatus, upstreamMessage }) when present.
+ */
+export function summariseProxyFailure(status: number, bodyText: string): string {
+  try {
+    const body = JSON.parse(bodyText) as {
+      error?: unknown;
+      upstreamStatus?: unknown;
+      upstreamMessage?: unknown;
+    };
+    if (typeof body?.upstreamMessage === 'string' && body.upstreamMessage) {
+      return `proxy ${status} (upstream ${String(body.upstreamStatus ?? '?')}): ${body.upstreamMessage.slice(0, 80)}`;
+    }
+    if (typeof body?.error === 'string' && body.error) {
+      return `proxy ${status}: ${body.error.slice(0, 80)}`;
+    }
+  } catch {
+    // Not JSON — fall through to the raw-status form below.
+  }
+  const snippet = bodyText.trim().slice(0, 60);
+  return snippet ? `proxy ${status}: ${snippet}` : `proxy ${status}`;
 }
 
 export function getWeatherIconUrl(iconCode: string): string {

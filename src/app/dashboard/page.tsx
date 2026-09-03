@@ -329,6 +329,11 @@ const DashboardContent = () => {
                 {isFallbackWeather(weatherData) && (
                   <div className="mt-2 rounded-lg bg-yellow-400/20 px-2 py-1 text-center text-xs font-medium text-yellow-100">
                     Typical Baguio weather — live data unavailable
+                    {weatherData.fallbackReason && (
+                      <div className="mt-0.5 font-mono text-[10px] font-normal opacity-80">
+                        {weatherData.fallbackReason}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
