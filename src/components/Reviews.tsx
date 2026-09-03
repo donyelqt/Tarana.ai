@@ -108,7 +108,7 @@ const Reviews = ({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
           <h3 className="text-base sm:text-lg font-semibold">Reviews</h3>
           {!reviewsUnavailable && (
-            <Button className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 active:scale-95 sm:hover:-translate-y-0.5 rounded-xl text-sm py-2.5 sm:py-2 touch-manipulation">
+            <Button className="w-full sm:w-auto bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 active:scale-95 sm:hover:-translate-y-0.5 rounded-xl text-sm py-2.5 sm:py-2 touch-manipulation">
               Write a review
             </Button>
           )}

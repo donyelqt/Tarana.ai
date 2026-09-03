@@ -29,7 +29,7 @@ const AuthErrorPageContent = () => {
         <p className="text-gray-700 mb-6">{errorMessage}</p>
         <Link
           href="/auth/signin"
-          className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           Return to Sign In
         </Link>

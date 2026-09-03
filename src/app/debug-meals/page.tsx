@@ -82,7 +82,7 @@ export default function DebugMealsPage() {
         <button
           onClick={fetchMeals}
           disabled={loading || status !== 'authenticated'}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+          className="px-4 py-2 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white rounded disabled:bg-none disabled:bg-gray-300"
         >
           {loading ? 'Loading...' : 'Fetch Meals'}
         </button>

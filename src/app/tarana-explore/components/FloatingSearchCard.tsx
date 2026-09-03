@@ -790,7 +790,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
               type="button"
               onClick={onSubmit}
               disabled={!canSubmit}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-medium text-sm py-2.5 rounded-xl transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 disabled:bg-none disabled:bg-gray-200 disabled:text-gray-400 text-white font-medium text-sm py-2.5 rounded-xl transition-colors"
             >
               {isCalculating ? (
                 <>

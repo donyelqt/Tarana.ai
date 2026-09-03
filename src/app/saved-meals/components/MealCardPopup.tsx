@@ -88,7 +88,7 @@ const MealCardPopup = ({
                 </div>
             </div>
             <Button 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 h-auto rounded-lg text-base"
+                className="w-full bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-semibold py-3 h-auto rounded-lg text-base"
                 onClick={onMarkAsUsed}
             >
                 Mark as Used
