@@ -21,6 +21,7 @@ import {
   getReferralDisplay,
   isFallbackWeather,
   referralQueryOptions,
+  taranaStatsQueryOptions,
   weatherQueryOptions,
 } from "./utils"
 
@@ -75,6 +76,12 @@ const DashboardContent = () => {
   // Cached 60s; invalidated after a successful trackReferralAfterSignup.
   const { data: referralStats } = useQuery(
     referralQueryOptions(status, session?.user?.id)
+  )
+
+  // Tarana Stats: public aggregates from GET /api/stats (exact-count head
+  // queries + static cafes length). Replaces the hardcoded 302/22/104/4901.
+  const { data: taranaStats } = useQuery(
+    taranaStatsQueryOptions(status)
   )
 
   // Track referral after signup (with delay to allow profile creation)
@@ -359,20 +366,20 @@ const DashboardContent = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-blue-500/80 rounded-xl p-4 text-center">
-                  <div className="text-3xl font-bold">302</div>
+                  <div className="text-3xl font-bold tabular-nums">{taranaStats?.itineraries.toLocaleString() ?? "…"}</div>
                   <div className="text-xs opacity-90">ITINERARIES GENERATED</div>
                 </div>
                 <div className="bg-blue-500/80 rounded-xl p-4 text-center">
-                  <div className="text-3xl font-bold">22</div>
+                  <div className="text-3xl font-bold tabular-nums">{taranaStats?.cafes.toLocaleString() ?? "…"}</div>
                   <div className="text-xs opacity-90">CAFES LISTED</div>
                 </div>
                 <div className="bg-blue-500/80 rounded-xl p-4 text-center">
-                  <div className="text-3xl font-bold">104</div>
-                  <div className="text-xs opacity-90">TODAY'S VISITS</div>
+                  <div className="text-3xl font-bold tabular-nums">{taranaStats?.meals.toLocaleString() ?? "…"}</div>
+                  <div className="text-xs opacity-90">MEALS SAVED</div>
                 </div>
                 <div className="bg-blue-500/80 rounded-xl p-4 text-center">
-                  <div className="text-3xl font-bold">4,901</div>
-                  <div className="text-xs opacity-90">TOTAL VISITS</div>
+                  <div className="text-3xl font-bold tabular-nums">{taranaStats?.explorers.toLocaleString() ?? "…"}</div>
+                  <div className="text-xs opacity-90">EXPLORERS</div>
                 </div>
               </div>
             </div>

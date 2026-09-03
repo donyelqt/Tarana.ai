@@ -65,7 +65,7 @@ const weatherPayload = {
   dt: 1756800000,
 };
 
-const statsPayload = {
+const referralPayload = {
   success: true,
   stats: { activeReferrals: 2, currentTier: 'Explorer' },
   tierProgress: {
@@ -77,8 +77,14 @@ const statsPayload = {
   },
 };
 
+const taranaPayload = {
+  success: true,
+  stats: { itineraries: 12, cafes: 20, meals: 34, explorers: 56 },
+};
+
 const weatherCalls: string[] = [];
 const statsCalls: string[] = [];
+const taranaCalls: string[] = [];
 const weatherCoords: { lat: number; lon: number }[] = [];
 
 function routeFetch(url: unknown) {
@@ -98,7 +104,11 @@ function routeFetch(url: unknown) {
   }
   if (u.includes('/api/referrals/stats')) {
     statsCalls.push(u);
-    return { ok: true, json: async () => statsPayload };
+    return { ok: true, json: async () => referralPayload };
+  }
+  if (u.includes('/api/stats')) {
+    taranaCalls.push(u);
+    return { ok: true, json: async () => taranaPayload };
   }
   return { ok: true, json: async () => ({}) };
 }
@@ -124,11 +134,15 @@ describe('dashboard network counts across 3 mounts (one shared client)', () => {
       await waitFor(() =>
         expect(screen.getByText('2/3 referrals - Explorer Tier')).toBeInTheDocument()
       );
+      await waitFor(() => expect(screen.getByText('MEALS SAVED')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('34')).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('EXPLORERS')).toBeInTheDocument());
       unmount();
     }
 
     expect(weatherCalls).toHaveLength(1);
     expect(statsCalls).toHaveLength(1);
+    expect(taranaCalls).toHaveLength(1);
     expect(weatherCoords).toHaveLength(1);
     for (const { lat, lon } of weatherCoords) {
       expect(Number.isFinite(lat)).toBe(true);
