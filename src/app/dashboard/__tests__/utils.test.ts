@@ -1,5 +1,7 @@
 import {
+  buildInviteLink,
   estimateMinutes,
+  fetchReferralCode,
   formatDistanceKm,
   getReferralDisplay,
   haversineKm,
@@ -348,5 +350,35 @@ describe('weatherQueryOptions refetchInterval (outage self-healing)', () => {
     expect(tick({} as WeatherData)).toBe(false);
     expect(tick(null)).toBe(false);
     expect(tick(undefined)).toBe(false);
+  });
+});
+
+describe('invite link (real DB code only)', () => {
+  it('builds the signup?ref= shape the tracker consumes', () => {
+    expect(buildInviteLink('https://example.com', 'A3F9K2QZ')).toBe(
+      'https://example.com/auth/signup?ref=A3F9K2QZ'
+    );
+  });
+
+  it('fetchReferralCode returns the DB-issued code, null otherwise', async () => {
+    const ok = (async () => ({
+      ok: true,
+      json: async () => ({ success: true, referralCode: 'A3F9K2QZ' }),
+    })) as unknown as typeof fetch;
+    expect(await fetchReferralCode(ok)).toBe('A3F9K2QZ');
+
+    const bad = (async () => ({
+      ok: true,
+      json: async () => ({ success: false }),
+    })) as unknown as typeof fetch;
+    expect(await fetchReferralCode(bad)).toBeNull();
+  });
+
+  it('referralCodeQueryOptions gates on auth + id', async () => {
+    const { referralCodeQueryOptions } = await import('../utils');
+    const spy = jest.fn().mockResolvedValue('A3F9K2QZ');
+    expect(referralCodeQueryOptions('authenticated', 'u1', spy).enabled).toBe(true);
+    expect(referralCodeQueryOptions('unauthenticated', 'u1', spy).enabled).toBe(false);
+    expect(referralCodeQueryOptions('authenticated', undefined, spy).enabled).toBe(false);
   });
 });

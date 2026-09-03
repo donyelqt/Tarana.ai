@@ -529,6 +529,45 @@ export async function fetchReferralStats(
   return mapReferralStatsResponse(await r.json());
 }
 
+/**
+ * Build the shareable invite link. Format MUST stay
+ * `{origin}/auth/signup?ref={code}` — ReferralTracker consumes `?ref=`
+ * and no /invite route exists. Pure (testable, no window access here).
+ */
+export function buildInviteLink(origin: string, code: string): string {
+  return `${origin}/auth/signup?ref=${encodeURIComponent(code)}`;
+}
+
+/** Fetch the DB-issued code (GET /api/referrals/code). Null when absent. */
+export async function fetchReferralCode(
+  fetcher: typeof fetch = fetch
+): Promise<string | null> {
+  const r = await fetcher('/api/referrals/code');
+  if (!r.ok) throw new Error(`Referral code error: ${r.status}`);
+  const d = (await r.json()) as { success?: unknown; referralCode?: unknown };
+  return d.success === true && typeof d.referralCode === 'string'
+    ? d.referralCode
+    : null;
+}
+
+/**
+ * Shipped invite-code config. The code MUST come from the DB trigger output
+ * (8-char, via /api/referrals/code) — the old `${EMAIL}2024` fabrication
+ * matched no row and every copied link was dead (2026-09-03).
+ */
+export function referralCodeQueryOptions(
+  status: string,
+  userId: string | undefined,
+  queryFn: () => Promise<string | null> = () => fetchReferralCode()
+): UseQueryOptions<string | null> {
+  return {
+    queryKey: ['referral-code', userId],
+    queryFn,
+    enabled: status === 'authenticated' && !!userId,
+    staleTime: 60 * 60 * 1000,
+  };
+}
+
 /** Fetch + map /api/stats. Throws on HTTP error so retry engages. */
 export async function fetchTaranaStats(
   fetcher: typeof fetch = fetch
