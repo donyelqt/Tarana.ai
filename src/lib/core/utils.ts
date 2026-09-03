@@ -72,6 +72,23 @@ export async function fetchWeatherData(lat: number, lon: number, apiKey: string)
 }
 
 export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, lon: number = BAGUIO_COORDINATES.lon): Promise<WeatherData | null> {
+  // Fail fast on non-numeric coordinates (2026-09-03: TanStack passed its
+  // query context object as `lat`, producing lat=[object Object] upstream).
+  // Number() coerces numeric strings; anything else throws before any fetch.
+  const latNum = Number(lat);
+  const lonNum = Number(lon);
+  if (!Number.isFinite(latNum) || !Number.isFinite(lonNum)) {
+    console.warn(`Weather fetch skipped: invalid coordinates lat=${String(lat).slice(0, 40)}, lon=${String(lon).slice(0, 40)} — serving fallback`);
+    return {
+      main: { temp: 18, feels_like: 16, humidity: 70 },
+      weather: [{ id: 800, main: 'Clear', description: 'clear sky', icon: '01d' }],
+      name: 'Baguio',
+      sys: { country: 'PH' },
+      dt: Math.floor(Date.now() / 1000),
+      isFallback: true,
+      fallbackReason: 'client: invalid coordinates (not sent)',
+    };
+  }
   // Short machine-safe cause, surfaced on the fallback object so the UI can
   // display WHY live data is missing (no console spelunking required).
   let fallbackReason = 'network';
@@ -83,7 +100,7 @@ export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, 
       ? (process.env.NEXTAUTH_URL || 'http://localhost:3000')
       : '';
 
-    const response = await fetch(`${baseUrl}/api/weather?lat=${lat}&lon=${lon}&_t=${timestamp}`, {
+    const response = await fetch(`${baseUrl}/api/weather?lat=${latNum}&lon=${lonNum}&_t=${timestamp}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',

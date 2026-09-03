@@ -121,7 +121,11 @@ export const REFERRAL_STALE_TIME_MS = 60 * 1000;
  */
 export function weatherQueryOptions(
   enabled: boolean,
-  queryFn: () => Promise<WeatherData | null> = fetchWeatherFromAPI
+  // NOTE: must stay a zero-arg closure. TanStack invokes queryFn with a
+  // QueryFunctionContext argument — passing the bare fetchWeatherFromAPI
+  // reference made lat=[object Object] (2026-09-03 incident: every dashboard
+  // weather call 400'd from the TanStack migration until this fix).
+  queryFn: () => Promise<WeatherData | null> = () => fetchWeatherFromAPI()
 ): UseQueryOptions<WeatherData | null> {
   return {
     queryKey: [...WEATHER_QUERY_KEY],
@@ -170,5 +174,7 @@ export function referralQueryOptions(
     staleTime: REFERRAL_STALE_TIME_MS,
   };
 }
+
+
 
 

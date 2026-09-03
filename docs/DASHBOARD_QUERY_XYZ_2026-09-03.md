@@ -34,12 +34,17 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
    `fetchWeatherFromAPI` callers unaffected); the card badges fallback data as
    "Typical Baguio weather — live data unavailable."
 
-> **Impact vs. verification.** "Before" counts are read directly from the
-> pre-patch code (`git show d9705e1:src/app/dashboard/page.tsx`: weather
-> `useEffect` fetches on every mount; referral stats fetched on mount plus a
-> manual re-fetch — no cache anywhere). "After" counts are measured by the
-> page-network test below. No browser paint metrics: this change alters
-> request volume, not DOM.
+> **Impact vs. verification / correction 2026-09-03.** This doc first blamed
+> transient upstream 400s. The badge's own `proxy 400: Invalid coordinates`
+> line plus a `node -e` reproduction proved the real cause instead: from the
+> TanStack migration (`3e4757e`) through the factory refactor, the weather
+> `queryFn` was the **bare `fetchWeatherFromAPI` reference**, which TanStack
+> invokes with a QueryFunctionContext argument — so every call sent
+> `lat=[object Object]` (verified: `parseFloat` of it is `NaN`). The user's
+> "worked before TanStack" report was correct; the transient theory was wrong.
+> "Before" counts below are read from pre-patch code; "after" counts are
+> measured. No browser paint metrics: this change alters request volume and
+> correctness, not DOM.
 
 ## Z — The outcome
 
@@ -47,6 +52,7 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
 | Flow | Before | After |
 |---|---|---|
 | Weather proxy hits per 3 dashboard mounts | 3 (fetch on every mount) | **1, measured** (`pageNetwork.test.tsx`) |
+| Weather request validity | `lat=[object Object]` → upstream/proxy 400 on **every** call since `3e4757e` | real coords, asserted per-call in `pageNetwork.test.tsx` |
 | Referral-stats fetches per 3 mounts | 6 (mount + re-fetch, un-deduped) | **1, measured** (`pageNetwork.test.tsx`) |
 | Referral endpoint failure rate in prod | 100% (`debug` 404) | **0%** (`/stats`; `r.ok` guard + `retry: 1`) |
 | Tier-label overflow (`current > 5`) | `10/5 referrals` | **`10/10`** + max-tier message |
