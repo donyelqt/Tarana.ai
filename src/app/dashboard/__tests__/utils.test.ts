@@ -2,7 +2,10 @@ import {
   getReferralDisplay,
   isFallbackWeather,
   mapReferralStatsResponse,
+  weatherQueryOptions,
+  WEATHER_FALLBACK_RETRY_MS,
 } from '../utils';
+import type { WeatherData } from '@/lib/core/utils';
 
 describe('mapReferralStatsResponse', () => {
   it('maps a successful /api/referrals/stats payload', () => {
@@ -132,5 +135,23 @@ describe('isFallbackWeather', () => {
     expect(isFallbackWeather({})).toBe(false);
     expect(isFallbackWeather(null)).toBe(false);
     expect(isFallbackWeather(undefined)).toBe(false);
+  });
+});
+
+describe('weatherQueryOptions refetchInterval (outage self-healing)', () => {
+  const { refetchInterval } = weatherQueryOptions(true, async () => null);
+  const tick = (data: WeatherData | null | undefined) =>
+    typeof refetchInterval === 'function'
+      ? refetchInterval({ state: { data } } as never)
+      : refetchInterval;
+
+  it('polls while the cache holds fallback data', () => {
+    expect(tick({ isFallback: true } as WeatherData)).toBe(WEATHER_FALLBACK_RETRY_MS);
+  });
+
+  it('disables polling for live data, null, and undefined', () => {
+    expect(tick({} as WeatherData)).toBe(false);
+    expect(tick(null)).toBe(false);
+    expect(tick(undefined)).toBe(false);
   });
 });

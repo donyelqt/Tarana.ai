@@ -1,5 +1,6 @@
 import { TIER_CONFIGS } from '@/lib/referral-system/types';
 import { fetchWeatherFromAPI, type WeatherData } from '@/lib/core/utils';
+import type { UseQueryOptions } from '@tanstack/react-query';
 
 /**
  * View model for the dashboard referral widget. `nextTier` is null once the
@@ -103,6 +104,14 @@ export function isFallbackWeather(
 export const WEATHER_QUERY_KEY = ['weather', 'baguio'] as const;
 export const WEATHER_STALE_TIME_MS = 10 * 60 * 1000;
 export const WEATHER_GC_TIME_MS = 30 * 60 * 1000;
+/**
+ * While the cache holds fallback data (upstream was down at fetch time),
+ * revalidate in the background at this cadence until live data arrives.
+ * Cost is bounded: only during outages, and it stops the moment live data
+ * lands. Deliberately longer than the OpenWeather free-tier 60 calls/min
+ * budget is per-key, not per-client — one client at 1/min is noise.
+ */
+export const WEATHER_FALLBACK_RETRY_MS = 60 * 1000;
 export const REFERRAL_STALE_TIME_MS = 60 * 1000;
 
 /**
@@ -113,7 +122,7 @@ export const REFERRAL_STALE_TIME_MS = 60 * 1000;
 export function weatherQueryOptions(
   enabled: boolean,
   queryFn: () => Promise<WeatherData | null> = fetchWeatherFromAPI
-) {
+): UseQueryOptions<WeatherData | null> {
   return {
     queryKey: [...WEATHER_QUERY_KEY],
     queryFn,
@@ -123,6 +132,15 @@ export function weatherQueryOptions(
     // Provider default is refetchOnMount: false (would serve stale weather
     // forever). true = refetch on mount only when stale (>10min).
     refetchOnMount: true as const,
+    // Self-healing outage behavior (2026-09-03 incident: fallback cached as
+    // data sat visible for the full 10-min stale window). While the cached
+    // value is the offline fallback, poll in the background until live data
+    // arrives; live data disables the interval entirely (quota-safe: the
+    // 10-min staleTime still governs the healthy path).
+    refetchInterval: (query) =>
+      isFallbackWeather(query.state.data ?? null)
+        ? WEATHER_FALLBACK_RETRY_MS
+        : false,
   };
 }
 
@@ -144,7 +162,7 @@ export function referralQueryOptions(
   userId: string | undefined,
   queryFn: () => Promise<ReferralStatsView | null> = () =>
     fetchReferralStats()
-) {
+): UseQueryOptions<ReferralStatsView | null> {
   return {
     queryKey: ['referral-stats', userId],
     queryFn,
