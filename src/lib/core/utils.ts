@@ -41,33 +41,28 @@ export const BAGUIO_COORDINATES = {
 }
 
 export async function fetchWeatherData(lat: number, lon: number, apiKey: string): Promise<WeatherData | null> {
-  try {
-    console.log(`Making request to OpenWeather API for coordinates: ${lat}, ${lon}`);
-    
-    const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`,
-      { 
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        cache: 'no-store' // Disable caching to ensure fresh data
-      }
-    )
-    
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'No error details available');
-      console.error(`Weather API responded with status ${response.status}: ${errorText}`);
-      throw new Error(`Weather API error: ${response.status}`);
+  // NOTE: never log the request URL — it carries the OpenWeather appid.
+  const response = await fetch(
+    `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`,
+    {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      cache: 'no-store' // Disable caching to ensure fresh data
     }
-    
-    const data = await response.json();
-    console.log('Weather data fetched successfully');
-    return data;
-  } catch (error) {
-    console.error('Error fetching weather data:', error);
-    throw error; // Propagate the error to be handled by the caller
+  )
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'No error details available');
+    // Propagate the upstream message (e.g. "wrong latitude", "Invalid API
+    // key") so the single log line at the fallback site is actionable.
+    throw new Error(
+      `Weather API error: ${response.status} — ${errorText.slice(0, 200)}`
+    );
   }
+
+  return response.json();
 }
 
 export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, lon: number = BAGUIO_COORDINATES.lon): Promise<WeatherData | null> {
@@ -88,14 +83,22 @@ export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, 
     });
     
     if (!response.ok) {
+      // Single actionable log line (the route already logged server-side with
+      // upstream status/message): proxy status + upstream detail, then fall
+      // through to the fallback below.
       const errorText = await response.text().catch(() => 'No error details');
-      console.error(`Weather API responded with status ${response.status}: ${errorText}`);
+      console.warn(`Weather proxy ${response.status}: ${errorText.slice(0, 300)} — serving fallback`);
       throw new Error(`Weather API error: ${response.status}`);
     }
-    
+
     return await response.json();
   } catch (error) {
-    console.error('Error fetching weather data from API:', error);
+    if (error instanceof Error && error.message.startsWith('Weather API error:')) {
+      // Already logged above with context — don't log twice (this was the
+      // double-console-error spam: utils.ts:92 + utils.ts:93 on every failure).
+    } else {
+      console.error('Error fetching weather data from API:', error);
+    }
     
     // Return a fallback weather data object when API fails
     // This prevents the UI from breaking completely
