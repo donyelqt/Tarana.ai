@@ -16,20 +16,18 @@ import { noProfile } from "public"
 import { ReferralModal } from "./components/ReferralModal"
 import { useToast } from "@/components/ui/use-toast"
 import { trackReferralAfterSignup } from "@/lib/referral-system/client/referralTracking"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 const DashboardContent = () => {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
   const { toast } = useToast()
-  const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
   const [showSplash, setShowSplash] = useState(false)
   const [isWelcomeCardAnimated, setIsWelcomeCardAnimated] = useState(false)
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false)
   const [referralTracked, setReferralTracked] = useState(false)
-  const [referralStats, setReferralStats] = useState<{ activeReferrals: number; currentTier: string } | null>(null)
   const referralCode = session?.user?.email ? `${session.user.email.split('@')[0].toUpperCase()}2024` : "LRG2024"
   const referralLink = `https://tarana-ai/invite/${referralCode}`
 
@@ -50,22 +48,49 @@ const DashboardContent = () => {
     return () => clearInterval(intervalId)
   }, [])
 
-  // Fetch referral stats
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetch('/api/referrals/debug')
-        .then(r => r.json())
-        .then(data => {
-          if (data.profile) {
-            setReferralStats({
-              activeReferrals: data.profile.activeReferrals || 0,
-              currentTier: data.profile.currentTier || 'Default'
-            });
-          }
-        })
-        .catch(err => console.error('Failed to fetch referral stats:', err));
-    }
-  }, [status])
+  // Baguio weather: 10-minute staleTime is appropriate for weather (doesn't change
+  // minute-to-minute); useQuery replaces the manual useState/useEffect/useLoading
+  // trio and prevents a refetch on every dashboard remount.
+  const {
+    data: weatherData,
+    isLoading: loading,
+    isError: weatherIsError,
+  } = useQuery<WeatherData | null>({
+    queryKey: ["weather", "baguio"],
+    queryFn: () => fetchWeatherFromAPI(),
+    enabled: status === "authenticated",
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    // Provider default is refetchOnMount: false (would serve stale weather
+    // forever). true = refetch on mount only when stale (>10min).
+    refetchOnMount: true,
+  })
+  // fetchWeatherFromAPI swallows errors and returns a fallback WeatherData, so
+  // weatherIsError is effectively unreachable in practice. Keep the local string
+  // for any future queryFn change that lets the error propagate.
+  const error = weatherIsError ? "Could not load weather data" : null
+
+  // Referral stats: /api/referrals/stats is the production-safe endpoint
+  // (/api/referrals/debug 404s in production — debug/route.ts:10-12).
+  // Shape {activeReferrals, currentTier} preserved so render logic is untouched.
+  // Cached 60s; invalidated after a successful trackReferralAfterSignup.
+  const { data: referralStats } = useQuery<{ activeReferrals: number; currentTier: string } | null>({
+    queryKey: ["referral-stats", session?.user?.id],
+    queryFn: async () => {
+      const r = await fetch("/api/referrals/stats")
+      if (!r.ok) throw new Error(`Referral stats error: ${r.status}`)
+      const d = await r.json()
+      if (!d.success || !d.stats) return null
+      return {
+        activeReferrals: d.stats.activeReferrals || 0,
+        currentTier: d.stats.currentTier || "Default",
+      }
+    },
+    // Match saved-meals convention (saved-meals/page.tsx:36): gate on id so we
+    // don't fetch+cache ["referral-stats", undefined] then refetch on id arrival.
+    enabled: status === "authenticated" && !!session?.user?.id,
+    staleTime: 60 * 1000,
+  })
 
   // Track referral after signup (with delay to allow profile creation)
   useEffect(() => {
@@ -81,20 +106,9 @@ const DashboardContent = () => {
                 description: "Your friend will receive bonus credits. Thanks for joining!",
                 duration: 4000,
               });
-              // Reload referral stats to show updated referrer's tier
-              setTimeout(() => {
-                fetch('/api/referrals/debug')
-                  .then(r => r.json())
-                  .then(data => {
-                    if (data.profile) {
-                      setReferralStats({
-                        activeReferrals: data.profile.activeReferrals || 0,
-                        currentTier: data.profile.currentTier || 'Default'
-                      });
-                    }
-                  })
-                  .catch(err => console.error('Failed to refresh stats:', err));
-              }, 1000);
+              // Invalidate the cached referral-stats so the new tier is
+              // reflected on the next render without a manual re-fetch.
+              queryClient.invalidateQueries({ queryKey: ["referral-stats", session?.user?.id] });
             } else if (result.error && !result.error.includes('No referral code')) {
               console.log('ℹ️ Referral tracking result:', result.error);
             }
@@ -108,7 +122,7 @@ const DashboardContent = () => {
 
       return () => clearTimeout(timer);
     }
-  }, [status, referralTracked, toast])
+  }, [status, referralTracked, toast, queryClient, session?.user?.id])
 
   useEffect(() => {
     if (searchParams.get('signedin') === 'true') {
@@ -129,24 +143,6 @@ const DashboardContent = () => {
       router.push('/auth/signin')
       return
     }
-    
-    const getWeather = async () => {
-      try {
-        setLoading(true)
-        
-        // Use the secure API endpoint instead of exposing API key on client
-        const data = await fetchWeatherFromAPI()
-        
-        setWeatherData(data)
-      } catch (err) {
-        console.error("Failed to fetch weather:", err)
-        setError("Could not load weather data")
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    getWeather()
   }, [status, router])
 
   // Show loading state while checking authentication or if splash screen is active
