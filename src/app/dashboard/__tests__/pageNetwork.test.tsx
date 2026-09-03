@@ -79,11 +79,21 @@ const statsPayload = {
 
 const weatherCalls: string[] = [];
 const statsCalls: string[] = [];
+const weatherCoords: { lat: number; lon: number }[] = [];
 
 function routeFetch(url: unknown) {
   const u = String(url);
   if (u.includes('/api/weather')) {
     weatherCalls.push(u);
+    // Regression pin for the 2026-09-03 [object Object] incident: TanStack
+    // invokes queryFn with a context argument, so a bare function reference
+    // as queryFn serialises lat as "[object Object]". Every call must carry
+    // real numeric coordinates.
+    const parsed = new URL(u, 'http://localhost:3000');
+    weatherCoords.push({
+      lat: parseFloat(parsed.searchParams.get('lat') ?? 'NaN'),
+      lon: parseFloat(parsed.searchParams.get('lon') ?? 'NaN'),
+    });
     return { ok: true, json: async () => weatherPayload };
   }
   if (u.includes('/api/referrals/stats')) {
@@ -119,5 +129,14 @@ describe('dashboard network counts across 3 mounts (one shared client)', () => {
 
     expect(weatherCalls).toHaveLength(1);
     expect(statsCalls).toHaveLength(1);
+    expect(weatherCoords).toHaveLength(1);
+    for (const { lat, lon } of weatherCoords) {
+      expect(Number.isFinite(lat)).toBe(true);
+      expect(Number.isFinite(lon)).toBe(true);
+      expect(lat).toBeGreaterThanOrEqual(-90);
+      expect(lat).toBeLessThanOrEqual(90);
+      expect(lon).toBeGreaterThanOrEqual(-180);
+      expect(lon).toBeLessThanOrEqual(180);
+    }
   });
 });
