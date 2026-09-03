@@ -512,9 +512,6 @@ export function weatherQueryOptions(
   };
 }
 
-/** Shared SVG paint-server id for the dashboard gradient icons (defs + refs). */
-export const DASHBOARD_ICON_GRADIENT_ID = 'dash-icon-grad';
-
 /** Global aggregates for the Tarana Stats widget (GET /api/stats). */
 export interface TaranaStatsView {
   itineraries: number;
