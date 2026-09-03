@@ -18,8 +18,10 @@ import { useToast } from "@/components/ui/use-toast"
 import { trackReferralAfterSignup } from "@/lib/referral-system/client/referralTracking"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
+  buildInviteLink,
   getReferralDisplay,
   isFallbackWeather,
+  referralCodeQueryOptions,
   referralQueryOptions,
   taranaStatsQueryOptions,
   weatherQueryOptions,
@@ -35,10 +37,19 @@ const DashboardContent = () => {
   const [isWelcomeCardAnimated, setIsWelcomeCardAnimated] = useState(false)
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false)
   const [referralTracked, setReferralTracked] = useState(false)
-  const referralCode = session?.user?.email ? `${session.user.email.split('@')[0].toUpperCase()}2024` : "LRG2024"
-  const referralLink = `https://tarana-ai/invite/${referralCode}`
+  // Real DB-issued code (8-char trigger output). The old `${EMAIL}2024`
+  // fabrication matched no user_profiles row — every copied link was dead.
+  const { data: referralCodeData } = useQuery(
+    referralCodeQueryOptions(status, session?.user?.id)
+  )
+  const referralCode = referralCodeData ?? ""
+  const referralLink =
+    typeof window !== "undefined" && referralCode
+      ? buildInviteLink(window.location.origin, referralCode)
+      : ""
 
   const handleCopyInviteLink = () => {
+    if (!referralLink) return
     navigator.clipboard.writeText(referralLink)
     toast({
       title: "Copied!",
@@ -418,6 +429,7 @@ const DashboardContent = () => {
                     variant="outline"
                     className="border border-gray-300 bg-white text-xs text-blue-700 px-3 py-1.5 hover:bg-blue-50 whitespace-nowrap"
                     onClick={handleCopyInviteLink}
+                    disabled={!referralLink}
                   >
                     <Link size={16} className="mr-1" aria-hidden="true" />
                     Copy invite link
