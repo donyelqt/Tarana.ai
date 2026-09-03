@@ -37,13 +37,34 @@ jest.mock('next/image', () => ({
   default: (props: Record<string, unknown>) => <img {...props} />,
 }));
 
-jest.mock('framer-motion', () => ({
-  motion: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    span: (props: any) => <span {...props} />,
-  },
-  useReducedMotion: () => true,
-}));
+jest.mock('framer-motion', () => {
+  const ReactLib = jest.requireActual<typeof import('react')>('react');
+  // Strip motion-only props so assertions see plain DOM (mirrors the
+  // FloatingSearchCard precedent; extended with div for the welcome header).
+  const MOTION_ONLY = new Set([
+    'initial',
+    'animate',
+    'exit',
+    'transition',
+    'whileHover',
+    'whileTap',
+    'whileFocus',
+    'whileInView',
+    'viewport',
+    'layout',
+    'layoutId',
+  ]);
+  const clean = (tag: string) =>
+    ReactLib.forwardRef<unknown, Record<string, unknown>>((props, ref) => {
+      const out: Record<string, unknown> = {};
+      for (const k of Object.keys(props)) if (!MOTION_ONLY.has(k)) out[k] = props[k];
+      return ReactLib.createElement(tag, { ...out, ref });
+    });
+  return {
+    motion: { span: clean('span'), div: clean('div') },
+    useReducedMotion: () => true,
+  };
+});
 
 jest.mock(
   'public',
