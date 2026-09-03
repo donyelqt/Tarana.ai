@@ -100,9 +100,25 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
   `useSession` intentionally untouched.
 
 ## Gotchas for future readers
-- `fetchWeatherFromAPI` never rejects (returns fallback) — `useQuery.isError`
+- `fetchWeatherFromAPI` never rejects (returns fallback) - `useQuery.isError`
   on weather is effectively dead; the badge, not the error card, is the
   fallback signal.
 - `session.user.id` is assumed present when `status === 'authenticated'`
   (`auth.ts:371`); Google lookup-miss leaves it `undefined` and the `!!id`
   gate keeps the widget on loading rather than fetching as `undefined`.
+
+## Appendix: honest subtitles + UI craft pass (uncommitted at time of writing)
+- **Dynamic spots subtitle** (`spotsSubtitle()` in `dashboard/utils.ts`):
+  "Quietest right now" when the top-ranked pick is off-peak, "Best available
+  now" when everything peaks, generic line with no peak data. 3 tests.
+- **Map facade** (`SpotlightCard`): embeds mount on tap ("Show map" button)
+  instead of 6 eager iframes (~3-6MB + 6 JS contexts per dashboard view).
+  Justified by redundancy: each card's CTA already opens full Google Maps.
+  3 facade tests.
+- **A11y/craft** (`page.tsx`, `globals.css`): 7 mouse-only divs converted to
+  keyboard-accessible buttons with focus rings; single `h1`; duplicate
+  "Tarana Stats" heading removed; LIVE pill paired with honest `Updated
+  HH:MM` from `dataUpdatedAt`; stat values get anti-shift widths; badge
+  reason moved to tooltip (console warn stays the diagnostic path); global
+  `prefers-reduced-motion` guard for all dashboard animations.
+- Gala machinery and per-visit routing remain rejected (see above).

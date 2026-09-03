@@ -247,6 +247,21 @@ export function rankSpots(
   return scored.slice(0, count).map((s) => s.a);
 }
 
+/**
+ * Honest subtitle for the spots header, derived from the actual top pick:
+ * off-peak on top → "Quietest right now"; everything peaking → the ranking
+ * still surfaces the least-bad option ("Best available now"); no peak data
+ * at all → the generic line. Never claims quiet it can't see.
+ */
+export function spotsSubtitle(
+  top: Activity[],
+  isPeak: (peakHours: string) => boolean = isCurrentlyPeakHours
+): string {
+  const first = top[0];
+  if (!first?.peakHours) return 'Optimized for low traffic and crowd';
+  return isPeak(first.peakHours) ? 'Best available now' : 'Quietest right now';
+}
+
 export function toSpotCard(
   activity: Activity,
   origin: { lat: number; lon: number } = BAGUIO_COORDINATES
