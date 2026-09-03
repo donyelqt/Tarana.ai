@@ -54,11 +54,24 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
 ### Verification (measured — not "impact", just proof it holds)
 - **11/11** new Jest tests pass (`dashboard/__tests__/utils.test.ts`: mapper
   shapes, display states incl. the `10/10` overflow case, fallback detection).
+- **Cache behavior measured with a real `QueryClient`**
+  (`dashboard/__tests__/queryCache.test.tsx`, 3/3 pass, against the shipped
+  `weatherQueryOptions`/`referralQueryOptions` factories in `dashboard/utils.ts`
+  — page and test share the config, so no drift):
+  - weather: **2 mounts → 1 `queryFn` call** (second mount served from cache).
+    Sabotage check: `staleTime = 0` makes this test fail (2 calls) → the test
+    is non-vacuous.
+  - referral: **1 fetch on mount, exactly 1 more after `invalidateQueries`**
+    (the post-tracking refresh path); `enabled` is `false` when
+    unauthenticated or id-less.
 - **0** `tsc` errors in changed code; full-repo `tsc` shows only the **10
   pre-existing** `email.test.ts` errors (untouched).
-- Scoped suites green (`dashboard` 11/11, `trafficColors` 50/50).
+- Scoped suites green (`dashboard` 14/14, `trafficColors` 50/50).
 - Static components (`SuggestedSpots`, `RecommendedCafes`, Tarana Stats) and
   `useSession` intentionally untouched.
+- Not measured (no browser harness in this env — no Playwright/MCP): end-user
+  Network-tab counts across 3 hard reloads. The unit-level numbers above pin
+  the mechanism; a 10-minute DevTools session would confirm it end to end.
 
 ## Gotchas for future readers
 - `fetchWeatherFromAPI` never rejects (returns fallback) — `useQuery.isError`

@@ -1,4 +1,5 @@
 import { TIER_CONFIGS } from '@/lib/referral-system/types';
+import { fetchWeatherFromAPI, type WeatherData } from '@/lib/core/utils';
 
 /**
  * View model for the dashboard referral widget. `nextTier` is null once the
@@ -98,3 +99,58 @@ export function isFallbackWeather(
 ): boolean {
   return w?.isFallback === true;
 }
+
+export const WEATHER_QUERY_KEY = ['weather', 'baguio'] as const;
+export const WEATHER_STALE_TIME_MS = 10 * 60 * 1000;
+export const WEATHER_GC_TIME_MS = 30 * 60 * 1000;
+export const REFERRAL_STALE_TIME_MS = 60 * 1000;
+
+/**
+ * Shipped weather query config (single source of truth — page.tsx and tests
+ * share this factory, so a regression in staleTime/refetch policy breaks the
+ * cache test instead of silently restoring per-mount refetch).
+ */
+export function weatherQueryOptions(
+  enabled: boolean,
+  queryFn: () => Promise<WeatherData | null> = fetchWeatherFromAPI
+) {
+  return {
+    queryKey: [...WEATHER_QUERY_KEY],
+    queryFn,
+    enabled,
+    staleTime: WEATHER_STALE_TIME_MS,
+    gcTime: WEATHER_GC_TIME_MS,
+    // Provider default is refetchOnMount: false (would serve stale weather
+    // forever). true = refetch on mount only when stale (>10min).
+    refetchOnMount: true as const,
+  };
+}
+
+/** Fetch + map /api/referrals/stats. Throws on HTTP error so retry engages. */
+export async function fetchReferralStats(
+  fetcher: typeof fetch = fetch
+): Promise<ReferralStatsView | null> {
+  const r = await fetcher('/api/referrals/stats');
+  if (!r.ok) throw new Error(`Referral stats error: ${r.status}`);
+  return mapReferralStatsResponse(await r.json());
+}
+
+/**
+ * Shipped referral query config. Gate matches the saved-meals convention
+ * (saved-meals/page.tsx:36): no fetch+cache of ["referral-stats", undefined].
+ */
+export function referralQueryOptions(
+  status: string,
+  userId: string | undefined,
+  queryFn: () => Promise<ReferralStatsView | null> = () =>
+    fetchReferralStats()
+) {
+  return {
+    queryKey: ['referral-stats', userId],
+    queryFn,
+    enabled: status === 'authenticated' && !!userId,
+    staleTime: REFERRAL_STALE_TIME_MS,
+  };
+}
+
+
