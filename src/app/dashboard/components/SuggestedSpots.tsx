@@ -64,7 +64,7 @@ const SuggestedSpots = () => {
               onClick={() => setCity(s.id)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                 active
-                  ? 'bg-blue-600 text-white border-blue-600'
+                  ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white border-blue-600'
                   : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
               }`}
             >
