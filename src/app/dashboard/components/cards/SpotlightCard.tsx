@@ -1,8 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { MapPin, Clock, TrafficCone } from "lucide-react"
+import { MapPin, Clock, TrafficCone, Map as MapIcon } from "lucide-react"
 import { getActivityCoordinates } from "@/lib/data/baguioCoordinates"
 
 const trafficStyles: { [key: string]: string } = {
@@ -46,30 +47,45 @@ const SpotlightCard = ({
     ? `https://www.google.com/maps/search/?api=1&query=${coordinates.lat},${coordinates.lon}`
     : null;
 
+  // Map facade: the embed iframe (~1MB+, third-party JS) loads only after an
+  // explicit tap — six eager iframes used to load on every dashboard view.
+  const [mapLoaded, setMapLoaded] = useState(false);
+
   return (
-    <div className="bg-white border border-gray-200/40 rounded-2xl flex flex-col shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+    <div className="bg-white border border-gray-200/40 rounded-2xl flex flex-col shadow-lg hover:shadow-xl hover:-translate-y-1 transition-[transform,box-shadow] duration-300 overflow-hidden">
       <div className="relative w-full h-40">
         <Image src={image} alt={name} layout="fill" objectFit="cover" />
       </div>
       <div className="p-3 flex flex-col flex-grow">
-        <h3 className="font-medium text-lg text-gray-800 mb-2">{name}</h3>
+        <h3 className="font-medium text-lg text-gray-800 mb-2 text-balance">{name}</h3>
         <div className="flex items-center text-gray-500 text-sm mb-3 space-x-4">
-          <div className="flex items-center">
-            <MapPin size={16} className="mr-1.5" />
-            <span>{distance}</span>
+          <div className="flex items-center min-w-0">
+            <MapPin size={16} className="mr-1.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{distance}</span>
           </div>
-          <div className="flex items-center">
-            <Clock size={16} className="mr-1.5" />
-            <span>{time}</span>
+          <div className="flex items-center min-w-0">
+            <Clock size={16} className="mr-1.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{time}</span>
           </div>
         </div>
         <div
-          className={`text-sm font-medium px-3 py-1 rounded-lg self-start mb-4 border flex items-center transition-all duration-300 hover:scale-105 ${trafficStyles[traffic]}`}
+          className={`text-sm font-medium px-3 py-1 rounded-lg self-start mb-4 border flex items-center transition-transform duration-300 hover:scale-105 ${trafficStyles[traffic]}`}
         >
-          <TrafficCone size={14} className="mr-2" />
+          <TrafficCone size={14} className="mr-2" aria-hidden="true" />
           {traffic} Traffic
         </div>
-        {coordinates && mapEmbedUrl && (
+        {coordinates && mapEmbedUrl && !mapLoaded && (
+          <button
+            type="button"
+            onClick={() => setMapLoaded(true)}
+            className="rounded-xl overflow-hidden border border-gray-200 mb-4 w-full bg-gray-50 hover:bg-gray-100 transition-colors duration-200 p-4 flex items-center justify-center gap-2 text-sm text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            aria-label={`Load map for ${coordinates.name}`}
+          >
+            <MapIcon size={16} aria-hidden="true" />
+            Show map
+          </button>
+        )}
+        {coordinates && mapEmbedUrl && mapLoaded && (
           <div className="rounded-xl overflow-hidden border border-gray-200 mb-4">
             <iframe
               title={`${coordinates.name} map`}

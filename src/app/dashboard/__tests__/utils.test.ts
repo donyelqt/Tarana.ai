@@ -8,6 +8,7 @@ import {
   mapTaranaStatsResponse,
   rankCafes,
   rankSpots,
+  spotsSubtitle,
   tasteProfile,
   toCafeCard,
   toSpotCard,
@@ -272,6 +273,31 @@ describe('recommendations engine', () => {
     expect(toCafeCard(first, { lat: 16.4134, lon: 120.5934 }, lunchRush)?.traffic).toBe('High');
     const dawn = new Date(2026, 8, 3, 5, 0);
     expect(toCafeCard(first, { lat: 16.4134, lon: 120.5934 }, dawn)?.traffic).toBe('Low');
+  });
+});
+
+describe('spotsSubtitle', () => {
+  const peak = (p: string) => p === 'PEAK';
+  const act = (title: string, peakHours?: string): Activity => ({
+    image: '/images/x.jpg',
+    title,
+    time: '9 AM',
+    desc: 'd',
+    tags: [],
+    peakHours,
+  });
+
+  it('says Quietest right now when the top pick is off-peak', () => {
+    expect(spotsSubtitle([act('B', 'OFF')], peak)).toBe('Quietest right now');
+  });
+
+  it('says Best available now when everything is peaking', () => {
+    expect(spotsSubtitle([act('A', 'PEAK')], peak)).toBe('Best available now');
+  });
+
+  it('falls back to the generic line with no peak data or empty list', () => {
+    expect(spotsSubtitle([act('X')], peak)).toBe('Optimized for low traffic and crowd');
+    expect(spotsSubtitle([], peak)).toBe('Optimized for low traffic and crowd');
   });
 });
 

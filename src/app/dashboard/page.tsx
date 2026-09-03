@@ -79,10 +79,13 @@ const DashboardContent = () => {
   )
 
   // Tarana Stats: public aggregates from GET /api/stats (exact-count head
-  // queries + static cafes length). Replaces the hardcoded 302/22/104/4901.
-  const { data: taranaStats } = useQuery(
+  // queries + static cafes length). dataUpdatedAt powers the freshness line.
+  const { data: taranaStats, dataUpdatedAt: statsUpdatedAt } = useQuery(
     taranaStatsQueryOptions(status)
   )
+  const statsUpdatedLabel = statsUpdatedAt
+    ? new Date(statsUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : null
 
   // Track referral after signup (with delay to allow profile creation)
   useEffect(() => {
@@ -169,10 +172,10 @@ const DashboardContent = () => {
       <main className="md:pl-64 flex-1 flex flex-col md:flex-row">
         {/* Center Content */}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
-          <div className={`bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 transition-all duration-300 ease-in-out hover:animate-none hover:-translate-y-2 hover:shadow-3xl hover:shadow-blue-500 ${isWelcomeCardAnimated ? 'animate-none -translate-y-2 shadow-3xl shadow-blue-500' : 'animate-natural-shimmer'}`}>
+          <div className={`bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 transition-[transform,box-shadow] duration-300 ease-in-out hover:animate-none hover:-translate-y-2 hover:shadow-3xl hover:shadow-blue-500 ${isWelcomeCardAnimated ? 'animate-none -translate-y-2 shadow-3xl shadow-blue-500' : 'animate-natural-shimmer'}`}>
             <Image src={session?.user?.image || noProfile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div className="flex-grow">
-              <div className="text-xl font-bold text-white">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="wave ml-1 text-3xl">👋</span></div>
+              <h1 className="text-xl font-bold text-white text-balance">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="wave ml-1 text-3xl" aria-hidden="true">👋</span></h1>
               <div className="text-gray-200 text-sm">Ready to plan your next adventure?</div>
               {/*<div className="text-gray-500 text-sm">{session?.user?.email}</div>*/}
             </div>
@@ -180,21 +183,22 @@ const DashboardContent = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Popover>
               <PopoverTrigger asChild>
-                <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
-                  <Plus size={28} className="mb-2 text-blue-500 feature-icon-float" />
+                <button type="button" className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                  <Plus size={28} className="mb-2 text-blue-500 feature-icon-float" aria-hidden="true" />
                   <div className="font-semibold text-lg">Create New Plan</div>
                   <div className="text-gray-500 text-sm mt-1">AI-powered trip and food planning</div>
-                </div>
+                </button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-2">
                 <div className="grid gap-2">
                   <div className="px-2 pt-1 text-lg font-semibold">What to create?</div>
-                  <div
-                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50"
+                  <button
+                    type="button"
+                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50 text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     onClick={() => router.push("/itinerary-generator")}
                   >
                     <div className="flex items-center">
-                      <Wand2 className="mr-3 h-5 w-5 text-blue-500" />
+                      <Wand2 className="mr-3 h-5 w-5 text-blue-500" aria-hidden="true" />
                       <div>
                         <div className="font-medium">New Itinerary</div>
                         <div className="text-xs text-gray-500">
@@ -202,13 +206,14 @@ const DashboardContent = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div
-                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50"
+                  </button>
+                  <button
+                    type="button"
+                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50 text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     onClick={() => router.push("/tarana-eats")}
                   >
                     <div className="flex items-center">
-                      <Utensils className="mr-3 h-5 w-5 text-green-500" />
+                      <Utensils className="mr-3 h-5 w-5 text-green-500" aria-hidden="true" />
                       <div>
                         <div className="font-medium">Food Recommendations</div>
                         <div className="text-xs text-gray-500">
@@ -216,29 +221,30 @@ const DashboardContent = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 </div>
               </PopoverContent>
             </Popover>
             <Popover>
               <PopoverTrigger asChild>
-                <div className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition">
+                <button type="button" className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                   <div className="mb-2 feature-icon-float" style={{ animationDelay: '0.8s' }}>
-                    <Bookmark size={28} className="text-blue-500 fill-blue-500" />
+                    <Bookmark size={28} className="text-blue-500 fill-blue-500" aria-hidden="true" />
                   </div>
                   <div className="font-semibold text-lg">View Saved Plans</div>
                   <div className="text-gray-500 text-sm mt-1">Access your planned Itineraries and meals</div>
-                </div>
+                </button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-2">
                 <div className="grid gap-2">
                   <div className="px-2 pt-1 text-lg font-semibold"> Select Plans to View</div>
-                  <div
-                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50"
+                  <button
+                    type="button"
+                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50 text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     onClick={() => router.push("/saved-trips")}
                   >
                     <div className="flex items-center">
-                      <Car className="mr-3 h-5 w-5 text-blue-500" />
+                      <Car className="mr-3 h-5 w-5 text-blue-500" aria-hidden="true" />
                       <div>
                         <div className="font-medium">Saved Trips</div>
                         <div className="text-xs text-gray-500">
@@ -246,13 +252,14 @@ const DashboardContent = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div
-                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50"
+                  </button>
+                  <button
+                    type="button"
+                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50 text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     onClick={() => router.push("/saved-meals")}
                   >
                     <div className="flex items-center">
-                      <Utensils className="mr-3 h-5 w-5 text-green-500" />
+                      <Utensils className="mr-3 h-5 w-5 text-green-500" aria-hidden="true" />
                       <div>
                         <div className="font-medium">Saved Meals</div>
                         <div className="text-xs text-gray-500">
@@ -260,7 +267,7 @@ const DashboardContent = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 </div>
               </PopoverContent>
             </Popover>
@@ -268,14 +275,15 @@ const DashboardContent = () => {
           <SuggestedSpots />
 
           {/* Tarana Explore navigation card */}
-          <div
+          <button
+            type="button"
             onClick={() => router.push("/tarana-explore")}
-            className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition mb-8"
+            className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition-shadow mb-8 w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            <MapPin size={28} className="mb-2 text-blue-500 feature-icon-float" style={{ animationDelay: '1.6s' }} />
+            <MapPin size={28} className="mb-2 text-blue-500 feature-icon-float" style={{ animationDelay: '1.6s' }} aria-hidden="true" />
             <div className="font-semibold text-lg">Explore Routes</div>
             <div className="text-gray-500 text-sm mt-1">Smart traffic-aware navigation</div>
-          </div>
+          </button>
 
           <RecommendedCafes />
         </div>
@@ -334,13 +342,11 @@ const DashboardContent = () => {
                   Last updated: {weatherData.dt ? new Date(weatherData.dt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                 </div>
                 {isFallbackWeather(weatherData) && (
-                  <div className="mt-2 rounded-lg bg-yellow-400/20 px-2 py-1 text-center text-xs font-medium text-yellow-100">
+                  <div
+                    className="mt-2 rounded-lg bg-yellow-400/20 px-2 py-1 text-center text-xs font-medium text-yellow-100"
+                    title={weatherData.fallbackReason ? `Why: ${weatherData.fallbackReason}` : undefined}
+                  >
                     Typical Baguio weather — live data unavailable
-                    {weatherData.fallbackReason && (
-                      <div className="mt-0.5 font-mono text-[10px] font-normal opacity-80">
-                        {weatherData.fallbackReason}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -357,8 +363,10 @@ const DashboardContent = () => {
             <div className="font-semibold text-lg mb-2">Tarana Stats</div>
             <div className="bg-blue-600 rounded-xl p-3 text-white shadow-lg">
               <div className="flex justify-between items-center mb-4">
-                <div className="font-medium text-lg">Tarana Stats</div>
-                <div className="flex items-center bg-slate-900 text-green-700 border-2 border-green-800 rounded-full px-3 py-1 text-xs font-bold">
+                <div className="text-sm opacity-90 tabular-nums">
+                  {statsUpdatedLabel ? `Updated ${statsUpdatedLabel}` : 'Updating…'}
+                </div>
+                <div className="flex items-center bg-slate-900 text-green-700 border-2 border-green-800 rounded-full px-3 py-1 text-xs font-bold" aria-hidden="true">
 
                   <span className="w-2 h-2 bg-green-700 rounded-full mr-2"></span>
                   LIVE
@@ -366,19 +374,19 @@ const DashboardContent = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-blue-500/80 rounded-xl p-4 text-center">
-                  <div className="text-3xl font-bold tabular-nums">{taranaStats?.itineraries.toLocaleString() ?? "…"}</div>
+                  <div className="text-3xl font-bold tabular-nums inline-block min-w-[4ch]">{taranaStats?.itineraries.toLocaleString() ?? "…"}</div>
                   <div className="text-xs opacity-90">ITINERARIES GENERATED</div>
                 </div>
                 <div className="bg-blue-500/80 rounded-xl p-4 text-center">
-                  <div className="text-3xl font-bold tabular-nums">{taranaStats?.cafes.toLocaleString() ?? "…"}</div>
+                  <div className="text-3xl font-bold tabular-nums inline-block min-w-[4ch]">{taranaStats?.cafes.toLocaleString() ?? "…"}</div>
                   <div className="text-xs opacity-90">CAFES LISTED</div>
                 </div>
                 <div className="bg-blue-500/80 rounded-xl p-4 text-center">
-                  <div className="text-3xl font-bold tabular-nums">{taranaStats?.meals.toLocaleString() ?? "…"}</div>
+                  <div className="text-3xl font-bold tabular-nums inline-block min-w-[4ch]">{taranaStats?.meals.toLocaleString() ?? "…"}</div>
                   <div className="text-xs opacity-90">MEALS SAVED</div>
                 </div>
                 <div className="bg-blue-500/80 rounded-xl p-4 text-center">
-                  <div className="text-3xl font-bold tabular-nums">{taranaStats?.explorers.toLocaleString() ?? "…"}</div>
+                  <div className="text-3xl font-bold tabular-nums inline-block min-w-[4ch]">{taranaStats?.explorers.toLocaleString() ?? "…"}</div>
                   <div className="text-xs opacity-90">EXPLORERS</div>
                 </div>
               </div>
@@ -411,7 +419,7 @@ const DashboardContent = () => {
                     className="border border-gray-300 bg-white text-xs text-blue-700 px-3 py-1.5 hover:bg-blue-50 whitespace-nowrap"
                     onClick={handleCopyInviteLink}
                   >
-                    <Link size={16} className="mr-1" />
+                    <Link size={16} className="mr-1" aria-hidden="true" />
                     Copy invite link
                   </Button>
                   <Button
@@ -419,7 +427,7 @@ const DashboardContent = () => {
                     className="bg-slate-900 text-white hover:bg-slate-800 text-xs px-3 py-1.5"
                     onClick={() => setIsReferralModalOpen(true)}
                   >
-                    <Share2 size={16} className="mr-2" />
+                    <Share2 size={16} className="mr-2" aria-hidden="true" />
                     Invite Friends
                   </Button>
                 </div>

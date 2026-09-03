@@ -765,3 +765,21 @@ body {
     top: 5rem !important; /* 80px - clears the ~68px-tall search card */
   }
 }
+
+/* Motion safety: dashboard + card animations respect reduced-motion.
+   Covers tailwind-config keyframes (pulse-ring, natural-shimmer,
+   reveal-and-pulse), glow badges, float, and wave. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-ring,
+  .animate-pulse-ring-delayed,
+  .animate-pulse-ring-delayed-more,
+  .animate-reveal-and-pulse,
+  .animate-natural-shimmer,
+  .animate-glow-green,
+  .animate-glow-yellow,
+  .animate-glow-red,
+  .feature-icon-float,
+  .wave {
+    animation: none !important;
+  }
+}
