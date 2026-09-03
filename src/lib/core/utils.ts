@@ -24,6 +24,12 @@ export interface WeatherData {
     country: string
   }
   dt: number;
+  /**
+   * Set only on the offline fallback (fetchWeatherFromAPI catch path).
+   * Optional so existing callers are unaffected — check with
+   * isFallbackWeather() before presenting data as live.
+   */
+  isFallback?: boolean;
 }
 
 // Baguio City coordinates — now delegates to cityConfig (single source of truth)
@@ -109,7 +115,8 @@ export async function fetchWeatherFromAPI(lat: number = BAGUIO_COORDINATES.lat, 
       sys: {
         country: 'PH'
       },
-      dt: Math.floor(Date.now() / 1000) // Add current timestamp
+      dt: Math.floor(Date.now() / 1000), // Add current timestamp
+      isFallback: true, // Lets the UI badge this as typical, not live, weather
     };
   }
 }

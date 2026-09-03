@@ -17,6 +17,12 @@ import { ReferralModal } from "./components/ReferralModal"
 import { useToast } from "@/components/ui/use-toast"
 import { trackReferralAfterSignup } from "@/lib/referral-system/client/referralTracking"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  getReferralDisplay,
+  isFallbackWeather,
+  mapReferralStatsResponse,
+  type ReferralStatsView,
+} from "./utils"
 
 const DashboardContent = () => {
   const router = useRouter()
@@ -72,19 +78,15 @@ const DashboardContent = () => {
 
   // Referral stats: /api/referrals/stats is the production-safe endpoint
   // (/api/referrals/debug 404s in production — debug/route.ts:10-12).
-  // Shape {activeReferrals, currentTier} preserved so render logic is untouched.
+  // Mapping lives in ./utils (unit-tested); thresholds/benefits come from the
+  // server tierProgress, not a hardcoded ladder in the render layer.
   // Cached 60s; invalidated after a successful trackReferralAfterSignup.
-  const { data: referralStats } = useQuery<{ activeReferrals: number; currentTier: string } | null>({
+  const { data: referralStats } = useQuery<ReferralStatsView | null>({
     queryKey: ["referral-stats", session?.user?.id],
     queryFn: async () => {
       const r = await fetch("/api/referrals/stats")
       if (!r.ok) throw new Error(`Referral stats error: ${r.status}`)
-      const d = await r.json()
-      if (!d.success || !d.stats) return null
-      return {
-        activeReferrals: d.stats.activeReferrals || 0,
-        currentTier: d.stats.currentTier || "Default",
-      }
+      return mapReferralStatsResponse(await r.json())
     },
     // Match saved-meals convention (saved-meals/page.tsx:36): gate on id so we
     // don't fetch+cache ["referral-stats", undefined] then refetch on id arrival.
@@ -341,6 +343,11 @@ const DashboardContent = () => {
                 <div className="mt-2 pt-2 text-xs opacity-70 text-right border-t border-white/10 tabular-nums">
                   Last updated: {weatherData.dt ? new Date(weatherData.dt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                 </div>
+                {isFallbackWeather(weatherData) && (
+                  <div className="mt-2 rounded-lg bg-yellow-400/20 px-2 py-1 text-center text-xs font-medium text-yellow-100">
+                    Typical Baguio weather — live data unavailable
+                  </div>
+                )}
               </div>
             ) : (
               // Fallback UI if weatherData is null and not loading/error
@@ -423,40 +430,18 @@ const DashboardContent = () => {
                 </div>
 
                 {referralStats ? (() => {
-                  const current = referralStats.activeReferrals;
-                  const tier = referralStats.currentTier;
-                  
-                  // Determine next tier target
-                  let nextTarget = 1;
-                  let nextTierName = 'Explorer';
-                  let nextBenefit = '6 credits/day';
-                  
-                  if (current >= 5) {
-                    nextTarget = 5;
-                    nextTierName = 'Voyager';
-                    nextBenefit = 'Max tier reached!';
-                  } else if (current >= 3) {
-                    nextTarget = 5;
-                    nextTierName = 'Voyager';
-                    nextBenefit = '10 credits/day';
-                  } else if (current >= 1) {
-                    nextTarget = 3;
-                    nextTierName = 'Smart Traveler';
-                    nextBenefit = '8 credits/day';
-                  }
-                  
-                  const progress = Math.min((current / nextTarget) * 100, 100);
-                  
+                  const display = getReferralDisplay(referralStats);
+
                   return (
                     <>
-                      <div className="text-sm mb-1">{current}/{nextTarget} referrals - {tier} Tier</div>
+                      <div className="text-sm mb-1">{display.label} referrals - {display.tier} Tier</div>
                       <div className="w-full bg-blue-500/50 rounded-full h-2.5 mb-1">
-                        <div className="bg-yellow-400 h-2.5 rounded-full transition-all" style={{ width: `${progress}%` }}></div>
+                        <div className="bg-yellow-400 h-2.5 rounded-full transition-all" style={{ width: `${display.progress}%` }}></div>
                       </div>
                       <div className="text-xs text-blue-200">
-                        {current >= 5 
-                          ? '🎉 Maximum tier achieved!' 
-                          : `Invite ${nextTarget - current} more to unlock ${nextTierName} (${nextBenefit})`
+                        {display.isMaxed
+                          ? '🎉 Maximum tier achieved!'
+                          : `Invite ${display.invitesNeeded} more to unlock ${display.nextTierName} (${display.nextBenefit})`
                         }
                       </div>
                     </>
