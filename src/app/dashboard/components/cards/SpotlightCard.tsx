@@ -17,7 +17,8 @@ interface SpotlightCardProps {
   image: string;
   distance: string;
   time: string;
-  traffic: "Low" | "Moderate" | "High";
+  /** Absent = no live signal — badge hidden rather than guessed. */
+  traffic?: "Low" | "Moderate" | "High";
   ctaText: string;
   lat?: number;
   lon?: number;
@@ -68,12 +69,14 @@ const SpotlightCard = ({
             <span className="truncate">{time}</span>
           </div>
         </div>
-        <div
-          className={`text-sm font-medium px-3 py-1 rounded-lg self-start mb-4 border flex items-center transition-transform duration-300 hover:scale-105 ${trafficStyles[traffic]}`}
-        >
-          <TrafficCone size={14} className="mr-2" aria-hidden="true" />
-          {traffic} Traffic
-        </div>
+        {traffic && (
+          <div
+            className={`text-sm font-medium px-3 py-1 rounded-lg self-start mb-4 border flex items-center transition-transform duration-300 hover:scale-105 ${trafficStyles[traffic]}`}
+          >
+            <TrafficCone size={14} className="mr-2" aria-hidden="true" />
+            {traffic} Traffic
+          </div>
+        )}
         {coordinates && mapEmbedUrl && !mapLoaded && (
           <button
             type="button"

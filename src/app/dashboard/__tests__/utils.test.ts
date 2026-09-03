@@ -206,10 +206,11 @@ describe('recommendations engine', () => {
     expect(estimateMinutes(km)).toBe('~1 min');
   });
 
-  it('trafficForSpot: peak → High, off-peak → Low, unknown → Moderate', () => {
+  it('trafficForSpot: peak → High, off-peak → Low, unknown → null (badge hidden)', () => {
     expect(trafficForSpot('PEAK', peak)).toBe('High');
     expect(trafficForSpot('OFF', peak)).toBe('Low');
-    expect(trafficForSpot(undefined, peak)).toBe('Moderate');
+    expect(trafficForSpot(undefined, peak)).toBeNull();
+    expect(trafficForSpot(null, peak)).toBeNull();
   });
 
   it('rankSpots puts off-peak first and is deterministic per day', () => {
@@ -253,17 +254,48 @@ describe('recommendations engine', () => {
     expect(fallback[0].score).toBe(0);
   });
 
-  it('toSpotCard returns null without coords or image', () => {
-    expect(toSpotCard(offPeakAct('No Such Place Xyz'))).toBeNull();
+  it('toSpotCard returns null without coords', () => {
+    expect(
+      toSpotCard({ name: 'No Such Place Xyz', image: null, lat: null, lon: null, peakHours: null })
+    ).toBeNull();
   });
 
   it('toSpotCard builds honest derived fields for Burnham Park', () => {
-    const card = toSpotCard({ ...offPeakAct('Burnham Park'), lat: 16.4093, lon: 120.595 });
+    const card = toSpotCard({ name: 'Burnham Park', image: '/images/burnham.png', lat: 16.4093, lon: 120.595, peakHours: 'OFF' });
     expect(card).not.toBeNull();
     expect(card?.distance).toMatch(/^~/);
     expect(card?.time).toMatch(/^~/);
     expect(['Low', 'Moderate', 'High']).toContain(card?.traffic);
     expect(card?.lat).toBeCloseTo(16.4093);
+  });
+
+  it('toSpotCard hides the badge and uses the placeholder honestly', () => {
+    const card = toSpotCard({ name: 'Cebu Spot', image: null, lat: 10.3, lon: 123.9, peakHours: null });
+    expect(card?.traffic).toBeUndefined();
+    expect(card?.image).toBe('/images/comingsoon.png');
+  });
+
+  it('toSpotCard prefers measured flow traffic over the schedule signal', () => {
+    const card = toSpotCard({ name: 'X', image: '/i.jpg', lat: 10.3, lon: 123.9, peakHours: 'OFF', traffic: 'High' });
+    expect(card?.traffic).toBe('High');
+  });
+
+  it('fetchSpots sanitizes badge levels from the wire', async () => {
+    const { fetchSpots } = await import('../utils');
+    const fetcher = (async () => ({
+      ok: true,
+      json: async () => ({
+        success: true,
+        spots: [
+          { name: 'A', image: null, lat: 1, lon: 2, peakHours: null, traffic: 'High' },
+          { name: 'B', image: null, lat: 1, lon: 2, peakHours: null, traffic: 'SEVERE' },
+        ],
+      }),
+    })) as unknown as typeof fetch;
+    expect(await fetchSpots('cebu', fetcher)).toEqual([
+      { name: 'A', image: null, lat: 1, lon: 2, peakHours: null, traffic: 'High' },
+      { name: 'B', image: null, lat: 1, lon: 2, peakHours: null, traffic: undefined },
+    ]);
   });
 
   it('toCafeCard uses city peak state for traffic', () => {
