@@ -55,6 +55,7 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
 | Weather request validity | `lat=[object Object]` → upstream/proxy 400 on **every** call since `3e4757e` | real coords, asserted per-call in `pageNetwork.test.tsx` |
 | Referral-stats fetches per 3 mounts | 6 (mount + re-fetch, un-deduped) | **1, measured** (`pageNetwork.test.tsx`) |
 | Referral endpoint failure rate in prod | 100% (`debug` 404) | **0%** (`/stats`; `r.ok` guard + `retry: 1`) |
+| Tarana Stats values | hardcoded 302 / 22 / 104 / 4,901 (visits cards had no source at all) | **measured**: `count(itineraries)`, `restaurants.length`, `count(saved_meals)`, `count(users)` via `GET /api/stats`; visits fiction deleted |
 | Tier-label overflow (`current > 5`) | `10/5 referrals` | **`10/10`** + max-tier message |
 | Fallback weather shown as live | always | **badged** as typical, not live |
 | Hardcoded tier ladder in render layer | ~15 lines | **0** (server `tierProgress`) |
@@ -75,8 +76,12 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
 - **Real page, 3 mounts, one shared client** (`pageNetwork.test.tsx`, 1/1
   pass): renders actual `page.tsx` (auth mocked authenticated, fetch routed
   by URL) → `/api/weather` called **once**, `/api/referrals/stats` called
-  **once**; mounts 2–3 served fully from cache. This is the end-to-end
-  request count short of a real browser (jsdom: no layout/paint).
+  **once**, `/api/stats` called **once** with real card values rendered
+  (`34` under MEALS SAVED, `56` under EXPLORERS); mounts 2–3 served fully
+  from cache. This is the end-to-end request count short of a real browser
+  (jsdom: no layout/paint).
+- **Stats route** (`api/stats/__tests__/route.test.ts`, 2/2): exact counts +
+  static cafes length passthrough; any single table failure → 500.
 - **0** `tsc` errors in changed code; full-repo `tsc` shows only the **10
   pre-existing** `email.test.ts` errors (untouched).
 - Scoped suites green (`dashboard` 15/15, `trafficColors` 50/50).

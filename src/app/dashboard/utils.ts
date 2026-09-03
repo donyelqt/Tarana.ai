@@ -104,6 +104,7 @@ export function isFallbackWeather(
 export const WEATHER_QUERY_KEY = ['weather', 'baguio'] as const;
 export const WEATHER_STALE_TIME_MS = 10 * 60 * 1000;
 export const WEATHER_GC_TIME_MS = 30 * 60 * 1000;
+export const STATS_STALE_TIME_MS = 5 * 60 * 1000;
 /**
  * While the cache holds fallback data (upstream was down at fetch time),
  * revalidate in the background at this cadence until live data arrives.
@@ -148,6 +149,14 @@ export function weatherQueryOptions(
   };
 }
 
+/** Global aggregates for the Tarana Stats widget (GET /api/stats). */
+export interface TaranaStatsView {
+  itineraries: number;
+  cafes: number;
+  meals: number;
+  explorers: number;
+}
+
 /** Fetch + map /api/referrals/stats. Throws on HTTP error so retry engages. */
 export async function fetchReferralStats(
   fetcher: typeof fetch = fetch
@@ -157,10 +166,48 @@ export async function fetchReferralStats(
   return mapReferralStatsResponse(await r.json());
 }
 
+/** Fetch + map /api/stats. Throws on HTTP error so retry engages. */
+export async function fetchTaranaStats(
+  fetcher: typeof fetch = fetch
+): Promise<TaranaStatsView | null> {
+  const r = await fetcher('/api/stats');
+  if (!r.ok) throw new Error(`Tarana stats error: ${r.status}`);
+  return mapTaranaStatsResponse(await r.json());
+}
+
+export function mapTaranaStatsResponse(input: unknown): TaranaStatsView | null {
+  if (!input || typeof input !== 'object') return null;
+  const d = input as { success?: unknown; stats?: unknown };
+  if (d.success !== true) return null;
+  if (!d.stats || typeof d.stats !== 'object') return null;
+  const s = d.stats as Record<string, unknown>;
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+  return {
+    itineraries: num(s.itineraries),
+    cafes: num(s.cafes),
+    meals: num(s.meals),
+    explorers: num(s.explorers),
+  };
+}
+
+/** Shipped stats config: public aggregates, 5-min stale like the provider default. */
+export function taranaStatsQueryOptions(
+  status: string,
+  queryFn: () => Promise<TaranaStatsView | null> = () => fetchTaranaStats()
+): UseQueryOptions<TaranaStatsView | null> {
+  return {
+    queryKey: ['tarana-stats'],
+    queryFn,
+    enabled: status === 'authenticated',
+    staleTime: STATS_STALE_TIME_MS,
+  };
+}
+
 /**
  * Shipped referral query config. Gate matches the saved-meals convention
  * (saved-meals/page.tsx:36): no fetch+cache of ["referral-stats", undefined].
  */
+
 export function referralQueryOptions(
   status: string,
   userId: string | undefined,

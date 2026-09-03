@@ -2,10 +2,41 @@ import {
   getReferralDisplay,
   isFallbackWeather,
   mapReferralStatsResponse,
+  mapTaranaStatsResponse,
   weatherQueryOptions,
   WEATHER_FALLBACK_RETRY_MS,
 } from '../utils';
 import type { WeatherData } from '@/lib/core/utils';
+
+describe('mapTaranaStatsResponse', () => {
+  it('maps a successful /api/stats payload', () => {
+    expect(
+      mapTaranaStatsResponse({
+        success: true,
+        stats: { itineraries: 12, cafes: 20, meals: 34, explorers: 56 },
+      })
+    ).toEqual({ itineraries: 12, cafes: 20, meals: 34, explorers: 56 });
+  });
+
+  it('returns null for failure shapes and garbage', () => {
+    expect(mapTaranaStatsResponse({ success: false })).toBeNull();
+    expect(mapTaranaStatsResponse({ success: true })).toBeNull();
+    expect(mapTaranaStatsResponse(null)).toBeNull();
+    expect(mapTaranaStatsResponse('nope')).toBeNull();
+  });
+
+  it('defaults missing/non-numeric counts to zero', () => {
+    expect(mapTaranaStatsResponse({ success: true, stats: {} })).toEqual({
+      itineraries: 0,
+      cafes: 0,
+      meals: 0,
+      explorers: 0,
+    });
+    expect(
+      mapTaranaStatsResponse({ success: true, stats: { itineraries: 'lots' } })
+    ).toMatchObject({ itineraries: 0 });
+  });
+});
 
 describe('mapReferralStatsResponse', () => {
   it('maps a successful /api/referrals/stats payload', () => {
