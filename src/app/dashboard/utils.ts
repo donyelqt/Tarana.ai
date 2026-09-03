@@ -137,11 +137,43 @@ export interface RecommendationCard {
   image: string;
   distance: string;
   time: string;
-  traffic: TrafficLevel;
+  /** Absent when no live signal exists — the card hides the badge. */
+  traffic?: TrafficLevel;
   lat: number;
   lon: number;
   mapLabel?: string;
 }
+
+/** City scopes with curated-or-searchable spot coverage. */
+export const SPOT_SCOPES = [
+  { id: 'baguio', label: 'Baguio' },
+  { id: 'cebu', label: 'Cebu' },
+  { id: 'manila', label: 'Manila' },
+  { id: 'davao', label: 'Davao' },
+] as const;
+
+export type SpotScopeId = (typeof SPOT_SCOPES)[number]['id'];
+
+export function isSpotScopeId(value: unknown): value is SpotScopeId {
+  return SPOT_SCOPES.some((s) => s.id === value);
+}
+
+/**
+ * Transport shape for spots (GET /api/spots + curated Baguio pool).
+ * peakHours null = no live signal (badge hidden, never guessed).
+ * image null = no photo on file (placeholder rendered).
+ * traffic = measured flow congestion (non-Baguio enriched path only).
+ */
+export interface SpotPayload {
+  name: string;
+  image: string | null;
+  lat: number | null;
+  lon: number | null;
+  peakHours: string | null;
+  traffic?: TrafficLevel;
+}
+
+export const SPOT_PLACEHOLDER_IMAGE = '/images/comingsoon.png';
 
 /** City driving average used for "~N min" estimates. */
 export const AVG_CITY_KMH = 20;
@@ -192,14 +224,14 @@ function coordsFor(
 
 /**
  * Per-place traffic from live peak state. In-peak → High, off-peak → Low.
- * No data → Moderate (unknown-typical). Documented coarseness: without a
- * routing origin this is a schedule signal, not a measured jam.
+ * NO DATA → null (badge hidden). Never guessed — a "Moderate" without a
+ * measurement is fiction with a color.
  */
 export function trafficForSpot(
-  peakHours: string | undefined,
+  peakHours: string | null | undefined,
   isPeak: (peakHours: string) => boolean = isCurrentlyPeakHours
-): TrafficLevel {
-  if (!peakHours) return 'Moderate';
+): TrafficLevel | null {
+  if (!peakHours) return null;
   return isPeak(peakHours) ? 'High' : 'Low';
 }
 
@@ -262,22 +294,88 @@ export function spotsSubtitle(
   return isPeak(first.peakHours) ? 'Best available now' : 'Quietest right now';
 }
 
-export function toSpotCard(
-  activity: Activity,
-  origin: { lat: number; lon: number } = BAGUIO_COORDINATES
-): RecommendationCard | null {
+/** Bridge curated activities into the transport shape. */
+export function activityToPayload(activity: Activity): SpotPayload {
   const coords = coordsFor(activity.title, activity.lat, activity.lon);
-  const image = imageSrc(activity.image);
-  if (!coords || !image) return null;
-  const km = haversineKm(origin, coords);
   return {
     name: activity.title,
-    image,
+    image: imageSrc(activity.image),
+    lat: coords?.lat ?? null,
+    lon: coords?.lon ?? null,
+    peakHours: activity.peakHours ?? null,
+  };
+}
+
+export function toSpotCard(
+  payload: SpotPayload,
+  origin: { lat: number; lon: number } = BAGUIO_COORDINATES
+): RecommendationCard | null {
+  if (
+    payload.lat === null ||
+    payload.lon === null ||
+    !Number.isFinite(payload.lat) ||
+    !Number.isFinite(payload.lon)
+  ) {
+    return null;
+  }
+  const coords = { lat: payload.lat, lon: payload.lon };
+  const km = haversineKm(origin, coords);
+  return {
+    name: payload.name,
+    image: payload.image || SPOT_PLACEHOLDER_IMAGE,
     distance: formatDistanceKm(km),
     time: estimateMinutes(km),
-    traffic: trafficForSpot(activity.peakHours),
+    // Measured flow congestion wins; else peak-schedule signal; else hidden.
+    traffic: payload.traffic ?? trafficForSpot(payload.peakHours) ?? undefined,
     lat: coords.lat,
     lon: coords.lon,
+  };
+}
+
+export const SPOTS_STALE_TIME_MS = 60 * 60 * 1000;
+
+/** Fetch + map GET /api/spots?city=. Throws on HTTP error so retry engages. */
+export async function fetchSpots(
+  city: SpotScopeId,
+  fetcher: typeof fetch = fetch
+): Promise<SpotPayload[] | null> {
+  const r = await fetcher(`/api/spots?city=${encodeURIComponent(city)}`);
+  if (!r.ok) throw new Error(`Spots error: ${r.status}`);
+  const d = (await r.json()) as { success?: unknown; spots?: unknown };
+  if (d.success !== true || !Array.isArray(d.spots)) return null;
+  return d.spots
+    .filter(
+      (s): s is SpotPayload =>
+        !!s &&
+        typeof s === 'object' &&
+        typeof (s as SpotPayload).name === 'string'
+    )
+    .map((s) => ({
+      name: s.name,
+      image: typeof s.image === 'string' ? s.image : null,
+      lat: typeof s.lat === 'number' ? s.lat : null,
+      lon: typeof s.lon === 'number' ? s.lon : null,
+      peakHours: typeof s.peakHours === 'string' ? s.peakHours : null,
+      // Sanitize: only real badge levels survive (else the style lookup
+      // renders className "undefined").
+      traffic:
+        s.traffic === 'Low' || s.traffic === 'Moderate' || s.traffic === 'High'
+          ? s.traffic
+          : undefined,
+    }));
+}
+
+/** Shipped spots config: POIs barely move — 1hr stale (matches TomTom cache). */
+export function spotsQueryOptions(
+  city: SpotScopeId,
+  status: string,
+  queryFn: () => Promise<SpotPayload[] | null> = () => fetchSpots(city)
+): UseQueryOptions<SpotPayload[] | null> {
+  return {
+    queryKey: ['suggested-spots', city],
+    queryFn,
+    enabled: status === 'authenticated',
+    staleTime: SPOTS_STALE_TIME_MS,
   };
 }
 

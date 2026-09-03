@@ -122,3 +122,16 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
   reason moved to tooltip (console warn stays the diagnostic path); global
   `prefers-reduced-motion` guard for all dashboard animations.
 - Gala machinery and per-visit routing remain rejected (see above).
+
+## Appendix: suggested-spots location scope (Baguio/Cebu/Manila/Davao)
+- **Scope pills** (`aria-pressed`) above the spots grid; Baguio default.
+  Baguio stays fully local (curated pool, instant, offline-safe).
+- **`GET /api/spots?city=`** for other cities: live TomTom POI search with
+  bounds post-filter + dedupe, enriched with real photos
+  (`enrichActivitiesWithImages` tier chain, head of 6) and measured traffic
+  (`getLocationTrafficData` → shared `getTrafficLevelFromScore` thresholds).
+  Unknown city → 400; TomTom failure → `200 []` (empty state, never crash).
+- **Honesty rules enforced in code**: no photo → `comingsoon.png` (verified
+  in `public/`); no traffic signal → badge hidden (never guessed); distances
+  from selected city center, `~`-prefixed. Gala scope generates; dashboard
+  scope curates — different jobs, shared thresholds.
