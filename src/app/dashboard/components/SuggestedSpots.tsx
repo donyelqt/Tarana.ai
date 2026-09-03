@@ -1,35 +1,23 @@
 "use client"
 
+import { useMemo } from "react";
 import SpotlightCard from "./cards/SpotlightCard";
-
-const spots = [
-  {
-    name: "Burnham Park",
-    image: "/images/burnham.png",
-    distance: "0.9km",
-    time: "6 min",
-    traffic: "Low" as const,
-  },
-  {
-    name: "CJH - Yellow Trail",
-    image: "/images/yellow_trail.png",
-    distance: "1.2km",
-    time: "8 min",
-    traffic: "Moderate" as const,
-    lat: 16.3994,
-    lon: 120.6157,
-    mapLabel: "Camp John Hay Yellow Trail",
-  },
-  {
-    name: "SM City Baguio",
-    image: "/images/smbaguio.jpg",
-    distance: "0.9km",
-    time: "6 min",
-    traffic: "High" as const,
-  },
-];
+import { rankSpots, spotPool, toSpotCard } from "../utils";
 
 const SuggestedSpots = () => {
+  // Live ranking over the real attraction dataset: off-peak spots first
+  // (soft bonus, never filtered), deterministic daily rotation for variety.
+  // Distances are haversine from Baguio center ("~" = estimate, no GPS here).
+  const spots = useMemo(() => {
+    const ranked = rankSpots(spotPool());
+    const cards = ranked
+      .map((a) => toSpotCard(a))
+      .filter((c): c is NonNullable<typeof c> => c !== null);
+    return cards.slice(0, 3);
+  }, []);
+
+  if (spots.length === 0) return null;
+
   return (
     <div className="mb-8">
       <div className="flex justify-between items-center mb-6 px-1">
@@ -37,8 +25,8 @@ const SuggestedSpots = () => {
         <p className="text-sm text-gray-500">Optimized for low traffic and crowd</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {spots.map((spot, index) => (
-          <SpotlightCard key={index} {...spot} ctaText="Visit Spot" />
+        {spots.map((spot) => (
+          <SpotlightCard key={spot.name} {...spot} ctaText="Visit Spot" />
         ))}
       </div>
     </div>

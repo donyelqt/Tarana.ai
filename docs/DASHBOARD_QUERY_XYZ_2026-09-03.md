@@ -56,6 +56,8 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
 | Referral-stats fetches per 3 mounts | 6 (mount + re-fetch, un-deduped) | **1, measured** (`pageNetwork.test.tsx`) |
 | Referral endpoint failure rate in prod | 100% (`debug` 404) | **0%** (`/stats`; `r.ok` guard + `retry: 1`) |
 | Tarana Stats values | hardcoded 302 / 22 / 104 / 4,901 (visits cards had no source at all) | **measured**: `count(itineraries)`, `restaurants.length`, `count(saved_meals)`, `count(users)` via `GET /api/stats`; visits fiction deleted |
+| Suggested Spots cards | 3 hardcoded names/distances/traffic | **ranked live**: off-peak first (soft penalty, never filtered) + daily rotation; distances haversine from city center (`~`), traffic from live peak state |
+| Recommended Cafes cards | 3 hardcoded names/distances/traffic | **taste-matched**: cuisine/tag overlap with your saved meals (saved spots excluded), ratings fallback; subtitle honest about which mode |
 | Tier-label overflow (`current > 5`) | `10/5 referrals` | **`10/10`** + max-tier message |
 | Fallback weather shown as live | always | **badged** as typical, not live |
 | Hardcoded tier ladder in render layer | ~15 lines | **0** (server `tierProgress`) |
@@ -82,6 +84,15 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
   (jsdom: no layout/paint).
 - **Stats route** (`api/stats/__tests__/route.test.ts`, 2/2): exact counts +
   static cafes length passthrough; any single table failure → 500.
+- **Recommendations** (`dashboard/__tests__/utils.test.ts`, +9): haversine
+  Burnham ≈0.5km, peak→High/off-peak→Low/unknown→Moderate, off-peak-first +
+  deterministic rotation, taste overlap + save-exclusion, null-skips,
+  TZ-proof peak assertions. Page-level: real page renders 3 Visit Spot +
+  3 taste-matched View Cafe cards with "Matched to your tastes".
+- Gala machinery deliberately NOT used (per-load AI cost/latency/quota for 6
+  cards); only its soft-penalty ranking principle. No geolocation, no
+  per-visit routing (quota + permission friction); distances are
+  from-center `~` estimates, disclosed in code and copy.
 - **0** `tsc` errors in changed code; full-repo `tsc` shows only the **10
   pre-existing** `email.test.ts` errors (untouched).
 - Scoped suites green (`dashboard` 15/15, `trafficColors` 50/50).
