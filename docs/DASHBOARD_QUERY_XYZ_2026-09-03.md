@@ -34,19 +34,21 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
    `fetchWeatherFromAPI` callers unaffected); the card badges fallback data as
    "Typical Baguio weather — live data unavailable."
 
-> **Impact vs. verification.** This repo has no product telemetry for the
-> dashboard, so the impact figures below are counted from the request flow
-> (fetches per mount in the code), not from measured analytics. The
-> "verification" block is the part actually measured in CI.
+> **Impact vs. verification.** "Before" counts are read directly from the
+> pre-patch code (`git show d9705e1:src/app/dashboard/page.tsx`: weather
+> `useEffect` fetches on every mount; referral stats fetched on mount plus a
+> manual re-fetch — no cache anywhere). "After" counts are measured by the
+> page-network test below. No browser paint metrics: this change alters
+> request volume, not DOM.
 
 ## Z — The outcome
 
-### Impact (counted from the request flow)
+### Impact (before: read from pre-patch code; after: measured)
 | Flow | Before | After |
 |---|---|---|
-| Weather proxy hits per dashboard visit | 1, every mount | **0** within the 10-min stale window |
-| Referral-stats fetches per mount | **2**, un-deduped | **1**, cached 60s |
-| Referral endpoint failure rate in prod | 100% (`404`) | **0%** (`/stats`) |
+| Weather proxy hits per 3 dashboard mounts | 3 (fetch on every mount) | **1, measured** (`pageNetwork.test.tsx`) |
+| Referral-stats fetches per 3 mounts | 6 (mount + re-fetch, un-deduped) | **1, measured** (`pageNetwork.test.tsx`) |
+| Referral endpoint failure rate in prod | 100% (`debug` 404) | **0%** (`/stats`; `r.ok` guard + `retry: 1`) |
 | Tier-label overflow (`current > 5`) | `10/5 referrals` | **`10/10`** + max-tier message |
 | Fallback weather shown as live | always | **badged** as typical, not live |
 | Hardcoded tier ladder in render layer | ~15 lines | **0** (server `tierProgress`) |
@@ -64,14 +66,16 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
   - referral: **1 fetch on mount, exactly 1 more after `invalidateQueries`**
     (the post-tracking refresh path); `enabled` is `false` when
     unauthenticated or id-less.
+- **Real page, 3 mounts, one shared client** (`pageNetwork.test.tsx`, 1/1
+  pass): renders actual `page.tsx` (auth mocked authenticated, fetch routed
+  by URL) → `/api/weather` called **once**, `/api/referrals/stats` called
+  **once**; mounts 2–3 served fully from cache. This is the end-to-end
+  request count short of a real browser (jsdom: no layout/paint).
 - **0** `tsc` errors in changed code; full-repo `tsc` shows only the **10
   pre-existing** `email.test.ts` errors (untouched).
-- Scoped suites green (`dashboard` 14/14, `trafficColors` 50/50).
+- Scoped suites green (`dashboard` 15/15, `trafficColors` 50/50).
 - Static components (`SuggestedSpots`, `RecommendedCafes`, Tarana Stats) and
   `useSession` intentionally untouched.
-- Not measured (no browser harness in this env — no Playwright/MCP): end-user
-  Network-tab counts across 3 hard reloads. The unit-level numbers above pin
-  the mechanism; a 10-minute DevTools session would confirm it end to end.
 
 ## Gotchas for future readers
 - `fetchWeatherFromAPI` never rejects (returns fallback) — `useQuery.isError`
