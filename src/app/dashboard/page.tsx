@@ -19,6 +19,7 @@ import { trackReferralAfterSignup } from "@/lib/referral-system/client/referralT
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   buildInviteLink,
+  DASHBOARD_ICON_GRADIENT_ID,
   getReferralDisplay,
   isFallbackWeather,
   referralCodeQueryOptions,
@@ -186,6 +187,18 @@ const DashboardContent = () => {
       <main className="md:pl-64 flex-1 flex flex-col md:flex-row">
         {/* Center Content */}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
+          {/* Shared paint server for the gradient card icons below.
+              Referenced via literal stroke/fill props (not Tailwind
+              arbitrary properties — those silently failed to resolve
+              in-browser and left the Plus invisible). */}
+          <svg width="0" height="0" className="absolute" aria-hidden="true">
+            <defs>
+              <linearGradient id={DASHBOARD_ICON_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#1d4ed8" />
+                <stop offset="100%" stopColor="#3b82f6" />
+              </linearGradient>
+            </defs>
+          </svg>
           <div
             onMouseEnter={() => { welcomeHoverRef.current = true }}
             onMouseLeave={() => { welcomeHoverRef.current = false }}
@@ -201,7 +214,7 @@ const DashboardContent = () => {
           <Popover>
               <PopoverTrigger asChild>
                 <button type="button" className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
-                  <Plus size={28} className="mb-2 text-blue-500 feature-icon-float" aria-hidden="true" />
+                  <Plus size={28} stroke={`url(#${DASHBOARD_ICON_GRADIENT_ID})`} className="mb-2 feature-icon-float" aria-hidden="true" />
                   <div className="font-semibold text-lg">Create New Plan</div>
                   <div className="text-gray-500 text-sm mt-1">AI-powered trip and food planning</div>
                 </button>
@@ -246,7 +259,7 @@ const DashboardContent = () => {
               <PopoverTrigger asChild>
                 <button type="button" className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                   <div className="mb-2 feature-icon-float" style={{ animationDelay: '0.8s' }}>
-                    <Bookmark size={28} className="text-blue-500 fill-blue-500" aria-hidden="true" />
+                    <Bookmark size={28} stroke={`url(#${DASHBOARD_ICON_GRADIENT_ID})`} fill={`url(#${DASHBOARD_ICON_GRADIENT_ID})`} aria-hidden="true" />
                   </div>
                   <div className="font-semibold text-lg">View Saved Plans</div>
                   <div className="text-gray-500 text-sm mt-1">Access your planned Itineraries and meals</div>
