@@ -1,48 +1,49 @@
 "use client"
 
+import { useMemo } from "react";
+import { useSession } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
 import SpotlightCard from "./cards/SpotlightCard";
-
-const cafes = [
-  {
-    name: "Itaewon Cafe",
-    image: "/images/itaewon.jpg",
-    distance: "0.9km",
-    time: "6 min",
-    traffic: "Low" as const,
-    lat: 16.4140,
-    lon: 120.5951,
-  },
-  {
-    name: "Good Shepherd Cafe",
-    image: "/images/goodsheperd.jpg",
-    distance: "2.5km",
-    time: "8 - 20 min",
-    traffic: "Low" as const,
-    lat: 16.4063,
-    lon: 120.6025,
-    mapLabel: "Good Shepherd Cafe",
-  },
-  {
-    name: "Kapi Kullaaw",
-    image: "/images/kapi_kullaaw.jpg",
-    distance: "1.2km",
-    time: "7 min",
-    traffic: "Low" as const,
-    lat: 16.4138,
-    lon: 120.5973,
-  },
-];
+import { rankCafes, toCafeCard } from "../utils";
+import { getSavedMeals } from "@/lib/data/supabaseMeals";
 
 export const RecommendedCafes = () => {
+  const { data: session } = useSession();
+
+  // Shared cache with the saved-meals page (same key + fetcher): zero extra
+  // fetch when both pages are visited. Ranked by taste overlap with saves;
+  // ratings order until saves load.
+  const { data: savedMeals = [] } = useQuery({
+    queryKey: ["saved-meals", session?.user?.id],
+    queryFn: async () => {
+      if (!session?.user?.id) return [];
+      return await getSavedMeals(session.user.id);
+    },
+    enabled: !!session?.user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const cafes = useMemo(() => {
+    const ranked = rankCafes(savedMeals);
+    const cards = ranked
+      .map((r) => toCafeCard(r))
+      .filter((c): c is NonNullable<typeof c> => c !== null);
+    return cards.slice(0, 3);
+  }, [savedMeals]);
+
+  if (cafes.length === 0) return null;
+
   return (
     <div className="mb-8">
       <div className="flex justify-between items-center mb-6 px-1">
         <h2 className="font-medium text-xl text-gray-900">Recommended Cafes</h2>
-        <p className="text-sm text-gray-500">Matched to your tastes</p>
+        <p className="text-sm text-gray-500">
+          {savedMeals.length > 0 ? "Matched to your tastes" : "From Baguio's cafe guide"}
+        </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {cafes.map((cafe, index) => (
-          <SpotlightCard key={index} {...cafe} ctaText="View Cafe" />
+        {cafes.map((cafe) => (
+          <SpotlightCard key={cafe.name} {...cafe} ctaText="View Cafe" />
         ))}
       </div>
     </div>

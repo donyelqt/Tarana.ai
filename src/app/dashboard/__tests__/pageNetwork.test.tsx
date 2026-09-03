@@ -57,6 +57,15 @@ jest.mock(
   { virtual: true }
 );
 
+// Deterministic taste signal: a Korean + Japanese save should surface
+// same-family cafes the user hasn't saved yet.
+jest.mock('@/lib/data/supabaseMeals', () => ({
+  getSavedMeals: async () => [
+    { id: 'm1', cafeName: 'Itaewon Cafe', mealType: 'Lunch', price: 300, goodFor: 2, location: 'Session Road', image: 'y' },
+    { id: 'm2', cafeName: 'Uji-Matcha Cafe', mealType: 'Snack', price: 200, goodFor: 1, location: 'Session Road', image: 'y' },
+  ],
+}));
+
 const weatherPayload = {
   main: { temp: 17, feels_like: 15, humidity: 99 },
   weather: [{ id: 500, main: 'Rain', description: 'heavy intensity rain', icon: '10d' }],
@@ -137,6 +146,17 @@ describe('dashboard network counts across 3 mounts (one shared client)', () => {
       await waitFor(() => expect(screen.getByText('MEALS SAVED')).toBeInTheDocument());
       await waitFor(() => expect(screen.getByText('34')).toBeInTheDocument());
       await waitFor(() => expect(screen.getByText('EXPLORERS')).toBeInTheDocument());
+      // Real recommendation engine: 3 spot cards + 3 taste-matched cafe cards
+      await waitFor(() => expect(screen.getByText('Suggested Spots')).toBeInTheDocument());
+      await waitFor(() =>
+        expect(screen.getAllByText('Visit Spot')).toHaveLength(3)
+      );
+      await waitFor(() =>
+        expect(screen.getByText('Matched to your tastes')).toBeInTheDocument()
+      );
+      await waitFor(() =>
+        expect(screen.getAllByText('View Cafe')).toHaveLength(3)
+      );
       unmount();
     }
 

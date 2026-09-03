@@ -1,12 +1,22 @@
 import {
+  estimateMinutes,
+  formatDistanceKm,
   getReferralDisplay,
+  haversineKm,
   isFallbackWeather,
   mapReferralStatsResponse,
   mapTaranaStatsResponse,
+  rankCafes,
+  rankSpots,
+  tasteProfile,
+  toCafeCard,
+  toSpotCard,
+  trafficForSpot,
   weatherQueryOptions,
   WEATHER_FALLBACK_RETRY_MS,
 } from '../utils';
 import type { WeatherData } from '@/lib/core/utils';
+import type { Activity } from '@/app/itinerary-generator/data/itineraryData';
 
 describe('mapTaranaStatsResponse', () => {
   it('maps a successful /api/stats payload', () => {
@@ -166,6 +176,102 @@ describe('isFallbackWeather', () => {
     expect(isFallbackWeather({})).toBe(false);
     expect(isFallbackWeather(null)).toBe(false);
     expect(isFallbackWeather(undefined)).toBe(false);
+  });
+});
+
+describe('recommendations engine', () => {
+  const peak = (p: string) => p === 'PEAK';
+  const offPeakAct = (title: string): Activity => ({
+    image: '/images/x.jpg',
+    title,
+    time: '9 AM',
+    desc: 'd',
+    tags: [],
+    peakHours: 'OFF',
+  });
+  const peakAct = (title: string): Activity => ({
+    ...offPeakAct(title),
+    peakHours: 'PEAK',
+  });
+
+  it('haversine: Baguio center to Burnham Park is ~0.5km', () => {
+    const km = haversineKm(
+      { lat: 16.4134, lon: 120.5934 },
+      { lat: 16.4093, lon: 120.595 }
+    );
+    expect(km).toBeGreaterThan(0.3);
+    expect(km).toBeLessThan(0.8);
+    expect(formatDistanceKm(km)).toMatch(/^~0\.\dkm$/);
+    expect(estimateMinutes(km)).toBe('~1 min');
+  });
+
+  it('trafficForSpot: peak → High, off-peak → Low, unknown → Moderate', () => {
+    expect(trafficForSpot('PEAK', peak)).toBe('High');
+    expect(trafficForSpot('OFF', peak)).toBe('Low');
+    expect(trafficForSpot(undefined, peak)).toBe('Moderate');
+  });
+
+  it('rankSpots puts off-peak first and is deterministic per day', () => {
+    const pool = [peakAct('A'), offPeakAct('B'), offPeakAct('C'), peakAct('D')];
+    const day1 = new Date('2026-09-03T02:00:00+08:00');
+    const first = rankSpots(pool, day1, 3, peak).map((a) => a.title);
+    expect(rankSpots(pool, day1, 3, peak).map((a) => a.title)).toEqual(first);
+    // Off-peak B, C outrank in-peak A, D regardless of rotation
+    expect(first.slice(0, 2)).toEqual(expect.arrayContaining(['B', 'C']));
+    // Rotation varies the order across days
+    const day2 = new Date('2026-09-04T02:00:00+08:00');
+    const orders = new Set(
+      [0, 1, 2, 3, 4, 5, 6].map((d) =>
+        rankSpots(pool, new Date(day1.getTime() + d * 86400000), 3, peak)
+          .map((a) => a.title)
+          .join(',')
+      )
+    );
+    expect(orders.size).toBeGreaterThan(1);
+  });
+
+  it('tasteProfile collects cuisines/tags of saved spots only', () => {
+    const { terms, savedNames } = tasteProfile([
+      { cafeName: 'Itaewon Cafe' } as never,
+      { cafeName: 'Somewhere Unknown' } as never,
+    ]);
+    expect(savedNames.has('itaewon cafe')).toBe(true);
+    expect(savedNames.has('somewhere unknown')).toBe(true);
+    expect(terms.has('korean')).toBe(true);
+    expect(terms.size).toBeGreaterThan(0);
+  });
+
+  it('rankCafes matches taste, excludes saves, falls back without saves', () => {
+    const ranked = rankCafes([{ cafeName: 'Itaewon Cafe' } as never]);
+    expect(ranked.length).toBe(3);
+    expect(ranked.map((r) => r.restaurant.name)).not.toContain('Itaewon Cafe');
+    // Korean/cuisine overlap should surface another Korean-leaning spot first
+    expect(ranked[0].score).toBeGreaterThanOrEqual(ranked[1].score);
+    const fallback = rankCafes([]);
+    expect(fallback).toHaveLength(3);
+    expect(fallback[0].score).toBe(0);
+  });
+
+  it('toSpotCard returns null without coords or image', () => {
+    expect(toSpotCard(offPeakAct('No Such Place Xyz'))).toBeNull();
+  });
+
+  it('toSpotCard builds honest derived fields for Burnham Park', () => {
+    const card = toSpotCard({ ...offPeakAct('Burnham Park'), lat: 16.4093, lon: 120.595 });
+    expect(card).not.toBeNull();
+    expect(card?.distance).toMatch(/^~/);
+    expect(card?.time).toMatch(/^~/);
+    expect(['Low', 'Moderate', 'High']).toContain(card?.traffic);
+    expect(card?.lat).toBeCloseTo(16.4093);
+  });
+
+  it('toCafeCard uses city peak state for traffic', () => {
+    const [first] = rankCafes([]);
+    // isPeakHour reads LOCAL hours — construct locally so this holds in any TZ
+    const lunchRush = new Date(2026, 8, 3, 12, 30);
+    expect(toCafeCard(first, { lat: 16.4134, lon: 120.5934 }, lunchRush)?.traffic).toBe('High');
+    const dawn = new Date(2026, 8, 3, 5, 0);
+    expect(toCafeCard(first, { lat: 16.4134, lon: 120.5934 }, dawn)?.traffic).toBe('Low');
   });
 });
 
