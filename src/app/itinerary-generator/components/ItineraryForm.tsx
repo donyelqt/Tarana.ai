@@ -179,7 +179,7 @@ export default function ItineraryForm({
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
               href="/dashboard"
-              className="inline-flex items-center rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-blue-500/30 transition hover:from-blue-600 hover:to-indigo-700"
+              className="inline-flex items-center rounded-xl bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-blue-500/30 transition"
             >
               Go to Dashboard
             </Link>
@@ -367,7 +367,7 @@ export default function ItineraryForm({
             type="submit"
             className={cn(
               "w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition",
-              showPreview ? 'bg-blue-700 text-white shadow-lg' : 'bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 hover:to-purple-500 text-white',
+              showPreview ? 'bg-blue-700 text-white shadow-lg' : 'bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white',
               (showPreview || isGenerating || disabled) ? 'cursor-not-allowed' : ''
             )}
             disabled={showPreview || isGenerating || disabled}

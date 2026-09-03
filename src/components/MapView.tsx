@@ -519,7 +519,7 @@ const MapView = ({
           {/* Fullscreen Footer */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent backdrop-blur-sm z-10 px-4 py-4 safe-area-bottom">
             <Button
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl shadow-lg transition-all duration-200 active:scale-98"
+              className="w-full bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-medium py-3 rounded-xl shadow-lg transition-all duration-200 active:scale-98"
               onClick={handleOpenInTomTom}
             >
               <svg 

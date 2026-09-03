@@ -192,7 +192,7 @@ const SavedTrips = () => {
                 {/* Action Buttons */}
                 <div className="flex gap-2">
                   <Button
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
+                    className="flex-1 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
                     onClick={() => router.push(`/saved-trips/${itinerary.id}`)}
                   >
                     View Itinerary
@@ -228,7 +228,7 @@ const SavedTrips = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-2">No itineraries found</h3>
             <p className="text-gray-500 mb-4">Try adjusting your search or create a new itinerary.</p>
             <Button
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
+              className="bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
               onClick={() => router.push('/itinerary-generator')}
             >
               Create New Itinerary

@@ -313,10 +313,10 @@ const SavedMealPage = () => {
               {/* Action Buttons with Glowing Effect */}
               <div className="flex flex-col sm:flex-row gap-3 mt-6">
                 <Button 
-                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/50 active:scale-95 sm:hover:-translate-y-0.5 rounded-xl py-2.5 sm:py-2 text-sm font-medium touch-manipulation relative overflow-hidden group"
+                  className="flex-1 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/50 active:scale-95 sm:hover:-translate-y-0.5 rounded-xl py-2.5 sm:py-2 text-sm font-medium touch-manipulation relative overflow-hidden group"
                   onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mealDetails.location)}`, '_blank')}
                 >
-                  <span className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></span>
+                  <span className="absolute inset-0 bg-gradient-to-b from-blue-400 to-blue-600 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></span>
                   <Map className="w-4 h-4 mr-2" />
                   View on Map
                 </Button>
@@ -390,7 +390,7 @@ const SavedMealPage = () => {
                     className={`flex-1 py-3 h-auto rounded-xl transition-all duration-300 hover:-translate-y-0.5 ${
                       selectedMealId === 'custom-meal-1' 
                         ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold shadow-lg shadow-green-500/30'
-                        : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold shadow-lg shadow-blue-500/30'
+                        : 'bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-semibold shadow-lg shadow-blue-500/30'
                     }`}
                   >
                     {selectedMealId === 'custom-meal-1' ? 'Selected Meal' : 'View Meal Card'}
@@ -451,7 +451,7 @@ const SavedMealPage = () => {
                         className={`flex-1 py-3 h-auto rounded-xl transition-all duration-300 hover:-translate-y-0.5 ${
                             isSelected 
                             ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold shadow-lg shadow-green-500/30'
-                            : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold shadow-lg shadow-blue-500/30'
+                        : 'bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-semibold shadow-lg shadow-blue-500/30'
                         }`}
                       >
                         {isSelected ? 'Selected Meal' : 'View Meal Card'}
@@ -525,7 +525,7 @@ const SavedMealPage = () => {
                     </div>
                     <Button 
                       onClick={() => handleSaveIndividualMeal(item)}
-                      className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 h-auto rounded-xl mt-auto shadow-lg shadow-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
+                      className="w-full bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-semibold py-3 h-auto rounded-xl mt-auto shadow-lg shadow-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
                     >
                       Save to My Meals
                     </Button>

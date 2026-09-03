@@ -69,7 +69,7 @@ const SavedMealsPage = () => {
               </p>
             </div>
             <Button 
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-2 px-4 rounded-xl flex items-center shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
+              className="bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-xl flex items-center shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
               onClick={handleGenerateMeals}
             >
               <Plus size={20} className="mr-2" />
@@ -170,7 +170,7 @@ const SavedMealsPage = () => {
               </p>
               {!searchQuery && (
                 <Button
-                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
+                  className="bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
                   onClick={handleGenerateMeals}
                 >
                   <Plus size={20} className="mr-2" />

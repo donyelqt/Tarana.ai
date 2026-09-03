@@ -423,7 +423,7 @@ const SavedItineraryDetail = () => {
             <Button 
               onClick={() => handleRefreshItinerary(false)} 
               disabled={isRefreshing}
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 w-full sm:w-auto justify-center shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
+              className="bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 w-full sm:w-auto justify-center shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
             >
               {isRefreshing ? (
                 <>
@@ -634,10 +634,10 @@ const SavedItineraryDetail = () => {
                                 {/* Map Button */}
                                 <a
                                   href="#"
-                                  className="relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 overflow-hidden group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/50 active:scale-95 sm:hover:-translate-y-0.5 touch-manipulation"
+                                  className="relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 overflow-hidden group bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/50 active:scale-95 sm:hover:-translate-y-0.5 touch-manipulation"
                                   onClick={(e) => handleViewOnMap(activity, e)}
                                 >
-                                  <span className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></span>
+                                  <span className="absolute inset-0 bg-gradient-to-b from-blue-400 to-blue-600 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></span>
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     fill="none"

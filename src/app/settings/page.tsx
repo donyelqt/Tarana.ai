@@ -411,7 +411,7 @@ export default function SettingsPage() {
                     <button
                       onClick={handleSave}
                       disabled={!hasChanges || isSaving}
-                      className={`bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-8 py-3 rounded-xl font-medium shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 flex items-center justify-center ${
+                      className={`bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white px-8 py-3 rounded-xl font-medium shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 flex items-center justify-center ${
                         (!hasChanges || isSaving) ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                     >

@@ -139,7 +139,7 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
               href="/dashboard"
-              className="inline-flex items-center rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-blue-500/30 transition hover:from-blue-600 hover:to-indigo-700"
+              className="inline-flex items-center rounded-xl bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-blue-500/30 transition"
             >
               Go to Dashboard
             </Link>
@@ -249,7 +249,7 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
       <Button 
         type="submit" 
         disabled={isLoading || aiLoading || isGenerated || disabled}
-        className="w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition bg-gradient-to-b from-blue-700 to-blue-500 hover:from-blue-700 hover:to-purple-500 text-white"
+        className="w-full font-semibold rounded-xl py-3 text-lg flex items-center justify-center gap-2 transition bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white"
       >
         {aiLoading || isLoading ? (
           <>
