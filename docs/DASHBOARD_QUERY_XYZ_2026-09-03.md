@@ -123,6 +123,22 @@ also computed its 1/3/5 ladder inline (duplicating `TierService`), rendering
   `prefers-reduced-motion` guard for all dashboard animations.
 - Gala machinery and per-visit routing remain rejected (see above).
 
+## Appendix: dead invite links P0 + live-fire proof (2026-09-03)
+- **Incident:** dashboard fabricated invite codes as `${EMAILPREFIX}2024`
+  while the DB trigger issues random 8-char codes — `createReferral`'s
+  `.eq('referral_code')` lookup could never match. Every copied link was
+  dead. The link shape was also wrong (`/invite/` — no such route; the
+  working shape is `/auth/signup?ref=`, consumed by `ReferralTracker`).
+- **Fix:** real code from `GET /api/referrals/code`, correct link shape,
+  copy disabled until loaded (`cc6db34`).
+- **Live-fire proof (real DB, throwaway users, zero leftovers):** trigger
+  issued `F566C3D8`; fabricated code rejected; real redemption succeeded
+  (1 active referral → Explorer, 6 credits/day); duplicate rejected.
+  11/11 checks passed, cleanup verified across `referrals`,
+  `user_profiles`, `users`.
+- **Production build:** full `npm run build` (lint included) passes —
+  `/dashboard`, `/api/spots`, `/api/stats`, `/api/weather` all compile.
+
 ## Appendix: suggested-spots location scope (Baguio/Cebu/Manila/Davao)
 - **Scope pills** (`aria-pressed`) above the spots grid; Baguio default.
   Baguio stays fully local (curated pool, instant, offline-safe).
