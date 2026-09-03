@@ -2,7 +2,8 @@
  * Welcome header motion contract (Apple-smooth hover).
  * Pins the exact properties that made hover janky before:
  * - Apple easing curve (no mechanical ease-in-out)
- * - subtle motion-safe lift (no 8px jump, nothing under reduced-motion)
+ * - strong motion-safe lift restored (reversal of the subtle -y-1: the aura
+ *   needs the bigger travel to stay coherent)
  * - no hover:animate-none (it hard-killed the shimmer mid-hover)
  * - 2s auto-toggle pauses while hovered (no class flips mid-flight)
  */
@@ -82,11 +83,11 @@ describe('welcome header motion', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  it('uses the Apple easing curve with a subtle motion-safe lift', () => {
+  it('uses the Apple easing curve with a strong motion-safe lift', () => {
     renderDashboard();
     const cls = welcomeCard().getAttribute('class') ?? '';
     expect(cls).toContain('ease-[cubic-bezier(0.32,0.72,0,1)]');
-    expect(cls).toContain('motion-safe:hover:-translate-y-1');
+    expect(cls).toContain('motion-safe:hover:-translate-y-2');
     expect(cls).not.toContain('hover:animate-none');
     expect(cls).not.toContain('ease-in-out');
   });

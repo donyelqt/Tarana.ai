@@ -70,8 +70,7 @@ const DashboardContent = () => {
     return () => clearInterval(intervalId)
   }, [])
 
-  // Baguio weather: 10-minute staleTime is appropriate for weather (doesn't change
-  // minute-to-minute); useQuery replaces the manual useState/useEffect/useLoading
+  // Baguio weather: 10-minute staleTime is appropriate for weather (doesn't change  // minute-to-minute); useQuery replaces the manual useState/useEffect/useLoading
   // trio and prevents a refetch on every dashboard remount.
   const {
     data: weatherData,
@@ -190,7 +189,7 @@ const DashboardContent = () => {
           <div
             onMouseEnter={() => { welcomeHoverRef.current = true }}
             onMouseLeave={() => { welcomeHoverRef.current = false }}
-            className={`bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-xl motion-safe:hover:shadow-blue-500/30 ${isWelcomeCardAnimated ? 'animate-none -translate-y-2 shadow-3xl shadow-blue-500' : 'animate-natural-shimmer'}`}>
+            className={`bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 shadow-[0_0_18px_rgba(59,130,246,0.35),0_0_55px_rgba(59,130,246,0.22)] transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-safe:hover:-translate-y-2 motion-safe:hover:shadow-[0_0_28px_rgba(96,165,250,0.65),0_0_80px_rgba(59,130,246,0.4),0_16px_48px_rgba(29,78,216,0.5)] ${isWelcomeCardAnimated ? 'animate-none -translate-y-2 shadow-3xl shadow-blue-500' : ''}`}>
             <Image src={session?.user?.image || noProfile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div className="flex-grow">
               <h1 className="text-xl font-bold text-white text-balance">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="wave ml-1 text-3xl" aria-hidden="true">👋</span></h1>
@@ -361,7 +360,7 @@ const DashboardContent = () => {
                 </div>
                 {isFallbackWeather(weatherData) && (
                   <div
-                    className="mt-2 rounded-lg bg-yellow-400/20 px-2 py-1 text-center text-xs font-medium text-yellow-100"
+                    className="mt-2 rounded-lg bg-yellow-400/20 border border-yellow-200/40 px-2 py-1 text-center text-xs font-medium text-white"
                     title={weatherData.fallbackReason ? `Why: ${weatherData.fallbackReason}` : undefined}
                   >
                     Typical Baguio weather — live data unavailable
