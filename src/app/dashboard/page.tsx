@@ -6,7 +6,7 @@ import Sidebar from "../../components/Sidebar"
 import SuggestedSpots from "./components/SuggestedSpots"
 import RecommendedCafes from "./components/RecommendedCafes"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, useRef, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { BAGUIO_COORDINATES, WeatherData, getWeatherIconUrl } from "@/lib/core/utils"
 import { Bookmark, Plus, MapPin, Car, Utensils, Wand2, Link, Share2 } from "lucide-react"
@@ -35,6 +35,9 @@ const DashboardContent = () => {
   const queryClient = useQueryClient()
   const [showSplash, setShowSplash] = useState(false)
   const [isWelcomeCardAnimated, setIsWelcomeCardAnimated] = useState(false)
+  // While hovered, the 2s auto-toggle pauses so it never yanks the card
+  // mid-hover (the jank). Tracked in a ref — no re-render needed.
+  const welcomeHoverRef = useRef(false)
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false)
   const [referralTracked, setReferralTracked] = useState(false)
   // Real DB-issued code (8-char trigger output). The old `${EMAIL}2024`
@@ -60,6 +63,7 @@ const DashboardContent = () => {
 
   useEffect(() => {
     const intervalId = setInterval(() => {
+      if (welcomeHoverRef.current) return
       setIsWelcomeCardAnimated((prev) => !prev)
     }, 2000)
 
@@ -183,7 +187,10 @@ const DashboardContent = () => {
       <main className="md:pl-64 flex-1 flex flex-col md:flex-row">
         {/* Center Content */}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
-          <div className={`bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 transition-[transform,box-shadow] duration-300 ease-in-out hover:animate-none hover:-translate-y-2 hover:shadow-3xl hover:shadow-blue-500 ${isWelcomeCardAnimated ? 'animate-none -translate-y-2 shadow-3xl shadow-blue-500' : 'animate-natural-shimmer'}`}>
+          <div
+            onMouseEnter={() => { welcomeHoverRef.current = true }}
+            onMouseLeave={() => { welcomeHoverRef.current = false }}
+            className={`bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-xl motion-safe:hover:shadow-blue-500/30 ${isWelcomeCardAnimated ? 'animate-none -translate-y-2 shadow-3xl shadow-blue-500' : 'animate-natural-shimmer'}`}>
             <Image src={session?.user?.image || noProfile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
             <div className="flex-grow">
               <h1 className="text-xl font-bold text-white text-balance">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="wave ml-1 text-3xl" aria-hidden="true">👋</span></h1>
