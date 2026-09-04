@@ -9,6 +9,7 @@ import { motion, useReducedMotion } from "framer-motion"
 import { Settings, Donut, Utensils, MapPinCheck, Route, LogOut, LayoutDashboard, Sparkles, Volume2, VolumeX, ChevronsLeft, ChevronsRight } from 'lucide-react'
 
 import Image from "next/image"
+import taranaai from "../../public/images/taranaai.png"
 import taranaai2 from "../../public/images/taranaai2.png"
 
 const SIDEBAR_COLLAPSED_KEY = 'tarana-sidebar-collapsed';
@@ -139,9 +140,12 @@ const Sidebar = () => {
       {/* Sidebar - hidden on mobile unless toggled */}
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 ${collapsed ? 'md:w-20 md:p-4' : 'md:w-64'} bg-white border-r border-gray-200 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-[transform,width] duration-300 ease-in-out flex flex-col justify-between p-6`}>
         <div>
-          <div className={`flex items-center mb-12 ${collapsed ? 'md:justify-center' : 'md:justify-between'}`}>
+          <div className={`flex items-center mb-12 ${collapsed ? 'md:flex-col md:justify-center md:gap-3' : 'md:justify-between'}`}>
             <div className={`text-2xl font-bold ${collapsed ? 'md:hidden' : ''}`}>
               <Image src={taranaai2} alt="Logo" width={120} height={120} />
+            </div>
+            <div className={`hidden ${collapsed ? 'md:block' : ''}`}>
+              <Image src={taranaai} alt="Logo" width={40} height={40} className="mx-auto" />
             </div>
             <button
               type="button"
