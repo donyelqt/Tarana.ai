@@ -280,7 +280,7 @@ const SavedMealPage = () => {
           <Link href="/saved-meals" className="hover:text-blue-600">Saved Plans</Link> &gt; <Link href="/saved-meals" className="hover:text-blue-600">Meals</Link> &gt; {mealDetails.cafeName}
         </div>
         
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 mb-8">
           <div className="xl:col-span-2 flex flex-col gap-6">
             <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 flex items-center gap-6 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
               <div className="w-24 h-24 rounded-full bg-[#7d5a44] flex-shrink-0 flex items-center justify-center text-white text-center font-bold text-lg leading-tight">
@@ -332,7 +332,7 @@ const SavedMealPage = () => {
               </div>
             </div>
           </div>
-          <div className="w-full h-64 xl:h-auto rounded-3xl overflow-hidden relative shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60">
+          <div className="w-full h-80 xl:col-span-3 xl:h-[360px] xl:self-start rounded-3xl overflow-hidden relative shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60">
                         <Image src={mealDetails.image} alt={mealDetails.name || 'Meal Image'} fill className="object-cover" />
           </div>
         </div>
