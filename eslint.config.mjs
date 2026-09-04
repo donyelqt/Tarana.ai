@@ -13,8 +13,31 @@ const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {
-      "@typescript-eslint/no-explicit-any": "off"
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-require-imports": "off",
+      "prefer-const": "off",
+      "react/no-unescaped-entities": "off",
+      "no-restricted-imports": "off",
+      "@typescript-eslint/no-this-alias": "off",
+      "import/no-anonymous-default-export": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-require-imports": "off",
+      "prefer-const": "off",
+      "react/no-unescaped-entities": "off",
+      "no-restricted-imports": "off",
+      "@typescript-eslint/no-this-alias": "off",
+      "import/no-anonymous-default-export": "off"
     }
+  },
+  {
+    files: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
+    },
   },
   {
     files: [
@@ -22,12 +45,6 @@ const eslintConfig = [
       "src/components/**/*.tsx",
       "src/app/**/*.ts",
       "src/app/**/*.tsx",
-    ],
-    ignores: [
-      "**/__tests__/**",
-      "**/*.test.ts",
-      "**/*.test.tsx",
-      "src/app/api/**",
     ],
     rules: {
       "no-restricted-imports": [

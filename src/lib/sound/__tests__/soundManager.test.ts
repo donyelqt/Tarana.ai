@@ -53,7 +53,6 @@ function makeCtx() {
 
 function withCtx() {
   const built = makeCtx();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).AudioContext = jest.fn(() => built.ctx);
   return built;
 }
@@ -62,8 +61,7 @@ describe('soundManager', () => {
   beforeEach(() => {
     __resetSoundForTests();
     window.localStorage.clear();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).AudioContext = undefined;
+      (window as any).AudioContext = undefined;
   });
 
   it('defaults to enabled with no stored preference', () => {

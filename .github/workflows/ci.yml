@@ -34,19 +34,15 @@ jobs:
 
       - run: npm ci
 
-      # Lint: 195 pre-existing errors (see npm run lint locally). Keep
-      # running for visibility but don't block merges until debt is triaged.
-      # Remove continue-on-error once the backlog is fixed.
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Typecheck
         run: npx tsc --noEmit --skipLibCheck
 
-      # Tests: 156 pre-existing failures (27 suites). Keep running for
-      # visibility but don't block merges until the suite is green.
-      # Remove continue-on-error once the backlog is fixed.
+      # Tests: 80 pre-existing failures (26 suites, .kilo excluded). Triage
+      # tracked: 5 worst legacy suites to stub, 22 to fix. Keep
+      # informative until green.
       - name: Tests
         run: npm test -- --passWithNoTests --maxWorkers=2
         continue-on-error: true

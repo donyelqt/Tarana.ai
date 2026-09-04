@@ -33,6 +33,7 @@ module.exports = {
     '/node_modules/',
     '/.next/',
     '/.swc/',
+    '/.kilo/',
   ],
   testEnvironmentOptions: {
     customExportConditions: [''],
