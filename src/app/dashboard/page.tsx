@@ -18,6 +18,7 @@ import { ReferralModal } from "./components/ReferralModal"
 import { useToast } from "@/components/ui/use-toast"
 import { trackReferralAfterSignup } from "@/lib/referral-system/client/referralTracking"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { motion, useReducedMotion } from "framer-motion"
 import {
   buildInviteLink,  getReferralDisplay,
   isFallbackWeather,
@@ -34,6 +35,8 @@ const DashboardContent = () => {
   const { data: session, status } = useSession()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const reduceMotion = useReducedMotion()
+  const firstName = (session?.user?.name || 'Traveler').split(' ')[0]
   const [showSplash, setShowSplash] = useState(false)
   const [isWelcomeCardAnimated, setIsWelcomeCardAnimated] = useState(false)
   // While hovered, the 2s auto-toggle pauses so it never yanks the card
@@ -139,11 +142,19 @@ const DashboardContent = () => {
       setShowSplash(true)
       const timer = setTimeout(() => {
         setShowSplash(false)
-        // Clean up the URL
         router.replace('/dashboard', { scroll: false })
-      }, 4000) // Keep splash screen for 4 seconds
-
-      return () => clearTimeout(timer)
+      }, 4000)
+      const onEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setShowSplash(false)
+          router.replace('/dashboard', { scroll: false })
+        }
+      }
+      window.addEventListener('keydown', onEsc)
+      return () => {
+        clearTimeout(timer)
+        window.removeEventListener('keydown', onEsc)
+      }
     }
   }, [searchParams, router])
 
@@ -155,25 +166,46 @@ const DashboardContent = () => {
     }
   }, [status, router])
 
-  // Show loading state while checking authentication or if splash screen is active
+  // Premium flat splash — 4s, white, first-name welcome + honest progress
   if (status === 'loading' || showSplash) {
+    if (status === 'loading') {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
+        </div>
+      )
+    }
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
-        <div className="relative flex items-center justify-center">
-          {/* Pulsing rings */}
-          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring"></div>
-          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring-delayed"></div>
-          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring-delayed-more"></div>
-          
-          {/* Logo */}
-          <Image 
-            src="/images/taranaai2.png" 
-            alt="Loading..." 
-            width={200} 
-            height={200} 
-            className="animate-reveal-and-pulse"
-            priority 
-          />
+      <div
+        onClick={() => { setShowSplash(false); router.replace('/dashboard', { scroll: false }) }}
+        className="min-h-screen flex flex-col items-center justify-center bg-[#f7f9fb] p-8 cursor-pointer"
+        aria-label="Welcome — click to continue"
+      >
+        <div className="relative flex flex-col items-center">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute h-48 w-48 rounded-full bg-blue-200/40 animate-pulse-ring" aria-hidden="true" />
+            <div className="absolute h-48 w-48 rounded-full bg-blue-200/40 animate-pulse-ring-delayed" aria-hidden="true" />
+            <div className="absolute h-48 w-48 rounded-full bg-blue-200/40 animate-pulse-ring-delayed-more" aria-hidden="true" />
+            <Image src="/images/taranaai2.png" alt="Tarana.ai" width={180} height={180} className="relative z-10 animate-reveal-and-pulse" priority />
+          </div>
+          <motion.div
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={reduceMotion ? { duration: 0 } : { delay: 0.3, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-8 text-center"
+          >
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Welcome back, {firstName}!</h1>
+            <p className="mt-2 text-sm text-gray-500">Preparing your workspace</p>
+          </motion.div>
+          <div className="mt-6 w-[280px] h-1 bg-gray-200 rounded-full overflow-hidden" aria-hidden="true">
+            <motion.div
+              initial={{ width: "0%" }}
+              animate={{ width: "100%" }}
+              transition={{ duration: 4, ease: "linear" }}
+              className="h-full bg-gradient-to-r from-blue-600 to-blue-400"
+            />
+          </div>
+          <p className="mt-3 text-[11px] tracking-[0.12em] uppercase text-gray-400">Tarana.ai — Baguio, Philippines</p>
         </div>
       </div>
     )
