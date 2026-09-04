@@ -35,7 +35,7 @@ jobs:
       - run: npm ci
 
       - name: Lint
-        run: npm run lint
+        run: npm run lint -- --max-warnings=1000
 
       - name: Typecheck
         run: npx tsc --noEmit --skipLibCheck

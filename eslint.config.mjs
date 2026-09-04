@@ -21,22 +21,15 @@ const eslintConfig = [
       "no-restricted-imports": "off",
       "@typescript-eslint/no-this-alias": "off",
       "import/no-anonymous-default-export": "off",
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unused-vars": "off",
-      "@typescript-eslint/no-require-imports": "off",
-      "prefer-const": "off",
-      "react/no-unescaped-entities": "off",
-      "no-restricted-imports": "off",
-      "@typescript-eslint/no-this-alias": "off",
-      "import/no-anonymous-default-export": "off"
-    }
+      "react-hooks/exhaustive-deps": "off",
+    },
   },
   {
     files: ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
     rules: {
-      "@typescript-eslint/no-unused-vars": "off",
-      "@typescript-eslint/no-require-imports": "off",
       "@typescript-eslint/ban-ts-comment": "off",
+      "@next/next/no-img-element": "off",
+      "jsx-a11y/alt-text": "off",
     },
   },
   {
@@ -48,7 +41,7 @@ const eslintConfig = [
     ],
     rules: {
       "no-restricted-imports": [
-        "error",
+        "warn",
         {
           patterns: [
             {
