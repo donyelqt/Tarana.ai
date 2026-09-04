@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/core";
 import { TaranaEatsFormValues } from "@/types/tarana-eats";
@@ -161,16 +163,21 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
             />
           </div>
           <div>
-            <select 
-              value={formValues.cuisine} 
-              onChange={e => updateFormValue("cuisine", e.target.value)} 
-              className="w-full border rounded-xl px-3 py-2 h-10"
+            <Label htmlFor="eats-cuisine" className="sr-only">Cuisine</Label>
+            <Select
+              value={formValues.cuisine}
+              onValueChange={(v) => updateFormValue("cuisine", v)}
               disabled={isGenerated || disabled}
             >
-              {cuisineOptions.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
+              <SelectTrigger id="eats-cuisine" className="w-full rounded-xl h-10 text-sm shadow-none" aria-label="Cuisine">
+                <SelectValue placeholder="Select cuisine" />
+              </SelectTrigger>
+              <SelectContent>
+                {cuisineOptions.map((opt) => (
+                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
