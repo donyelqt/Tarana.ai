@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import Image from "next/image"
+import { Volume2, VolumeX } from "lucide-react"
+import { useInterfaceSound } from "@/lib/sound/SoundProvider"
 import taranaai2 from "../../public/images/taranaai2.png"
 
 type SectionBackground = "white" | "blue"
@@ -14,6 +16,7 @@ const Navbar = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [bg, setBg] = useState<SectionBackground>("white")
     const pathname = usePathname();
+    const { enabled: soundOn, setEnabled: setSoundOn } = useInterfaceSound()
 
     // Close menu when resizing to desktop view
     useEffect(() => {
@@ -97,6 +100,24 @@ const Navbar = () => {
                 </div>
 
                 <div className="hidden md:flex items-center space-x-4">
+                    <button
+                        type="button"
+                        onClick={() => setSoundOn(!soundOn)}
+                        aria-pressed={soundOn}
+                        aria-label={soundOn ? "Turn interface sounds off" : "Turn interface sounds on"}
+                        title={soundOn ? "Sounds on" : "Sounds off"}
+                        className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                            isBlue
+                                ? soundOn
+                                    ? "bg-white/25 text-white"
+                                    : "text-white hover:bg-white/20"
+                                : soundOn
+                                    ? "bg-blue-100 text-blue-600 hover:bg-blue-200"
+                                    : "text-gray-600 hover:bg-gray-100 hover:text-blue-600"
+                        }`}
+                    >
+                        {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                    </button>
                     <Link href="/auth/signin" className={`px-4 py-2 rounded-xl transition-colors ${isBlue ? 'bg-white text-gray-900 hover:bg-gray-100' : 'bg-gray-100 text-gray-900 hover:text-blue-500'}`}>
                         Sign In
                     </Link>
@@ -129,6 +150,16 @@ const Navbar = () => {
                         <Link href="/contact" className={`font-medium py-2 border-b border-gray-100 ${pathname === "/contact" ? "text-blue-500 font-bold" : "text-gray-900 hover:text-blue-500"}`}>Contact</Link>
                         <div className="flex flex-col space-y-3 pt-2">
                             <Link href="/auth/signin" className="text-gray-900 hover:text-blue-500 font-medium py-2">
+                            <button
+                                type="button"
+                                onClick={() => setSoundOn(!soundOn)}
+                                aria-pressed={soundOn}
+                                aria-label={soundOn ? 'Turn interface sounds off' : 'Turn interface sounds on'}
+                                className="mt-1 flex items-center gap-2 text-gray-900 hover:text-blue-500 font-medium py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg"
+                            >
+                                {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                                <span>{soundOn ? 'Sounds on' : 'Sounds off'}</span>
+                            </button>
                                 Sign In
                             </Link>
                             <Link
