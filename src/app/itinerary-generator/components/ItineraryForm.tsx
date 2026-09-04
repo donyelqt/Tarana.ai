@@ -238,7 +238,7 @@ export default function ItineraryForm({
                 <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[700px] p-2" align="center">
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2" align="center">
               <div className="grid gap-1 p-2">
                 {budgetOptions.map((option, idx) => {
                   let Icon;
