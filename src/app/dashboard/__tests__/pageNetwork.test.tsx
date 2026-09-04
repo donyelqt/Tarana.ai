@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import { ToastProvider } from '@/components/ui/use-toast';
 import { SoundProvider } from '@/lib/sound/SoundProvider';
+import { SidebarProvider } from '@/components/Sidebar';
 import Dashboard from '../page';
 
 jest.mock('next-auth/react', () => ({
@@ -152,9 +153,9 @@ describe('dashboard network counts across 3 mounts (one shared client)', () => {
     });
     const ui = (
       <QueryClientProvider client={client}>
-        <SoundProvider><ToastProvider>
+        <SidebarProvider><SoundProvider><ToastProvider>
           <Dashboard />
-        </ToastProvider></SoundProvider>
+        </ToastProvider></SoundProvider></SidebarProvider>
       </QueryClientProvider>
     );
 

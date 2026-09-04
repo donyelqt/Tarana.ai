@@ -6,6 +6,7 @@ import { SessionProvider } from '@/components/providers/SessionProvider'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ToastProvider } from "@/components/ui/use-toast"
 import { SoundProvider } from '@/lib/sound/SoundProvider'
+import { SidebarProvider } from '@/components/Sidebar';
 import { Toaster } from "@/components/ui/toaster";
 import SmokeEffect from "@/components/ui/SmokeEffect";
 import { ReferralTracker } from "@/components/ReferralTracker";
@@ -40,12 +41,12 @@ export default function RootLayout({
       <body className="font-sans">
         <SessionProvider>
           <QueryProvider>
-            <SoundProvider><ToastProvider>
+            <SoundProvider><SidebarProvider><ToastProvider>
               <ReferralTracker />
               <SmokeEffect />
               {children}
               <Toaster />
-            </ToastProvider></SoundProvider>
+            </ToastProvider></SidebarProvider></SoundProvider>
           </QueryProvider>
         </SessionProvider>
       </body>
