@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { isSoundEnabled, playClick, playHover, setSoundEnabled } from './soundManager';
+import { isSoundEnabled, playClick, playHover, setSoundEnabled, unlockAudio } from './soundManager';
 
 interface SoundContextValue {
   enabled: boolean;
@@ -32,6 +32,18 @@ export function SoundProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const play = useCallback(() => playClick(), []);
+
+  // Warm the AudioContext on the very first gesture anywhere (silent) so the
+  // first real blip never races resume(). Independent of the toggle.
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    document.addEventListener('pointerdown', unlock, { once: true });
+    document.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      document.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('keydown', unlock);
+    };
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;

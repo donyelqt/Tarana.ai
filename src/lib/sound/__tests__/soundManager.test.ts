@@ -107,6 +107,48 @@ describe('soundManager', () => {
     expect(freqs).toEqual([2093]);
   });
 
+  it('schedules blips slightly in the future so resume wins the race', () => {
+    const starts: unknown[] = [];
+    const fakeOsc = () => ({
+      type: '',
+      frequency: { value: 0 },
+      connect: jest.fn().mockReturnThis(),
+      start: jest.fn((...a: unknown[]) => {
+        starts.push(a);
+      }),
+      stop: jest.fn(),
+    });
+    (window as any).AudioContext = jest.fn(() => ({
+      state: 'running',
+      currentTime: 10,
+      destination: {},
+      resume: jest.fn(),
+      createOscillator: jest.fn(fakeOsc),
+      createGain: jest.fn(() => ({
+        gain: { setValueAtTime: jest.fn(), exponentialRampToValueAtTime: jest.fn() },
+        connect: jest.fn().mockReturnThis(),
+      })),
+    }));
+    setSoundEnabled(true);
+    playClick();
+    expect(starts).toEqual([[10.01], [10.01]]);
+  });
+
+  it('unlockAudio warms the context without playing', () => {
+    const resume = jest.fn();
+    (window as any).AudioContext = jest.fn(() => ({
+      state: 'suspended',
+      currentTime: 0,
+      destination: {},
+      resume,
+      createOscillator: jest.fn(),
+      createGain: jest.fn(),
+    }));
+    const { unlockAudio } = require('../soundManager') as typeof import('../soundManager');
+    unlockAudio();
+    expect(resume).toHaveBeenCalled();
+  });
+
   it('hover and click throttle independently', () => {
     const { ctx } = withCtx();
     setSoundEnabled(true);
