@@ -18,6 +18,7 @@ import { ReferralModal } from "./components/ReferralModal"
 import { useToast } from "@/components/ui/use-toast"
 import { trackReferralAfterSignup } from "@/lib/referral-system/client/referralTracking"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import {
   buildInviteLink,  getReferralDisplay,
   isFallbackWeather,
@@ -34,6 +35,7 @@ const DashboardContent = () => {
   const { data: session, status } = useSession()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const reduceMotion = useReducedMotion()
   const [showSplash, setShowSplash] = useState(false)
   const [isWelcomeCardAnimated, setIsWelcomeCardAnimated] = useState(false)
   // While hovered, the 2s auto-toggle pauses so it never yanks the card
@@ -139,11 +141,19 @@ const DashboardContent = () => {
       setShowSplash(true)
       const timer = setTimeout(() => {
         setShowSplash(false)
-        // Clean up the URL
         router.replace('/dashboard', { scroll: false })
-      }, 4000) // Keep splash screen for 4 seconds
-
-      return () => clearTimeout(timer)
+      }, 4000)
+      const onEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setShowSplash(false)
+          router.replace('/dashboard', { scroll: false })
+        }
+      }
+      window.addEventListener('keydown', onEsc)
+      return () => {
+        clearTimeout(timer)
+        window.removeEventListener('keydown', onEsc)
+      }
     }
   }, [searchParams, router])
 
@@ -155,27 +165,80 @@ const DashboardContent = () => {
     }
   }, [status, router])
 
-  // Show loading state while checking authentication or if splash screen is active
+  // Premium splash — modernized 2026: same 4s, now design-system native (rounded-3xl, soft shadows, springs)
   if (status === 'loading' || showSplash) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
-        <div className="relative flex items-center justify-center">
-          {/* Pulsing rings */}
-          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring"></div>
-          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring-delayed"></div>
-          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring-delayed-more"></div>
-          
-          {/* Logo */}
-          <Image 
-            src="/images/taranaai2.png" 
-            alt="Loading..." 
-            width={200} 
-            height={200} 
-            className="animate-reveal-and-pulse"
-            priority 
-          />
+    if (status === 'loading') {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
         </div>
-      </div>
+      )
+    }
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          onClick={() => { setShowSplash(false); router.replace('/dashboard', { scroll: false }) }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#f7f9fb] p-6 cursor-pointer"
+          aria-label="Welcome — click to continue"
+        >
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            initial={reduceMotion ? false : { opacity: 0, y: 14, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-full max-w-[420px] rounded-[32px] bg-white border border-gray-200/60 shadow-[0_20px_60px_rgba(0,0,0,0.08),0_8px_30px_rgba(0,0,0,0.06)] p-10 text-center overflow-hidden cursor-default"
+          >
+            <div className="absolute inset-0 rounded-[32px] bg-gradient-to-br from-blue-50 via-transparent to-blue-50/50 pointer-events-none" />
+            <div className="relative">
+              <div className="relative mx-auto w-[200px] h-[200px] flex items-center justify-center">
+                <motion.div
+                  initial={reduceMotion ? false : { scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={reduceMotion ? { duration: 0 } : { delay: 0.15, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-blue-50"
+                  aria-hidden="true"
+                />
+                <motion.div
+                  animate={reduceMotion ? {} : { scale: [1, 1.06, 1] }}
+                  transition={reduceMotion ? { duration: 0 } : { duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-0 rounded-full border border-blue-200/50"
+                  aria-hidden="true"
+                />
+                <Image src="/images/taranaai2.png" alt="Tarana.ai" width={160} height={160} className="relative z-10" priority />
+              </div>
+              <motion.h1
+                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={reduceMotion ? { duration: 0 } : { delay: 0.35, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="mt-6 text-xl font-bold tracking-tight text-gray-900"
+              >
+                Welcome back, {session?.user?.name || 'Traveler'}!
+              </motion.h1>
+              <motion.p
+                initial={reduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={reduceMotion ? { duration: 0 } : { delay: 0.5, duration: 0.5 }}
+                className="mt-2 text-sm text-gray-500"
+              >
+                Your Baguio workspace is ready
+              </motion.p>
+              <div className="mt-8 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 4, ease: "linear" }}
+                  className="h-full bg-gradient-to-r from-blue-600 to-blue-400"
+                />
+              </div>
+              <p className="mt-3 text-[11px] tracking-[0.12em] uppercase text-gray-400">Tarana.ai — Baguio, Philippines</p>
+            </div>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
     )
   }
   
