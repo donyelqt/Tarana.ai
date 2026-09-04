@@ -476,11 +476,6 @@ describe('Error Handling', () => {
   });
 
   it('should handle malformed activities gracefully', async () => {
-    const malformedActivities = [
-      { title: 'Valid Activity', desc: 'Test description' },
-      { title: 'Another Valid', desc: 'Another test' }
-    ];
-      
     const results = await searchEngine.search('test query', mockContext);
       
     expect(results.length).toBeGreaterThan(0);

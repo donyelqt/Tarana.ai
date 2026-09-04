@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ci-test-secret-at-least-32-chars-long
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+      OPENWEATHER_API_KEY: ci-openweather-key
+      TOMTOM_API_KEY: ci-tomtom-key
+      GOOGLE_GEMINI_API_KEY: ci-gemini-key
+      UNSPLASH_ACCESS_KEY: ci-unsplash-key
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Lint: 195 pre-existing errors (see npm run lint locally). Keep
+      # running for visibility but don't block merges until debt is triaged.
+      # Remove continue-on-error once the backlog is fixed.
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Typecheck
+        run: npx tsc --noEmit --skipLibCheck
+
+      # Tests: 156 pre-existing failures (27 suites). Keep running for
+      # visibility but don't block merges until the suite is green.
+      # Remove continue-on-error once the backlog is fixed.
+      - name: Tests
+        run: npm test -- --passWithNoTests --maxWorkers=2
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build

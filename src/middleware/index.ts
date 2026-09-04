@@ -72,7 +72,7 @@ const middlewareHandler: MiddlewareHandler = composeMiddleware({
       priority: 10
     },
   ],
-  errorHandler: (error, request) => {
+  errorHandler: (error) => {
     console.error('[Middleware Error]', error);
     // Return appropriate error response with security headers
     return applySecurityHeaders(new NextResponse('Internal Server Error', { status: 500 }));
