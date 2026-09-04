@@ -4,8 +4,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
+import { useInterfaceSound } from '@/lib/sound/SoundProvider'
 import { motion, useReducedMotion } from "framer-motion"
-import { Settings, Donut, Utensils, MapPinCheck, Route, LogOut, LayoutDashboard, Sparkles } from 'lucide-react'
+import { Settings, Donut, Utensils, MapPinCheck, Route, LogOut, LayoutDashboard, Sparkles, Volume2, VolumeX } from 'lucide-react'
 
 import Image from "next/image"
 import taranaai2 from "../../public/images/taranaai2.png"
@@ -14,6 +15,7 @@ const Sidebar = () => {
 
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { enabled: soundOn, setEnabled: setSoundOn } = useInterfaceSound()
 
   // Shared-layout indicator: framer-motion measures + springs the pill between
   // links automatically (layoutId). Direction-aware by geometry; bounce = overshoot.
@@ -116,6 +118,22 @@ const Sidebar = () => {
           </nav>
         </div>
         <div className="border-t border-gray-100 pt-4">
+          <button
+            type="button"
+            onClick={() => setSoundOn(!soundOn)}
+            role="switch"
+            aria-checked={soundOn}
+            aria-label="Interface sounds"
+            className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium tracking-tight text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:scale-[0.98]"
+          >
+            <span className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${soundOn ? 'bg-blue-100 text-blue-600 group-hover:bg-blue-200' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-900'}`}>
+              {soundOn ? <Volume2 size={14} strokeWidth={2} /> : <VolumeX size={14} strokeWidth={2} />}
+            </span>
+            Sounds
+            <span className={`ml-auto text-[10px] font-bold uppercase tracking-wider ${soundOn ? 'text-blue-600' : 'text-gray-400'}`}>
+              {soundOn ? 'On' : 'Off'}
+            </span>
+          </button>
           <button
             type="button"
             onClick={() => signOut({ callbackUrl: '/auth/signin' })}

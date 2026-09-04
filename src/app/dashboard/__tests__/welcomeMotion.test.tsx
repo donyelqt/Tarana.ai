@@ -11,6 +11,7 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { ToastProvider } from '@/components/ui/use-toast';
+import { SoundProvider } from '@/lib/sound/SoundProvider';
 import Dashboard from '../page';
 
 jest.mock('next-auth/react', () => ({
@@ -65,9 +66,9 @@ function renderDashboard() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <ToastProvider>
+      <SoundProvider><ToastProvider>
         <Dashboard />
-      </ToastProvider>
+      </ToastProvider></SoundProvider>
     </QueryClientProvider>
   );
 }
