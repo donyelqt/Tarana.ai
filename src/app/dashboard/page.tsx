@@ -188,24 +188,6 @@ const DashboardContent = () => {
             <div className="absolute h-48 w-48 rounded-full bg-blue-200/40 animate-pulse-ring-delayed-more" aria-hidden="true" />
             <Image src="/images/taranaai2.png" alt="Tarana.ai" width={180} height={180} className="relative z-10 animate-reveal-and-pulse" priority />
           </div>
-          <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={reduceMotion ? { duration: 0 } : { delay: 0.3, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-8 text-center"
-          >
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Welcome back, {firstName}!</h1>
-            <p className="mt-2 text-sm text-gray-500">Preparing your workspace</p>
-          </motion.div>
-          <div className="mt-6 w-[280px] h-1 bg-gray-200 rounded-full overflow-hidden" aria-hidden="true">
-            <motion.div
-              initial={{ width: "0%" }}
-              animate={{ width: "100%" }}
-              transition={{ duration: 4, ease: "linear" }}
-              className="h-full bg-gradient-to-r from-blue-600 to-blue-400"
-            />
-          </div>
-          <p className="mt-3 text-[11px] tracking-[0.12em] uppercase text-gray-400">Tarana.ai — Baguio, Philippines</p>
         </div>
       </div>
     )
