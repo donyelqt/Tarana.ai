@@ -8,6 +8,12 @@
  *
  * Glass recipe: high sine partials with fast exponential decay. Hover is
  * a light high tick; click adds a lower shimmer partial — distinct voices.
+ *
+ * First-gesture race: resume() is async while osc scheduling is sync, so a
+ * brand-new context can still be suspended when the first blip is due. Two
+ * guards: (1) unlockAudio() runs on the first pointerdown/keydown anywhere
+ * to warm the context early; (2) partials start 10ms in the future so the
+ * resume always wins the race.
  */
 
 export const SOUND_ENABLED_KEY = 'tarana-sound-enabled';
@@ -22,6 +28,8 @@ const CLICK_SHIMMER_RATIO = 1.5;
 const CLICK_SECONDS = 0.09;
 const CLICK_GAIN = 0.045;
 const CLICK_SHIMMER_GAIN = 0.015;
+/** Schedule offset so an in-flight resume() wins before the first sample. */
+const START_OFFSET_SECONDS = 0.01;
 /** Separate throttle buckets — hover must never eat the click. */
 const HOVER_GAP_MS = 80;
 const CLICK_GAP_MS = 35;
@@ -44,6 +52,14 @@ function getContext(): AudioContext | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Warm + resume the context without playing anything. Idempotent — call on
+ * the first user gesture anywhere so the first real blip is never swallowed.
+ */
+export function unlockAudio(): void {
+  getContext();
 }
 
 export function isSoundEnabled(): boolean {
@@ -71,15 +87,16 @@ function partial(
   seconds: number,
   gainValue: number
 ): void {
+  const startAt = ctx.currentTime + START_OFFSET_SECONDS;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = 'sine';
   osc.frequency.value = hz;
-  gain.gain.setValueAtTime(gainValue, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + seconds);
+  gain.gain.setValueAtTime(gainValue, startAt);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + seconds);
   osc.connect(gain).connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + seconds);
+  osc.start(startAt);
+  osc.stop(startAt + seconds);
 }
 
 function fire(getLast: () => number, setLast: (t: number) => void, gap: number): AudioContext | null {
