@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import * as supabaseAdminModule from '@/lib/data/supabaseAdmin';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import { validatePasswordStrength } from '@/lib/security/inputSanitizer';
 import { applySecurityHeaders } from '@/lib/security/securityHeaders';
@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by reset token and check if it's still valid
+    const supabaseAdmin = (supabaseAdminModule as any).supabaseAdmin;
     if (!supabaseAdmin) {
       console.error('Supabase admin client is not initialized.');
       return NextResponse.json(

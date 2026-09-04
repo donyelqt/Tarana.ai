@@ -4,7 +4,7 @@ jest.mock("../ai/embeddings", () => ({
   generateEmbedding: jest.fn().mockResolvedValue(Array(768).fill(0.1)),
 }));
 
-jest.mock("../supabaseAdmin", () => {
+jest.mock("../data/supabaseAdmin", () => {
   return {
     supabaseAdmin: {
       rpc: jest.fn().mockResolvedValue({
@@ -12,6 +12,12 @@ jest.mock("../supabaseAdmin", () => {
           { activity_id: "Burnham Park", similarity: 0.95, metadata: { title: "Burnham Park" } },
         ],
         error: null,
+      }),
+      from: jest.fn().mockReturnValue({
+        upsert: jest.fn().mockResolvedValue({ error: null }),
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
       }),
     },
   };

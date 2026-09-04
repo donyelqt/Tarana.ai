@@ -1,36 +1,56 @@
-import { CreditService } from '../CreditService';
-import { InsufficientCreditsError } from '../types';
-
-let fromShouldThrow = false;
-const mockRpc = jest.fn();
-const mockSelectSingle = jest.fn();
-const mockUpdateEq = jest.fn();
-const mockInsert = jest.fn();
-const mockUpdate = jest.fn(() => ({ eq: mockUpdateEq }));
-const mockFrom = jest.fn((..._args: any[]) => {
-  if (fromShouldThrow) throw new Error('db down');
-  return {
-    select: jest.fn(() => ({ eq: jest.fn(() => ({ single: mockSelectSingle })) })),
-    update: mockUpdate,
-    insert: mockInsert,
-  };
-});
-
-jest.mock('../../data/supabaseAdmin', () => ({
+/**
+ * @jest-environment node
+ */
+jest.mock('@/lib/data/supabaseAdmin', () => ({
   supabaseAdmin: {
-    rpc: (...args: any[]) => mockRpc(...args),
-    from: (...args: any[]) => mockFrom(...args),
+    rpc: jest.fn(),
+    from: jest.fn(),
   },
 }));
 
+import { CreditService } from '../CreditService';
+import { InsufficientCreditsError } from '../types';
+import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+
 describe('CreditService', () => {
+  const mockRpc = (supabaseAdmin as any).rpc as jest.Mock;
+  const mockFrom = (supabaseAdmin as any).from as jest.Mock;
+
+  let mockSelectSingle: jest.Mock;
+  let mockUpdateEq: jest.Mock;
+  let mockInsert: jest.Mock;
+  let mockUpdate: jest.Mock;
+
   beforeEach(() => {
     jest.clearAllMocks();
-    fromShouldThrow = false;
-    mockSelectSingle.mockResolvedValue({ data: { credits_used_today: 2, daily_credits: 5 }, error: null });
-    mockUpdateEq.mockResolvedValue({ error: null });
-    mockInsert.mockResolvedValue({ error: null });
+
+    mockSelectSingle = jest.fn().mockResolvedValue({
+      data: {
+        credits_used_today: 2,
+        daily_credits: 5,
+        last_credit_refresh: new Date().toISOString(),
+        current_tier: 'Default',
+        id: 'u1',
+      },
+      error: null,
+    });
+    mockUpdateEq = jest.fn().mockResolvedValue({ error: null });
+    mockInsert = jest.fn().mockResolvedValue({ error: null });
+    mockUpdate = jest.fn(() => ({ eq: mockUpdateEq }));
     mockRpc.mockResolvedValue({ data: true, error: null });
+
+    mockFrom.mockImplementation(() => ({
+      select: jest.fn(() => ({ eq: jest.fn(() => ({ single: mockSelectSingle })) })),
+      update: mockUpdate,
+      insert: mockInsert,
+    }));
+
+    // also patch global mock
+    const g: any = global as any;
+    if (g.mockSupabaseAdmin) {
+      g.mockSupabaseAdmin.rpc = mockRpc;
+      g.mockSupabaseAdmin.from = mockFrom;
+    }
   });
 
   describe('consumeCredits', () => {
@@ -65,7 +85,11 @@ describe('CreditService', () => {
     });
 
     it('does not throw when the DB client throws', async () => {
-      fromShouldThrow = true;
+      mockFrom.mockImplementation(() => {
+        throw new Error('db down');
+      });
+      const g: any = global as any;
+      if (g.mockSupabaseAdmin) g.mockSupabaseAdmin.from = mockFrom;
       await expect(
         CreditService.refundCredits({ userId: 'u1', amount: 1, service: 'tarana_gala' })
       ).resolves.toBeUndefined();

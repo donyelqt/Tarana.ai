@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import * as supabaseAdminModule from '@/lib/data/supabaseAdmin';
 import { findUserByEmailFromSupabase } from '@/lib/auth';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import { sanitizeEmail } from '@/lib/security/inputSanitizer';
@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
     const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
 
     // Store reset token in database
+    const supabaseAdmin = (supabaseAdminModule as any).supabaseAdmin;
     if (!supabaseAdmin) {
       console.error('Supabase admin client is not initialized.');
       return NextResponse.json(

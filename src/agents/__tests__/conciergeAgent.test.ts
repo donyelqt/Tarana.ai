@@ -39,6 +39,8 @@ const requestSchema = z
 const createRequest = (body: unknown): MockedRequest =>
   ({
     json: jest.fn().mockResolvedValue(body),
+    headers: { get: jest.fn().mockReturnValue(null), has: jest.fn().mockReturnValue(false) } as unknown as Headers,
+    clone: jest.fn().mockReturnValue({ json: jest.fn().mockResolvedValue(body) } as unknown as Request),
   } as unknown as MockedRequest);
 
 describe("ConciergeAgent", () => {

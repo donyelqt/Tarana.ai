@@ -1,3 +1,9 @@
+const MockedResponseReg = globalThis.Response as unknown as { new(body?: unknown, init?: any): any; json(body: unknown, init?: any): any; };
+if (typeof MockedResponseReg.json !== 'function') {
+  MockedResponseReg.json = (body: unknown, init?: { status?: number }) =>
+    new MockedResponseReg(JSON.stringify(body), { status: init?.status ?? 200, headers: { 'content-type': 'application/json' } });
+}
+
 import { POST } from '../route';
 import { NextRequest } from 'next/server';
 import { createUserInSupabase } from '@/lib/auth';

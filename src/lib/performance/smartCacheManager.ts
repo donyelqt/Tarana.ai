@@ -665,7 +665,13 @@ export class SmartCacheManager {
   }
   // Compat alias for intelligentCache port (full 6) — intelligent used getCacheStats/warmupCache
   getCacheStats(): any {
-    return this.getStats();
+    const stats = this.getStats();
+    // Back-compat shape expected by legacy tests: stats.searchResults.totalEntries and stats.totalMemoryUsage
+    return {
+      ...stats,
+      searchResults: { totalEntries: stats.totalEntries, totalSize: stats.totalSize },
+      totalMemoryUsage: `${(stats.totalSize / 1024 / 1024).toFixed(2)} MB`,
+    };
   }
 
   cacheEmbedding(key: string, embedding: number[]): void {
