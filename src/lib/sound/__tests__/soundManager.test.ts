@@ -70,6 +70,31 @@ describe('soundManager', () => {
     expect(isSoundEnabled()).toBe(true);
   });
 
+  it('stored preference always wins over the OS signal', () => {
+    (window as any).matchMedia = jest.fn(() => ({ matches: true }));
+    window.localStorage.clear();
+    setSoundEnabled(true);
+    expect(isSoundEnabled()).toBe(true);
+    setSoundEnabled(false);
+    expect(isSoundEnabled()).toBe(false);
+    delete (window as any).matchMedia;
+  });
+
+  it('defaults to silence under prefers-reduced-motion', () => {
+    (window as any).matchMedia = jest.fn(() => ({ matches: true }));
+    window.localStorage.clear();
+    __resetSoundForTests();
+    expect(isSoundEnabled()).toBe(false);
+    delete (window as any).matchMedia;
+  });
+
+  it('defaults to sound without the OS signal', () => {
+    (window as any).matchMedia = jest.fn(() => ({ matches: false }));
+    window.localStorage.clear();
+    expect(isSoundEnabled()).toBe(true);
+    delete (window as any).matchMedia;
+  });
+
   it('persists the toggle round-trip', () => {
     setSoundEnabled(false);
     expect(window.localStorage.getItem(SOUND_ENABLED_KEY)).toBe('0');

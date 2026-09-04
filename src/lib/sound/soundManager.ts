@@ -62,11 +62,28 @@ export function unlockAudio(): void {
   getContext();
 }
 
+/**
+ * OS-level low-stimulation signal. Users who ask the OS to reduce motion
+ * get silence by default too — still one tap away from sound.
+ */
+function systemPrefersQuiet(): boolean {
+  try {
+    return (
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function isSoundEnabled(): boolean {
   if (typeof window === 'undefined') return true;
   try {
     const raw = window.localStorage.getItem(SOUND_ENABLED_KEY);
-    return raw === null ? true : raw === '1';
+    if (raw !== null) return raw === '1';
+    return !systemPrefersQuiet();
   } catch {
     return true;
   }
