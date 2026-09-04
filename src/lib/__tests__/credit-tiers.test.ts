@@ -8,7 +8,7 @@ import {
   calculateProgressPercentage,
   getUserTierProgress
 } from '../credit-tiers';
-import { TierValidationError, TierCalculationError } from '../../types/credit-tiers';
+import { TierValidationError } from '../../types/credit-tiers';
 
 describe('Credit Tiers Utility Functions', () => {
   describe('TIER_CONFIGS validation', () => {
