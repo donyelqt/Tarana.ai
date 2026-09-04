@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { SoundProvider } from "@/lib/sound/SoundProvider";
-import Sidebar, { useSidebarCollapsed } from "../Sidebar";
+import Sidebar, { SidebarProvider, useSidebarCollapsed } from "../Sidebar";
 
 jest.mock("next-auth/react", () => ({ signOut: jest.fn() }));
 
@@ -21,7 +21,7 @@ describe("useSidebarCollapsed", () => {
   beforeEach(() => window.localStorage.clear());
 
   it("defaults to expanded with an md:pl-64 offset", () => {
-    render(<Harness />);
+    render(<SidebarProvider><Harness /></SidebarProvider>);
     const el = document.querySelector("[data-collapsed]");
     expect(el?.getAttribute("data-collapsed")).toBe("false");
     expect(el?.getAttribute("data-offset")).toBe("md:pl-64");
@@ -29,7 +29,7 @@ describe("useSidebarCollapsed", () => {
 
   it("restores a persisted collapsed rail", () => {
     window.localStorage.setItem("tarana-sidebar-collapsed", "1");
-    render(<Harness />);
+    render(<SidebarProvider><Harness /></SidebarProvider>);
     const el = document.querySelector("[data-collapsed]");
     expect(el?.getAttribute("data-collapsed")).toBe("true");
     expect(el?.getAttribute("data-offset")).toBe("md:pl-20");
@@ -42,7 +42,7 @@ describe("useSidebarCollapsed", () => {
       contentClass = useSidebarCollapsed().contentClass;
       return null;
     };
-    render(<Probe />);
+    render(<SidebarProvider><Probe /></SidebarProvider>);
     expect(contentClass!("md:pl-72")).toBe("md:pl-20");
     expect(contentClass!("md:ml-64")).toBe("md:ml-20");
     expect(contentClass!("md:pl-64")).toBe("md:pl-20");
@@ -56,9 +56,9 @@ describe("Sidebar collapse toggle", () => {
 
   function renderSidebar() {
     return render(
-      <SoundProvider>
+      <SidebarProvider><SoundProvider>
         <Sidebar />
-      </SoundProvider>
+      </SoundProvider></SidebarProvider>
     );
   }
 

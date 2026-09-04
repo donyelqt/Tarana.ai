@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { signOut } from "next-auth/react"
 import { useInterfaceSound } from '@/lib/sound/SoundProvider'
 import { motion, useReducedMotion } from "framer-motion"
@@ -18,35 +18,73 @@ const SIDEBAR_COLLAPSED_KEY = 'tarana-sidebar-collapsed';
  * remounts its own Sidebar, so localStorage (not context) is the shared
  * source of truth. SSR-safe: first paint expanded, storage syncs in effect.
  */
-export function useSidebarCollapsed() {
+const SidebarContext = createContext<SidebarState | null>(null);
+
+interface SidebarState {
+  collapsed: boolean;
+  setCollapsed: (value: boolean) => void;
+  contentClass: (expandedClass: string) => string;
+}
+
+/**
+ * Root-level shared rail state (mounted in app/layout, survives navigation).
+ * localStorage is the persisted backing; context is the reactive channel —
+ * storage alone cannot re-render sibling hook instances on toggle.
+ */
+export function SidebarProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsedState] = useState(false);
 
   useEffect(() => {
+    const read = () => {
+      try {
+        setCollapsedState(
+          typeof window !== "undefined" &&
+            window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1"
+        );
+      } catch {
+        // Private mode etc. — preference simply does not persist.
+      }
+    };
+    read();
+    window.addEventListener("storage", read);
+    return () => window.removeEventListener("storage", read);
+  }, []);
+
+  const setCollapsed = useCallback((value: boolean) => {
+    setCollapsedState(value);
     try {
-      if (typeof window !== 'undefined' && window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1') {
-        setCollapsedState(true);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, value ? "1" : "0");
       }
     } catch {
+      // Non-persisted toggle still works for the session.
     }
   }, []);
 
-  const setCollapsed = (value: boolean) => {
-    setCollapsedState(value);
-    try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, value ? '1' : '0');
-      }
-    } catch {
-    }
-  };
+  // Content offset companion: collapsed rail is w-20 on desktop.
+  // Both literals keep Tailwind JIT happy.
+  const contentClass = useCallback(
+    (expandedClass: string) => {
+      if (!collapsed) return expandedClass;
+      if (expandedClass.includes("md:ml-64")) return "md:ml-20";
+      return "md:pl-20";
+    },
+    [collapsed]
+  );
 
-  const contentClass = (expandedClass: string) => {
-    if (!collapsed) return expandedClass;
-    if (expandedClass.includes('md:ml-64')) return 'md:ml-20';
-    return 'md:pl-20';
-  };
+  const value = useMemo(
+    () => ({ collapsed, setCollapsed, contentClass }),
+    [collapsed, setCollapsed, contentClass]
+  );
 
-  return { collapsed, setCollapsed, contentClass };
+  return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
+}
+
+/** Shared rail state — must be used under SidebarProvider (root layout). */
+export function useSidebarCollapsed(): SidebarState {
+  const ctx = useContext(SidebarContext);
+  if (!ctx) throw new Error("useSidebarCollapsed must be used within SidebarProvider");
+  return ctx;
 }
 
 const Sidebar = () => {
