@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import Image from "next/image"
 import Sidebar from "../../components/Sidebar"
+import { useSidebarCollapsed } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getSavedItineraries, SavedItinerary, deleteItinerary } from "@/lib/data"
@@ -14,6 +15,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 
 const SavedTrips = () => {
+  const { contentClass } = useSidebarCollapsed();
   const router = useRouter()
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState("")
@@ -83,7 +85,7 @@ const SavedTrips = () => {
   return (
     <div className="p-8 min-h-screen bg-[#f7f9fb]">
       <Sidebar />
-      <main className="md:pl-64 flex-1">
+      <main className={`${contentClass('md:pl-64')} flex-1`}>
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl bg-white p-4 rounded-3xl md:text-3xl font-bold border border-gray-200/60 text-gray-900 mb-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">Saved Itineraries</h1>

@@ -3,6 +3,7 @@
 import React from "react"
 import Image from "next/image"
 import Sidebar from "../../components/Sidebar"
+import { useSidebarCollapsed } from "@/components/Sidebar";
 import SuggestedSpots from "./components/SuggestedSpots"
 import RecommendedCafes from "./components/RecommendedCafes"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -27,6 +28,7 @@ import {
 } from "./utils"
 
 const DashboardContent = () => {
+  const { contentClass } = useSidebarCollapsed();
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
@@ -182,7 +184,7 @@ const DashboardContent = () => {
       {/* Sidebar */}
       <Sidebar />
       {/* Main Content - add left padding on desktop to accommodate fixed sidebar */}
-      <main className="md:pl-64 flex-1 flex flex-col md:flex-row">
+      <main className={`${contentClass('md:pl-64')} flex-1 flex flex-col md:flex-row`}>
         {/* Center Content */}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
           <div

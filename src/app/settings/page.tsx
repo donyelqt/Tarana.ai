@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
+import { useSidebarCollapsed } from "@/components/Sidebar";
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -25,10 +26,12 @@ interface UpdateProfilePayload {
   bio: string;
 }
 
-const ProfileSettingsSkeleton = () => (
+const ProfileSettingsSkeleton = () => {
+  const { contentClass } = useSidebarCollapsed();
+  return (
   <div className="min-h-screen bg-white">
     <Sidebar />
-    <main className="md:pl-72 flex-1 bg-[#f7f9fb] px-4 sm:px-6 md:px-8 py-6 md:py-8">
+    <main className={`${contentClass('md:pl-72')} flex-1 bg-[#f7f9fb] px-4 sm:px-6 md:px-8 py-6 md:py-8`}>
       <div className="max-w-6xl mx-auto w-full animate-pulse">
         <div className="mb-6">
           <div className="bg-white w-full md:w-auto rounded-3xl px-5 sm:px-6 py-3 inline-flex items-center gap-4 border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
@@ -80,9 +83,10 @@ const ProfileSettingsSkeleton = () => (
       </div>
     </main>
   </div>
-);
+);}
 
 export default function SettingsPage() {
+  const { contentClass } = useSidebarCollapsed();
   const { data: session, status, update } = useSession();
   const router = useRouter();
   const { toast } = useToast();
@@ -308,7 +312,7 @@ export default function SettingsPage() {
       <Sidebar />
 
       {/* Main Content - add left padding on desktop to accommodate fixed sidebar */}
-      <main className="md:pl-72 flex-1 bg-[#f7f9fb] px-4 sm:px-6 md:px-8 py-6 md:py-8">
+      <main className={`${contentClass('md:pl-72')} flex-1 bg-[#f7f9fb] px-4 sm:px-6 md:px-8 py-6 md:py-8`}>
         <div className="min-h-screen">
           <div className="max-w-6xl mx-auto w-full">
             {/* Page Title */}
