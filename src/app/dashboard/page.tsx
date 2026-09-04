@@ -18,6 +18,7 @@ import { ReferralModal } from "./components/ReferralModal"
 import { useToast } from "@/components/ui/use-toast"
 import { trackReferralAfterSignup } from "@/lib/referral-system/client/referralTracking"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import {
   buildInviteLink,  getReferralDisplay,
   isFallbackWeather,
@@ -34,6 +35,7 @@ const DashboardContent = () => {
   const { data: session, status } = useSession()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const reduceMotion = useReducedMotion()
   const [showSplash, setShowSplash] = useState(false)
   const [isWelcomeCardAnimated, setIsWelcomeCardAnimated] = useState(false)
   // While hovered, the 2s auto-toggle pauses so it never yanks the card
@@ -139,11 +141,19 @@ const DashboardContent = () => {
       setShowSplash(true)
       const timer = setTimeout(() => {
         setShowSplash(false)
-        // Clean up the URL
         router.replace('/dashboard', { scroll: false })
-      }, 4000) // Keep splash screen for 4 seconds
-
-      return () => clearTimeout(timer)
+      }, 4000)
+      const onEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setShowSplash(false)
+          router.replace('/dashboard', { scroll: false })
+        }
+      }
+      window.addEventListener('keydown', onEsc)
+      return () => {
+        clearTimeout(timer)
+        window.removeEventListener('keydown', onEsc)
+      }
     }
   }, [searchParams, router])
 
@@ -155,27 +165,61 @@ const DashboardContent = () => {
     }
   }, [status, router])
 
-  // Show loading state while checking authentication or if splash screen is active
+  // Premium success overlay — 4s cinematic, glass + springs, instant dismiss on click/Esc
   if (status === 'loading' || showSplash) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
-        <div className="relative flex items-center justify-center">
-          {/* Pulsing rings */}
-          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring"></div>
-          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring-delayed"></div>
-          <div className="absolute h-48 w-48 rounded-full bg-blue-200/50 animate-pulse-ring-delayed-more"></div>
-          
-          {/* Logo */}
-          <Image 
-            src="/images/taranaai2.png" 
-            alt="Loading..." 
-            width={200} 
-            height={200} 
-            className="animate-reveal-and-pulse"
-            priority 
-          />
+    if (status === 'loading') {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
         </div>
-      </div>
+      )
+    }
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          onClick={() => { setShowSplash(false); router.replace('/dashboard', { scroll: false }) }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#050508]/80 backdrop-blur-[16px] p-6 cursor-pointer"
+          aria-label="Welcome overlay — click to continue"
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_0%,rgba(59,130,246,0.22),transparent_60%),radial-gradient(40%_40%_at_90%_80%,rgba(99,102,241,0.18),transparent_60%)] pointer-events-none" />
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-full max-w-[560px] rounded-[28px] border border-white/10 bg-white/[0.06] backdrop-blur-[22px] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_40px_80px_rgba(0,0,0,0.5)] p-10 md:p-12 text-center cursor-default"
+          >
+            <motion.div
+              initial={reduceMotion ? false : { scale: 0.86, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={reduceMotion ? { duration: 0 } : { delay: 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="mx-auto mb-8 relative w-[84px] h-[84px] rounded-full bg-white flex items-center justify-center shadow-xl"
+            >
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="#0a0a0f" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </motion.div>
+            <h1 className="max-w-3xl mx-auto text-pretty font-medium tracking-tighter leading-none text-white" style={{ fontFamily: "Geist, system-ui", fontSize: "clamp(2rem,4vw,3rem)" }}>
+              Welcome back, {session?.user?.name || 'Traveler'}!
+            </h1>
+            <p className="mt-4 text-[15px] leading-relaxed text-white/60 max-w-[42ch] mx-auto">
+              Your workspace is ready. Adventure resumes where you left it.
+            </p>
+            <div className="mt-8 flex items-center justify-center">
+              <button
+                onClick={() => { setShowSplash(false); router.replace('/dashboard', { scroll: false }) }}
+                className="px-7 py-3 rounded-full bg-white text-zinc-900 text-sm font-medium hover:bg-zinc-100 transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+            <div className="mt-6 text-[11px] tracking-[0.14em] uppercase text-white/25">Tarana.ai — Baguio, Philippines</div>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
     )
   }
   
