@@ -12,6 +12,37 @@ import { SearchIndexManager, TextProcessor } from '../search/searchIndex';
 import { SmartCacheManager } from '../performance/smartCacheManager';
 import type { Activity } from '@/app/itinerary-generator/data/itineraryData';
 
+// Mock embedding generation to avoid external API calls
+jest.mock('../ai/embeddings', () => ({
+  generateEmbedding: jest.fn().mockResolvedValue(Array(8).fill(0.1)),
+}));
+
+// Mock supabaseAdmin for intelligentSearch - will be configured per-test to return activity data
+jest.mock('../data/supabaseAdmin', () => ({
+  supabaseAdmin: {
+    rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
+    from: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }),
+  },
+}));
+
+// Mock traffic modules to avoid external calls
+jest.mock('../traffic/peakHours', () => ({
+  isCurrentlyPeakHours: jest.fn().mockReturnValue(false),
+  getManilaTime: jest.fn().mockReturnValue(new Date()),
+}));
+jest.mock('../traffic/tomtomTraffic', () => ({
+  tomtomTrafficService: {
+    getLocationTrafficData: jest.fn().mockResolvedValue(null),
+  },
+}));
+jest.mock('../data/baguioCoordinates', () => ({
+  getActivityCoordinates: jest.fn().mockReturnValue(null),
+}));
+
 // Mock activities for testing
 const mockActivities: Activity[] = [
   {
@@ -61,6 +92,24 @@ const mockSearchContext: SearchContext = {
 };
 
 const mockContext = mockSearchContext;
+
+// Configure supabase rpc mock to return mockActivities as semantic results for IntelligentSearchEngine
+import { supabaseAdmin } from '../data/supabaseAdmin';
+const mockedRpc = (supabaseAdmin as any)?.rpc as jest.Mock;
+if (mockedRpc) {
+  mockedRpc.mockResolvedValue({
+    data: mockActivities.map((a) => ({ activity_id: a.title, similarity: 0.9, metadata: a })),
+    error: null,
+  });
+}
+beforeEach(() => {
+  if (mockedRpc) {
+    mockedRpc.mockResolvedValue({
+      data: mockActivities.map((a) => ({ activity_id: a.title, similarity: 0.9, metadata: a })),
+      error: null,
+    });
+  }
+});
 
 describe('TextProcessor', () => {
   describe('tokenize', () => {

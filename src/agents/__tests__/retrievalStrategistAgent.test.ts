@@ -51,7 +51,9 @@ describe("RetrievalStrategistAgent", () => {
       session.preferences.interests,
       "cloudy",
       session.preferences.durationDays,
-      {}
+      {},
+      true,
+      "baguio"
     );
   });
 

@@ -15,6 +15,20 @@ describe('Email Service', () => {
     jest.clearAllMocks();
     consoleSpy.log.mockClear();
     consoleSpy.error.mockClear();
+    // Wire nodemailer mock to use shared global sendMail mock so expectations on global.mockSendMail are valid.
+    // jest.setup defines mockCreateTransport to return a fresh sendMail each call; we override to reuse the shared mock.
+    const sharedSendMail = (global as any).mockSendMail;
+    const sharedCreateTransport = (global as any).mockCreateTransport;
+    if (sharedCreateTransport && sharedSendMail) {
+      sharedCreateTransport.mockImplementation(() => ({
+        sendMail: sharedSendMail,
+        verify: jest.fn().mockResolvedValue(true),
+        close: jest.fn(),
+      }));
+      // Also expose as bare global for tests that reference mockCreateTransport without namespace
+      (globalThis as any).mockCreateTransport = sharedCreateTransport;
+      (globalThis as any).mockSendMail = sharedSendMail;
+    }
   });
 
   afterAll(() => {
@@ -201,7 +215,7 @@ describe('Email Service', () => {
       jest.spyOn(emailConfig, 'getEmailTransportConfig').mockReturnValue(mockTransportConfig);
       jest.spyOn(emailConfig, 'validateEmailConfig').mockReturnValue(mockEmailConfig);
       
-      mockCreateTransport.mockImplementation(() => {
+      ((global as any).mockCreateTransport ?? (globalThis as any).mockCreateTransport).mockImplementation(() => {
         throw new Error('Transport creation failed');
       });
 

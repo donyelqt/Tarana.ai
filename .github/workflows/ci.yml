@@ -40,12 +40,8 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit --skipLibCheck
 
-      # Tests: 80 pre-existing failures (26 suites). Triage
-      # tracked: 5 worst legacy suites to stub, 22 to fix. Keep
-      # informative until green.
       - name: Tests
         run: npm test -- --passWithNoTests --maxWorkers=2
-        continue-on-error: true
 
       - name: Build
         run: npm run build
