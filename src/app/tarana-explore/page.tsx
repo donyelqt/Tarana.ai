@@ -2,9 +2,11 @@
 
 import React, { Suspense } from "react"
 import Sidebar from "@/components/Sidebar"
+import { useSidebarCollapsed } from '@/components/Sidebar';
 import ExploreMapView from "./components/ExploreMapView"
 
 export default function TaranaExplorePage() {
+  const { contentClass } = useSidebarCollapsed();
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-[#f5f5f5]">
@@ -16,7 +18,7 @@ export default function TaranaExplorePage() {
     }>
       <div className="h-screen w-screen overflow-hidden bg-[#f5f5f5] flex">
         <Sidebar />
-        <div className="flex-1 md:ml-64 h-full relative">
+        <div className={`${contentClass('md:ml-64')} flex-1 h-full relative`}>
           <ExploreMapView />
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
+import { useSidebarCollapsed } from '@/components/Sidebar';
 import TaranaEatsForm from "./components/TaranaEatsForm";
 import FoodMatchesPreview from "./components/FoodMatchesPreview";
 import { useToast } from "@/components/ui/use-toast";
@@ -10,6 +11,7 @@ import { taranaai } from "../../../public";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
 
 export default function TaranaEatsPage() {
+  const { contentClass } = useSidebarCollapsed();
   const [results, setResults] = useState<FoodMatchesData | null>(null);
   const [loading, setLoading] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
@@ -131,7 +133,7 @@ export default function TaranaEatsPage() {
   return (
     <div className="bg-white">
       <Sidebar />
-      <main className="md:h-screen md:overflow-hidden md:pl-64 flex flex-col md:flex-row">
+      <main className={`${contentClass('md:pl-64')} md:h-screen md:overflow-hidden flex flex-col md:flex-row`}>
         <div className="flex-1 md:overflow-y-auto">
           <TaranaEatsForm 
             onGenerate={handleGenerateResults} 

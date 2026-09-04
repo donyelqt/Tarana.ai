@@ -6,6 +6,7 @@ import { getSavedMeals } from '@/lib/data/supabaseMeals';
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Sidebar from "@/components/Sidebar";
+import { useSidebarCollapsed } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,6 +22,7 @@ import MealCard from "./components/MealCard";
 import { useRouter } from 'next/navigation';
 
 const SavedMealsPage = () => {
+  const { contentClass } = useSidebarCollapsed();
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const { data: session } = useSession();
@@ -58,7 +60,7 @@ const SavedMealsPage = () => {
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
       <Sidebar />
-      <main className="md:pl-64 flex-1">
+      <main className={`${contentClass('md:pl-64')} flex-1`}>
         <div className="p-8">
           {/* Header */}
           <div className="flex justify-between items-center mb-8">

@@ -1,6 +1,7 @@
 "use client";
 
 import Sidebar from "../../components/Sidebar";
+import { useSidebarCollapsed } from "@/components/Sidebar";
 import { useState, useEffect } from "react";
 import { taranaai } from "../../../public";
 import { fetchWeatherData } from "./utils/weatherUtils";
@@ -20,6 +21,7 @@ import { WeatherData } from "@/lib/core";
 import { getCityCenter, CITY_CONFIGS } from "@/lib/data/cityConfig";
 
 export default function ItineraryGenerator() {
+  const { contentClass } = useSidebarCollapsed();
   // Get weather data
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   
@@ -110,7 +112,7 @@ export default function ItineraryGenerator() {
   return (
     <div className="bg-white">
       <Sidebar />
-      <main className="md:h-screen md:overflow-hidden md:pl-64 flex flex-col md:flex-row">
+      <main className={`md:h-screen md:overflow-hidden ${contentClass('md:pl-64')} flex flex-col md:flex-row`}>
         <div className="flex-1 md:overflow-y-auto">
           <            ItineraryForm
             showPreview={showPreview}
