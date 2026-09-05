@@ -136,4 +136,31 @@ describe('GET /api/spots', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ success: true, city: 'davao', spots: [] });
   });
+
+  it('rotates the non-Baguio head daily so the first 3 differ across days', async () => {
+    searchMock.mockResolvedValue(
+      Array.from({ length: 12 }, (_, i) => ({
+        name: `S${i}`,
+        coordinates: { lat: 10.2 + i * 0.01, lng: 123.8 + i * 0.01 },
+      }))
+    );
+    trafficMock.mockResolvedValue({ congestionScore: 10 });
+    const names = async () =>
+      (((await (await get('cebu')).json()).spots as { name: string }[]).map((s) => s.name));
+    const day1 = Date.UTC(2026, 7, 4); // two consecutive UTC days
+    const nowSpy = jest.spyOn(Date, 'now');
+    try {
+      nowSpy.mockReturnValue(day1);
+      const first = await names();
+      expect(first).toHaveLength(12);
+      nowSpy.mockReturnValue(day1);
+      expect(await names()).toEqual(first);
+      nowSpy.mockReturnValue(day1 + 86400000);
+      const next = await names();
+      expect(next.slice(0, 3)).not.toEqual(first.slice(0, 3));
+      expect([...next].sort()).toEqual([...first].sort());
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
 });

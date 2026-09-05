@@ -5,6 +5,7 @@ import type { BoundingBox } from '@/types/route-optimization';
 import { tomtomTrafficService } from '@/lib/traffic/tomtomTraffic';
 import { getTrafficLevelFromScore } from '@/lib/utils/trafficColors';
 import { enrichActivitiesWithImages } from '@/lib/services/imageService';
+import { rotateByDay } from '@/lib/utils/dailyRotation';
 import {
   activityToPayload,
   isSpotScopeId,
@@ -76,10 +77,19 @@ export async function GET(request: Request) {
       if (spots.length >= 12) break;
     }
 
+    // Daily rotation (Gala strict-city parity): TomTom order is deterministic,
+    // so without rotation the same 3 surface every day. Rotates the 12 before
+    // head-6 enrichment so every head is fully dressed. Baguio untouched.
+    const dayIndex = Math.floor(Date.now() / 86400000);
+    const rotatedSpots = rotateByDay(spots, dayIndex);
+    if (rotatedSpots.length > 1) {
+      console.log(`🔁 DAILY ROTATION: day ${dayIndex} offset ${dayIndex % rotatedSpots.length}/${rotatedSpots.length} for ${city} (head was "${spots[0]?.name}")`);
+    }
+
     // Enrich only the visible head: real photos (tier chain, cached) and
     // measured traffic (flow → shared thresholds). Per-spot failures degrade
     // to placeholder/undisplayed — never guessed.
-    const head = spots.slice(0, ENRICH_LIMIT);
+    const head = rotatedSpots.slice(0, ENRICH_LIMIT);
     const withImages = await enrichActivitiesWithImages(
       head.map((s) => ({
         title: s.name,
@@ -105,7 +115,7 @@ export async function GET(request: Request) {
       })
     );
 
-    return NextResponse.json({ success: true, city, spots });
+    return NextResponse.json({ success: true, city, spots: rotatedSpots });
   } catch (error) {
     console.error('Error in /api/spots:', error);
     return NextResponse.json(
