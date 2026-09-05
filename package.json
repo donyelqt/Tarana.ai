@@ -21,6 +21,7 @@
     "bench:staging": "k6 run --env BASE_URL=https://tarana-ai.vercel.app bench/k6-itinerary.js"
   },
   "dependencies": {
+    "@google/genai": "^2.21.0",
     "@google/generative-ai": "^0.24.1",
     "@heroicons/react": "^2.2.0",
     "@radix-ui/react-dialog": "^1.1.15",
