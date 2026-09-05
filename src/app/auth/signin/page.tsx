@@ -257,6 +257,13 @@ const SignIn = () => {
                         </Button>
                     </form>
 
+                    <p className="text-center text-xs text-gray-500">
+                        By signing in, you agree to our{" "}
+                        <Link href="/terms" className="font-medium text-[#0066FF] hover:underline">Terms of Service</Link>
+                        {" "}and{" "}
+                        <Link href="/privacy" className="font-medium text-[#0066FF] hover:underline">Privacy Policy</Link>.
+                    </p>
+
                     <div className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
                             <div className="w-full border-t border-gray-400"></div>

@@ -20,6 +20,7 @@ function SignUpForm() {
     const [confirmPassword, setConfirmPassword] = useState("")
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [agreed, setAgreed] = useState(false)
 
     const router = useRouter()
     const [error, setError] = useState<string | null>(null)
@@ -61,6 +62,11 @@ function SignUpForm() {
         setIsLoading(true)
 
         // Basic validation
+        if (!agreed) {
+            setError("Please accept the Terms of Service and Privacy Policy")
+            setIsLoading(false)
+            return
+        }
         if (password !== confirmPassword) {
             setError("Passwords do not match")
             setIsLoading(false)
@@ -218,6 +224,22 @@ function SignUpForm() {
                     {error}
                 </div>
             )}
+            <div className="flex items-center">
+                <input
+                    id="agree-terms"
+                    name="agree-terms"
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    checked={agreed}
+                    onChange={(e) => setAgreed(e.target.checked)}
+                />
+                <label htmlFor="agree-terms" className="ml-2 block text-sm text-gray-900">
+                    I agree to the{" "}
+                    <Link href="/terms" className="font-medium text-[#0066FF] hover:underline">Terms of Service</Link>
+                    {" "}and{" "}
+                    <Link href="/privacy" className="font-medium text-[#0066FF] hover:underline">Privacy Policy</Link>
+                </label>
+            </div>
             <Button
                 type="submit"
                 className="w-full flex justify-center py-3 px-4 rounded-2xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-[#0066FF] to-[#1E90FF] hover:from-[#0052cc] hover:to-[#3388ff] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0066FF] mt-2"
