@@ -484,6 +484,27 @@ export function organizeItineraryByDays(it: any, days: number | null) {
     .map(key => allowedMap.get(key))
     .filter(Boolean);
 
+  // Server-truth image re-attach: the LLM is instructed to copy image URLs,
+  // but any hallucinated /images/ path (or empty) is overwritten here with the
+  // enriched server image matched by title. Never Blank — comingsoon fallback.
+  for (const item of newItems) {
+    if (!Array.isArray(item.activities)) continue;
+    for (const activity of item.activities) {
+      if (typeof activity?.title !== 'string') continue;
+      const allowed = allowedMap.get(activity.title.trim().toLowerCase());
+      const serverImage = typeof allowed?.image === 'string' && allowed.image.trim()
+        ? allowed.image
+        : typeof allowed?.image === 'object' && allowed?.image !== null && typeof (allowed.image as any).src === 'string'
+          ? (allowed.image as any).src
+          : null;
+      if (serverImage) {
+        activity.image = allowed.image;
+      } else if (typeof activity.image !== 'string' || !activity.image.trim()) {
+        activity.image = '/images/comingsoon.png';
+      }
+    }
+  }
+
   return {
     ...it,
     items: newItems,

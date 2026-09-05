@@ -93,7 +93,8 @@ export function buildDetailedPrompt(
       .map((activity: any) => ({
         title: activity.title,
         desc: activity.desc,
-        tags: activity.tags
+        tags: activity.tags,
+        image: typeof activity.image === 'string' ? activity.image : undefined
       }));
 
     const sampleItineraryContext = curatedActivities && curatedActivities.length > 0
@@ -173,7 +174,7 @@ ${paxDirective}
 Output requirements:
 1. Cover exactly ${durationDays ?? 'the requested'} day(s) with Morning (8-12), Afternoon (12-18), Evening (18+).
 2. Do not repeat any activity across periods or days.
-3. For each activity include: exact image URL, title, time window, concise description mentioning why timing is optimal, and tags from the database.
+3. For each activity include: title, time window, concise description mentioning why timing is optimal, and tags from the database. Copy the image URL EXACTLY from the exclusive list above — never invent, guess, or construct an /images/ path.
 4. If a slot cannot be filled, leave activities [] and add a traffic-aware reason.
 5. Respond with JSON object: { "title", "subtitle", "items": [ { "period", "activities": [...], "reason"? } ] }.
 6. Validate that every string (title, tags, image) exactly matches the provided database entry.
