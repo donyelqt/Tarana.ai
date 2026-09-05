@@ -106,7 +106,10 @@ function getTomTomKey(): string | null {
 // ─────────────────────────────────────────────────────────────
 async function fetchGooglePhoto(place: PlaceInput): Promise<string | null> {
   const apiKey = getGoogleKey()
-  if (!apiKey) return null
+  if (!apiKey) {
+    console.log(`🖼️ Tier1 Google: skipped "${place.title}" (missing-key: GOOGLE_PLACES_API_KEY not set)`)
+    return null
+  }
   if (typeof window !== "undefined") return null // server only — key must not leak
 
   try {
@@ -166,7 +169,10 @@ async function fetchGooglePhoto(place: PlaceInput): Promise<string | null> {
 // ─────────────────────────────────────────────────────────────
 async function fetchUnsplashPhoto(place: PlaceInput): Promise<string | null> {
   const key = getUnsplashKey()
-  if (!key) return null
+  if (!key) {
+    console.log(`🖼️ Tier2b Unsplash: skipped "${place.title}" (missing-key: UNSPLASH_ACCESS_KEY not set)`)
+    return null
+  }
   try {
     const controller = new AbortController()
     const t = setTimeout(() => controller.abort(), 3000)
@@ -174,10 +180,16 @@ async function fetchUnsplashPhoto(place: PlaceInput): Promise<string | null> {
     const url = `https://api.unsplash.com/search/photos?query=${query}&per_page=1&orientation=landscape&content_filter=high&client_id=${key}`
     const res = await fetch(url, { signal: controller.signal })
     clearTimeout(t)
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.warn(`🖼️ Tier2b Unsplash: miss "${place.title}" (http-${res.status}${res.status === 403 ? ' rate-limited-or-forbidden' : ''})`)
+      return null
+    }
     const data = (await res.json()) as { results?: Array<{ urls?: { regular?: string; small?: string } }> }
-    return data.results?.[0]?.urls?.regular || data.results?.[0]?.urls?.small || null
+    const hit = data.results?.[0]?.urls?.regular || data.results?.[0]?.urls?.small || null
+    if (!hit) console.log(`🖼️ Tier2b Unsplash: miss "${place.title}" (empty: no results for query)`)
+    return hit
   } catch {
+    console.warn(`🖼️ Tier2b Unsplash: miss "${place.title}" (network-or-timeout)`)
     return null
   }
 }
@@ -192,7 +204,10 @@ async function fetchWikimediaThumb(place: PlaceInput): Promise<string | null> {
 
     const res = await fetch(searchUrl, { signal: controller.signal })
     clearTimeout(t)
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.log(`🖼️ Tier2 Wikimedia: miss "${place.title}" (http-${res.status})`)
+      return null
+    }
 
     const data = (await res.json()) as {
       query?: { pages?: Record<string, { thumbnail?: { source: string }; missing?: boolean }> }
@@ -204,8 +219,10 @@ async function fetchWikimediaThumb(place: PlaceInput): Promise<string | null> {
     for (const page of Object.values(pages)) {
       if (page.thumbnail?.source) return page.thumbnail.source
     }
+    console.log(`🖼️ Tier2 Wikimedia: miss "${place.title}" (empty: no page thumbnail)`)
     return null
   } catch {
+    console.warn(`🖼️ Tier2 Wikimedia: miss "${place.title}" (network-or-timeout)`)
     return null
   }
 }
@@ -239,6 +256,7 @@ export async function getAccurateImageForPlace(place: PlaceInput): Promise<strin
   // Tier 1: Google Places Photo (most accurate)
   const google = await fetchGooglePhoto(place)
   if (google) {
+    console.log(`🖼️ Image for "${place.title}": tier=google-places`)
     cache.set(cacheKey, { url: google, expiry: Date.now() + IMAGE_CACHE_TTL })
     return google
   }
@@ -246,6 +264,7 @@ export async function getAccurateImageForPlace(place: PlaceInput): Promise<strin
   // Tier 2: Wikimedia (landmarks)
   const wiki = await fetchWikimediaThumb(place)
   if (wiki) {
+    console.log(`🖼️ Image for "${place.title}": tier=wikimedia`)
     cache.set(cacheKey, { url: wiki, expiry: Date.now() + IMAGE_CACHE_TTL })
     return wiki
   }
@@ -253,6 +272,7 @@ export async function getAccurateImageForPlace(place: PlaceInput): Promise<strin
   // Tier 2b: Unsplash (free, no billing) — category-accurate for food/cafes where Wikimedia misses
   const unsplash = await fetchUnsplashPhoto(place)
   if (unsplash) {
+    console.log(`🖼️ Image for "${place.title}": tier=unsplash`)
     cache.set(cacheKey, { url: unsplash, expiry: Date.now() + IMAGE_CACHE_TTL })
     return unsplash
   }
@@ -261,12 +281,15 @@ export async function getAccurateImageForPlace(place: PlaceInput): Promise<strin
   if (place.lat != null && place.lon != null) {
     const tomtom = getTomTomStaticMap(place.lat, place.lon)
     if (tomtom) {
+      console.log(`🖼️ Image for "${place.title}": tier=tomtom-static-map`)
       cache.set(cacheKey, { url: tomtom, expiry: Date.now() + IMAGE_CACHE_TTL })
       return tomtom
     }
+    console.warn(`🖼️ Tier3 TomTom: miss "${place.title}" (missing-key: TOMTOM_API_KEY not set)`)
   }
 
   // Tier 4: Category fallback (never empty — prevents broken <img>)
+  console.log(`🖼️ Image for "${place.title}": tier=fallback-comingsoon`)
   const fallback = "/images/comingsoon.png"
   cache.set(cacheKey, { url: fallback, expiry: Date.now() + IMAGE_CACHE_TTL })
   return fallback

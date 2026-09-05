@@ -101,6 +101,7 @@ function compactSampleItinerary(sample: any) {
       title: activity.title,
       desc: activity.desc,
       tags: activity.tags,
+      image: typeof activity.image === 'string' ? activity.image : undefined,
       trafficLevel: activity.trafficAnalysis?.realTimeTraffic?.trafficLevel,
     })),
   }));
