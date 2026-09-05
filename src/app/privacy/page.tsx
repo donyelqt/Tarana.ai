@@ -32,8 +32,8 @@ export default function PrivacyPage() {
           <ul className="list-disc space-y-1 pl-5">
             <li>
               <strong className="text-gray-900">Account data:</strong> your name, email address,
-              and password (hashed) when you register with email credentials, or your name, email,
-              and profile details shared by Google when you sign in with Google OAuth via NextAuth.
+                and password (hashed) when you register with email credentials, or your name, email,
+                and profile details shared when you use Google sign-in via NextAuth.
             </li>
             <li>
               <strong className="text-gray-900">Preferences you provide:</strong> travel dates,
@@ -42,8 +42,8 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong className="text-gray-900">Your content:</strong> saved itineraries, saved
-              meals, referral codes you create or redeem, and credit balances tied to your account,
-              stored in our database (Supabase).
+                meals, referral codes you create or redeem, and credit balances tied to your account,
+                stored with our cloud database and hosting provider.
             </li>
             <li>
               <strong className="text-gray-900">Device data:</strong> your remembered email
@@ -57,13 +57,14 @@ export default function PrivacyPage() {
           <ul className="list-disc space-y-1 pl-5">
             <li>Create and secure your account, and sign you in.</li>
             <li>
-              Generate your itineraries: your trip preferences are sent to Google Gemini to produce
-              plans, suggestions, and meal ideas.
+              Generate your itineraries: your trip preferences are sent to our AI itinerary
+              provider to produce plans, suggestions, and meal ideas.
             </li>
             <li>
-              Enrich your trips: coordinates are sent to TomTom for traffic and routing and to
-              OpenWeather for weather forecasts; places and photos are loaded from Google Places,
-              Wikimedia, Unsplash, and TomTom.
+              Enrich your trips: coordinates are sent to our mapping and traffic data provider
+              for traffic and routing and to our weather data provider for weather forecasts;
+              places and photos are loaded from our place details provider, photo providers, and
+              mapping and traffic data provider.
             </li>
             <li>Track credit balances, daily credits, referrals, and saved trips and meals.</li>
             <li>Operate, debug, prevent abuse, and improve the service.</li>
@@ -87,30 +88,33 @@ export default function PrivacyPage() {
           </p>
           <ul className="list-disc space-y-1 pl-5">
             <li>
-              <strong className="text-gray-900">Google Gemini</strong> — itinerary and content
-              generation from the preferences you submit.
+              <strong className="text-gray-900">AI itinerary provider</strong> — itinerary and
+              content generation from the preferences you submit.
             </li>
             <li>
-              <strong className="text-gray-900">TomTom</strong> — routing, traffic, and map data
-              from the coordinates in your trip.
+              <strong className="text-gray-900">Mapping and traffic data provider</strong> —
+              routing, traffic, and map data from the coordinates in your trip.
             </li>
             <li>
-              <strong className="text-gray-900">OpenWeather</strong> — weather forecasts for your
-              destinations.
+              <strong className="text-gray-900">Weather data provider</strong> — weather forecasts
+              for your destinations.
             </li>
             <li>
-              <strong className="text-gray-900">Google Places &amp; Google OAuth</strong> — place
-              details and Google sign-in.
+              <strong className="text-gray-900">
+                Place details provider &amp; single sign-on provider
+              </strong>{" "}
+              — place details and Google sign-in.
             </li>
             <li>
-              <strong className="text-gray-900">Wikimedia &amp; Unsplash</strong> — place photos and
+              <strong className="text-gray-900">Photo providers</strong> — place photos and
               imagery.
             </li>
             <li>
-              <strong className="text-gray-900">Supabase</strong> — database and hosting for
-              accounts, credits, referrals, and saved content.
+              <strong className="text-gray-900">Cloud database and hosting provider</strong> —
+              database and hosting for accounts, credits, referrals, and saved content.
             </li>
           </ul>
+          <p>Contact us for a current list of specific service providers on request.</p>
         </Section>
 
         <Section heading="Data retention">
