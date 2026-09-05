@@ -6,7 +6,6 @@
 import { tomtomTrafficService, LocationTrafficData, getTrafficSummary, getTrafficTimeRecommendation } from './tomtomTraffic';
 import { isCurrentlyPeakHours, getManilaTime } from './peakHours';
 import { getActivityCoordinates } from '../data/baguioCoordinates';
-import { runAgenticTrafficAnalysis } from './agenticTrafficAgent';
 
 // Activity interface
 export interface Activity {
@@ -140,68 +139,15 @@ class AgenticTrafficAnalyzer {
       return cached.result;
     }
 
+    // Direct deterministic path (spots parity): single TomTom fetch, no per-activity
+    // LLM call, no timeout race. The agentic Gemini leg was the tail-latency king
+    // (12s timeout × sequential batches). Scoring helpers below are unchanged.
     try {
-      console.log(`\n=== AGENTIC AI TRAFFIC ANALYZER START ===`);
-      console.log(`🤖 Delegating comprehensive analysis for "${title}" to Gemini agent`);
-
-      const initialTrafficPromise = this.tomtomService
+      const trafficData = await this.tomtomService
         .getLocationTrafficData(lat, lon)
         .catch(() => null);
 
-      const agentStart = performance.now();
-      const agentPromise = initialTrafficPromise.then(initialTraffic =>
-        runAgenticTrafficAnalysis({
-          activityId,
-          title,
-          lat,
-          lon,
-          peakHours,
-          context,
-          initialTrafficData: initialTraffic ?? undefined
-        })
-      );
-
-      const agenticResult = await Promise.race([
-        agentPromise.then(result => {
-          const duration = performance.now() - agentStart;
-          console.log(`🧠 Agent runtime for "${title}": ${Math.round(duration)}ms`);
-          return result;
-        }),
-        new Promise<TrafficAnalysisResult>((_, reject) =>
-          setTimeout(() => reject(new Error('Agentic traffic analysis timeout')), 12000)
-        )
-      ]);
-
-      if (!agenticResult || !agenticResult.realTimeTraffic || Object.keys(agenticResult.realTimeTraffic).length === 0) {
-        console.warn(`⚠️ Agentic AI: Empty traffic payload for "${title}". Using deterministic fallback.`);
-        return this.createFallbackAnalysis(activityId, title, lat, lon, peakHours, context);
-      }
-
-      this.analysisCache.set(cacheKey, {
-        result: agenticResult,
-        expiry: Date.now() + (5 * 60 * 1000)
-      });
-
-      console.log(`✅ AGENTIC AI SUCCESS: Analysis complete for "${title}"`);
-      console.log(`🎯 FINAL ANALYSIS RESULT:`, {
-        activity: title,
-        combinedScore: agenticResult.combinedScore,
-        recommendation: agenticResult.recommendation,
-        crowdLevel: agenticResult.crowdLevel,
-        realTimeTrafficIntegrated: !!agenticResult.realTimeTraffic,
-        peakHoursConsidered: false
-      });
-      console.log(`=== AGENTIC AI TRAFFIC ANALYZER END ===\n`);
-      return agenticResult;
-
-    } catch (error) {
-      console.error(`❌ Agentic AI: Error delegating analysis for ${title}:`, error);
-
-      const fallbackTraffic = await this.tomtomService
-        .getLocationTrafficData(lat, lon)
-        .catch(() => null);
-
-      if (fallbackTraffic) {
+      if (trafficData) {
         const isCurrentlyPeak = isCurrentlyPeakHours(peakHours);
         const peakHoursStatus = {
           isCurrentlyPeak,
@@ -209,32 +155,42 @@ class AgenticTrafficAnalyzer {
           nextLowTrafficTime: isCurrentlyPeak ? this.getNextLowTrafficTime(peakHours) : undefined
         };
 
-        const combinedScore = this.calculateCombinedScore(fallbackTraffic, peakHoursStatus, context);
-        const recommendation = this.generateRecommendation(combinedScore, fallbackTraffic, peakHoursStatus, context);
-        const aiAnalysis = this.generateAIAnalysis(fallbackTraffic, peakHoursStatus, context, title);
-        const trafficSummary = getTrafficSummary(fallbackTraffic);
-        const bestTimeToVisit = this.determineBestTimeToVisit(fallbackTraffic, peakHours, context);
-        const alternativeTimeSlots = this.generateAlternativeTimeSlots(peakHours, fallbackTraffic, context);
-        const crowdLevel = this.determineCrowdLevel(fallbackTraffic, peakHoursStatus);
-
-        return {
+        const combinedScore = this.calculateCombinedScore(trafficData, peakHoursStatus, context);
+        const recommendation = this.generateRecommendation(combinedScore, trafficData, peakHoursStatus, context);
+        const result: TrafficAnalysisResult = {
           activityId,
           title,
           lat,
           lon,
-          realTimeTraffic: fallbackTraffic,
+          realTimeTraffic: trafficData,
           peakHoursStatus,
           combinedScore,
           recommendation,
-          aiAnalysis,
-          trafficSummary,
-          bestTimeToVisit,
-          alternativeTimeSlots,
-          crowdLevel,
+          aiAnalysis: this.generateAIAnalysis(trafficData, peakHoursStatus, context, title),
+          trafficSummary: getTrafficSummary(trafficData),
+          bestTimeToVisit: this.determineBestTimeToVisit(trafficData, peakHours, context),
+          alternativeTimeSlots: this.generateAlternativeTimeSlots(peakHours, trafficData, context),
+          crowdLevel: this.determineCrowdLevel(trafficData, peakHoursStatus),
           lastAnalyzed: new Date()
         };
+
+        this.analysisCache.set(cacheKey, {
+          result,
+          expiry: Date.now() + (5 * 60 * 1000)
+        });
+
+        console.log(`✅ Traffic: direct analysis complete for "${title}":`, {
+          combinedScore: result.combinedScore,
+          recommendation: result.recommendation,
+          crowdLevel: result.crowdLevel
+        });
+        return result;
       }
 
+      console.warn(`⚠️ Traffic: no TomTom data for "${title}". Using fallback analysis.`);
+      return this.createFallbackAnalysis(activityId, title, lat, lon, peakHours, context);
+    } catch (error) {
+      console.error(`❌ Traffic: direct analysis failed for ${title}:`, error);
       return this.createFallbackAnalysis(activityId, title, lat, lon, peakHours, context);
     }
   }
