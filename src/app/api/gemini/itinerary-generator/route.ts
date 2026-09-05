@@ -117,8 +117,25 @@ async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
             return NextResponse.json({ error: "Invalid request payload", details: err.details }, { status: 400 });
         }
 
+        // Primary refund lives in PipelineCoordinator.catch (it owns charged-state);
+        // this block covers only the post-success throw path (anti-double-spend
+        // via __galaRefunded flag).
+        if (!(error as any).__galaRefunded && session?.userId && session.userId !== "00000000-0000-0000-0000-000000000001") {
+            try {
+                await CreditService.refundCredits({
+                    userId: session.userId,
+                    amount: 1,
+                    service: "tarana_gala",
+                    description: `Refund: multi-agent failed ${session.id}`,
+                });
+                console.log(`💸 Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`);
+            } catch (refundErr) {
+                console.error("Multi-agent refund failed (best-effort):", refundErr);
+            }
+        }
+
         console.error("Multi-agent pipeline error:", err);
-        return NextResponse.json({ text: "", error: err?.message ?? "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ text: "", error: err?.message ?? "Internal Server Error", refunded: true }, { status: 500 });
     } finally {
         if (session) {
             clearSession(session.id);
