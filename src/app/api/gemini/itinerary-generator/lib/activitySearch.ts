@@ -8,6 +8,8 @@ import { IntelligentSearchEngine, type IntelligentSearchResult } from "@/lib/sea
 import { enrichActivitiesWithImages } from "@/lib/services/imageService";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getCityConfig, isWithinCityBounds } from "@/lib/data/cityConfig";
+import { rotateByDay } from "@/lib/utils/dailyRotation";
+import { extractMatchTerms, matchLocalActivities } from "@/lib/utils/localMatch";
 import type { SearchResult, BoundingBox } from "@/types/route-optimization";
 import { tomtomRoutingService } from "@/lib/services/tomtomRouting";
 import type { WeatherCondition } from "../types/types";
@@ -312,6 +314,17 @@ export async function findAndScoreActivities(
             }
 
             if (tomResults.length > 0) {
+              // Daily rotation (spots parity with rankSpots): TomTom accumulation
+              // order is deterministic (same queries → same buckets → same head),
+              // so without rotation every day serves identical picks. Baguio's
+              // relevance-sorted vector path is deliberately NOT rotated — demoting
+              // the best semantic matches for variety would be a quality loss.
+              if (tomResults.length > 1) {
+                const dayIndex = Math.floor(getCityTime(cityId).getTime() / 86400000);
+                const prevHead = tomResults[0]?.name;
+                tomResults = rotateByDay(tomResults, dayIndex);
+                console.log(`🔁 DAILY ROTATION: day ${dayIndex} offset ${dayIndex % tomResults.length}/${tomResults.length} for ${cityId} (head was "${prevHead}")`);
+              }
               filteredSimilar = tomResults.slice(0, 20).map(r => ({
                 activity_id: r.name,
                 similarity: (r.relevanceScore ?? 50) / 100,
@@ -345,44 +358,141 @@ export async function findAndScoreActivities(
             filteredSimilar = []
           }
         } else if (filteredSimilar.length < 8) {
-          // Baguio fallback: supplement with Baguio TomTom when vector insufficient
-          try {
-            const city = getCityConfig("baguio")
-            const bounds = {
-              topLeft: { lat: city.bounds.north, lng: city.bounds.west },
-              bottomRight: { lat: city.bounds.south, lng: city.bounds.east },
+            // Baguio fallback: supplement with Baguio TomTom when vector insufficient.
+            // H1-fix (2026-09-04): was passing raw `prompt` (e.g., "Create a personalized
+            // 1 Day-day itinerary...") which returned 0 results from TomTom POI search.
+            // Now uses the same compact interest-mapped query candidates as the
+            // strict-city branch above — guaranteed to match at least the
+            // genericQuery fallback even for raw verbose prompts.
+            try {
+                const city = getCityConfig("baguio")
+                const bounds = {
+                    topLeft: { lat: city.bounds.north, lng: city.bounds.west },
+                    bottomRight: { lat: city.bounds.south, lng: city.bounds.east },
+                }
+                const safeInterests = Array.isArray(interests) ? interests.filter(i => i && i !== "Random") : []
+                const INTEREST_QUERY_MAP: Record<string, string> = {
+                    "Food & Culinary": "restaurants",
+                    "Nature & Scenery": "park viewpoint",
+                    "Culture & Arts": "museum landmark",
+                    "Shopping & Local Finds": "shopping market",
+                    "Adventure": "outdoor attraction",
+                }
+                const genericQuery = `tourist attractions ${city.name}`
+                const queryCandidates = safeInterests.length > 0
+                    ? [
+                        `${safeInterests.slice(0, 2).map(i => INTEREST_QUERY_MAP[i] ?? i).join(" ")} ${city.name}`,
+                        ...safeInterests.slice(0, 2).map(i => `${INTEREST_QUERY_MAP[i] ?? i} ${city.name}`),
+                        genericQuery,
+                    ]
+                    : [genericQuery]
+                const seenTitles = new Set(filteredSimilar.map(s => s.metadata.title.toLowerCase()))
+                let baguioTomResults: SearchResult[] = []
+                for (const q of queryCandidates) {
+                    if (baguioTomResults.length >= 10) break
+                    try {
+                        const batch = await tomtomRoutingService.searchLocations(q, bounds as BoundingBox, undefined, { countrySet: city.countrySet, language: city.language })
+                        for (const r of batch) {
+                            const key = `${r.coordinates.lat.toFixed(3)},${r.coordinates.lng.toFixed(3)}`
+                            if (!seenTitles.has(key)) { seenTitles.add(key); baguioTomResults.push(r) }
+                        }
+                        console.log(`🌍 BAGUIO SUPPLEMENT: query "${q}" → ${batch.length} results (cumulative ${baguioTomResults.length})`)
+                    } catch (qErr) {
+                        console.warn(`BAGUIO SUPPLEMENT query "${q}" failed`, qErr)
+                    }
+                }
+                // Bounds post-filter (spec 9.1 #7)
+                {
+                    const beforeBounds = baguioTomResults.length
+                    const filteredByBounds = baguioTomResults.filter(r => {
+                        const lat = r.coordinates.lat
+                        const lon = r.coordinates.lng
+                        if (lat == null || lon == null) return false
+                        return isWithinCityBounds(lat, lon, "baguio")
+                    })
+                    if (beforeBounds !== filteredByBounds.length) {
+                        console.log(`BAGUIO SUPPLEMENT: bounds filter removed ${beforeBounds - filteredByBounds.length} out-of-bounds`)
+                    }
+                    baguioTomResults = filteredByBounds
+                }
+                const hybrid = baguioTomResults.slice(0, 10).map(r => ({
+                    activity_id: r.name,
+                    similarity: (r.relevanceScore ?? 50) / 100,
+                    metadata: {
+                        title: r.name,
+                        desc: r.address || `${r.category} in ${city.name}`,
+                        tags: [r.category || "Travel", ...(Array.isArray(interests) ? interests.slice(0,2) : [])].slice(0,4),
+                        time: "Anytime",
+                        image: "",
+                        peakHours: "",
+                        lat: r.coordinates.lat,
+                        lon: r.coordinates.lng,
+                    },
+                    relevanceScore: (r.relevanceScore ?? 50) / 100,
+                    reasoning: ["TomTom Baguio supplement (compact query)"],
+                    confidence: 0.6,
+                    searchScores: { vector:0, semantic:0, fuzzy:0, contextual:0, temporal:0, diversity:0 },
+                    interestMatch: true,
+                    weatherMatch: true,
+                    searchMethod: 'tomtom_hybrid',
+                    vectorScore:0, semanticScore:0, confidenceLevel:0.6,
+                }))
+                if (hybrid.length > 0) {
+                    filteredSimilar = [...filteredSimilar, ...hybrid].slice(0, 40)
+                    console.log(`🌍 BAGUIO SUPPLEMENT: Added ${hybrid.length} TomTom → total ${filteredSimilar.length}`)
+                } else {
+                    console.warn(`🌍 BAGUIO SUPPLEMENT: TomTom returned 0 for Baguio across ${queryCandidates.length} compact queries — falling through to empty-result fallback`)
+                }
+            } catch (e) {
+                console.warn("Baguio TomTom supplement failed", e)
             }
-            const tomResults = await tomtomRoutingService.searchLocations(prompt, bounds as BoundingBox, undefined, { countrySet: city.countrySet, language: city.language })
-            const seen = new Set(filteredSimilar.map(s => s.metadata.title.toLowerCase()))
-            const hybrid = tomResults.slice(0, 10).map(r => ({
-              activity_id: r.name,
-              similarity: (r.relevanceScore ?? 50) / 100,
-              metadata: {
-                title: r.name,
-                desc: r.address || `${r.category} in ${city.name}`,
-                tags: [r.category || "Travel", ...(Array.isArray(interests) ? interests.slice(0,2) : [])].slice(0,4),
-                time: "Anytime",
-                image: "",
-                peakHours: "",
-                lat: r.coordinates.lat,
-                lon: r.coordinates.lng,
-              },
-              relevanceScore: (r.relevanceScore ?? 50) / 100,
-              reasoning: ["TomTom Baguio supplement"],
-              confidence: 0.6,
-              searchScores: { vector:0, semantic:0, fuzzy:0, contextual:0, temporal:0, diversity:0 },
-              interestMatch: true,
-              weatherMatch: true,
-              searchMethod: 'tomtom_hybrid',
-              vectorScore:0, semanticScore:0, confidenceLevel:0.6,
-            })).filter(h => !seen.has((h.metadata.title as string).toLowerCase()))
-            if (hybrid.length > 0) {
-              filteredSimilar = [...filteredSimilar, ...hybrid].slice(0, 40)
-              console.log(`🌍 BAGUIO SUPPLEMENT: Added ${hybrid.length} TomTom → total ${filteredSimilar.length}`)
-            }
-          } catch (e) {
-            console.warn("Baguio TomTom supplement failed", e)
-          }
+        }
+
+        // Baguio never-500 safety net: pgvector (semantic) + TomTom supplement can
+        // both come back empty (dead embeddings, zero POI hits, weather wipeout).
+        // Fall back to compact local text-match over the curated catalog — terms,
+        // never the verbatim prompt sentence (full-sentence `includes` can never
+        // hit short titles). Three tiers so Baguio always returns *something*:
+        // terms+weather → terms only → full catalog. Strict-city keeps
+        // honest-empty (no Baguio leakage into other cities).
+        if (filteredSimilar.length === 0 && cityId === "baguio") {
+            const terms = extractMatchTerms(interests);
+            const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as unknown as Record<string, string[]>)[weatherType] ?? [];
+            const catalog = sampleItineraryCombined.items[0].activities;
+            const tier1 = matchLocalActivities(catalog, terms, allowedWeatherTags);
+            const tier2 = tier1.length > 0 ? tier1 : matchLocalActivities(catalog, terms, []);
+            const net = tier2.length > 0 ? tier2 : catalog.slice(0, 40);
+            console.log(`🛟 BAGUIO SAFETY NET: ${net.length} local matches (terms: [${terms.join(", ") || "none"}])`);
+            filteredSimilar = net.slice(0, 40).map((activity: Activity) => ({
+                activity_id: activity.title,
+                similarity: 0.25,
+                metadata: {
+                    title: activity.title,
+                    desc: activity.desc,
+                    tags: activity.tags,
+                    time: activity.time,
+                    image: activity.image,
+                    peakHours: activity.peakHours,
+                },
+                relevanceScore: 0.25,
+                reasoning: ['Baguio safety-net local match'],
+                confidence: 0.5,
+                searchScores: { vector:0, semantic:0, fuzzy:0, contextual:0, temporal:0, diversity:0 },
+                interestMatch: true,
+                weatherMatch: true,
+                searchMethod: 'baguio_safety_net',
+                vectorScore:0, semanticScore:0, confidenceLevel:0.5,
+            }));
+        }
+
+        // Shortlist BEFORE traffic+image fan-out (spots parity: enrich the head, not the
+        // catalog). 12 covers the hungriest layout — 4 days × 3 slots × 1 (relaxed pace) —
+        // so multi-day trips can't starve. Baguio input is relevance-sorted; strict-city
+        // input was day-rotated upstream, so the head varies day to day.
+        const FINALIST_CAP = 12;
+        if (filteredSimilar.length > FINALIST_CAP) {
+            console.log(`✂️ SHORTLIST: capping ${filteredSimilar.length} → ${FINALIST_CAP} before traffic+image enrichment`);
+            filteredSimilar = filteredSimilar.slice(0, FINALIST_CAP);
         }
 
         if (filteredSimilar.length > 0) {
@@ -433,7 +543,7 @@ export async function findAndScoreActivities(
                 finalActivities = trafficFilteredActivities.slice(0, Math.min(20, trafficFilteredActivities.length));
                 // Enrich with accurate per-location images (Tier 0 curated for Baguio, Tier 1-3 for PH/world)
                 try {
-                    finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5 }) as unknown as typeof finalActivities
+                    finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5, city: getCityConfig(cityId).name }) as unknown as typeof finalActivities
                 } catch (e) {
                     console.warn("Image enrichment failed, keeping original images", e)
                 }
@@ -465,7 +575,7 @@ export async function findAndScoreActivities(
 
                 // Enrich fast-mode images as well (curated stays, new places get fetched)
                 try {
-                    finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5 }) as unknown as typeof finalActivities
+                    finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5, city: getCityConfig(cityId).name }) as unknown as typeof finalActivities
                 } catch (e) {
                     console.warn("Image enrichment (fast mode) failed", e)
                 }
@@ -607,6 +717,76 @@ export async function findAndScoreActivities(
                     allowedActivities: sanitisedAllowedActivities
                 }
             } as unknown as typeof effectiveSampleItinerary;
+        } else {
+            // H1-fix (2026-09-04): empty-result fallback for Baguio-class cities.
+            // Previous behavior: if vector + TomTom both returned 0, filteredSimilar
+            // stayed empty, effectiveSampleItinerary stayed null, composer threw,
+            // 500 to the user. This branch fires when filteredSimilar.length === 0
+            // (NOT on a thrown exception — the catch block at :633 still handles
+            // that path with a different strategy). Matches against the local
+            // curated database using COMPACT terms (interests + city name), not
+            // the raw prompt sentence — title.includes("Create a personalized 1
+            // Day-day itinerary...") almost never matches in production.
+            const safeInterestsForFallback = Array.isArray(interests)
+                ? interests.filter(i => i && i !== "Random")
+                : [];
+            const cityForFallback = (() => {
+                try { return getCityConfig(cityId).name; } catch { return "Baguio"; }
+            })();
+            // Compact tokens: each interest becomes one token, plus the city name.
+            // Example: interests=["Food & Culinary"], city="Cebu" → ["food culinary", "cebu"]
+            const INTEREST_TOKEN_MAP: Record<string, string> = {
+                "Food & Culinary": "food culinary",
+                "Nature & Scenery": "nature scenery park",
+                "Culture & Arts": "culture arts museum",
+                "Shopping & Local Finds": "shopping market",
+                "Adventure": "adventure outdoor",
+            };
+            const compactTokens = safeInterestsForFallback.length > 0
+                ? safeInterestsForFallback.map(i => (INTEREST_TOKEN_MAP[i] ?? i).toLowerCase())
+                : [];
+            if (cityForFallback) compactTokens.push(cityForFallback.toLowerCase());
+
+            const allCurated = sampleItineraryCombined.items.flatMap((it: any) => it.activities || []);
+            const fallbackMatches = compactTokens.length > 0
+                ? allCurated.filter((activity: Activity) => {
+                    const haystack = `${activity.title} ${activity.desc} ${(activity.tags || []).join(" ")}`.toLowerCase();
+                    return compactTokens.some(tok => haystack.includes(tok));
+                })
+                : allCurated.slice(0, 20); // last-ditch: return first 20 curated
+
+            if (fallbackMatches.length > 0) {
+                effectiveSampleItinerary = {
+                    title: `${cityForFallback} Recommendations`,
+                    subtitle: `Curated activities matched to your interests (vector search returned no results)`,
+                    items: [{
+                        period: "Anytime",
+                        activities: fallbackMatches.slice(0, 20).map((activity: Activity) => ({
+                            ...activity,
+                            relevanceScore: 0.4,
+                            isCurrentlyPeak: false,
+                            searchReasoning: ["Empty-result fallback: local text match"],
+                            confidence: 0.5,
+                        })),
+                    }],
+                    searchMetadata: {
+                        searchMethod: 'fallback_empty',
+                        totalResults: fallbackMatches.length,
+                        processingTime: Date.now(),
+                        allowedActivities: fallbackMatches.slice(0, 20).map((activity: Activity) => ({
+                            image: activity.image,
+                            title: activity.title,
+                            time: activity.time,
+                            desc: activity.desc,
+                            tags: Array.isArray(activity.tags) ? activity.tags : [],
+                            peakHours: activity.peakHours,
+                        })),
+                    },
+                } as unknown as typeof effectiveSampleItinerary;
+                console.log(`🛟 EMPTY-RESULT FALLBACK: ${fallbackMatches.length} local matches for ${cityId} via compact tokens [${compactTokens.slice(0, 4).join(', ')}...]`);
+            } else {
+                console.warn(`🛟 EMPTY-RESULT FALLBACK: no curated matches for ${cityId} either — returning null (composer will handle)`);
+            }
         }
     } catch (searchErr) {
         console.warn("Intelligent search failed, falling back to basic search", searchErr);
