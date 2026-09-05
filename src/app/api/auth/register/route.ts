@@ -30,12 +30,21 @@ export async function POST(request: NextRequest) {
     }
 
     const requestBody = await request.json();
-    const { fullName, email, password, referralCode } = requestBody;
+    const { fullName, email, password, referralCode, agreed } = requestBody;
 
     // Validate required fields
     if (!fullName || !email || !password) {
       return applySecurityHeaders(NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      ));
+    }
+
+    // Server-side ToS consent enforcement (client checkbox alone is bypassable
+    // via direct POST, so agreement must be asserted in the request body).
+    if (agreed !== true) {
+      return applySecurityHeaders(NextResponse.json(
+        { error: 'You must accept the Terms of Service and Privacy Policy' },
         { status: 400 }
       ));
     }
@@ -62,8 +71,8 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Create user in Supabase with sanitized data
-      const newUser = await createUserInSupabase(sanitized.fullName, sanitized.email, sanitized.password);
+      // Create user in Supabase with sanitized data (records ToS acceptance time)
+      const newUser = await createUserInSupabase(sanitized.fullName, sanitized.email, sanitized.password, new Date().toISOString());
 
       // ✅ REFERRAL SYSTEM: Create user profile and handle referral
       if (supabaseAdmin && newUser?.id) {

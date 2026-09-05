@@ -64,6 +64,41 @@ describe('Register API Route Tests', () => {
     expect(responseBody.error).toBe('Missing required fields');
   });
 
+  test('should return 400 when ToS agreement is missing', async () => {
+    const mockRequest = {
+      json: jest.fn().mockResolvedValue({
+        fullName: 'John Doe',
+        email: 'john@example.com',
+        password: 'strongPassword123!',
+      }),
+    } as unknown as NextRequest;
+
+    const response = await POST(mockRequest);
+    expect(response.status).toBe(400);
+
+    const responseBody = await response.json();
+    expect(responseBody.error).toBe('You must accept the Terms of Service and Privacy Policy');
+    expect(createUserInSupabase as jest.Mock).not.toHaveBeenCalled();
+  });
+
+  test('should return 400 when ToS agreement is false', async () => {
+    const mockRequest = {
+      json: jest.fn().mockResolvedValue({
+        fullName: 'John Doe',
+        email: 'john@example.com',
+        password: 'strongPassword123!',
+        agreed: false,
+      }),
+    } as unknown as NextRequest;
+
+    const response = await POST(mockRequest);
+    expect(response.status).toBe(400);
+
+    const responseBody = await response.json();
+    expect(responseBody.error).toBe('You must accept the Terms of Service and Privacy Policy');
+    expect(createUserInSupabase as jest.Mock).not.toHaveBeenCalled();
+  });
+
   test('should return 400 for invalid password', async () => {
     // Mock validation to return errors
     (validatePasswordStrength as jest.Mock).mockReturnValue({
@@ -85,6 +120,7 @@ describe('Register API Route Tests', () => {
         fullName: 'John Doe',
         email: 'john@example.com',
         password: 'weak',
+        agreed: true,
       }),
     } as unknown as NextRequest;
 
@@ -116,6 +152,7 @@ describe('Register API Route Tests', () => {
         fullName: 'John Doe',
         email: 'john@example.com',
         password: 'password',
+        agreed: true,
       }),
     } as unknown as NextRequest;
 
@@ -147,6 +184,7 @@ describe('Register API Route Tests', () => {
         fullName: 'John Doe',
         email: 'john@example.com',
         password: 'passssword',
+        agreed: true,
       }),
     } as unknown as NextRequest;
 
@@ -178,6 +216,7 @@ describe('Register API Route Tests', () => {
         fullName: 'John Doe',
         email: 'john@example.com',
         password: 'abcdef123456',
+        agreed: true,
       }),
     } as unknown as NextRequest;
 
@@ -215,6 +254,7 @@ describe('Register API Route Tests', () => {
         fullName: 'John Doe',
         email: 'john@example.com',
         password: 'strongPassword123!',
+        agreed: true,
       }),
     } as unknown as NextRequest;
 
@@ -224,6 +264,12 @@ describe('Register API Route Tests', () => {
     const responseBody = await response.json();
     expect(responseBody.success).toBe(true);
     expect(responseBody.message).toBe('User registered successfully');
+    expect(createUserInSupabase as jest.Mock).toHaveBeenCalledWith(
+      'John Doe',
+      'john@example.com',
+      'strongPassword123!',
+      expect.any(String),
+    );
   });
 
   test('should return 409 when user already exists', async () => {
@@ -251,6 +297,7 @@ describe('Register API Route Tests', () => {
         fullName: 'John Doe',
         email: 'john@example.com',
         password: 'strongPassword123!',
+        agreed: true,
       }),
     } as unknown as NextRequest;
 
@@ -271,6 +318,7 @@ describe('Register API Route Tests', () => {
         email: 'john@example.com',
         password: 'strongPassword123!',
         referralCode: 'invalid-code',
+        agreed: true,
       }),
     } as unknown as NextRequest;
 
@@ -305,6 +353,7 @@ describe('Register API Route Tests', () => {
         fullName: 'John Doe',
         email: 'john@example.com',
         password: 'strongPassword123!',
+        agreed: true,
       }),
     } as unknown as NextRequest;
 

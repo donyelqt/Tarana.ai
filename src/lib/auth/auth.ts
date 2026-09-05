@@ -115,11 +115,12 @@ interface SupabaseUser {
   hashed_password?: string; // Ensure this matches your table column name
   full_name?: string; // Ensure this matches your table column name
   image?: string; // Added for the new image field
+  tos_accepted_at?: string | null; // ToS/Privacy acceptance timestamp (NULL = not accepted)
   // Add other fields as necessary, e.g., created_at, updated_at
 }
 
 // Function to add a new user to Supabase
-export async function createUserInSupabase(fullName: string, email: string, password: string) {
+export async function createUserInSupabase(fullName: string, email: string, password: string, tosAcceptedAt?: string) {
   // Check if user already exists using the admin client
   const { data: existingUser, error: fetchError } = await supabaseAdmin
     .from('users')
@@ -144,6 +145,9 @@ export async function createUserInSupabase(fullName: string, email: string, pass
       full_name: fullName,
       email: email.toLowerCase(),
       hashed_password: hashedPassword, // Changed 'password' to 'hashed_password'
+      // Server-enforced ToS acceptance at registration (column added by
+      // 20260905000000 migration; omit when absent, e.g. legacy callers).
+      ...(tosAcceptedAt ? { tos_accepted_at: tosAcceptedAt } : {}),
     })
     .select('id, full_name, email')
     .single();
@@ -179,6 +183,23 @@ export async function verifySupabaseUserPassword(email: string, suppliedPassword
     return false; // User not found or no password stored
   }
   return await bcrypt.compare(suppliedPassword, user.hashed_password);
+}
+
+// Reads the ToS/Privacy acceptance flag for an email. Fail-closed (false) on
+// any DB error so the consent gate, not an exception, handles the outcome.
+async function fetchTosAccepted(email?: string | null): Promise<boolean> {
+  if (!email) return false;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .select('tos_accepted_at')
+      .eq('email', email.toLowerCase())
+      .single();
+    if (error) return false;
+    return !!(data as { tos_accepted_at?: string | null } | null)?.tos_accepted_at;
+  } catch {
+    return false;
+  }
 }
 
 export const authOptions: NextAuthOptions = {
@@ -317,9 +338,17 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user, account, trigger, session }) {
-      if (trigger === 'update' && session?.user) {
-        token.name = session.user.name ?? token.name;
-        token.picture = session.user.image ?? token.picture;
+      if (trigger === 'update') {
+        if (session?.user) {
+          token.name = session.user.name ?? token.name;
+          token.picture = session.user.image ?? token.picture;
+        }
+        // Refresh the ToS flag so a fresh consent acceptance takes effect
+        // without requiring re-login (fail closed on DB errors).
+        if (token.email) {
+          (token as unknown as { tosAccepted?: boolean }).tosAccepted =
+            await fetchTosAccepted(token.email as string);
+        }
       }
 
       if (account && user) {
@@ -328,7 +357,7 @@ export const authOptions: NextAuthOptions = {
         if (account.provider === "google") {
           const { data: dbUser } = await supabaseAdmin
             .from('users')
-            .select('id, full_name')
+            .select('id, full_name, tos_accepted_at')
             .eq('email', user.email?.toLowerCase())
             .single();
 
@@ -337,9 +366,15 @@ export const authOptions: NextAuthOptions = {
           }
 
           resolvedName = dbUser?.full_name ?? user.name ?? resolvedName;
+          // First-time Google OAuth provisions with NULL tos_accepted_at, so
+          // the post-login middleware gate picks these users up for consent.
+          (token as unknown as { tosAccepted?: boolean }).tosAccepted =
+            !!(dbUser as { tos_accepted_at?: string | null } | null)?.tos_accepted_at;
         } else {
           token.id = user.id;
           resolvedName = user.name ?? resolvedName;
+          (token as unknown as { tosAccepted?: boolean }).tosAccepted =
+            await fetchTosAccepted(user.email);
         }
 
         token.picture = user.image ?? token.picture;
@@ -373,6 +408,9 @@ export const authOptions: NextAuthOptions = {
         if (token.name) {
           session.user.name = token.name as string;
         }
+        // Cheap mirror of the middleware enforcement claim for client use.
+        (session as unknown as { tosAccepted?: boolean }).tosAccepted =
+          (token as unknown as { tosAccepted?: boolean }).tosAccepted ?? false;
         // Add a mock access token (since we're using admin client, this is just for display)
         session.accessToken = token.accessToken as string;
       }
