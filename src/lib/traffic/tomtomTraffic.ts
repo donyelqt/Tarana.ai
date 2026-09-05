@@ -173,7 +173,7 @@ class TomTomTrafficService {
       key: this.config.apiKey
     });
 
-    console.log(`🌐 TomTom: Requesting flow data: ${url}?${params.toString()}`);
+    console.log(`🌐 TomTom: Requesting flow data: ${url}?${params.toString().replace(/key=[^&]*/, "key=***")}`);
 
     try {
       const controller = new AbortController();
@@ -230,7 +230,7 @@ class TomTomTrafficService {
         key: this.config.apiKey
       });
 
-      console.log(`🌐 TomTom: Requesting incidents data: ${url}?${params.toString()}`);
+      console.log(`🌐 TomTom: Requesting incidents data: ${url}?${params.toString().replace(/key=[^&]*/, "key=***")}`);
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
@@ -291,7 +291,7 @@ class TomTomTrafficService {
         key: this.config.apiKey
       });
 
-      console.log(`🌐 TomTom: Trying simplified incidents request: ${url}?${params.toString()}`);
+      console.log(`🌐 TomTom: Trying simplified incidents request: ${url}?${params.toString().replace(/key=[^&]*/, "key=***")}`);
 
       const response = await fetch(`${url}?${params.toString()}`, {
         headers: this.tomTomHeaders()
@@ -337,16 +337,26 @@ class TomTomTrafficService {
    * Calculate congestion score (0-100) from TomTom flow data and any
    * nearby incidents.
    *
-   * Speed-based score is clamped to 0-80 so the congestion score range
-   * still reflects speed reduction even when incidents push it higher.
-   * Each incident adds 0-30 points depending on magnitudeOfDelay, but
-   * the total is always capped at 100.
+   * H1-fix (2026-09-04): previous version let 3 incidents at magnitude 4
+   * each add 30 points per incident (capped per-incident) → 90 total,
+   * pushing a free-flow 30/30 km/h road into SEVERE. That was wrong:
+   * speed is the dominant signal; incidents on a free-flowing road are
+   * advisories, not blockers.
+   *
+   * New rule: per-incident impact is dampened by current speed ratio.
+   * On a free-flow road (ratio >= 0.9), each incident contributes at
+   * most 8 points (a "soft" advisory). As the road slows, incidents
+   * weigh more — at stop-and-go (ratio <= 0.3) the old cap of 30 each
+   * applies. The TOTAL incident contribution is also capped at 25
+   * regardless of incident count, so 50 small incidents don't push
+   * a free-flow reading into SEVERE.
    */
   private calculateCongestionScore(flowData: any, incidents: TrafficIncident[]): number {
     let score = 0;
+    let speedRatio = 1.0;
 
     if (flowData && flowData.currentSpeed && flowData.freeFlowSpeed) {
-      const speedRatio = flowData.currentSpeed / flowData.freeFlowSpeed;
+      speedRatio = Math.max(0, Math.min(1, flowData.currentSpeed / flowData.freeFlowSpeed));
       score = Math.max(0, (1 - speedRatio) * 100) * 0.85;
       console.log('🚗 TomTom: Speed-based congestion score: ' + score.toFixed(1) + ' (' + flowData.currentSpeed + '/' + flowData.freeFlowSpeed + ' km/h)');
     } else {
@@ -354,15 +364,29 @@ class TomTomTrafficService {
       console.log('🚗 TomTom: Using default congestion score: ' + score + ' (no flow data)');
     }
 
+    // Per-incident impact: cap = lerp(8, 30, 1 - speedRatio).
+    //   speedRatio=1.0 (free-flow) → cap=8 per incident
+    //   speedRatio=0.3 (slow)     → cap=23.4 per incident
+    //   speedRatio=0.0 (stopped)  → cap=30 per incident
+    const perIncidentCap = 8 + (1 - speedRatio) * 22;
+    let incidentTotal = 0;
     incidents.forEach(incident => {
-      const incidentImpact = Math.min(incident.magnitudeOfDelay * 10, 30);
-      score += incidentImpact;
-      console.log('🚧 TomTom: Incident impact +' + incidentImpact + ' (magnitude: ' + incident.magnitudeOfDelay + ')');
+      const incidentImpact = Math.min(incident.magnitudeOfDelay * 10, perIncidentCap);
+      incidentTotal += incidentImpact;
+      console.log('🚧 TomTom: Incident impact +' + incidentImpact.toFixed(1) + ' (magnitude: ' + incident.magnitudeOfDelay + ', speedRatio: ' + speedRatio.toFixed(2) + ')');
     });
+    // Hard cap on total incident contribution — 25 max regardless of count.
+    // This prevents "5 small incidents on a clear road" → SEVERE.
+    const TOTAL_INCIDENT_CAP = 25;
+    const cappedIncidentTotal = Math.min(incidentTotal, TOTAL_INCIDENT_CAP);
+    if (incidentTotal > TOTAL_INCIDENT_CAP) {
+      console.log(`🚧 TomTom: Incident total ${incidentTotal.toFixed(1)} capped to ${TOTAL_INCIDENT_CAP} (count: ${incidents.length})`);
+    }
+    score += cappedIncidentTotal;
 
     const finalScore = Math.min(100, Math.max(0, Math.round(score)));
-    console.log('📊 TomTom: Final congestion score: ' + finalScore + '/100');
-    
+    console.log('📊 TomTom: Final congestion score: ' + finalScore + '/100 (speedRatio: ' + speedRatio.toFixed(2) + ', incidentTotal: ' + cappedIncidentTotal.toFixed(1) + ')');
+
     return finalScore;
   }
 
