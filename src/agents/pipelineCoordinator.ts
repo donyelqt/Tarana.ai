@@ -24,6 +24,7 @@ export class PipelineCoordinator {
     // H2: charge-before - consume before any generation work (AGENTS.md) - skip for bench k6 user
     const isBenchUser = session.userId === "00000000-0000-0000-0000-000000000001";
     const creditService = this.deps.creditService ?? CreditService;
+    let charged = false;
     if (!isBenchUser) {
       await creditService.consumeCredits({
       userId: session.userId,
@@ -31,6 +32,7 @@ export class PipelineCoordinator {
       service: "tarana_gala",
       description: `Generated itinerary: ${session.prompt.substring(0, 50)}`,
       });
+      charged = true;
     }
 
     try {
@@ -43,6 +45,20 @@ export class PipelineCoordinator {
       return session;
     } catch (error) {
       this.deps.concierge.failSession(session.id, (error as Error).message, error);
+      if (charged && !isBenchUser) {
+        try {
+          await CreditService.refundCredits({
+            userId: session.userId,
+            amount: 1,
+            service: "tarana_gala",
+            description: `Refund: multi-agent failed ${session.id}`,
+          });
+          console.log(`💸 Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`);
+        } catch {
+          // best-effort; swallow refund errors
+        }
+        (error as Error & { __galaRefunded?: boolean }).__galaRefunded = true;
+      }
       throw error;
     }
   }
