@@ -6,8 +6,7 @@ import { validatePasswordStrength } from '@/lib/security/inputSanitizer';
 
 // Polyfill requestSubmit for jsdom
 if (typeof HTMLFormElement !== 'undefined' && !HTMLFormElement.prototype.requestSubmit) {
-  HTMLFormElement.prototype.requestSubmit = function () {
-    if (this.requestSubmit) return;
+  HTMLFormElement.prototype.requestSubmit = function (this: HTMLFormElement) {
     // @ts-ignore
     this.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
   } as any;
@@ -16,7 +15,7 @@ if (typeof HTMLFormElement !== 'undefined' && !HTMLFormElement.prototype.request
 const originalRequestSubmit = HTMLFormElement.prototype.requestSubmit;
 try {
   // @ts-ignore check if it throws
-  HTMLFormElement.prototype.requestSubmit = function () {
+  HTMLFormElement.prototype.requestSubmit = function (this: HTMLFormElement) {
     const event = new Event('submit', { cancelable: true, bubbles: true });
     this.dispatchEvent(event);
   } as any;
