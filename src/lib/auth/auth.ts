@@ -361,15 +361,31 @@ export const authOptions: NextAuthOptions = {
             .eq('email', user.email?.toLowerCase())
             .single();
 
-          if (dbUser?.id) {
-            token.id = dbUser.id;
+          let resolvedDbUser = dbUser;
+          if (!resolvedDbUser?.id) {
+            const { data: rereadDbUser } = await supabaseAdmin
+              .from('users')
+              .select('id, full_name, tos_accepted_at')
+              .eq('email', user.email?.toLowerCase())
+              .single();
+            resolvedDbUser = rereadDbUser;
           }
 
-          resolvedName = dbUser?.full_name ?? user.name ?? resolvedName;
+          if (!resolvedDbUser?.id) {
+            console.error(
+              'Google sign-in failed: no users row exists post-provisioning',
+              { provider: 'google', emailDomain: user.email?.split('@')[1] ?? 'unknown-domain' }
+            );
+            throw new Error('auth_user_row_missing');
+          }
+
+          token.id = resolvedDbUser.id;
+
+          resolvedName = resolvedDbUser?.full_name ?? user.name ?? resolvedName;
           // First-time Google OAuth provisions with NULL tos_accepted_at, so
           // the post-login middleware gate picks these users up for consent.
           (token as unknown as { tosAccepted?: boolean }).tosAccepted =
-            !!(dbUser as { tos_accepted_at?: string | null } | null)?.tos_accepted_at;
+            !!(resolvedDbUser as { tos_accepted_at?: string | null } | null)?.tos_accepted_at;
         } else {
           token.id = user.id;
           resolvedName = user.name ?? resolvedName;
