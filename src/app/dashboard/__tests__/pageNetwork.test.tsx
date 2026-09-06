@@ -117,10 +117,26 @@ const taranaPayload = {
 const weatherCalls: string[] = [];
 const statsCalls: string[] = [];
 const taranaCalls: string[] = [];
+const spotsCalls: string[] = [];
 const weatherCoords: { lat: number; lon: number }[] = [];
 
 function routeFetch(url: unknown) {
   const u = String(url);
+  if (u.includes('/api/spots')) {
+    spotsCalls.push(u);
+    return {
+      ok: true,
+      json: async () => ({
+        success: true,
+        city: 'baguio',
+        spots: [
+          { name: 'Burnham Park', image: '/images/burnham.png', lat: 16.4093, lon: 120.595, peakHours: null },
+          { name: 'Mines View Park', image: '/images/viewspark.png', lat: 16.4013, lon: 120.6003, peakHours: null },
+          { name: 'Wright Park', image: '/images/wrightpark.jpg', lat: 16.4151, lon: 120.6186, peakHours: null },
+        ],
+      }),
+    };
+  }
   if (u.includes('/api/weather')) {
     weatherCalls.push(u);
     // Regression pin for the 2026-09-03 [object Object] incident: TanStack

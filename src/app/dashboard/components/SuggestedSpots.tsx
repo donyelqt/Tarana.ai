@@ -5,11 +5,7 @@ import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import SpotlightCard from "./cards/SpotlightCard";
 import {
-  activityToPayload,
-  rankSpots,
-  spotPool,
   spotsQueryOptions,
-  spotsSubtitle,
   toSpotCard,
   SPOT_SCOPES,
   type SpotPayload,
@@ -22,22 +18,14 @@ const SuggestedSpots = () => {
   const { data: session, status } = useSession();
   void session;
 
-  // Baguio stays fully local (instant, offline-safe, curated pool).
-  // Other cities come from GET /api/spots (live TomTom search, hourly cache).
+  // Every city (Baguio included) comes from GET /api/spots — Baguio serves
+  // the curated pool first plus photo-verified TomTom extras behind it.
   const { data: remoteSpots } = useQuery({
     ...spotsQueryOptions(city, status),
-    enabled: status === 'authenticated' && city !== 'baguio',
+    enabled: status === 'authenticated',
   });
 
   const { cards, subtitle } = useMemo(() => {
-    if (city === 'baguio') {
-      const ranked = rankSpots(spotPool());
-      const cards = ranked
-        .map((a) => toSpotCard(activityToPayload(a)))
-        .filter((c): c is NonNullable<typeof c> => c !== null)
-        .slice(0, 3);
-      return { cards, subtitle: spotsSubtitle(ranked) };
-    }
     const label = SPOT_SCOPES.find((s) => s.id === city)?.label ?? city;
     const origin = getCityCenter(city);
     const cards = (remoteSpots ?? [])
@@ -73,7 +61,7 @@ const SuggestedSpots = () => {
           );
         })}
       </div>
-      {city !== 'baguio' && !remoteSpots ? (
+      {!remoteSpots ? (
         <div className="text-sm text-gray-500 px-1" role="status">Finding spots…</div>
       ) : cards.length === 0 ? (
         <div className="text-sm text-gray-500 px-1" role="status">
