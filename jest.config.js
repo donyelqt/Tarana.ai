@@ -39,11 +39,12 @@ module.exports = {
     customExportConditions: [''],
   },
   coverageThreshold: {
+    // Ratchet floor as of 2026-09-06 — raise quarterly toward 80. DO NOT lower.
     global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80,
+      branches: 14.25,
+      functions: 20.43,
+      lines: 18.56,
+      statements: 18.6,
     },
   },
 };

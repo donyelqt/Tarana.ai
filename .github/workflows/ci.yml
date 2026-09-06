@@ -41,7 +41,7 @@ jobs:
         run: npx tsc --noEmit --skipLibCheck
 
       - name: Tests
-        run: npm test -- --passWithNoTests --maxWorkers=2
+        run: npm test -- --coverage --passWithNoTests --maxWorkers=2
 
       - name: Build
         run: npm run build
