@@ -40,15 +40,19 @@ function isRealPhoto(image: unknown): boolean {
 
 /**
  * GET /api/spots?city=baguio|cebu|manila|davao
- * Spot candidates per city. Baguio serves the curated pool (coords, photos,
- * peak hours, zero enrichment) FIRST in catalog order, plus up to 8 TomTom
- * extras behind it — extras are enriched (tier-chain photos + measured
- * traffic) and only photo-verified extras (real Wikimedia/Unsplash/Google
- * URL, never TomTom-static-map-only) join the pool, day-rotated among
- * themselves. Other cities serve live TomTom POI search, enriched with real
- * photos (imageService tier chain) and measured traffic (TomTom flow →
- * shared thresholds). Anything unmeasurable stays absent — the client hides
- * badge/photo rather than guessing.
+ * Spot candidates per city. Baguio serves the FULL mixed pool — curated
+ * entries (coords, photos, peak hours, zero enrichment) in catalog order
+ * plus up to 8 TomTom extras — rotated by day via rotateByDay. Full-pool
+ * rotation replaced curated-first because the display slices 3: curated-first
+ * pinned extras at indices 37+ where they never rendered, making scale
+ * invisible. Quality is guarded at the source instead — extras are enriched
+ * (tier-chain photos + measured traffic) and only photo-verified extras
+ * (real Wikimedia/Unsplash/Google URL, never TomTom-static-map-only) join
+ * the pool, so rotation carries no quality risk. Other cities serve live
+ * TomTom POI search, enriched with real photos (imageService tier chain)
+ * and measured traffic (TomTom flow → shared thresholds). Anything
+ * unmeasurable stays absent — the client hides badge/photo rather than
+ * guessing.
  * Ranking stays client-side (rankSpots) for every city.
  */
 export async function GET(request: Request) {
@@ -133,13 +137,22 @@ export async function GET(request: Request) {
           );
         }
 
-        const dayIndex = Math.floor(Date.now() / 86400000);
-        extras = rotateByDay(verified, dayIndex);
+        extras = verified;
       } catch (e) {
         // Scale is best-effort — curated pool still serves on TomTom failure.
         console.error('Baguio extras failed, serving curated only:', e);
       }
-      return NextResponse.json({ success: true, city, spots: [...curated, ...extras] });
+      // Full-pool rotation (NOT curated-first): the display slices 3, so
+      // curated-first pinned extras at indices 37+ where they never rendered.
+      // Photo guard above carries the quality burden — only real-photo extras
+      // join — so the whole pool rotates together like every other city.
+      const pool = [...curated, ...extras];
+      const dayIndex = Math.floor(Date.now() / 86400000);
+      const rotated = rotateByDay(pool, dayIndex);
+      if (rotated.length > 1) {
+        console.log(`🔁 DAILY ROTATION: day ${dayIndex} offset ${dayIndex % rotated.length}/${rotated.length} for baguio (head was "${pool[0]?.name}")`);
+      }
+      return NextResponse.json({ success: true, city, spots: rotated });
     }
 
     const cfg = getCityConfig(city);
