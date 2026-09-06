@@ -37,6 +37,8 @@ const initialState: RouteCalculationState = {
 export function useRouteCalculation() {
   const [state, setState] = useState<RouteCalculationState>(initialState)
   const abortRef = useRef<NodeJS.Timeout | null>(null)
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   const calculate = useCallback(async (request: RouteRequest) => {
     if (!request.origin || !request.destination) return
@@ -129,27 +131,25 @@ export function useRouteCalculation() {
 
   /**
    * Patch the current traffic analysis (used by the 5-minute auto-refresh).
+   * Reads the route id outside the updater so the updater stays pure —
+   * StrictMode double-invokes impure updaters, which doubled this fetch.
    */
   const refreshTraffic = useCallback(async () => {
-    setState((prev) => {
-      if (!prev.currentRoute) return prev
-      const routeId = prev.currentRoute.id
-      // Fire-and-forget fetch — we don't await in setState
-      fetch(`/api/routes/traffic-analysis/${routeId}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((trafficData) => {
-          if (!trafficData) return
-          setState((p) => ({
-            ...p,
-            trafficConditions: trafficData,
-            lastUpdated: new Date(),
-          }))
-        })
-        .catch(() => {
-          /* silent — refresh is best-effort */
-        })
-      return prev
-    })
+    const routeId = stateRef.current.currentRoute?.id
+    if (!routeId) return
+    try {
+      const r = await fetch(`/api/routes/traffic-analysis/${routeId}`)
+      if (!r.ok) return
+      const trafficData = await r.json()
+      if (!trafficData) return
+      setState((p) => ({
+        ...p,
+        trafficConditions: trafficData,
+        lastUpdated: new Date(),
+      }))
+    } catch {
+      /* silent — refresh is best-effort */
+    }
   }, [])
 
   return {
