@@ -483,7 +483,7 @@ const SavedMealPage = () => {
                   onClick={() => setActiveMenu(type)}
                   className={`rounded-xl px-6 py-2 text-base font-medium transition-all duration-300 hover:-translate-y-0.5 ${
                     activeMenu === type 
-                    ? 'bg-blue-600 text-white border-blue-600' 
+                    ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white border-transparent shadow-md shadow-blue-500/30' 
                     : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100 hover:text-gray-700'
                   }`}
                 >
