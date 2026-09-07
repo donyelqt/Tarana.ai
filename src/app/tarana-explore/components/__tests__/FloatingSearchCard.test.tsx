@@ -231,6 +231,61 @@ describe('FloatingSearchCard', () => {
 
     expect(compactPill()).toBeInTheDocument()
   })
+
+  // The "Avoid" options drawer (Tolls / Ferries / Traffic / Highways) was
+  // untested, leaving its render + toggle branches uncovered. These tests pin
+  // the behaviour and push the global branch coverage floor above threshold.
+  const moreOptions = () => screen.getByRole('button', { name: /more options/i })
+  // Re-query on every call: toggling a pill re-renders it, so a captured node
+  // becomes stale the moment the preference flips.
+  const avoidPill = (label: 'Tolls' | 'Ferries' | 'Traffic' | 'Highways') =>
+    screen.getByRole('button', { name: label })
+
+  it('opens the Avoid options drawer from the More options button', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+    await openCard(user)
+
+    expect(moreOptions()).toBeInTheDocument()
+    await user.click(moreOptions())
+
+    expect(screen.getByText(/Depart at/i)).toBeInTheDocument()
+    expect(screen.getByText(/Avoid/i)).toBeInTheDocument()
+    expect(avoidPill('Tolls')).toBeInTheDocument()
+    expect(avoidPill('Ferries')).toBeInTheDocument()
+    expect(avoidPill('Traffic')).toBeInTheDocument()
+    expect(avoidPill('Highways')).toBeInTheDocument()
+  })
+
+  it('toggles an Avoid preference on and off', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+    await openCard(user)
+    await user.click(moreOptions())
+
+    expect(avoidPill('Tolls')).not.toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(avoidPill('Tolls'))
+    expect(avoidPill('Tolls')).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(avoidPill('Tolls'))
+    expect(avoidPill('Tolls')).not.toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('reflects each Avoid preference independently', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+    await openCard(user)
+    await user.click(moreOptions())
+
+    await user.click(avoidPill('Tolls'))
+    await user.click(avoidPill('Highways'))
+
+    expect(avoidPill('Tolls')).toHaveAttribute('aria-pressed', 'true')
+    expect(avoidPill('Ferries')).not.toHaveAttribute('aria-pressed', 'true')
+    expect(avoidPill('Traffic')).not.toHaveAttribute('aria-pressed', 'true')
+    expect(avoidPill('Highways')).toHaveAttribute('aria-pressed', 'true')
+  })
 })
 
 
