@@ -771,7 +771,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
                       aria-pressed={!!preferences[opt.key]}
                       className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                         preferences[opt.key]
-                          ? 'bg-blue-600 border-blue-600 text-white'
+                          ? 'bg-gradient-to-b from-blue-700 to-blue-500 border-blue-700 text-white'
                           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                       }`}
                     >
