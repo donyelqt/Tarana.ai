@@ -72,3 +72,11 @@ bench/logs/
 dev-*.log
 dev.log
 
+# tarana-mobile (Expo app) - track source, never generated artifacts.
+# Without these, one `git add -A` commits ~21k junk files (nested
+# node_modules + .expo cache); root `/node_modules` rule does not cover them.
+tarana-mobile/node_modules/
+tarana-mobile/.expo/
+tarana-mobile/dist/
+tarana-mobile/build/
+
