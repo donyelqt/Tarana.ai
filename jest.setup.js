@@ -57,9 +57,17 @@ global.Headers = class Headers {
   constructor(init = {}) {
     this.map = new Map();
     if (init) {
-      Object.entries(init).forEach(([key, value]) => {
-        this.map.set(key.toLowerCase(), value);
-      });
+      if (typeof init.forEach === 'function') {
+        init.forEach((value, key) => this.map.set(key.toLowerCase(), value));
+      } else if (typeof init[Symbol.iterator] === 'function') {
+        for (const [key, value] of init) {
+          this.map.set(key.toLowerCase(), value);
+        }
+      } else {
+        Object.entries(init).forEach(([key, value]) => {
+          this.map.set(key.toLowerCase(), value);
+        });
+      }
     }
   }
 
@@ -73,6 +81,26 @@ global.Headers = class Headers {
 
   has(key) {
     return this.map.has(key.toLowerCase());
+  }
+
+  delete(key) {
+    return this.map.delete(key.toLowerCase());
+  }
+
+  forEach(callback, thisArg) {
+    this.map.forEach(callback, thisArg);
+  }
+
+  *entries() {
+    yield* this.map.entries();
+  }
+
+  *keys() {
+    yield* this.map.keys();
+  }
+
+  *values() {
+    yield* this.map.values();
   }
 };
 

@@ -61,13 +61,17 @@ class InMemoryRateLimiter {
     return Math.abs(hash).toString(16);
   }
 
-  checkRateLimit(request: NextRequest, config: RateLimitConfig): {
+  checkRateLimit(request: NextRequest, config: RateLimitConfig, key = ''): {
     allowed: boolean;
     remaining: number;
     resetTime: number;
     retryAfter?: number;
   } {
-    const clientId = this.getClientIdentifier(request);
+    // Scope the entry to the limiter name too. Different configs (e.g. the
+    // global `api` limiter and the `mobileToken` exchange limiter) have
+    // different window lengths; keying only on client would let one bucket
+    // silently reset the other's window and cross-contaminate counts.
+    const clientId = key ? `${key}:${this.getClientIdentifier(request)}` : this.getClientIdentifier(request);
     const now = Date.now();
     const windowStart = now - config.windowMs;
 
@@ -165,6 +169,13 @@ export const rateLimitConfigs = {
     windowMs: 5 * 60 * 1000, // 5 minutes
     maxRequests: 20, // 20 attempts per window
     blockDurationMs: 15 * 60 * 1000, // Block for 15 minutes
+  },
+
+  // Mobile token issuance - very strict, one-time exchange
+  mobileToken: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 5, // 5 exchanges per window
+    blockDurationMs: 60 * 60 * 1000, // Block for 1 hour
   },
 } as const;
 
