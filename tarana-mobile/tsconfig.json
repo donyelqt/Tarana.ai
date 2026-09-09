@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "moduleResolution": "bundler",
+    "paths": {
+      "tarana-web/*": ["../src/lib/*"],
+      "tarana-web": ["../src/lib"],
+      "next/image": ["./shims/next-image.d.ts"]
+    }
+  },
+  "include": [
+    ".",
+    "../shims/**/*.d.ts"
+  ]
+}
