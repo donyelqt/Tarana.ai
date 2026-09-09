@@ -1,6 +1,6 @@
 # Tarana Mobile App — Implementation Plan
 
-**Status:** Draft 2026-09-08 | **Branch:** local only | **Mode:** Build
+**Status:** Phase 1 complete (2026-09-09) | **Branch:** merged `feature/mobile-auth-bridge-phase1` → `main` (PR #388) | **Mode:** Build
 **Scope:** Paid mobile app (Expo/React Native) with on-device local LLMs. Web app remains free tier (credits, rate-limited free Gemini). Freemium: web = funnel, mobile = premium.
 **Depends on:** `next-auth` (single source of truth, unchanged), Supabase (shared), free Gemini (`GOOGLE_GEMINI_API_KEY`)
 
@@ -15,7 +15,7 @@
 | `next-auth` at 100+ sites, 40 files, 3 APIs | grep across `src/lib/auth`, `src/lib/data/savedItineraries.ts`, `src/middleware/auth.ts`, `src/agents/conciergeAgent.ts`, ~20 API routes, ~15 client components |
 | Not a monorepo | No `pnpm-workspace.yaml`, `lerna.json`, `turborepo.json`, `rush.json`; no `"workspaces"` in `package.json` |
 | Two apps: Next.js 15 + orphaned Vite SPA | `src/app/` vs `src/App.tsx` + `index.html`; **no `vite.config.*`** — SPA may not build |
-| No mobile framework exists | grep for `react-native`/`expo` = zero matches |
+| Mobile framework exists (contract only) | `src/expo/auth/mobileTokenStore.ts` — dependency-free `expo-secure-store` contract; no Expo project scaffolded yet (Phase 3) |
 | No PWA | No `manifest.json`, no `sw.js` in `public/` |
 | Eats spec 0% implemented (out of scope) | `specs/tarana-eats-city-scale-plan.md:3` |
 
@@ -39,13 +39,15 @@ WEB (free tier)                          MOBILE (paid tier)
 
 **One user. One database. One auth system.** The mobile app does not have its own auth or its own user records.
 
-### Auth bridge (the load-bearing piece)
+### Auth bridge (the load-bearing piece) ✅ Phase 1 implemented
 
 `next-auth` has no React Native equivalent. Rather than a parallel auth system (two sources of truth for user identity — a real failure mode) or a 12-week refactor, add a token bridge:
 
 1. **`POST /api/auth/mobile-token`** — validates a valid web `next-auth` session, returns a short-lived JWT.
 2. **Shared middleware** — existing API routes already resolve user identity from the session; extend them to accept the JWT too. One identity path, not two.
 3. **Mobile client** — store JWT in `expo-secure-store`. All subsequent API calls use it.
+
+The token is a standard NextAuth JWT on the **default empty salt**, so it round-trips through `getToken`/`getServerSession` unchanged; the middleware injects the *raw encrypted JWT* (not the decoded user id) as a synthetic session cookie. Mobile tokens are API-only, cannot be re-exchanged, and are rate-limited separately from the global API limiter.
 
 Result: web user logs in → requests a mobile token → opens mobile app → same trips, same credits, same history. One account, two surfaces.
 
@@ -71,11 +73,24 @@ The web app's credits and rate limits are **not a bug in this plan — they are 
 
 ## 4. Phased plan
 
-### Phase 1 — Auth bridge (1 week)
-- [ ] `POST /api/auth/mobile-token` — validate web session, return short-lived JWT
-- [ ] Shared middleware extending existing routes to accept JWT
-- [ ] `expo-secure-store` client on mobile
-- Verify: web session → token → JWT accepted by an existing route
+### Phase 1 — Auth bridge (1 week) ✅ COMPLETE
+- [x] `POST /api/auth/mobile-token` — validate web session, return short-lived JWT
+- [x] Shared middleware extending existing routes to accept JWT
+- [x] `expo-secure-store` client on mobile
+- [x] Verify: web session → token → JWT accepted by an existing route
+
+**Implementation:** `src/app/api/auth/mobile-token/route.ts`, `src/middleware/auth.ts`,
+`src/lib/auth/mobileToken.ts`, `src/expo/auth/mobileTokenStore.ts`,
+`src/lib/security/rateLimiter.ts`, `scripts/verify-mobile-token-bridge.ts`.
+Merged to `main` as PR #388 (6 atomic commits, +1010/−20 lines).
+
+**Verification:** 437 tests pass / 8 skipped / 0 failed · `tsc --noEmit` clean ·
+`next build` compiles · ESLint 0 errors · mock-free runtime proof reports
+`BRIDGE VERIFIED` (encode → `getToken` → `decode` round-trip through the
+synthetic cookie). CI `verify` and Vercel preview both green.
+
+**Deferred (out of scope):** exact TTL, refresh, durable revocation,
+device-binding.
 
 ### Phase 2 — Local model validation (cheap experiment, before anything else)
 - [ ] Run one itinerary through a local model (Gemma 3 / Qwen variant)
