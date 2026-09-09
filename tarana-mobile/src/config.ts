@@ -12,7 +12,6 @@ type MobileConfig = {
   webBaseUrl: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
-  nextAuthSecret?: string;
 };
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Partial<MobileConfig>;
@@ -21,7 +20,6 @@ export const config: MobileConfig = {
   webBaseUrl: (extra.webBaseUrl ?? process.env.EXPO_PUBLIC_WEB_BASE_URL ?? 'http://localhost:3000') as string,
   supabaseUrl: (extra.supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL) as string | undefined,
   supabaseAnonKey: (extra.supabaseAnonKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) as string | undefined,
-  nextAuthSecret: (extra.nextAuthSecret ?? process.env.NEXTAUTH_SECRET) as string | undefined,
 };
 
 export function requireConfig<K extends keyof MobileConfig>(key: K): NonNullable<MobileConfig[K]> {

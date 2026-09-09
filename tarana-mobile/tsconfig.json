@@ -12,5 +12,11 @@
   "include": [
     ".",
     "../shims/**/*.d.ts"
+  ],
+  // Own exclude (not inherited): root tsconfig excludes "tarana-mobile" to keep
+  // the mobile tree out of the web program (duplicate React types). Without this
+  // override that entry resolves against THIS dir and wipes its includes (TS18003).
+  "exclude": [
+    "node_modules"
   ]
 }
