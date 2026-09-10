@@ -62,7 +62,7 @@ export interface SavedItinerary {
   activityCoordinates?: Array<{ lat: number; lon: number; name: string }>;
 }
 
-import { supabase } from "./supabaseClient"; // Import regular Supabase client
+import { getSupabase } from "./supabaseClient"; // Import regular Supabase client
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Helper to get the appropriate Supabase client
@@ -73,7 +73,7 @@ async function getSupabaseClient(): Promise<SupabaseClient> {
     return supabaseAdmin;
   }
   // On client-side, use regular client (RLS must be disabled or policies must allow access)
-  return supabase;
+  return getSupabase();
 }
 async function getCurrentUserId(): Promise<string | null> {
   try {

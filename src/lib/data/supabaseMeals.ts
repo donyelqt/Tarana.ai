@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { getSupabase } from './supabaseClient';
 import { SavedMeal } from '@/app/saved-meals/data';
 import { allRestaurantMenus } from '@/app/tarana-eats/data/taranaEatsData';
 import { restaurants } from '@/app/tarana-eats/data/taranaEatsData';
@@ -6,7 +6,7 @@ import { restaurants } from '@/app/tarana-eats/data/taranaEatsData';
 const TABLE_NAME = 'saved_meals';
 
 export async function getSavedMeals(userId: string): Promise<SavedMeal[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from(TABLE_NAME)
     .select('*')
     .eq('user_id', userId)
@@ -29,7 +29,7 @@ export async function getSavedMeals(userId: string): Promise<SavedMeal[]> {
 }
 
 export async function getSavedMealById(mealId: string): Promise<any | null> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from(TABLE_NAME)
     .select('*')
     .eq('id', mealId)
@@ -43,11 +43,11 @@ export async function getSavedMealById(mealId: string): Promise<any | null> {
   const restaurant = restaurants.find(r => r.name === data.cafe_name);
   
   // Get all individual saved meals from this restaurant for the current user
-  const { data: userData } = await supabase.auth.getUser();
+  const { data: userData } = await getSupabase().auth.getUser();
   let individualSavedMeals: SavedMeal[] = [];
   
   if (userData.user) {
-    const { data: allUserMeals } = await supabase
+    const { data: allUserMeals } = await getSupabase()
       .from(TABLE_NAME)
       .select('*')
       .eq('user_id', userData.user.id)
@@ -123,7 +123,7 @@ export async function getSavedMealById(mealId: string): Promise<any | null> {
 }
 
 export async function saveMeal(userId: string, meal: Omit<SavedMeal, 'id'>, menuItems?: any[]): Promise<string | null> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from(TABLE_NAME)
     .insert({
       user_id: userId,
@@ -146,7 +146,7 @@ export async function saveMeal(userId: string, meal: Omit<SavedMeal, 'id'>, menu
 }
 
 export async function deleteMeal(userId: string, mealId: string): Promise<boolean> {
-  const { error } = await supabase
+  const { error } = await getSupabase()
     .from(TABLE_NAME)
     .delete()
     .eq('id', mealId)
