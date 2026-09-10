@@ -3,7 +3,8 @@
  *
  * Flow: open the web app in a cookie-bearing auth session → after sign-in
  * the web app redirects to the mobile exchange redirect URL carrying the
- * JWT → parse it from the redirect URL → store in expo-secure-store → use
+ * JWT → parse it from the redirect URL → store via the platform-aware
+ * `./tokenStorage` adapter (SecureStore on native, localStorage on web) →
  * as Bearer on all subsequent requests.
  *
  * Why the token comes back in the redirect URL, not via a cookie-bearing
@@ -17,7 +18,7 @@
  * only the transport. It never creates or validates identity itself.
  */
 import * as WebBrowser from 'expo-web-browser';
-import * as SecureStore from 'expo-secure-store';
+import * as TokenStorage from './tokenStorage';
 import { config } from './config';
 
 const MOBILE_TOKEN_KEY = 'tarana.mobileToken';
@@ -38,12 +39,12 @@ export type AuthState = {
 };
 
 export async function getStoredToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(MOBILE_TOKEN_KEY);
+  return TokenStorage.getItemAsync(MOBILE_TOKEN_KEY);
 }
 
 export async function clearStoredToken(): Promise<void> {
-  await SecureStore.deleteItemAsync(MOBILE_TOKEN_KEY);
-  await SecureStore.deleteItemAsync(MOBILE_TOKEN_CLAIM_KEY);
+  await TokenStorage.deleteItemAsync(MOBILE_TOKEN_KEY);
+  await TokenStorage.deleteItemAsync(MOBILE_TOKEN_CLAIM_KEY);
 }
 
 /**
@@ -73,8 +74,8 @@ export async function exchangeForMobileToken(): Promise<TokenPayload> {
   }
 
   const payload = decodeMobileTokenPayload(token);
-  await SecureStore.setItemAsync(MOBILE_TOKEN_KEY, token);
-  await SecureStore.setItemAsync(MOBILE_TOKEN_CLAIM_KEY, JSON.stringify(payload));
+  await TokenStorage.setItemAsync(MOBILE_TOKEN_KEY, token);
+  await TokenStorage.setItemAsync(MOBILE_TOKEN_CLAIM_KEY, JSON.stringify(payload));
   return payload;
 }
 
@@ -130,7 +131,7 @@ export async function withMobileAuth(headers: Record<string, string> = {}): Prom
 
 export async function loadAuthState(): Promise<AuthState> {
   const token = await getStoredToken();
-  const claim = await SecureStore.getItemAsync(MOBILE_TOKEN_CLAIM_KEY);
+  const claim = await TokenStorage.getItemAsync(MOBILE_TOKEN_CLAIM_KEY);
   let payload: TokenPayload | null = null;
   if (claim) {
     try {
