@@ -25,6 +25,11 @@
     "plugins": [
       "expo-secure-store",
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "webBaseUrl": "http://localhost:3000",
+      "supabaseUrl": "https://vryamakpawtzmvgnifie.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyeWFtYWtwYXd0em12Z25pZmllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNzc5MDQsImV4cCI6MjA3NzYzNzkwNH0.dNE8m62hiFVQtDjfhG6Ge7BVb2knfwtAZ08Mylix7yw"
+    }
   }
 }
