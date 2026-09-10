@@ -3,6 +3,7 @@
   "name": "tarana.ai",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.5.0",
   "engines": {
     "node": ">=18.17.0 <23"
   },
@@ -14,7 +15,7 @@
     "start": "next start",
     "lint": "next lint",
     "clean": "rimraf .next node_modules/.cache",
-    "clean:install": "rimraf .next node_modules/.cache && npm ci",
+    "clean:install": "rimraf .next node_modules/.cache && pnpm install --frozen-lockfile",
     "index-embeddings": "tsx -r dotenv/config scripts/indexSampleItinerary.ts",
     "test": "jest",
     "bench": "k6 run --env BASE_URL=http://localhost:3000 bench/k6-itinerary.js",

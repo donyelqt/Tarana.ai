@@ -93,7 +93,7 @@
 -   **[TypeScript](https://www.typescriptlang.org/)**: A typed superset of JavaScript.
 -   **[ESLint](https://eslint.org/)**: Linting & code-style enforcement.
 -   **Jest + ts-jest**: Unit / integration testing for TypeScript.
--   **tsx**: Run TypeScript scripts without pre-compilation (e.g., `npm run index-embeddings`).
+-   **tsx**: Run TypeScript scripts without pre-compilation (e.g., `pnpm run index-embeddings`).
 -   **dotenv**: Loads environment variables from `.env.*` files.
 -   **Vercel**: Serverless deployment & hosting.
 -   **Supabase CLI**: Manage local Supabase dev & migrations.
@@ -248,9 +248,7 @@ src/
 
 2. **Install dependencies**
    ```bash
-   npm install
-   # or
-   yarn install
+   pnpm install
    ```
 
 3. **Set up environment variables**
@@ -291,16 +289,14 @@ src/
    # Run database migrations
    npx supabase db reset
    
-   # Index sample activities (optional)
-   npm run index-embeddings
-   ```
+    # Index sample activities (optional)
+    pnpm run index-embeddings
+    ```
 
 5. **Run the development server**
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
+    ```bash
+    pnpm run dev
+    ```
 
 6. **Open [http://localhost:3000](http://localhost:3000) in your browser**
 
@@ -330,7 +326,7 @@ src/
 ### Production Deployment (Vercel)
 1. **Connect to Vercel**
    ```bash
-   npm install -g vercel
+   pnpm add -g vercel
    vercel login
    vercel --prod
    ```
@@ -347,8 +343,8 @@ src/
 
 ### Manual Deployment
 ```bash
-npm run build
-npm start
+pnpm run build
+pnpm start
 ```
 
 For detailed deployment instructions and best practices, see `DEPLOYMENT.md`.
@@ -403,7 +399,7 @@ We're excited to have you contribute! To ensure a smooth and collaborative proce
 4.  **Commit**: Use Conventional Commits for your commit messages (see below).
 5.  **Lint**: Run the linter before pushing:
     ```bash
-    npm run lint
+    pnpm run lint
     ```
 6.  **Push**: Push your branch to the repository.
 7.  **Create a Pull Request**: Open a PR from your branch to `main` and link it to the relevant issue.
@@ -444,7 +440,7 @@ Resolves: #23
 
 #### Code Style
 -   We use **ESLint** for linting and **Prettier** for code formatting.
--   Run `npm run lint` to check for and fix issues.
+-   Run `pnpm run lint` to check for and fix issues.
 -   Follow the existing conventions in the codebase for consistency.
 
 #### Reporting Bugs
@@ -483,7 +479,7 @@ For questions or licensing inquiries, contact: [daa6681@students.uc-bcf.edu.ph]
 **Embedding Generation & Storage**
 ```bash
 # Generate and store activity embeddings
-npm run index-embeddings
+pnpm run index-embeddings
 
 # Or use the secure API endpoint
 curl -X POST https://your-deployment.vercel.app/api/reindex \
@@ -541,11 +537,11 @@ The system combines 6 scoring dimensions:
 
 ```bash
 # Run comprehensive test suite
-npm test
+pnpm test
 
 # Test specific RAG components
-npm run test -- --testPathPattern=vectorSearch
-npm run test -- --testPathPattern=intelligentSearch
+pnpm run test -- --testPathPattern=vectorSearch
+pnpm run test -- --testPathPattern=intelligentSearch
 ```
 
 ---

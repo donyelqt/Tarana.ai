@@ -6,7 +6,7 @@ This guide provides instructions for setting up the project for local developmen
 
 Before you begin, ensure you have the following installed and configured:
 - [Node.js](https://nodejs.org/en/) (v18 or later)
-- [npm](https://www.npmjs.com/) or [Yarn](https://yarnpkg.com/)
+- [pnpm](https://pnpm.io/) (v9 — installs are driven by `pnpm-lock.yaml`)
 - [Git](https://git-scm.com/)
 - A [Vercel](https://vercel.com/) account for deployment.
 - A [Supabase](https://supabase.com/) account.
@@ -24,9 +24,7 @@ cd tarana.ai
 
 ### Step 2: Install Dependencies
 ```bash
-npm install
-# or
-yarn install
+pnpm install --frozen-lockfile
 ```
 
 ### Step 3: Set Up Environment Variables
@@ -70,9 +68,7 @@ Fill in the values by following the instructions in the **Environment Variables*
 
 ### Step 5: Run the Development Server
 ```bash
-npm run dev
-# or
-yarn dev
+pnpm run dev
 ```
 The application should now be running at [http://localhost:3000](http://localhost:3000).
 
@@ -99,7 +95,8 @@ The application should now be running at [http://localhost:3000](http://localhos
 1.  **Import Project**: Go to your Vercel dashboard and import the project from your Git repository.
 2.  **Configure Settings**:
     -   **Framework Preset**: Vercel should automatically detect **Next.js**.
-    -   **Build Command**: `npm run build` or `yarn build`.
+    -   **Build Command**: `pnpm run build`.
+    -   **Install Command**: `pnpm install --frozen-lockfile` (auto-detected from `pnpm-lock.yaml`; only set explicitly if the dashboard overrides it).
     -   **Output Directory**: Should be `.next` (default).
 3.  **Add Environment Variables**: In the project settings on Vercel, go to **Settings > Environment Variables**. Add all the variables from the table above, ensuring you use the production values (e.g., your production `NEXTAUTH_URL`).
 4.  **Deploy**: Trigger a deployment. Vercel will build and deploy your application.
