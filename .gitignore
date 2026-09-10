@@ -80,3 +80,6 @@ tarana-mobile/.expo/
 tarana-mobile/dist/
 tarana-mobile/build/
 
+# Expo cache accidentally generatable at root; tarana-mobile/.expo already covered separately
+.expo/
+
