@@ -1,6 +1,6 @@
 # Tarana Mobile App — Implementation Plan
 
-**Status:** Phase 1 complete (2026-09-09, PR #388) | **Phase 3 ~30%** — Expo scaffold + auth screen committed (see §4), navigation/NativeWind/screens/lib-reuse-proof/simulator run still open | **Mode:** Build
+**Status:** Phase 1 complete (2026-09-09, PR #388) | **Phase 3 substantially complete** — toolchain (#397), navigation + NativeWind (#398), saved-trips + spots screens (#399) all merged; simulator/device run still open (no runtime evidence on record) | **Mode:** Build
 **Scope:** Paid mobile app (Expo/React Native) with on-device local LLMs. Web app remains free tier (credits, rate-limited free Gemini). Freemium: web = funnel, mobile = premium.
 **Depends on:** `next-auth` (single source of truth, unchanged), Supabase (shared), free Gemini (`GOOGLE_GEMINI_API_KEY`)
 
@@ -15,7 +15,7 @@
 | `next-auth` at 100+ sites, 40 files, 3 APIs | grep across `src/lib/auth`, `src/lib/data/savedItineraries.ts`, `src/middleware/auth.ts`, `src/agents/conciergeAgent.ts`, ~20 API routes, ~15 client components |
 | Not a monorepo | No `pnpm-workspace.yaml`, `lerna.json`, `turborepo.json`, `rush.json`; no `"workspaces"` in `package.json` |
 | Two apps: Next.js 15 + orphaned Vite SPA | `src/app/` vs `src/App.tsx` + `index.html`; **no `vite.config.*`** — SPA may not build |
-| Mobile scaffold committed, screens pending | `tarana-mobile/` tracked (18 files: Expo 57 scaffold, auth exchange screen `App.tsx`, `src/auth.ts`, `src/supabase.ts`, `src/config.ts`, `app.json`); commits `828442b` → `c4012b3` → `bde28d3` → merge `b9ed9fd`. No React Navigation, no NativeWind, no itinerary/traffic screens yet |
+| Mobile scaffold + screens committed, simulator run open | `tarana-mobile/` tracked (Expo 57, AuthGate stack, Home placeholder, saved-trips + spots screens); commits through PRs #397 (toolchain), #398 (nav + NativeWind), #399 (screens). No simulator/device run evidenced yet |
 | No PWA | No `manifest.json`, no `sw.js` in `public/` |
 | Eats spec 0% implemented (out of scope) | `specs/tarana-eats-city-scale-plan.md:3` |
 
@@ -98,14 +98,15 @@ device-binding.
 - **This is the make-or-break.** If quality is unacceptable, the paid app has no product and the plan fails. If acceptable, proceed.
 - Verify: side-by-side itinerary output, human review
 
-### Phase 3 — Expo scaffold (2–3 weeks) — ~30% DONE, remainder open
+### Phase 3 — Expo scaffold (2–3 weeks) — SUBSTANTIALLY COMPLETE, simulator run open
 - [x] Expo 57 scaffold committed (`tarana-mobile/`: `app.json`, `App.tsx` auth screen, `src/auth.ts` exchange flow, `src/supabase.ts` anon-key wrapper, `src/config.ts`)
 - [x] Metro remap for shared web code (`tarana-mobile/metro.config.js` mirrors the `tarana-web/*` tsconfig alias; see Metro probe below)
 - [x] Removed dead signing-secret surface from mobile config (signing keys must never ship in the app binary)
-- [ ] React Navigation, NativeWind
-- [ ] Reuse `src/lib` business logic (itinerary generation, Supabase client, search, traffic) — gated on the Metro probe: pure modules verified portable, coupled ones quarantined (see below)
-- [ ] Mobile screens mirroring web flows
-- Verify: app runs on iOS and Android simulators (NOT yet evidenced — no simulator log/screenshot on record)
+- [x] Toolchain unblock (#397): `babel-preset-expo` installed + `babel.config.js`, `app.json extra` filled (dev values), web-export bundling proven (580 modules)
+- [x] React Navigation (native stack: AuthGate → Home) + NativeWind wired to shared brand tokens (#398; Metro `sourceExts` gotcha documented in `metro.config.js`)
+- [x] Reuse `src/lib` business logic under probe rules (#399): anon Supabase factory, `cityConfig` (zero Node/Next imports, verified); quarantined modules NOT imported (search/`crypto`, catalog images/`lucide`, agent `buffer`/SDK) — spots data comes over HTTP (`/api/spots?city=`) instead
+- [x] Mobile screens mirroring web flows (#399): AuthGate stack, Home placeholder, saved-trips read list, spots list
+- [ ] Verify: app runs on iOS and Android simulators (NOT yet evidenced — bundling proven via web export only; emulator run dispatched once and cancelled before execution; no device/simulator log/screenshot on record)
 
 #### Metro-compat probe (2026-09-10, static import-trace — read, not run)
 | Module | Verdict | Reason |
@@ -148,4 +149,4 @@ Still open before first simulator run: `babel.config.js` with `babel-preset-expo
 
 1. **Does the local model produce acceptable itineraries?** Unchanged — still the only thing unverifiable from code, still the make-or-break for the paid premise.
 2. **Which `src/lib` modules does mobile actually need?** Probe says: pure/traffic/supabase-client modules are portable; search + catalog data are not (Next image imports, Node `crypto`). Decision needed: extract a Metro-safe shared core (recommended — small, explicit) vs per-module shims (fragile, spreads). Do this before any screen imports web logic.
-3. **First simulator run.** Blocked on: `babel-preset-expo` install + `babel.config.js`, `app.json extra` values per environment. One command + one config block, then `npx expo start` smoke.
+3. **First simulator/device run — the last open Phase-3 item.** Toolchain, bundling, and screens are proven; what has never run is the app on a device: auth exchange end-to-end, token storage round-trip, Supabase reads, and spots fetch over the wire (note: `app.json extra` points at localhost, so device runs need LAN-reachable URLs). One emulator session with redbox/logcat evidence closes Phase 3.
