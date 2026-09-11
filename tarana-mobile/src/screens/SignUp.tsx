@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EyeIcon, EyeSlashIcon, CheckIcon, BulletIcon } from './icons';
@@ -24,6 +24,9 @@ export default function SignUp({ navigation, onSignedIn }: { navigation: any; on
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
 
   const ps = password ? validatePasswordStrength(password) : null;
 
@@ -56,22 +59,26 @@ export default function SignUp({ navigation, onSignedIn }: { navigation: any; on
   };
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+    <KeyboardAvoidingView style={styles.kav} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView style={styles.root} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.form}>
         <View style={styles.field}>
           <Text style={styles.label}>Full Name</Text>
           <TextInput style={styles.input} placeholder="Enter your Full Name" value={fullName} onChangeText={setFullName} autoCapitalize="words"
             autoComplete="name"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => emailRef.current?.focus()}
             accessibilityLabel="Full Name" />
         </View>
         <View style={styles.field}>
           <Text style={styles.label}>Email</Text>
-          <TextInput style={styles.input} placeholder="Enter your Email" value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" accessibilityLabel="Email" />
+          <TextInput ref={emailRef} style={styles.input} placeholder="Enter your Email" value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" returnKeyType="next" blurOnSubmit={false} onSubmitEditing={() => passwordRef.current?.focus()} accessibilityLabel="Email" />
         </View>
         <View style={styles.field}>
           <Text style={styles.label}>Password</Text>
           <View style={styles.row}>
-            <TextInput style={[styles.input, { flex: 1, marginRight: 8 }]} placeholder="Enter your Password" value={password} onChangeText={setPassword} secureTextEntry={!showPw} autoComplete="new-password" accessibilityLabel="Password" />
+            <TextInput ref={passwordRef} style={[styles.input, { flex: 1, marginRight: 8 }]} placeholder="Enter your Password" value={password} onChangeText={setPassword} secureTextEntry={!showPw} autoComplete="new-password" returnKeyType="next" blurOnSubmit={false} onSubmitEditing={() => confirmRef.current?.focus()} accessibilityLabel="Password" />
             <TouchableOpacity style={styles.eye} onPress={() => setShowPw((p) => !p)} accessibilityLabel={showPw ? 'Hide password' : 'Show password'}>{showPw ? <EyeSlashIcon size={20} /> : <EyeIcon size={20} />}</TouchableOpacity>
           </View>
           {ps ? (
@@ -86,7 +93,7 @@ export default function SignUp({ navigation, onSignedIn }: { navigation: any; on
         <View style={styles.field}>
           <Text style={styles.label}>Confirm Password</Text>
           <View style={styles.row}>
-            <TextInput style={[styles.input, { flex: 1, marginRight: 8 }]} placeholder="Re-enter your Password" value={confirm} onChangeText={setConfirm} secureTextEntry={!showCPw} autoComplete="new-password" accessibilityLabel="Confirm Password" />
+            <TextInput ref={confirmRef} style={[styles.input, { flex: 1, marginRight: 8 }]} placeholder="Re-enter your Password" value={confirm} onChangeText={setConfirm} secureTextEntry={!showCPw} autoComplete="new-password" returnKeyType="done" onSubmitEditing={() => { if (!loading) void handleSubmit(); }} accessibilityLabel="Confirm Password" />
             <TouchableOpacity style={styles.eye} onPress={() => setShowCPw((p) => !p)} accessibilityLabel={showCPw ? 'Hide password' : 'Show password'}>{showCPw ? <EyeSlashIcon size={20} /> : <EyeIcon size={20} />}</TouchableOpacity>
           </View>
         </View>
@@ -125,18 +132,20 @@ export default function SignUp({ navigation, onSignedIn }: { navigation: any; on
           </TouchableOpacity>
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  kav: { flex: 1, backgroundColor: '#ffffff' },
   root: { flex: 1, backgroundColor: '#ffffff' },
-  container: { padding: 24, paddingTop: 24 },
-  form: { width: '100%', maxWidth: 420, alignSelf: 'center' },
+  container: { flexGrow: 1, paddingHorizontal: 40, paddingVertical: 24 },
+  form: { width: '100%', maxWidth: 448, alignSelf: 'center' },
   field: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 6 },
   row: { flexDirection: 'row', alignItems: 'center' },
-  input: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', borderRadius: 16, paddingVertical: 12, paddingHorizontal: 14, fontSize: 16, color: '#111827' },
+  input: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, fontSize: 16, color: '#111827' },
   eye: { padding: 4 },
   checkbox: { width: 16, height: 16, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 4, backgroundColor: '#ffffff' },
   checkboxOn: { backgroundColor: BLUE, borderColor: BLUE },
@@ -156,8 +165,8 @@ const styles = StyleSheet.create({
   tosCheck: { marginRight: 8, marginTop: 2 },
   tosText: { flex: 1, fontSize: 13, color: '#374151', lineHeight: 18 },
   link: { color: BLUE, fontWeight: '500' },
-  ctaOuter: { borderRadius: 24, marginTop: 4 },
-  cta: { paddingVertical: 14, borderRadius: 24, alignItems: 'center' },
+  ctaOuter: { borderRadius: 16, marginTop: 4 },
+  cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
   ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
   linkRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 16 },
   linkText: { fontSize: 13, color: '#6b7280' },

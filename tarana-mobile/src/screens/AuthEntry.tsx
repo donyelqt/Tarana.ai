@@ -105,7 +105,7 @@ export default function AuthEntry({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#ffffff', padding: 24, justifyContent: 'center' },
+  root: { flex: 1, backgroundColor: '#ffffff', paddingHorizontal: 40, paddingVertical: 24, justifyContent: 'center' },
   homeBtn: {
     position: 'absolute',
     top: 16,
@@ -121,14 +121,14 @@ const styles = StyleSheet.create({
   },
   homeBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '500' },
   header: { alignItems: 'center', marginBottom: 28 },
-  brandAccentBar: { width: 8, height: 1, backgroundColor: BRAND_BLUE, borderRadius: 4, marginBottom: 20 },
-  title: { fontSize: 30, fontWeight: '600', color: '#111827', textAlign: 'center', lineHeight: 36 },
+  brandAccentBar: { width: 32, height: 4, backgroundColor: BRAND_BLUE, borderRadius: 4, marginBottom: 20 },
+  title: { fontSize: 28, fontWeight: '600', color: '#111827', textAlign: 'center', lineHeight: 34 },
   titleAccent: { color: BRAND_BLUE },
   subtitle: { fontSize: 14, color: '#6b7280', marginTop: 6, textAlign: 'center' },
 
   toggleRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 32 },
   pill: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 28,
     borderRadius: 999,
     backgroundColor: '#eff6ff',
@@ -139,5 +139,5 @@ const styles = StyleSheet.create({
   pillText: { color: BRAND_BLUE, fontSize: 14, fontWeight: '500' },
   pillTextActive: { color: '#ffffff' },
 
-  formShell: { width: '100%', maxWidth: 420, alignSelf: 'center' },
+  formShell: { width: '100%', maxWidth: 448, alignSelf: 'center' },
 });
