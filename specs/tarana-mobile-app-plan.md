@@ -1,6 +1,6 @@
 # Tarana Mobile App — Implementation Plan
 
-**Status:** Phase 1 complete (2026-09-09, PR #388) | **Phase 3 substantially complete** — toolchain (#397), navigation + NativeWind (#398), saved-trips + spots screens (#399) all merged; simulator/device run still open (no runtime evidence on record) | **Phase 3b (2026-09-10):** mobile landing page + sign-in/sign-up screens mirroring web UI/UX — **implemented + verified (tsc clean, Metro bundle green)** | **Mode:** Build
+**Status:** Phase 1 complete (2026-09-09, PR #388) | **Phase 3 substantially complete** — toolchain (#397), navigation + NativeWind (#398), saved-trips + spots screens (#399) all merged; simulator/device run still open (no runtime evidence on record) | **Phase 3b (2026-09-10):** mobile landing page + sign-in/sign-up screens mirroring web UI/UX — **implemented + verified (tsc clean, Metro bundle green, re-verified 2026-09-11)** | **Mode:** Build
 **Scope:** Paid mobile app (Expo/React Native) with on-device local LLMs. Web app remains free tier (credits, rate-limited free Gemini). Freemium: web = funnel, mobile = premium.
 **Depends on:** `next-auth` (single source of truth, unchanged), Supabase (shared), free Gemini (`GOOGLE_GEMINI_API_KEY`)
 
@@ -99,14 +99,33 @@ device-binding.
 - Verify: side-by-side itinerary output, human review
 
 ### Phase 3 — Expo scaffold (2–3 weeks) — SUBSTANTIALLY COMPLETE, simulator run open
-- [x] Expo 57 scaffold committed (`tarana-mobile/`: `app.json`, `App.tsx` auth screen, `src/auth.ts` exchange flow, `src/supabase.ts` anon-key wrapper, `src/config.ts`)
-- [x] Metro remap for shared web code (`tarana-mobile/metro.config.js` mirrors the `tarana-web/*` tsconfig alias; see Metro probe below)
-- [x] Removed dead signing-secret surface from mobile config (signing keys must never ship in the app binary)
-- [x] Toolchain unblock (#397): `babel-preset-expo` installed + `babel.config.js`, `app.json extra` filled (dev values), web-export bundling proven (580 modules)
-- [x] React Navigation (native stack: AuthGate → Home) + NativeWind wired to shared brand tokens (#398; Metro `sourceExts` gotcha documented in `metro.config.js`)
-- [x] Reuse `src/lib` business logic under probe rules (#399): anon Supabase factory, `cityConfig` (zero Node/Next imports, verified); quarantined modules NOT imported (search/`crypto`, catalog images/`lucide`, agent `buffer`/SDK) — spots data comes over HTTP (`/api/spots?city=`) instead
-- [x] Mobile screens mirroring web flows (#399): AuthGate stack, Home placeholder, saved-trips read list, spots list
-- [ ] Verify: app runs on iOS and Android simulators (NOT yet evidenced — bundling proven via web export only; emulator run dispatched once and cancelled before execution; no device/simulator log/screenshot on record)
+
+| # | Task | Status |
+|---|---|---|
+| 3.1 | Expo 57 scaffold committed (`tarana-mobile/`: `app.json`, `App.tsx` auth screen, `src/auth.ts` exchange flow, `src/supabase.ts` anon-key wrapper, `src/config.ts`) | ✅ Done |
+| 3.2 | Metro remap for shared web code (`tarana-mobile/metro.config.js` mirrors the `tarana-web/*` tsconfig alias; see Metro probe below) | ✅ Done |
+| 3.3 | Removed dead signing-secret surface from mobile config (signing keys must never ship in the app binary) | ✅ Done |
+| 3.4 | Toolchain unblock (#397): `babel-preset-expo` installed + `babel.config.js`, `app.json extra` filled (dev values), web-export bundling proven | ✅ Done |
+| 3.5 | React Navigation (native stack) + NativeWind wired to shared brand tokens (#398; Metro `sourceExts` gotcha documented in `metro.config.js`) | ✅ Done |
+| 3.6 | Reuse `src/lib` business logic under probe rules (#399): anon Supabase factory, `cityConfig` (zero Node/Next imports, verified); quarantined modules NOT imported (search/`crypto`, catalog images/`lucide`, agent `buffer`/SDK) — spots data comes over HTTP (`/api/spots?city=`) instead | ✅ Done |
+| 3.7 | Mobile screens mirroring web flows (#399): AuthGate stack, Home placeholder, saved-trips read list, spots list | ✅ Done |
+| 3.8 | Verify: app runs on iOS and Android simulators (NOT yet evidenced — bundling proven via web export only; emulator run dispatched once and cancelled before execution; no device/simulator log/screenshot on record) | ⬜ Open |
+
+**Phase 3 verification (principal-engineer re-run, 2026-09-11) — every item above re-checked against the working tree, not trusted from the commit message:**
+
+- **3.1** `tarana-mobile/` present with `app.json`, `App.tsx`, `src/auth.ts`, `src/supabase.ts`, `src/config.ts`, `src/tokenStorage.ts`. ✅
+- **3.2** `metro.config.js` exports `withNativeWind(config, { input: global.css })` (bare-object gotcha documented), `extraNodeModules['tarana-web']` → `../src/lib`, `watchFolders` includes repo root, blockList excludes `.next`/`out`/`coverage`. ✅
+- **3.3** Recursive scan of `tarana-mobile/**` for `signingSecret` / `JWT_SECRET` / `signing-secret` → **zero hits**. Signing keys are not in the mobile tree. ✅
+- **3.4** `babel.config.js` = `['babel-preset-expo', 'nativewind/babel']`; `app.json extra` holds `webBaseUrl` (`http://10.0.2.2:3000`), `supabaseUrl`, `supabaseAnonKey`. ✅
+- **3.5** `App.tsx` `<Stack.Navigator initialRouteName="Landing">`; screens registered: Landing, AuthEntry, AuthGate, Home, SavedTrips, Spots. `global.css` brand tokens resolve `--primary` to `222.2 84% 60%` (`#0066FF`). ✅
+- **3.6** `src/supabase.ts` wraps `createSupabaseClientWithToken` from `tarana-web/data/supabaseClient` (one client construction, no duplication). `cityConfig` is a pure config object with **zero imports** (verified — no `import`/`require` lines). Quarantined modules (`lib/search/*`, `itineraryData`, `lucide-react`) are not imported anywhere under `tarana-mobile/src`. ✅
+- **3.7** `tarana-mobile/src/screens/` contains AuthEntry, AuthGate, decor, Home, icons, Landing, SavedTrips, SignIn, Spots. ✅
+- **3.8** Still open — no device/simulator run on record.
+
+**Gates re-run this session (not assumed from the 2026-09-10 run):**
+- `tsc --noEmit -p tarana-mobile/tsconfig.json` → **exit 0**; the only diagnostic is `index.ts(2,8)` (the `.css` side-effect import, a pre-existing NativeWind declaration gap, unchanged and unrelated to Phase 3 work).
+- Metro bundle `./index.ts -p web` (CWD = `tarana-mobile/`, project metro 0.84.5) → **794 modules, exit 0**, output `metro-bundle-out.js` (6.4 MB). Bundle contains `Landing`, `AuthEntry`, `SignIn`, `SignUp`, `exchangeForMobileToken`, `validatePasswordStrength` (proving the `tarana-web/*` remap resolves) and the screens' unique strings (`Create Account`, `Re-enter your Password`, `Passwords do not match`, `Strength:`, `Plan My`, `Sign in to your account`, `Or continue with`, `Forgot Password`).
+- **Metro-compat gate (static import-trace on the 5 new screens):** every import is Metro-safe (`react-native`, `expo-status-bar`, `expo-linear-gradient`, `expo-web-browser`, `@react-navigation/*`, `react-native-safe-area-context`, `react-native-svg`, `./icons`, `./decor`, `../auth`, `../config`, `tarana-web/data/cityConfig`, `tarana-web/security/inputSanitizer`). Zero banned imports — the only `next/image` / `lucide-react` hits in `Landing.tsx` are in a code comment, not an import statement. All iconography is inline SVG.
 
 #### Metro-compat probe (2026-09-10, static import-trace — read, not run)
 | Module | Verdict | Reason |
@@ -120,10 +139,10 @@ device-binding.
 Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.js` present, `app.json extra` holds dev values, web-export bundling green. Remaining before first simulator run: a device/simulator with the app actually launching (emulator run dispatched once, cancelled before execution).
 
 ### Phase 3b — Mobile landing + auth screens mirroring web UI/UX (2026-09-10)
-**Scope:** Add a mobile landing page and sign-in / sign-up screens whose UI/UX matches the web app, reusing the web backend and data (no new backend). **Status: implemented + verified (tsc clean, Metro bundle green).**
+**Scope:** Add a mobile landing page and sign-in / sign-up screens whose UI/UX matches the web app, reusing the web backend and data (no new backend). **Status: implemented + verified (tsc clean, Metro bundle green, re-verified 2026-09-11).**
 **Build order:** brand tokens → Landing → AuthEntry → SignIn →SignUp → navigation wiring → verification.
 
-**Why this exists.** `App.tsx` boots straight to `AuthGate` (`initialRouteName="AuthGate"`), so the app has no entry/landing surface and the only auth affordance is a raw `react-native` `<Button title="Sign in with web account">` — no form, no email/password path, no toggle to create an account, and none of the web brand language. The web auth pages (`src/app/auth/signin`, `src/app/auth/signup`) are full branded experiences (blue `#0066FF` split-panel, GeminiSparkles + FadingDotGrid, logo, gradient CTAs, segmented Login/Register pill switch). Mobile currently has NativeWind brand tokens but zero of that design vocabulary.
+**Why this exists (historical).** At the start of Phase 3b, `App.tsx` booted straight to `AuthGate` (`initialRouteName="AuthGate"`), so the app had no entry/landing surface and the only auth affordance was a raw `react-native` `<Button title="Sign in with web account">` — no form, no email/password path, no toggle to create an account, and none of the web brand language. The web auth pages (`src/app/auth/signin`, `src/app/auth/signup`) are full branded experiences (blue `#0066FF` split-panel, GeminiSparkles + FadingDotGrid, logo, gradient CTAs, segmented Login/Register pill switch). Mobile *had* NativeWind brand tokens but none of that design vocabulary. **Superseded 2026-09-11:** `App.tsx` now registers `Landing` → `AuthEntry` → `SignIn`/`SignUp`, so this gap is closed.
 
 **Design contract — DECIDED 2026-09-10: shared design system, recomposed for mobile.** The web pages are desktop split-panel layouts (`hidden md:flex w-1/2`, 125×125 logo, 292-line forms) and do not translate 1:1 onto a 375pt phone. Mobile gets: same brand tokens (`--primary #0066FF`, gradient CTAs, muted/foreground/card/border tokens, `font-sans`), same form vocabulary (email, password with show/hide, remember-me, ToS checkbox, segmented Login/Register toggle, identical error copy), same CTA gradient `bg-gradient-to-r from-[#0066FF] to-[#1E90FF]` (horizontal — web truth; corrects earlier `blue-700→blue-500` note), same micro-interaction intent (active-tab highlight, strength meter). Composition is single-column, thumb-reachable, native inputs — not a port of desktop markup.
 
@@ -137,15 +156,15 @@ Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.
 
 **Explicitly banned** (all Metro-blocked per the Phase-3 probe): `next/image`, `lucide-react`, web `components/auth/GeminiSparkles` (framer-motion, web-only), `itineraryData` (~40 image imports), `lib/search/*` (Node `crypto`). All iconography is inline SVG.
 
-| Task | Description | Acceptance | Files | Est |
-|---|---|---|---|---|
-| **3b.1 Brand token layer** | Extend `global.css` with the web brand surface: `--primary #0066FF`, `--primary-foreground #fff`, `--background/-foreground/-card/-muted/-border/-input/-ring`, CTA gradient utility, `font-sans` family. NativeWind already ships `bg-primary`/`text-foreground` etc.; this makes them resolve to web values instead of defaults. | `bg-primary` renders `#0066FF`; gradient CTA class exists; `tsc --noEmit` clean | `tarana-mobile/global.css` | XS |
-| **3b.2 Landing page** | New `Landing.tsx`: hero (logo, headline, subcopy, gradient CTA "Plan My Baguio Trip"), 3-step how-it-works strip, footer CTA. City names from `cityConfig`. No web-only imports. | Renders at 375pt; CTA navigates to `AuthEntry`; zero Metro-blocked imports | `tarana-mobile/src/screens/Landing.tsx` | M |
-| **3b.3 Auth entry** | New `AuthEntry.tsx`: branded header, segmented "Sign in" / "Create account" pill toggle (mirrors web's Login/Register switch), footer links. Owns no auth logic — delegates to screens. | Toggle switches signin/signup without unmounting the shell | `tarana-mobile/src/screens/AuthEntry.tsx` | S |
-| **3b.4 Sign-in screen** | `SignIn.tsx`: email + password native inputs (autoFill), show/hide password, "Remember me", branded gradient CTA "Sign in", error state, footer link to sign-up. Calls the **existing** `exchangeForMobileToken()` — no new auth code. | Typing email+password + Sign in triggers the existing web-browser exchange; invalid path shows error; empty fields block CTA | `tarana-mobile/src/screens/SignIn.tsx` | M |
-| **3b.5 Sign-up screen** | `SignUp.tsx`: full name, email, password (strength meter via `validatePasswordStrength`), confirm password, ToS checkbox, CTA "Create Account". Posts to existing `POST /api/auth/register` over HTTP (same contract web uses), then lands on sign-in with `?registered=true`. **Native form — not embedded web view.** | Same validation rules as web (strength + match + ToS); identical error copy; success → signin | `tarana-mobile/src/screens/SignUp.tsx` | M |
-| **3b.6 Navigation wiring** | `App.tsx`: register `Landing`, `AuthEntry`, `SignIn`, `SignUp`; `initialRouteName="Landing"`. `AuthGate` stays as the post-exchange target (unchanged). | `initialRouteName="Landing"`; existing `AuthGate→Home→SavedTrips/Spots` paths untouched | `tarana-mobile/App.tsx` | XS |
-| **3b.7 Verification** | Simulator run (the one open Phase-3 item) + web-export bundling smoke. | App boots to Landing on both platforms; signin → signup → signin round-trip works; `tsc --noEmit` + `npx tsc` clean; no Metro-blocked imports in new screens | — | S |
+| # | Task | Description | Acceptance | Files | Est | Status |
+|---|---|---|---|---|---|---|
+| **3b.1** | Brand token layer | Extend `global.css` with the web brand surface: `--primary #0066FF`, `--primary-foreground #fff`, `--background/-foreground/-card/-muted/-border/-input/-ring`, CTA gradient utility, `font-sans` family. NativeWind already ships `bg-primary`/`text-foreground` etc.; this makes them resolve to web values instead of defaults. | `bg-primary` renders `#0066FF`; gradient CTA class exists; `tsc --noEmit` clean | `tarana-mobile/global.css` | XS | ✅ Done |
+| **3b.2** | Landing page | New `Landing.tsx`: hero (logo, headline, subcopy, gradient CTA "Plan My Baguio Trip"), 3-step how-it-works strip, footer CTA. City names from `cityConfig`. No web-only imports. | Renders at 375pt; CTA navigates to `AuthEntry`; zero Metro-blocked imports | `tarana-mobile/src/screens/Landing.tsx` | M | ✅ Done |
+| **3b.3** | Auth entry | New `AuthEntry.tsx`: branded header, segmented "Sign in" / "Create account" pill toggle (mirrors web's Login/Register switch), footer links. Owns no auth logic — delegates to screens. | Toggle switches signin/signup without unmounting the shell | `tarana-mobile/src/screens/AuthEntry.tsx` | S | ✅ Done |
+| **3b.4** | Sign-in screen | `SignIn.tsx`: email + password native inputs (autoFill), show/hide password, "Remember me", branded gradient CTA "Sign in", error state, footer link to sign-up. Calls the **existing** `exchangeForMobileToken()` — no new auth code. | Typing email+password + Sign in triggers the existing web-browser exchange; invalid path shows error; empty **fields** block CTA | `tarana-mobile/src/screens/SignIn.tsx` | M | ✅ Done |
+| **3b.5** | Sign-up screen | `SignUp.tsx`: full name, email, password (strength meter via `validatePasswordStrength`), confirm password, ToS checkbox, CTA "Create Account". Posts to existing `POST /api/auth/register` over HTTP (same contract web uses), then lands on sign-in with `?registered=true`. **Native form — not embedded web view.** | Same validation rules as web (strength + match + ToS); identical error copy; success → signin | `tarana-mobile/src/screens/SignUp.tsx` | M | ✅ Done |
+| **3b.6** | Navigation wiring | `App.tsx`: register `Landing`, `AuthEntry`, `SignIn`, `SignUp`; `initialRouteName="Landing"`. `AuthGate` stays as the post-exchange target (unchanged). | `initialRouteName="Landing"`; existing `AuthGate→Home→SavedTrips/Spots` paths untouched | `tarana-mobile/App.tsx` | XS | ✅ Done |
+| **3b.7** | Verification | Simulator run (the one open Phase-3 item) + web-export bundling smoke. | App boots to Landing on both platforms; signin → signup → signin round-trip works; `tsc --noEmit` + `npx tsc` clean; no Metro-blocked imports in new screens | — | S | ⬜ Open (simulator run only; code gates below all green) |
 
 **Verification run (2026-09-10) — all gates green:**
 - `npx tsc --noEmit -p tarana-mobile/tsconfig.json` → **exit 0** (was failing on `importantAutocomplete` (not a RN prop), duplicate `BLUE`, undefined `IconProps` — all fixed).
@@ -153,11 +172,19 @@ Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.
 - **Metro-compat gate:** every import in the 5 new screens is Metro-safe (`react-native`, `expo-status-bar`, `@react-navigation/*`, `./icons`, `../auth`, `../config`, and the two `tarana-web/*` remaps). Zero banned imports (`next/image`, `lucide-react`, `GeminiSparkles`, `itineraryData`, `lib/search/*`); all iconography is inline SVG.
 - **Not yet evidenced:** an actual simulator/device run (the open Phase-3 item). Bundling proven; runtime behavior (auth exchange end-to-end, token storage round-trip) still needs a device. This is the remaining gate, not a code defect.
 
+**Re-verification (2026-09-11, principal-engineer pass) — gates re-run against the working tree, not trusted from the 2026-09-10 run:**
+- `tsc --noEmit -p tarana-mobile/tsconfig.json` → **exit 0**. Only diagnostic is `index.ts(2,8)` (the `.css` side-effect import — a pre-existing NativeWind declaration gap, unchanged, unrelated to Phase 3 work).
+- Metro bundle `./index.ts -p web` (project metro 0.84.5, CWD = `tarana-mobile/`) → **794 modules, exit 0**, output `metro-bundle-out.js` (6.4 MB). Bundle re-verified to contain `Landing`, `AuthEntry`, `SignIn`, `SignUp`, `exchangeForMobileToken`, `validatePasswordStrength` and all 10 unique screen strings. (Note: the `react-native-worklets/plugin` Babel-plugin failure seen in earlier ad-hoc runs was an artifact of invoking Metro with a stale CWD and a freshly-resolved metro 0.83.8 from the npm cache; with the project's own metro 0.84.5 and `metro.config.js` auto-loaded from `tarana-mobile/`, the bundle is green.)
+- **Static import-trace on the 5 new screens:** every import is Metro-safe. The only `next/image` / `lucide-react` hits in `Landing.tsx` are inside a code comment, not an import statement. Zero banned imports.
+- **3.3 re-check:** recursive scan of `tarana-mobile/**` for `signingSecret` / `JWT_SECRET` / `signing-secret` → **zero hits**.
+- **3.6 re-check:** `cityConfig` is a pure config object with **zero imports** (no `import`/`require` lines). Quarantined modules (`lib/search/*`, `itineraryData`, `lucide-react`) are not imported anywhere under `tarana-mobile/src`.
+- **Open:** 3b.7 / 3.8 simulator run — the only Phase-3 item still without runtime evidence.
+
 **Risks / mitigations:**
-- **Metro-blocked imports** — the known Phase-3 hazard, re-applied per task and verified by static import-trace + bundle. Banned: `next/image`, `lucide-react`, `GeminiSparkles`, `itineraryData`, `lib/search/*`. All iconography inline SVG.
+- **Metro-blocked imports** — the known Phase-3 hazard, re-applied per task and verified by static import-trace + bundle. Banned: `next/image`, `lucide-react`, `GeminiSparkles`, `itineraryData`, `lib/search/*`. All iconography inline SVG. Re-verified 2026-09-11: zero banned imports in the 5 new screens (the only hits are in a code comment in `Landing.tsx`).
 - **`expo-web-browser` sign-in on Android** (cookie isolation) — unchanged from today's design; the exchange-redirect path already handles it. No new risk introduced.
-- **`app.json extra.webBaseUrl` points at `localhost:3000`** — device/simulator runs need a LAN-reachable URL (plan §6 open question #3). Not changed here.
-- **No simulator on record yet** — the remaining gate. The existing `AuthGate`/`Home` screens remain registered routes, so removing `Landing` from `initialRouteName` reverts cleanly if the runtime run fails.
+- **`app.json extra.webBaseUrl` points at `http://10.0.2.2:3000`** — device/simulator runs need a LAN-reachable URL (plan §6 open question #3). Not changed here.
+- **No simulator on record yet** — the remaining gate (3b.7 / 3.8). The existing `AuthGate`/`Home` screens remain registered routes, so removing `Landing` from `initialRouteName` reverts cleanly if the runtime run fails.
 
 **Open questions needing a call (assumptions recorded, not silently resolved):**
 1. ~~Literal pixel parity vs. shared design system?~~ **DECIDED 2026-09-10: shared design system, recomposed for mobile.**
