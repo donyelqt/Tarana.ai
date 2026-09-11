@@ -13,6 +13,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { HomeIcon } from './icons';
+import { DotsGrid, Sparkles } from './decor';
 import SignInScreen from './SignIn';
 import SignUpScreen from './SignUp';
 
@@ -46,6 +47,8 @@ export default function AuthEntry({
 
   return (
     <View style={styles.root}>
+      <DotsGrid />
+      <Sparkles />
       {/* Mobile Back to Home — mirrors the web signin page's md:hidden Home button
           (`src/app/auth/signin/page.tsx:157-163`), which is the mobile-view
           affordance the web app ships. */}
