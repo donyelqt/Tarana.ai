@@ -38,13 +38,13 @@ Web app unchanged: `next-auth` + credits + Gemini remain (billing enforcement re
 
 ## Infra cost (startup constraint — spend as little as possible)
 
-Web bill (Vercel functions + bandwidth, Supabase DB + egress, third-party APIs per call — TomTom, Unsplash, Google Places) stays regardless — this ADR avoids *incremental* mobile-driven scaling, it does not cut current spend.
+Web bill (Vercel functions + bandwidth, Supabase DB + egress, third-party provider APIs per call — maps, places, photos) stays regardless — this ADR avoids *incremental* mobile-driven scaling, it does not cut current spend.
 
 | Cost driver | Shared-auth mobile | This ADR (local-first hybrid) |
 |---|---|---|
 | Supabase writes/reads/egress per mobile user | Every trip CRUD + every SavedTrips load hits DB; scales with users | ~Zero — trips in SQLite; DB touched only on optional link/import |
 | Vercel invocations | Auth exchange + register + spots + CRUD proxies every session | Spots enrichment when online only; core loop = zero invocations |
-| API per-call $ (TomTom search/routing/traffic, Unsplash photos, Google Places) | Fresh third-party call per user/session | Same per fresh call, but bundled Baguio + 24h image cache + per-city snapshot (`synced_at`) kills repeat calls — biggest saver |
+| API per-call $ (maps search/routing/traffic, place photos) | Fresh third-party call per user/session | Same per fresh call, but bundled Baguio + 24h image cache + per-city snapshot (`synced_at`) kills repeat calls — biggest saver |
 | Gemini $ | Free tier today, rate-limited; mobile users would hit the wall | Local LLM removes this scaling wall entirely |
 | Marginal cost per 1k mobile users | Real (DB, egress, API calls) | Near-zero (store fees dominate) |
 
