@@ -4,14 +4,44 @@ import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EyeIcon, EyeSlashIcon, GoogleIcon } from './icons';
 import { exchangeForMobileToken } from '../auth';
+import { createMobileSupabaseClient } from '../supabase';
 import { config } from '../config';
+import { getActiveProfile, createProfile, upsertImportedTrip } from '../db';
 
 const API_BASE = config.webBaseUrl.replace(/\/$/, '');
 
 const BLUE = '#0066FF';
 const BLUE_LIGHT = '#1E90FF';
 
-export default function SignIn({ navigation, onSignedIn }: { navigation: any; onSignedIn?: () => void }) {
+type WebItineraryRow = {
+  id: string;
+  title?: string | null;
+  date?: string | null;
+  budget?: string | null;
+  tags?: string[] | null;
+  form_data?: unknown;
+  itinerary_data?: unknown;
+  weather_data?: unknown;
+};
+
+function toPayload(row: WebItineraryRow): string | null {
+  try {
+    return JSON.stringify({
+      formData: row.form_data ?? null,
+      itineraryData: row.itinerary_data ?? null,
+      weatherData: row.weather_data ?? null,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function nameFromEmail(email: string): string {
+  const local = email.split('@')[0]?.replace(/[._-]+/g, ' ').trim();
+  return local || 'My Trips';
+}
+
+export default function LinkAccount({ navigation, onDone }: { navigation: any; onDone?: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -19,9 +49,45 @@ export default function SignIn({ navigation, onSignedIn }: { navigation: any; on
   const [loading, setLoading] = useState(false);
   const passwordRef = useRef<TextInput>(null);
 
-  const completeExchange = async () => {
-    await exchangeForMobileToken();
-    if (onSignedIn) onSignedIn();
+  /**
+   * One-way import (§7.4): the typed email/password only gate the button —
+   * actual auth happens in the web-browser exchange (same as the old
+   * sign-in flow). The email local-part seeds a local profile name when
+   * no profile exists yet. The JWT is single-use here: trips are copied
+   * into SQLite, then the app forgets the web session entirely.
+   */
+  const runImport = async () => {
+    const payload = await exchangeForMobileToken();
+    const userId = payload?.id ?? payload?.sub;
+    if (!userId) throw new Error('Link did not return a user.');
+
+    const profile = (await getActiveProfile()) ?? (await createProfile(nameFromEmail(email)));
+
+    const client = await createMobileSupabaseClient();
+    const { data, error: qError } = await client
+      .from('itineraries')
+      .select('id,title,date,budget,tags,form_data,itinerary_data,weather_data')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (qError) throw new Error(qError.message);
+
+    const rows = (Array.isArray(data) ? data : []) as WebItineraryRow[];
+    for (const row of rows) {
+      if (!row || typeof row.id !== 'string') continue;
+      await upsertImportedTrip({
+        profileId: profile.id,
+        sourceId: row.id,
+        title: row.title ?? null,
+        date: row.date ?? null,
+        budget: row.budget ?? null,
+        tags: Array.isArray(row.tags) ? row.tags.filter((t): t is string => typeof t === 'string') : [],
+        payload: toPayload(row),
+      });
+    }
+  };
+
+  const finish = () => {
+    if (onDone) onDone();
     else navigation.navigate('Home');
   };
 
@@ -30,24 +96,25 @@ export default function SignIn({ navigation, onSignedIn }: { navigation: any; on
     if (!email || !password) { setError('Email and password are required'); return; }
     setLoading(true);
     try {
-      await completeExchange();
+      await runImport();
+      finish();
     } catch (e: any) {
-      setError(e?.message || 'Sign in did not complete');
+      setError(e?.message || 'Link did not complete');
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogle = async () => {
-    // Web OAuth IS the mobile Google path: the same web-browser exchange
-    // flow backs both the Login CTA and the Google button. No separate
-    // native Google SDK — the web app is the single source of truth.
+    // Web OAuth IS the link path: the same web-browser exchange flow backs
+    // both the CTA and the Google button. No native Google SDK.
     setError(null);
     setLoading(true);
     try {
-      await completeExchange();
+      await runImport();
+      finish();
     } catch (e: any) {
-      setError(e?.message || 'Sign in did not complete');
+      setError(e?.message || 'Link did not complete');
     } finally {
       setLoading(false);
     }
@@ -57,18 +124,11 @@ export default function SignIn({ navigation, onSignedIn }: { navigation: any; on
     void WebBrowser.openBrowserAsync(`${API_BASE}/auth/forgot-password`);
   };
 
-  const openTerms = () => {
-    void WebBrowser.openBrowserAsync(`${API_BASE}/terms`);
-  };
-
-  const openPrivacy = () => {
-    void WebBrowser.openBrowserAsync(`${API_BASE}/privacy`);
-  };
-
   return (
     <KeyboardAvoidingView style={styles.kav} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView style={styles.root} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.form}>
+        <Text style={styles.importNote}>Your web trips are copied onto this device. No account is kept here.</Text>
         <View style={styles.field}>
           <Text style={styles.label}>Email</Text>
           <TextInput
@@ -123,7 +183,7 @@ export default function SignIn({ navigation, onSignedIn }: { navigation: any; on
           disabled={loading}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityLabel="Login"
+          accessibilityLabel="Link web account"
           style={styles.ctaOuter}
         >
           <LinearGradient
@@ -132,15 +192,9 @@ export default function SignIn({ navigation, onSignedIn }: { navigation: any; on
             end={{ x: 1, y: 0 }}
             style={styles.cta}
           >
-            <Text style={styles.ctaText}>{loading ? 'Signing in...' : 'Login'}</Text>
+            <Text style={styles.ctaText}>{loading ? 'Linking...' : 'Link web account'}</Text>
           </LinearGradient>
         </TouchableOpacity>
-
-        <Text style={styles.terms}>
-          By signing in, you agree to our{'\n'}
-          <Text style={styles.link} onPress={openTerms}>Terms of Service</Text> and{' '}
-          <Text style={styles.link} onPress={openPrivacy}>Privacy Policy</Text>.
-        </Text>
 
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
@@ -169,6 +223,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#ffffff' },
   scrollContent: { flexGrow: 1, justifyContent: 'flex-start', paddingHorizontal: 40, paddingVertical: 24 },
   form: { width: '100%', maxWidth: 448, alignSelf: 'center' },
+  importNote: { fontSize: 13, color: '#6b7280', textAlign: 'center', marginBottom: 16, lineHeight: 18 },
   field: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 6 },
   row: { flexDirection: 'row', alignItems: 'center' },
@@ -183,8 +238,6 @@ const styles = StyleSheet.create({
   ctaOuter: { borderRadius: 16, marginTop: 4 },
   cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
   ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
-  terms: { fontSize: 11, color: '#6b7280', textAlign: 'center', marginTop: 16, lineHeight: 16 },
-  link: { color: BLUE, fontWeight: '500' },
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#d1d5db' },
   dividerText: { marginHorizontal: 12, fontSize: 12, color: '#6b7280', backgroundColor: '#f3f4f6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },

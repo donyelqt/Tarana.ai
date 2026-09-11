@@ -1,26 +1,24 @@
 /**
- * Auth entry — the shared shell for sign-in / sign-up.
+ * Auth entry — the shared shell for first-run fresh start / web import.
  *
- * Mirrors the WEB signin page's segmented Login/Register toggle exactly
- * (`src/app/auth/signin/page.tsx:172-187`):
- *   - active pill:  bg-[#0066FF] text-white
- *   - inactive pill: bg-blue-50 text-[#0066FF]
+ * Keeps the Phase 3b segmented pill shell (and its exact styling) with
+ * rebound semantics (§2.1, §7.4): the toggle no longer selects an auth
+ * method. `fresh` creates a local SQLite profile (offline); `import`
+ * links a web account once and copies trips on-device (online).
  *
- * Owns no auth logic. It only selects which screen to render; the screens
- * themselves do the work (mobile sign-in = the existing exchangeForMobileToken
- * web-browser flow; mobile sign-up = native form posting to /api/auth/register).
+ * Owns no identity logic. It only selects which screen to render.
  */
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeIcon } from './icons';
 import { DotsGrid, Sparkles } from './decor';
-import SignInScreen from './SignIn';
-import SignUpScreen from './SignUp';
+import ProfileCreateScreen from './ProfileCreate';
+import LinkAccountScreen from './LinkAccount';
 
 const BRAND_BLUE = '#0066FF';
 
-type Mode = 'signin' | 'signup';
+type Mode = 'fresh' | 'import';
 
 type AuthEntryRoute = {
   params?: { mode?: Mode };
@@ -34,18 +32,18 @@ export default function AuthEntry({
   route?: AuthEntryRoute;
 }) {
   // Read the initial `mode` param ONCE — the toggle owns it afterwards.
-  // Deep-links (e.g. SignUp's "Already have an account? Sign in") land here
-  // with `{ mode: 'signin' }`; default stays `signin` when absent.
-  const [mode, setMode] = useState<Mode>(route?.params?.mode ?? 'signin');
+  // Landing lands here with no param (defaults `fresh`); Settings links
+  // here with `{ mode: 'import' }`.
+  const [mode, setMode] = useState<Mode>(route?.params?.mode ?? 'fresh');
   // Safe-area top inset keeps the absolute Home button below the camera/notch
   // and the time/battery row, so it never overlaps the system chrome.
   const insets = useSafeAreaInsets();
 
-  // After a successful sign-in or sign-up, drop into the signed-in state:
-  // switch the toggle to Login (so the user is not stuck on a Register
-  // screen that has just created their account) and open Home.
-  const onSignedIn = () => {
-    setMode('signin');
+  // After profile creation or a completed import, drop into Home.
+  // Reset the toggle to `fresh` so a return visit never strands the user
+  // on the import screen.
+  const onDone = () => {
+    setMode('fresh');
     navigation.navigate('Home');
   };
 
@@ -71,41 +69,41 @@ export default function AuthEntry({
       <View style={styles.header}>
         <View style={styles.brandAccentBar} />
         <Text style={styles.title}>
-          Welcome{mode === 'signup' ? '' : ' back'} <Text style={styles.titleAccent}>to Tarana.ai</Text>
+          Welcome{mode === 'import' ? ' back' : ''} <Text style={styles.titleAccent}>to Tarana.ai</Text>
         </Text>
         <Text style={styles.subtitle}>
-          {mode === 'signup' ? 'Create your account' : 'Sign in to your account'}
+          {mode === 'import' ? 'Bring your web trips here' : 'Start planning on this device'}
         </Text>
       </View>
 
-      {/* Segmented Login/Register toggle — mirrors the web pill switch. */}
+      {/* Segmented fresh/import toggle — same pill shell, rebound semantics. */}
       <View style={styles.toggleRow}>
         <TouchableOpacity
-          style={[styles.pill, mode === 'signin' && styles.pillActive]}
+          style={[styles.pill, mode === 'fresh' && styles.pillActive]}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityState={{ selected: mode === 'signin' }}
-          onPress={() => setMode('signin')}
+          accessibilityState={{ selected: mode === 'fresh' }}
+          onPress={() => setMode('fresh')}
         >
-          <Text style={[styles.pillText, mode === 'signin' && styles.pillTextActive]}>Login</Text>
+          <Text style={[styles.pillText, mode === 'fresh' && styles.pillTextActive]}>Start fresh</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.pill, mode === 'signup' && styles.pillActive]}
+          style={[styles.pill, mode === 'import' && styles.pillActive]}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityState={{ selected: mode === 'signup' }}
-          onPress={() => setMode('signup')}
+          accessibilityState={{ selected: mode === 'import' }}
+          onPress={() => setMode('import')}
         >
-          <Text style={[styles.pillText, mode === 'signup' && styles.pillTextActive]}>Register</Text>
+          <Text style={[styles.pillText, mode === 'import' && styles.pillTextActive]}>Import</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.formShell}>
-        {mode === 'signin' ? (
-          <SignInScreen navigation={navigation} onSignedIn={onSignedIn} />
+        {mode === 'fresh' ? (
+          <ProfileCreateScreen navigation={navigation} onDone={onDone} />
         ) : (
-          <SignUpScreen navigation={navigation} onSignedIn={onSignedIn} />
+          <LinkAccountScreen navigation={navigation} onDone={onDone} />
         )}
       </View>
     </SafeAreaView>
