@@ -328,3 +328,13 @@ Multi-profile UI (schema-ready only), friend/social graph, cross-device auto-syn
 ### Kill-gate unchanged
 
 Phase 2 local-model quality test (§6 Q1) still decides the paid premise. Build 7.1–7.5 only after it passes, or timebox 7.1 as the offline test harness for it.
+
+### Preservation (auth UI snapshot)
+
+Pre-repurpose auth screens are tagged, not kept in-tree (dead screens rot; Metro/tsc must never see them):
+
+- Tag: `mobile-auth-ui-v1` → `118bac2` (annotated, pushed to origin)
+- Restore only these two files (nothing else from the snapshot is needed):
+  - `git show mobile-auth-ui-v1:tarana-mobile/src/screens/SignIn.tsx`
+  - `git show mobile-auth-ui-v1:tarana-mobile/src/screens/SignUp.tsx`
+- Covers 7.4 rollback: if shared-auth returns per ADR-002 revisit triggers, re-apply these screens onto the §2.0 architecture (also preserved verbatim).
