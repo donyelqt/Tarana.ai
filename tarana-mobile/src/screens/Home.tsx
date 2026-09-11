@@ -1,6 +1,7 @@
 import { Button, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { clearStoredToken } from '../auth';
+import { clearActiveProfile } from '../db';
 
 type HomeNav = {
   replace: (route: string) => void;
@@ -13,8 +14,9 @@ type HomeNav = {
  */
 export default function Home({ navigation }: { navigation: HomeNav }) {
   const onSignOut = async () => {
+    await clearActiveProfile();
     await clearStoredToken();
-    navigation.replace('AuthGate');
+    navigation.replace('Landing');
   };
 
   return (
@@ -24,8 +26,11 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
       <View className="mb-3 w-full rounded-lg bg-primary px-4 py-1">
         <Button title="Saved trips" onPress={() => navigation.navigate('SavedTrips')} color="#ffffff" />
       </View>
-      <View className="mb-6 w-full rounded-lg bg-primary px-4 py-1">
+      <View className="mb-3 w-full rounded-lg bg-primary px-4 py-1">
         <Button title="Suggested spots" onPress={() => navigation.navigate('Spots')} color="#ffffff" />
+      </View>
+      <View className="mb-6 w-full rounded-lg bg-primary px-4 py-1">
+        <Button title="Settings" onPress={() => navigation.navigate('Settings')} color="#ffffff" />
       </View>
       <View className="rounded-lg bg-secondary px-4 py-1">
         <Button title="Sign out" onPress={onSignOut} color="#0f172a" />

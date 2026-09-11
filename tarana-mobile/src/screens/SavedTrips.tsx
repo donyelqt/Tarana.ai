@@ -1,49 +1,29 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { createMobileSupabaseClient } from '../supabase';
-import { loadAuthState } from '../auth';
+import { getActiveProfileId, listTripsByProfile, type LocalTrip } from '../db';
 
 /**
- * SavedTrips — read-only list of the user's saved itineraries.
+ * SavedTrips — read-only list of the active profile's trips from SQLite.
  *
- * Mirrors the web query in `src/lib/data/savedItineraries.ts`
- * (`itineraries` table, scoped to user_id, newest first) but does NOT
- * import that module: it value-imports `next/image` (StaticImageData) plus
- * web-only services, so it is Metro-blocked per the probe. The query shape
- * is re-expressed here against the shared anon Supabase factory, and only
- * plain-text columns are displayed (no image catalog imports).
+ * Local-first (§2.1, §7.2): no token, no network. Trips land here via
+ * local creation (7.1) or the one-way web import behind the Import tab
+ * (7.4). Only plain-text columns render — same display contract as before.
  */
-type SavedTripRow = {
-  id: string;
-  title: string | null;
-  date: string | null;
-  budget: string | null;
-  tags: string[] | null;
-  created_at: string;
-};
-
 export default function SavedTrips() {
-  const [trips, setTrips] = useState<SavedTripRow[] | null>(null);
+  const [trips, setTrips] = useState<LocalTrip[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const { payload } = await loadAuthState();
-      const userId = payload?.id ?? payload?.sub;
-      if (!userId) {
-        setError('Sign in first to see saved trips.');
+      const profileId = await getActiveProfileId();
+      if (!profileId) {
+        setError('Create a profile first to see saved trips.');
         setTrips([]);
         return;
       }
-      const client = await createMobileSupabaseClient();
-      const { data, error: qError } = await client
-        .from('itineraries')
-        .select('id,title,date,budget,tags,created_at')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-      if (qError) throw new Error(qError.message);
-      setTrips((data ?? []) as SavedTripRow[]);
+      const rows = await listTripsByProfile(profileId);
+      setTrips(rows);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load saved trips.');
       setTrips([]);
@@ -68,7 +48,7 @@ export default function SavedTrips() {
     <View className="flex-1 bg-background px-4 pt-4">
       {error ? <Text className="mb-2 text-sm text-destructive">{error}</Text> : null}
       {trips.length === 0 && !error ? (
-        <Text className="text-sm text-muted-foreground">No saved trips yet. Plan one on the web app.</Text>
+        <Text className="text-sm text-muted-foreground">No saved trips yet. Create one or import from the web.</Text>
       ) : null}
       <FlatList
         data={trips}
