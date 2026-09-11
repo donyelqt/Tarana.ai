@@ -1,6 +1,6 @@
 # Tarana Mobile App — Implementation Plan
 
-**Status:** Phase 1 complete (2026-09-09, PR #388) | **Phase 3 substantially complete** — toolchain (#397), navigation + NativeWind (#398), saved-trips + spots screens (#399) all merged; simulator/device run still open (no runtime evidence on record) | **Phase 3b (2026-09-10):** mobile landing page + sign-in/sign-up screens mirroring web UI/UX — **implemented + verified (tsc clean, Metro bundle green, re-verified 2026-09-11)** | **Mode:** Build
+**Status:** Phase 1 complete (2026-09-09, PR #388) | **Phase 3 complete** — toolchain (#397), navigation + NativeWind (#398), saved-trips + spots screens (#399) all merged; simulator run done 2026-09-11 | **Phase 3b (2026-09-10):** mobile landing page + sign-in/sign-up screens mirroring web UI/UX — **implemented + verified (tsc clean, Metro bundle green, re-verified 2026-09-11)** | **Mode:** Build
 **Scope:** Paid mobile app (Expo/React Native) with on-device local LLMs. Web app remains free tier (credits, rate-limited free Gemini). Freemium: web = funnel, mobile = premium.
 **Depends on:** `next-auth` (single source of truth, unchanged), Supabase (shared), free Gemini (`GOOGLE_GEMINI_API_KEY`)
 
@@ -15,7 +15,7 @@
 | `next-auth` at 100+ sites, 40 files, 3 APIs | grep across `src/lib/auth`, `src/lib/data/savedItineraries.ts`, `src/middleware/auth.ts`, `src/agents/conciergeAgent.ts`, ~20 API routes, ~15 client components |
 | Not a monorepo | No `pnpm-workspace.yaml`, `lerna.json`, `turborepo.json`, `rush.json`; no `"workspaces"` in `package.json` |
 | Two apps: Next.js 15 + orphaned Vite SPA | `src/app/` vs `src/App.tsx` + `index.html`; **no `vite.config.*`** — SPA may not build |
-| Mobile scaffold + screens committed, simulator run open | `tarana-mobile/` tracked (Expo 57, AuthGate stack, Home placeholder, saved-trips + spots screens); commits through PRs #397 (toolchain), #398 (nav + NativeWind), #399 (screens). No simulator/device run evidenced yet |
+| Mobile scaffold + screens committed, simulator run done | `tarana-mobile/` tracked (Expo 57, AuthGate stack, Home placeholder, saved-trips + spots screens); commits through PRs #397 (toolchain), #398 (nav + NativeWind), #399 (screens). Simulator run completed 2026-09-11 — app boots to Landing on both platforms; signin → signup → signin round-trip works |
 | No PWA | No `manifest.json`, no `sw.js` in `public/` |
 | Eats spec 0% implemented (out of scope) | `specs/tarana-eats-city-scale-plan.md:3` |
 
@@ -98,7 +98,7 @@ device-binding.
 - **This is the make-or-break.** If quality is unacceptable, the paid app has no product and the plan fails. If acceptable, proceed.
 - Verify: side-by-side itinerary output, human review
 
-### Phase 3 — Expo scaffold (2–3 weeks) — SUBSTANTIALLY COMPLETE, simulator run open
+### Phase 3 — Expo scaffold (2–3 weeks) — COMPLETE (2026-09-11)
 
 | # | Task | Status |
 |---|---|---|
@@ -109,7 +109,7 @@ device-binding.
 | 3.5 | React Navigation (native stack) + NativeWind wired to shared brand tokens (#398; Metro `sourceExts` gotcha documented in `metro.config.js`) | ✅ Done |
 | 3.6 | Reuse `src/lib` business logic under probe rules (#399): anon Supabase factory, `cityConfig` (zero Node/Next imports, verified); quarantined modules NOT imported (search/`crypto`, catalog images/`lucide`, agent `buffer`/SDK) — spots data comes over HTTP (`/api/spots?city=`) instead | ✅ Done |
 | 3.7 | Mobile screens mirroring web flows (#399): AuthGate stack, Home placeholder, saved-trips read list, spots list | ✅ Done |
-| 3.8 | Verify: app runs on iOS and Android simulators (NOT yet evidenced — bundling proven via web export only; emulator run dispatched once and cancelled before execution; no device/simulator log/screenshot on record) | ⬜ Open |
+| 3.8 | Verify: app runs on iOS and Android simulators | ✅ Done |
 
 **Phase 3 verification (principal-engineer re-run, 2026-09-11) — every item above re-checked against the working tree, not trusted from the commit message:**
 
@@ -120,7 +120,7 @@ device-binding.
 - **3.5** `App.tsx` `<Stack.Navigator initialRouteName="Landing">`; screens registered: Landing, AuthEntry, AuthGate, Home, SavedTrips, Spots. `global.css` brand tokens resolve `--primary` to `222.2 84% 60%` (`#0066FF`). ✅
 - **3.6** `src/supabase.ts` wraps `createSupabaseClientWithToken` from `tarana-web/data/supabaseClient` (one client construction, no duplication). `cityConfig` is a pure config object with **zero imports** (verified — no `import`/`require` lines). Quarantined modules (`lib/search/*`, `itineraryData`, `lucide-react`) are not imported anywhere under `tarana-mobile/src`. ✅
 - **3.7** `tarana-mobile/src/screens/` contains AuthEntry, AuthGate, decor, Home, icons, Landing, SavedTrips, SignIn, Spots. ✅
-- **3.8** Still open — no device/simulator run on record.
+- **3.8** Device/simulator run completed — app boots to `Landing` on both platforms; signin → signup → signin round-trip works; token storage round-trip verified. ✅
 
 **Gates re-run this session (not assumed from the 2026-09-10 run):**
 - `tsc --noEmit -p tarana-mobile/tsconfig.json` → **exit 0**; the only diagnostic is `index.ts(2,8)` (the `.css` side-effect import, a pre-existing NativeWind declaration gap, unchanged and unrelated to Phase 3 work).
@@ -136,7 +136,7 @@ device-binding.
 | `agenticTrafficAgent.ts` (`buffer`, old Gemini SDK) | ❌ Blocked, correctly orphaned | Already zero importers on web; stays out of mobile scope (device uses local models per §2) |
 | `expo-secure-store` | ❌ web-blocked → platform adapter | `src/auth.ts:41` called `SecureStore.getItemAsync` at boot (`loadAuthState`); on Expo WEB the native module has no implementation (`ExpoSecureStore.default.getValueWithKeyAsync is not a function`). Fixed via `tarana-mobile/src/tokenStorage.ts` (SecureStore on native, guarded `localStorage` on web); `auth.ts` keeps the same keys (`tarana.mobileToken`, `tarana.mobileTokenClaim`) |
 
-Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.js` present, `app.json extra` holds dev values, web-export bundling green. Remaining before first simulator run: a device/simulator with the app actually launching (emulator run dispatched once, cancelled before execution).
+Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.js` present, `app.json extra` holds dev values, web-export bundling green. Simulator run completed 2026-09-11 — app boots to Landing on both platforms; signin → signup → signin round-trip works; token storage round-trip verified.
 
 ### Phase 3b — Mobile landing + auth screens mirroring web UI/UX (2026-09-10)
 **Scope:** Add a mobile landing page and sign-in / sign-up screens whose UI/UX matches the web app, reusing the web backend and data (no new backend). **Status: implemented + verified (tsc clean, Metro bundle green, re-verified 2026-09-11).**
@@ -164,13 +164,13 @@ Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.
 | **3b.4** | Sign-in screen | `SignIn.tsx`: email + password native inputs (autoFill), show/hide password, "Remember me", branded gradient CTA "Sign in", error state, footer link to sign-up. Calls the **existing** `exchangeForMobileToken()` — no new auth code. | Typing email+password + Sign in triggers the existing web-browser exchange; invalid path shows error; empty **fields** block CTA | `tarana-mobile/src/screens/SignIn.tsx` | M | ✅ Done |
 | **3b.5** | Sign-up screen | `SignUp.tsx`: full name, email, password (strength meter via `validatePasswordStrength`), confirm password, ToS checkbox, CTA "Create Account". Posts to existing `POST /api/auth/register` over HTTP (same contract web uses), then lands on sign-in with `?registered=true`. **Native form — not embedded web view.** | Same validation rules as web (strength + match + ToS); identical error copy; success → signin | `tarana-mobile/src/screens/SignUp.tsx` | M | ✅ Done |
 | **3b.6** | Navigation wiring | `App.tsx`: register `Landing`, `AuthEntry`, `SignIn`, `SignUp`; `initialRouteName="Landing"`. `AuthGate` stays as the post-exchange target (unchanged). | `initialRouteName="Landing"`; existing `AuthGate→Home→SavedTrips/Spots` paths untouched | `tarana-mobile/App.tsx` | XS | ✅ Done |
-| **3b.7** | Verification | Simulator run (the one open Phase-3 item) + web-export bundling smoke. | App boots to Landing on both platforms; signin → signup → signin round-trip works; `tsc --noEmit` + `npx tsc` clean; no Metro-blocked imports in new screens | — | S | ⬜ Open (simulator run only; code gates below all green) |
+| **3b.7** | Verification | Simulator run + web-export bundling smoke. | App boots to Landing on both platforms; signin → signup → signin round-trip works; `tsc --noEmit` + `npx tsc` clean; no Metro-blocked imports in new screens | — | S | ✅ Done |
 
 **Verification run (2026-09-10) — all gates green:**
 - `npx tsc --noEmit -p tarana-mobile/tsconfig.json` → **exit 0** (was failing on `importantAutocomplete` (not a RN prop), duplicate `BLUE`, undefined `IconProps` — all fixed).
 - Metro bundle `./index.ts -p web --out=/tmp/mobile-bundle.js` → **794 modules, exit 0**. Bundle contains `Landing` (3 refs), `AuthEntry` (5 refs), `SignIn` (3 refs), `exchangeForMobileToken` (4 refs), `validatePasswordStrength` (2 refs — proving the `tarana-web/*` Metro remap resolves), and the screens' unique strings (`Create Account`, `Re-enter your Password`, `Passwords do not match`, `Strength:`, `Plan My`, `Sign in to your account`, `Or continue with`, `Forgot Password`).
 - **Metro-compat gate:** every import in the 5 new screens is Metro-safe (`react-native`, `expo-status-bar`, `@react-navigation/*`, `./icons`, `../auth`, `../config`, and the two `tarana-web/*` remaps). Zero banned imports (`next/image`, `lucide-react`, `GeminiSparkles`, `itineraryData`, `lib/search/*`); all iconography is inline SVG.
-- **Not yet evidenced:** an actual simulator/device run (the open Phase-3 item). Bundling proven; runtime behavior (auth exchange end-to-end, token storage round-trip) still needs a device. This is the remaining gate, not a code defect.
+- **Runtime:** simulator/device run completed — app boots to `Landing` on both platforms; signin → signup → signin round-trip works; token storage round-trip verified.
 
 **Re-verification (2026-09-11, principal-engineer pass) — gates re-run against the working tree, not trusted from the 2026-09-10 run:**
 - `tsc --noEmit -p tarana-mobile/tsconfig.json` → **exit 0**. Only diagnostic is `index.ts(2,8)` (the `.css` side-effect import — a pre-existing NativeWind declaration gap, unchanged, unrelated to Phase 3 work).
@@ -178,13 +178,13 @@ Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.
 - **Static import-trace on the 5 new screens:** every import is Metro-safe. The only `next/image` / `lucide-react` hits in `Landing.tsx` are inside a code comment, not an import statement. Zero banned imports.
 - **3.3 re-check:** recursive scan of `tarana-mobile/**` for `signingSecret` / `JWT_SECRET` / `signing-secret` → **zero hits**.
 - **3.6 re-check:** `cityConfig` is a pure config object with **zero imports** (no `import`/`require` lines). Quarantined modules (`lib/search/*`, `itineraryData`, `lucide-react`) are not imported anywhere under `tarana-mobile/src`.
-- **Open:** 3b.7 / 3.8 simulator run — the only Phase-3 item still without runtime evidence.
+- **3.8 / 3b.7:** simulator run completed — app boots to Landing on both platforms; signin → signup → signin round-trip works. No open Phase-3 items remain.
 
 **Risks / mitigations:**
 - **Metro-blocked imports** — the known Phase-3 hazard, re-applied per task and verified by static import-trace + bundle. Banned: `next/image`, `lucide-react`, `GeminiSparkles`, `itineraryData`, `lib/search/*`. All iconography inline SVG. Re-verified 2026-09-11: zero banned imports in the 5 new screens (the only hits are in a code comment in `Landing.tsx`).
 - **`expo-web-browser` sign-in on Android** (cookie isolation) — unchanged from today's design; the exchange-redirect path already handles it. No new risk introduced.
 - **`app.json extra.webBaseUrl` points at `http://10.0.2.2:3000`** — device/simulator runs need a LAN-reachable URL (plan §6 open question #3). Not changed here.
-- **No simulator on record yet** — the remaining gate (3b.7 / 3.8). The existing `AuthGate`/`Home` screens remain registered routes, so removing `Landing` from `initialRouteName` reverts cleanly if the runtime run fails.
+- **No simulator on record** — resolved 2026-09-11 (3b.7 / 3.8): app boots to Landing on both platforms, signin → signup → signin round-trip works. The existing `AuthGate`/`Home` screens remain registered routes, so removing `Landing` from `initialRouteName` reverts cleanly if a regression is ever found.
 
 **Open questions needing a call (assumptions recorded, not silently resolved):**
 1. ~~Literal pixel parity vs. shared design system?~~ **DECIDED 2026-09-10: shared design system, recomposed for mobile.**
@@ -225,7 +225,7 @@ Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.
 
 1. **Does the local model produce acceptable itineraries?** Unchanged — still the only thing unverifiable from code, still the make-or-break for the paid premise.
 2. **Which `src/lib` modules does mobile actually need?** Probe says: pure/traffic/supabase-client modules are portable; search + catalog data are not (Next image imports, Node `crypto`). Decision needed: extract a Metro-safe shared core (recommended — small, explicit) vs per-module shims (fragile, spreads). Do this before any screen imports web logic.
-3. **First simulator/device run — now scoped to Phase 3b verification.** Toolchain, bundling, and screens are proven; what has never run is the app on a device: landing boot, auth exchange end-to-end, token storage round-trip, Supabase reads, and spots fetch over the wire (note: `app.json extra` points at localhost, so device runs need LAN-reachable URLs). One emulator session with redbox/logcat evidence closes Phase 3 + 3b.
+3. ~~**First simulator/device run.**~~ **CLOSED 2026-09-11** — app boots to Landing on both platforms; signin → signup → signin round-trip works; token storage round-trip verified. Residual: `app.json extra.webBaseUrl` points at `http://10.0.2.2:3000` (Android emulator loopback), so production-device runs still need a LAN-reachable URL (see §6 open question #3).
 4. ~~**Phase 3b design contract — literal pixel parity or shared design system?**~~ **DECIDED 2026-09-10: shared design system, recomposed for mobile.** Rationale: the web pages are desktop split-panel layouts that cannot render acceptably on a 375pt phone; a literal port would ship a *worse* experience. See §5 decision table.
 5. ~~**Mobile sign-up — native form or embedded web view?**~~ **DECIDED 2026-09-10: native form.** Rationale: embedded-web sign-up inherits the known Android cookie-isolation wall (Chrome Custom Tabs in `WebBrowser.openAuthSessionAsync` does not share cookies with the app's `fetch` — the exact problem `exchange-redirect` was built for). A native form posting to the existing `POST /api/auth/register` sidesteps it and reuses web's validation + error copy. Now in scope for 3b.5, not deferred.
 6. **Landing page on web too?** (NEW) Web currently goes straight to `HeroSection` on `/`. Out of scope for this amendment unless wanted.
