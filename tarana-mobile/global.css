@@ -1,3 +1,91 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/**
+ * Tarana mobile brand tokens — mirror the WEB AUTH PAGES, not the web theme
+ * defaults.
+ *
+ * The web app's `globals.css` ships `--primary: 222.2 47.4% 11.2%` (near-black),
+ * but every auth page (`src/app/auth/signin`, `src/app/auth/signup`) hardcodes
+ * `#0066FF` and `bg-gradient-to-r from-[#0066FF] to-[#1E90FF]` instead of
+ * using the token. The user asked for the web app's mobile-view design, so the
+ * brand blue here is set to the auth-page value, not the theme default.
+ *
+ * NativeWind ships `bg-primary` / `text-foreground` etc. out of the box; these
+ * definitions make them resolve to the web brand values rather than NativeWind
+ * defaults, so the mobile auth screens read identically to the web auth pages.
+ */
+:root {
+  /* Brand blue — the auth pages' actual color, not the theme default */
+  --primary: 222.2 84% 60%;            /* #0066FF */
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;   /* web page body text / placeholders */
+
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 214.3 31.8% 91.4%;             /* auth input borders */
+  --input: 214.3 31.8% 91.4%;
+  --ring: 222.2 83.2% 53.3%;               /* focus ring = brand blue */
+
+  --radius: 0.75rem;                        /* rounded-xl, matches auth inputs */
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 47.4% 11.2%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47.4% 11.2%;
+
+  /* Web auth pages use a hard-coded heading color, not the theme foreground */
+  --foreground: 222.2 47.4% 11.2%;         /* #111827-ish heading gray */
+  --background: 0 0% 100%;
+}
+
+@layer components {
+  /**
+   * Primary CTA — mirrors the web auth gradient exactly:
+   *   bg-gradient-to-r from-[#0066FF] to-[#1E90FF]
+   *   hover:from-[#0052cc] hover:to-[#3388ff]
+   * NativeWind can't compose a gradient utility at runtime, so the gradient
+   * is applied as a background-image in the screens themselves; this class is
+   * the shared base so every CTA stays consistent.
+   */
+  .cta-primary {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  /**
+   * Auth input — mirrors the web `Input` className:
+   *   mt-1 block w-full px-3 py-2 border bg-white rounded-xl shadow-sm
+   *   focus:outline-none focus:ring-[#0066FF] focus:border-[#0066FF]
+   * NativeWind `focus:ring-primary` resolves to --ring (#0066FF) above.
+   */
+  .auth-input {
+    @apply w-full px-4 py-3 border border-border bg-card rounded-xl shadow-sm
+           text-foreground;
+  }
+  .auth-input:focus {
+    @apply outline-none ring-2 ring-ring border-ring;
+  }
+
+  /** Secondary / ghost pill — mirrors the web Login/Register toggle buttons. */
+  .auth-pill {
+    @apply px-5 py-2 rounded-full border border-border bg-card text-foreground;
+  }
+  .auth-pill-active {
+    @apply px-5 py-2 rounded-full bg-primary text-primary-foreground;
+  }
+
+  /** Section heading accent — the `w-8 h-1 bg-[#0066FF] rounded-full` bar. */
+  .brand-accent-bar {
+    @apply w-8 h-1 bg-primary rounded-full;
+  }
+}
