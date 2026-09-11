@@ -95,7 +95,7 @@ flowchart TB
     end
     subgraph BRAIN["SERVER BRAIN — never ships in binary"]
         BRank["ranking / rotation"]
-        BImg["image tier chain<br/>(TomTom/Unsplash/Places keys<br/>server-side only)"]
+        BImg["image tier chain<br/>(third-party API keys<br/>server-side only)"]
         BTraff["traffic fusion"]
         BPrompt["itinerary prompts"]
         BOTA["curated-pool refresh<br/>(API / OTA, weekly)"]
@@ -312,7 +312,7 @@ Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.
 |---|---|---|---|
 | 7.1 | SQLite core loop: `trips` table mirroring `itineraries` columns, single active profile, nullable `profile_id` reserved (multi-profile later = additive) | `tarana-mobile/src/db/*` (new) | Trips CRUD works airplane-mode, no token |
 | 7.2 | `SavedTrips` reads SQLite, not Supabase; remove `Sign in first` wall | `tarana-mobile/src/screens/SavedTrips.tsx:30-51` | Renders offline from local DB |
-| 7.3 | `Spots`: bundled Baguio curated pool offline; non-Baguio = cached snapshot + `synced_at` stale badge; live TomTom/photos only when online | `tarana-mobile/src/screens/Spots.tsx:36-52` | Offline shows cache, online enriches |
+| 7.3 | `Spots`: bundled Baguio curated pool offline; non-Baguio = cached snapshot + `synced_at` stale badge; live third-party POIs/photos only when online | `tarana-mobile/src/screens/Spots.tsx:36-52` | Offline shows cache, online enriches |
 | 7.4 | Auth demoted: Landing → Home directly; `exchangeForMobileToken()` moves to Settings → "Link web account" (one-time import) | `tarana-mobile/App.tsx:34`, `src/auth.ts:59-80` | Boot needs no network, no login |
 | 7.5 | Binary hygiene: remove Supabase anon key from `app.json extra`; `webBaseUrl` becomes enrichment-only | `tarana-mobile/app.json:30-34` | Zero server keys in binary |
 | 7.6 | Proxy hardening (no user login): receipt validation for enrichment, per-device rate limits, App Attest/Play Integrity when available, cert pinning, server feature flags | web `/api/spots`, `/api/auth/mobile-token` | Cloned/unsigned clients get degraded local-only |
