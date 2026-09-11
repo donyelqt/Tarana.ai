@@ -1,8 +1,8 @@
 # Tarana Mobile App — Implementation Plan
 
-**Status:** Phase 1 complete (2026-09-09, PR #388) | **Phase 3 complete** — toolchain (#397), navigation + NativeWind (#398), saved-trips + spots screens (#399) all merged; simulator run done 2026-09-11 | **Phase 3b (2026-09-10):** mobile landing page + sign-in/sign-up screens mirroring web UI/UX — **implemented + verified (tsc clean, Metro bundle green, re-verified 2026-09-11)** | **Mode:** Build
+**Status:** Phase 1 complete (2026-09-09, PR #388) | **Phase 3 complete** — toolchain (#397), navigation + NativeWind (#398), saved-trips + spots screens (#399) all merged; simulator run done 2026-09-11 | **Phase 3b (2026-09-10):** mobile landing page + sign-in/sign-up screens mirroring web UI/UX — **implemented + verified (tsc clean, Metro bundle green, re-verified 2026-09-11)** | **Amendment 2026-09-12 (§7, ADR-002 Proposed):** local-first pivot under review — core loop to SQLite, no login gate; server retained as enrichment proxy + optional sync | **Mode:** Build
 **Scope:** Paid mobile app (Expo/React Native) with on-device local LLMs. Web app remains free tier (credits, rate-limited free Gemini). Freemium: web = funnel, mobile = premium.
-**Depends on:** `next-auth` (single source of truth, unchanged), Supabase (shared), free Gemini (`GOOGLE_GEMINI_API_KEY`)
+**Depends on:** `next-auth` (web source of truth, unchanged), Supabase Postgres (server brain + enrichment proxy), free Gemini (`GOOGLE_GEMINI_API_KEY`), SQLite on device (`expo-sqlite`, §2.1)
 
 ---
 
@@ -21,20 +21,34 @@
 
 ---
 
-## 2. Architecture
+## 2.0. Architecture (DEPRECATED — preserved for rollback, superseded by §2.1)
 
-```
-WEB (free tier)                          MOBILE (paid tier)
-  │                                         │
-  ├─ next-auth session                     ├─ Expo / React Native
-  ├─ credits billing                       ├─ local models (GGUF / llama.cpp)
-  ├─ Gemini cloud AI                       ├─ offline-capable
-  └─ Supabase DB                           └─ one-time purchase
-        │                                         │
-        └─────────────────┬───────────────────────┘
-                          ▼
-            SHARED: Supabase, user identity,
-            saved trips, saved meals, credits history
+> **Status:** DEPRECATED as of 2026-09-12 (ADR-002). Kept intact so it can be restored. Do not delete. New work follows §2.1.
+
+```mermaid
+flowchart TB
+    subgraph WEB0["WEB — free tier"]
+        WAuth["next-auth session<br/>(single source of truth)"]
+        WCredits["credits billing<br/>(gating mechanism)"]
+        WGemi["Gemini cloud AI — free tier<br/>(rate-limited, retry/backoff)"]
+    end
+    subgraph MOB0["MOBILE — paid tier"]
+        MApp["Expo / React Native"]
+        MLLM["local models — GGUF / llama.cpp"]
+        MPay["one-time purchase"]
+        MStore["expo-secure-store<br/>(mobile JWT)"]
+    end
+    BRIDGE["POST /api/auth/mobile-token<br/>valid web session → short-lived JWT<br/>(NextAuth JWT, default empty salt)"]
+    MWARE["shared middleware<br/>session OR JWT → one identity path<br/>(raw JWT as synthetic session cookie;<br/>API-only, non-re-exchangeable,<br/>separately rate-limited)"]
+    DB0[("Supabase — SHARED<br/>user identity, saved trips,<br/>saved meals, credits history")]
+
+    WAuth --> BRIDGE
+    BRIDGE --> MStore
+    MStore --> MWARE
+    WAuth --> MWARE
+    MWARE --> DB0
+    WCredits --> DB0
+    WGemi --> MWARE
 ```
 
 **One user. One database. One auth system.** The mobile app does not have its own auth or its own user records.
@@ -59,6 +73,62 @@ Result: web user logs in → requests a mobile token → opens mobile app → sa
 | Mobile | Local models (GGUF via llama.cpp / Core ML on iOS) | Free (device) | None — runs on device |
 
 Mobile also supports **cloud fallback** when online, and **offline mode** using the local model. The local model is the primary path because the free Gemini tier cannot scale to mobile users.
+
+---
+
+## 2.1. Architecture (CURRENT — local-first shell + server brain, ADR-002)
+
+```mermaid
+flowchart TB
+    subgraph WEB1["WEB — free tier (UNCHANGED)"]
+        W1Auth["next-auth session<br/>(billing identity)"]
+        W1Credits["credits billing"]
+        W1Gemi["Gemini cloud AI — free tier"]
+        W1DB[("Postgres via Supabase<br/>(web truth + server brain store)")]
+    end
+    subgraph MOB1["MOBILE — paid tier (LOCAL-FIRST)"]
+        M1App["Expo / React Native<br/>Landing → Home (no login gate)"]
+        M1SQL[("SQLite on device — TRUTH<br/>trips, single profile<br/>(nullable profile_id reserved),<br/>spots cache + synced_at")]
+        M1Bundle["bundled Baguio catalog<br/>+ Tier 0 images (offline)"]
+        M1LLM["local models — GGUF / llama.cpp<br/>(primary; offline capable)"]
+        M1Pay["one-time purchase<br/>(store receipt, per-device)"]
+    end
+    subgraph BRAIN["SERVER BRAIN — never ships in binary"]
+        BRank["ranking / rotation"]
+        BImg["image tier chain<br/>(TomTom/Unsplash/Places keys<br/>server-side only)"]
+        BTraff["traffic fusion"]
+        BPrompt["itinerary prompts"]
+        BOTA["curated-pool refresh<br/>(API / OTA, weekly)"]
+    end
+    SPOTS["GET /api/spots — enrichment proxy<br/>(ONLINE ONLY; cached 24h;<br/>stale badge offline)"]
+    LINK["POST /api/auth/mobile-token<br/>Settings → 'Link web account' ONLY<br/>(ONLINE ONLY; one-time import)"]
+    GUARD["proxy guard: receipt validation<br/>+ per-device rate limits<br/>(Attest/Integrity when available,<br/>cert pinning, versioned contract)"]
+
+    M1App --> M1SQL
+    M1App --> M1Bundle
+    M1App --> M1LLM
+    M1SQL -.->|"online: enrich"| SPOTS
+    M1App -.->|"online: link/import"| LINK
+    SPOTS --> BRAIN
+    SPOTS --> W1DB
+    LINK --> W1Auth
+    SPOTS --> GUARD
+    W1Auth --> W1DB
+    W1Credits --> W1DB
+```
+
+**Device = SQLite truth. Server = Postgres brain.** Phone works airplane-mode for the full core loop (profile, trips CRUD, bundled spots, local LLM). Network makes it better (fresh POIs, photos, traffic, web import) — never gates it.
+
+| Rule | Detail |
+|---|---|
+| No login for core loop | Landing → Home directly; `exchangeForMobileToken()` demoted to optional link/import |
+| No server keys in binary | Supabase anon key out of `app.json extra`; `webBaseUrl` enrichment-only |
+| Single profile v1 | Nullable `profile_id` reserved; multi-profile UI deferred (additive later) |
+| Cache TTLs are cost controls | 24h images, per-city spots snapshot + `synced_at`; stale badge offline |
+| Proxy hardened w/o login | Receipt validation, per-device rate limits, App Attest/Play Integrity when available, cert pinning, versioned contract |
+| Web unchanged | `next-auth` + credits + Gemini stay (billing needs server identity) |
+
+Rollback: §2.0 above is intact — restoring it means re-gating boot on the JWT bridge and Supabase queries. ADR-002 §Revisit triggers govern the call.
 
 ---
 
@@ -229,3 +299,32 @@ Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.
 4. ~~**Phase 3b design contract — literal pixel parity or shared design system?**~~ **DECIDED 2026-09-10: shared design system, recomposed for mobile.** Rationale: the web pages are desktop split-panel layouts that cannot render acceptably on a 375pt phone; a literal port would ship a *worse* experience. See §5 decision table.
 5. ~~**Mobile sign-up — native form or embedded web view?**~~ **DECIDED 2026-09-10: native form.** Rationale: embedded-web sign-up inherits the known Android cookie-isolation wall (Chrome Custom Tabs in `WebBrowser.openAuthSessionAsync` does not share cookies with the app's `fetch` — the exact problem `exchange-redirect` was built for). A native form posting to the existing `POST /api/auth/register` sidesteps it and reuses web's validation + error copy. Now in scope for 3b.5, not deferred.
 6. **Landing page on web too?** (NEW) Web currently goes straight to `HeroSection` on `/`. Out of scope for this amendment unless wanted.
+
+---
+
+## 7. Amendment 2026-09-12 — Local-first pivot (ADR-002, Proposed, pending review)
+
+**Supersedes §2 "One user. One database. One auth" for mobile only.** Web unchanged (`next-auth` + credits + Gemini stay — billing enforcement needs server identity).
+
+### What changes
+
+| # | Change | Files touched | Acceptance |
+|---|---|---|---|
+| 7.1 | SQLite core loop: `trips` table mirroring `itineraries` columns, single active profile, nullable `profile_id` reserved (multi-profile later = additive) | `tarana-mobile/src/db/*` (new) | Trips CRUD works airplane-mode, no token |
+| 7.2 | `SavedTrips` reads SQLite, not Supabase; remove `Sign in first` wall | `tarana-mobile/src/screens/SavedTrips.tsx:30-51` | Renders offline from local DB |
+| 7.3 | `Spots`: bundled Baguio curated pool offline; non-Baguio = cached snapshot + `synced_at` stale badge; live TomTom/photos only when online | `tarana-mobile/src/screens/Spots.tsx:36-52` | Offline shows cache, online enriches |
+| 7.4 | Auth demoted: Landing → Home directly; `exchangeForMobileToken()` moves to Settings → "Link web account" (one-time import) | `tarana-mobile/App.tsx:34`, `src/auth.ts:59-80` | Boot needs no network, no login |
+| 7.5 | Binary hygiene: remove Supabase anon key from `app.json extra`; `webBaseUrl` becomes enrichment-only | `tarana-mobile/app.json:30-34` | Zero server keys in binary |
+| 7.6 | Proxy hardening (no user login): receipt validation for enrichment, per-device rate limits, App Attest/Play Integrity when available, cert pinning, server feature flags | web `/api/spots`, `/api/auth/mobile-token` | Cloned/unsigned clients get degraded local-only |
+
+### What stays server-side (the anti-clone brain — never ships)
+
+Ranking/rotation, image tier chain (`src/lib/services/imageService.ts`), traffic fusion, itinerary prompts. Mobile caches outputs, never owns the algorithm. Curated-pool refreshes ship via API/OTA weekly so clones rot.
+
+### Explicitly deferred
+
+Multi-profile UI (schema-ready only), friend/social graph, cross-device auto-sync. Share-via-link precedes all three.
+
+### Kill-gate unchanged
+
+Phase 2 local-model quality test (§6 Q1) still decides the paid premise. Build 7.1–7.5 only after it passes, or timebox 7.1 as the offline test harness for it.
