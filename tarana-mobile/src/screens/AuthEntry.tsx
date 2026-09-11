@@ -12,6 +12,7 @@
  */
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeIcon } from './icons';
 import { DotsGrid, Sparkles } from './decor';
 import SignInScreen from './SignIn';
@@ -36,6 +37,9 @@ export default function AuthEntry({
   // Deep-links (e.g. SignUp's "Already have an account? Sign in") land here
   // with `{ mode: 'signin' }`; default stays `signin` when absent.
   const [mode, setMode] = useState<Mode>(route?.params?.mode ?? 'signin');
+  // Safe-area top inset keeps the absolute Home button below the camera/notch
+  // and the time/battery row, so it never overlaps the system chrome.
+  const insets = useSafeAreaInsets();
 
   // After a successful sign-in or sign-up, drop into the signed-in state:
   // switch the toggle to Login (so the user is not stuck on a Register
@@ -46,14 +50,15 @@ export default function AuthEntry({
   };
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <DotsGrid />
       <Sparkles />
       {/* Mobile Back to Home — mirrors the web signin page's md:hidden Home button
           (`src/app/auth/signin/page.tsx:157-163`), which is the mobile-view
-          affordance the web app ships. */}
+          affordance the web app ships. Pinned to the safe-area top so it sits
+          below the camera/notch and the time/battery row. */}
       <TouchableOpacity
-        style={styles.homeBtn}
+        style={[styles.homeBtn, { top: insets.top + 16 }]}
         activeOpacity={0.85}
         accessibilityRole="button"
         accessibilityLabel="Back to home"
@@ -103,15 +108,12 @@ export default function AuthEntry({
           <SignUpScreen navigation={navigation} onSignedIn={onSignedIn} />
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  // Top-heavy breathing room: the whole auth shell (header → toggle → form)
-  // shifts down together as one unit so the inter-component spacing is
-  // preserved. The absolute DotsGrid/Sparkles stay pinned to top:0.
-  root: { flex: 1, backgroundColor: '#ffffff', paddingHorizontal: 40, paddingTop: 40, paddingBottom: 24, justifyContent: 'flex-start' },
+  root: { flex: 1, backgroundColor: '#ffffff', paddingHorizontal: 40, paddingTop: 0, paddingBottom: 24, justifyContent: 'flex-start' },
   homeBtn: {
     position: 'absolute',
     top: 16,
@@ -126,7 +128,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   homeBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '500' },
-  header: { alignItems: 'center', marginBottom: 28 },
+  header: { alignItems: 'center', marginTop: 56, marginBottom: 32 },
   brandAccentBar: { width: 32, height: 4, backgroundColor: BRAND_BLUE, borderRadius: 4, marginBottom: 20 },
   title: { fontSize: 28, fontWeight: '600', color: '#111827', textAlign: 'center', lineHeight: 34 },
   titleAccent: { color: BRAND_BLUE },
@@ -145,5 +147,5 @@ const styles = StyleSheet.create({
   pillText: { color: BRAND_BLUE, fontSize: 14, fontWeight: '500' },
   pillTextActive: { color: '#ffffff' },
 
-  formShell: { flex: 1, width: '100%', maxWidth: 448, alignSelf: 'center' },
+  formShell: { flex: 1, width: '100%', maxWidth: 448, alignSelf: 'center', justifyContent: 'center' },
 });
