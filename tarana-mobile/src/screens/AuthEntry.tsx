@@ -108,7 +108,10 @@ export default function AuthEntry({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#ffffff', paddingHorizontal: 40, paddingVertical: 24, justifyContent: 'flex-start' },
+  // Top-heavy breathing room: the whole auth shell (header → toggle → form)
+  // shifts down together as one unit so the inter-component spacing is
+  // preserved. The absolute DotsGrid/Sparkles stay pinned to top:0.
+  root: { flex: 1, backgroundColor: '#ffffff', paddingHorizontal: 40, paddingTop: 40, paddingBottom: 24, justifyContent: 'flex-start' },
   homeBtn: {
     position: 'absolute',
     top: 16,
