@@ -1,6 +1,6 @@
 # Tarana Mobile App — Implementation Plan
 
-**Status:** Phase 1 complete (2026-09-09, PR #388) | **Phase 3 complete** — toolchain (#397), navigation + NativeWind (#398), saved-trips + spots screens (#399) all merged; simulator run done 2026-09-11 | **Phase 3b (2026-09-10):** mobile landing page + sign-in/sign-up screens mirroring web UI/UX — **implemented + verified (tsc clean, Metro bundle green, re-verified 2026-09-11)** | **Amendment 2026-09-12 (§7, ADR-002 Proposed):** local-first pivot under review — core loop to SQLite, no login gate; server retained as enrichment proxy + optional sync | **Mode:** Build
+**Status:** Phase 1 complete (2026-09-09, PR #388) | **Phase 3 complete** — toolchain (#397), navigation + NativeWind (#398), saved-trips + spots screens (#399) all merged; simulator run done 2026-09-11 | **Phase 3b (2026-09-10):** mobile landing page + sign-in/sign-up screens mirroring web UI/UX — **implemented + verified (tsc clean, Metro bundle green, re-verified 2026-09-11)** | **Amendment 2026-09-12 (§7, ADR-002 Proposed):** local-first pivot under review — core loop to SQLite, no login gate; server retained as enrichment proxy + optional sync | **§8 page map (2026-09-12):** web → mobile ship/defer/cut per page, verified against `src/app` | **Mode:** Build
 **Scope:** Paid mobile app (Expo/React Native) with on-device local LLMs. Web app remains free tier (credits, rate-limited free Gemini). Freemium: web = funnel, mobile = premium.
 **Depends on:** `next-auth` (web source of truth, unchanged), Supabase Postgres (server brain + enrichment proxy), free Gemini (`GOOGLE_GEMINI_API_KEY`), SQLite on device (`expo-sqlite`, §2.1)
 
@@ -351,3 +351,37 @@ Pre-repurpose auth screens are tagged, not kept in-tree (dead screens rot; Metro
   - `git show mobile-auth-ui-v1:tarana-mobile/src/screens/SignIn.tsx`
   - `git show mobile-auth-ui-v1:tarana-mobile/src/screens/SignUp.tsx`
 - Covers 7.4 rollback: if shared-auth returns per ADR-002 revisit triggers, re-apply these screens onto the §2.0 architecture (also preserved verbatim).
+
+---
+
+## 8. Web → mobile page map (verified 2026-09-12 against `src/app`)
+
+Name correction: there is **no `/tarana-gala` route** — Gala is `/itinerary-generator` (`Sidebar.tsx:167-170`). Mobile maps Gala → a future Plan screen, never a same-name route.
+
+### Verdicts (ship / build-later / cut — with the load-bearing reason)
+
+| Web page | Mobile verdict | Reason (evidence) |
+|---|---|---|
+| Dashboard `/dashboard` | CUT, not ported | Session-walled mashup of referrals/credits/stats/weather/spots/cafes (`page.tsx:161-167` redirects unauthenticated). Referrals/credits/tiers are funnel mechanics — meaningless in a paid offline app (ADR-002). Home hub already covers entry; its data goes to Spots / Eats-later / per-trip weather. |
+| Gala `/itinerary-generator` | NEW Plan screen, **gated on Phase 2** | `POST` generation is 401-without-session + 402-without-credits by design (`route.ts:230-249`, fail-closed). Mobile cannot ride it — only path is on-device LLM + SQLite save. Until the Phase-2 quality gate passes, a Plan button is a dead end, so it stays out. Metro: form logic portable; `ItineraryMap` (`window.tt`, `ItineraryMap.tsx:69-95`) stays web-only → static snapshot or no map in v1. |
+| Eats `/tarana-eats` | NEW Eats screen, **after trips loop** | Best local-first fit: static catalog (`restaurants.ts` + 20 `menus/*.ts`) bundles offline — Baguio subset first, the full set too heavy for a v1 binary. Web already proves rule-based works without AI (`food-recommendations/route.ts:388-391` free fallback). Saves to a new SQLite `meals` table. POST AI path unusable (401 at `route.ts:79-85`) — local LLM or fallback only. Metro: `FoodMatchCard` next/image + StaticImageData → URL-string/bundled assets. |
+| Explore `/tarana-explore` (public, 27-line page) | DEFER post-launch | Zero auth (`grep` over dir: no session/credit refs) is tempting, but heaviest native cost: the `InteractiveRouteMap` on the `window` TomTom SDK + the animated `FloatingSearchCard` → needs `react-native-maps` (new native dep, keys, review surface). Routing/traffic is inherently live — no offline story. Documented HTTP surface for later: `locations/search`, `routes/calculate`, `weather`. |
+| Saved trips list `/saved-trips` | DONE (SQLite, §7.2) | — |
+| Trip detail `/saved-trips/[id]` | NEW TripDetail, **read-only + delete in v1** | Reads the SQLite `payload` already stored by import. Web refresh (`GET/POST …/refresh`, 401 at `refresh/route.ts:56-63`) deferred to post-Phase-4 local re-run. `PlaceDetail` modal → inline section (modals + 375pt don't mix; keep simple). |
+| Saved meals `/saved-meals` + detail | NEW SavedCafes + detail, **after Eats** | Needs SQLite `meals` table (7.1 extension), enrichment from bundled catalog, scoped by `profile_id`. **Web bug flagged (not mobile scope):** `getSavedMealById` filters `.eq('id')` with no `user_id` (`supabaseMeals.ts:31-36`) — mobile must not repeat this; trips pattern (profile-scoped everywhere) is the rule. |
+| Settings `/settings` | DIVERGE, not a port (built) | Web settings PATCHes the server profile behind a session (`page.tsx:112-133`, 401 at `profile/route.ts:12-17`). Mobile has no session to authorize that — mobile Settings stays local (profile + About + Link + sign-out). Recorded divergence, not debt. |
+| Auth pages `/auth/*` | SUPERSEDED (§7.4) | — |
+| Referrals / credits / tiers / stats / invite | CUT on mobile | No credits, no tiers, no invites in a one-time-purchase app. |
+| About / terms / privacy | About row in Settings (Terms + Privacy done) | Contact page: add only if support needs it. |
+
+### HTTP surface mobile may use (all verified session-free)
+
+`GET /api/spots?city=`, `GET /api/weather?lat&lon` (no `getServerSession` in route), `GET /api/locations/search`, `POST /api/routes/calculate`, `GET /api/stats` (About/debug). Session-gated — link/import context only, never core loop: credits, profile, saved-meals API, refresh, mobile-token.
+
+### Metro rules for every screen above (banned → replacement)
+
+`next/image` + `StaticImageData` → URL-string/bundled PNG · `lucide-react` → inline SVG in `./icons` (established) · `framer-motion` → static or Reanimated (new dep only if motion earns it) · `window.*` SDKs → stay server-side behind proxy · Node `crypto`/`buffer` → never imported · portable as-is: `cityConfig`, pure utils, `dailyRotation`, traffic thresholds.
+
+### Nav target (rows appear only when their slice lands — no dead buttons)
+
+`Landing → AuthEntry (fresh/import) → Home` hub: Trips (done), Spots (done), Settings (done) → then TripDetail → Eats → SavedCafes → Plan (post-Phase-2). Each row is added by its own slice with its own tsc + bundle + device gates.
