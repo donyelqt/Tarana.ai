@@ -108,7 +108,7 @@ export default function AuthEntry({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#ffffff', paddingHorizontal: 40, paddingVertical: 24, justifyContent: 'center' },
+  root: { flex: 1, backgroundColor: '#ffffff', paddingHorizontal: 40, paddingVertical: 24, justifyContent: 'flex-start' },
   homeBtn: {
     position: 'absolute',
     top: 16,
