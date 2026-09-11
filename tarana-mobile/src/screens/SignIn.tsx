@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
-import { EyeIcon, EyeSlashIcon } from './icons';
+import { EyeIcon, EyeSlashIcon, GoogleIcon } from './icons';
 import { exchangeForMobileToken } from '../auth';
 import { config } from '../config';
 
@@ -17,6 +17,7 @@ export default function SignIn({ navigation, onSignedIn }: { navigation: any; on
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const passwordRef = useRef<TextInput>(null);
 
   const completeExchange = async () => {
     await exchangeForMobileToken();
@@ -65,7 +66,8 @@ export default function SignIn({ navigation, onSignedIn }: { navigation: any; on
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView style={styles.kav} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView style={styles.root} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.form}>
         <View style={styles.field}>
           <Text style={styles.label}>Email</Text>
@@ -76,6 +78,10 @@ export default function SignIn({ navigation, onSignedIn }: { navigation: any; on
             onChangeText={setEmail}
             autoCapitalize="none"
             autoComplete="email"
+            keyboardType="email-address"
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => passwordRef.current?.focus()}
             accessibilityLabel="Email"
           />
         </View>
@@ -83,12 +89,15 @@ export default function SignIn({ navigation, onSignedIn }: { navigation: any; on
           <Text style={styles.label}>Password</Text>
           <View style={styles.row}>
             <TextInput
+              ref={passwordRef}
               style={[styles.input, { flex: 1, marginRight: 8 }]}
               placeholder="Enter your Password"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               autoComplete="current-password"
+              returnKeyType="done"
+              onSubmitEditing={() => { if (!loading) void handleSubmit(); }}
               accessibilityLabel="Password"
             />
             <TouchableOpacity
@@ -146,33 +155,37 @@ export default function SignIn({ navigation, onSignedIn }: { navigation: any; on
           accessibilityRole="button"
           accessibilityLabel="Continue with Google"
         >
+          <GoogleIcon size={16} />
           <Text style={styles.googleText}>Google</Text>
         </TouchableOpacity>
       </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#ffffff', padding: 24, justifyContent: 'center' },
-  form: { width: '100%', maxWidth: 420, alignSelf: 'center' },
+  kav: { flex: 1, backgroundColor: '#ffffff' },
+  root: { flex: 1, backgroundColor: '#ffffff' },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 40, paddingVertical: 24 },
+  form: { width: '100%', maxWidth: 448, alignSelf: 'center' },
   field: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 6 },
   row: { flexDirection: 'row', alignItems: 'center' },
   rowEnd: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 4, marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', borderRadius: 16, paddingVertical: 12, paddingHorizontal: 14, fontSize: 16, color: '#111827' },
+  input: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, fontSize: 16, color: '#111827' },
   eye: { padding: 4 },
   forgot: { fontSize: 12, color: '#9ca3af' },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 8, padding: 10, marginBottom: 12 },
   errorText: { color: '#dc2626', fontSize: 13 },
-  ctaOuter: { borderRadius: 24, marginTop: 4 },
-  cta: { paddingVertical: 14, borderRadius: 24, alignItems: 'center' },
+  ctaOuter: { borderRadius: 16, marginTop: 4 },
+  cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
   ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
   terms: { fontSize: 11, color: '#6b7280', textAlign: 'center', marginTop: 16, lineHeight: 16 },
   link: { color: BLUE, fontWeight: '500' },
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#d1d5db' },
   dividerText: { marginHorizontal: 12, fontSize: 12, color: '#6b7280', backgroundColor: '#f3f4f6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  google: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', paddingVertical: 14, borderRadius: 24, alignItems: 'center' },
+  google: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', paddingVertical: 14, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   googleText: { color: '#111827', fontSize: 16, fontWeight: '500' },
 });
