@@ -6,7 +6,10 @@
  * - `DotsGrid` mirrors web `FadingDotGrid` defaults: dot #93c5fd, 3px
  *   diameter, 14px pitch, region 55% × 60% anchored top-right. The web mask
  *   `radial-gradient(ellipse 70% 70% at 70% 20%, black 0%, 40% at 55%,
- *   transparent 100%)` is replicated as a pure function of normalized coords.
+ *   transparent 100%)` is replicated as a product-of-two-edge-fades anchored at
+ *   the top-right corner (see `maskAlpha`), since RN has no CSS mask to clip
+ *   the region with. The wedge dissolves before the form, so it never reads
+ *   as a square block.
  * - `Sparkles` mirrors web `GeminiSparkles` (blue variant): seeded LCG,
  *   count 35, size 2+r()*5, opacity 0.18+r()*0.45, color rgba(96,165,250,·).
  *   The web twinkle is ported to RN `Animated` (reanimated is not a dep):
@@ -25,26 +28,37 @@ const DOT_SIZE = 3;
 const DOT_RADIUS = DOT_SIZE / 2;
 const GRID_PITCH = 14;
 
-// Web mask: ellipse 70% 70% at 70% 20%, black 0%, 40% at 55%, transparent 100%.
-const MASK_CX = 0.7;
-const MASK_CY = 0.2;
-const MASK_RX = 0.7;
-const MASK_RY = 0.7;
-const MASK_MID_STOP = 0.55;
-const MASK_MID_ALPHA = 0.4;
+/**
+ * Corner fade — bright at the top-right corner, fading to transparent toward
+ * the left edge, the bottom edge, and the bottom-left corner.
+ *
+ * The web `FadingDotGrid` mask is
+ *   radial-gradient(ellipse 70% 70% at 70% 20%, black 0%, 40% at 55%, transparent 100%)
+ * i.e. an oval glow concentrated in the upper-right. RN can't paint a CSS mask,
+ * so the fade is evaluated per-dot. A radial fade is the wrong tool here: it
+ * leaves the grid's rectangular bounding box fully populated (dots at the far
+ * corners merely turn dim), which reads as an "awkward square" behind the
+ * form — the bottom-right corner stays bright and the right edge is a solid
+ * vertical band all the way down to the input fields.
+ *
+ * A product-of-two-edge-fades is the right shape: `alpha = (1 - tx^P) *
+ * (1 - ty^Q)` anchored at the top-right corner. At the left edge (tx=1) it is
+ * zero, at the bottom edge (ty=1) it is zero, and at the bottom-right corner
+ * (tx=0, ty=1) it is ALSO zero — so every rectangular outline dissolves and
+ * only a diagonal wedge in the upper-right remains. The horizontal exponent
+ * is slightly lower than the vertical so the wedge spreads leftward more than
+ * it descends, i.e. the visible band slants left.
+ */
+const FADE_X = 0.85; // horizontal (leftward) fade exponent — lower = wider band
+const FADE_Y = 1.5; // vertical (downward) fade exponent — higher = dies faster
 
 function maskAlpha(nx: number, ny: number): number {
-  const dx = (nx - MASK_CX) / MASK_RX;
-  const dy = (ny - MASK_CY) / MASK_RY;
-  const d = Math.sqrt(dx * dx + dy * dy);
-  let alpha: number;
-  if (d <= 0) {
-    alpha = 1;
-  } else if (d < MASK_MID_STOP) {
-    alpha = 1 - 0.6 * (d / MASK_MID_STOP);
-  } else {
-    alpha = MASK_MID_ALPHA * (1 - (d - MASK_MID_STOP) / (1 - MASK_MID_STOP));
-  }
+  // nx, ny are normalized 0..1 within the grid region (0,0 = top-left).
+  const tx = 1 - nx; // 0 at right edge, 1 at left edge
+  const ty = ny; // 0 at top edge, 1 at bottom edge
+  const fx = 1 - Math.pow(tx, FADE_X);
+  const fy = 1 - Math.pow(ty, FADE_Y);
+  const alpha = fx * fy;
   return alpha < 0 ? 0 : alpha;
 }
 
@@ -59,6 +73,11 @@ function seededRandom(seed: number) {
 
 export const DotsGrid = memo(function DotsGrid() {
   const { width: winW, height: winH } = useWindowDimensions();
+
+  // Anchored top-right (matches the web `FadingDotGrid` corner="top-right",
+  // widthFraction 0.55, heightFraction 0.6). The fade is a product-of-two-
+  // edge-fades anchored at the top-right corner, so the visible dots form a
+  // diagonal wedge — never a square block — and dissolve before the form.
   const regionW = winW * 0.55;
   const regionH = winH * 0.6;
 
