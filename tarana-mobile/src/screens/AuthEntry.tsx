@@ -139,5 +139,5 @@ const styles = StyleSheet.create({
   pillText: { color: BRAND_BLUE, fontSize: 14, fontWeight: '500' },
   pillTextActive: { color: '#ffffff' },
 
-  formShell: { width: '100%', maxWidth: 448, alignSelf: 'center' },
+  formShell: { flex: 1, width: '100%', maxWidth: 448, alignSelf: 'center' },
 });

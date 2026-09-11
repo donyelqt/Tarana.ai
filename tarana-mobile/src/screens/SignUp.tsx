@@ -140,7 +140,7 @@ export default function SignUp({ navigation, onSignedIn }: { navigation: any; on
 const styles = StyleSheet.create({
   kav: { flex: 1, backgroundColor: '#ffffff' },
   root: { flex: 1, backgroundColor: '#ffffff' },
-  container: { flexGrow: 1, paddingHorizontal: 40, paddingVertical: 24 },
+  container: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 40, paddingVertical: 24 },
   form: { width: '100%', maxWidth: 448, alignSelf: 'center' },
   field: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 6 },
