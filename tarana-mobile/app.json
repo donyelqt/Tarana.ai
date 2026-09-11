@@ -25,8 +25,7 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-web-browser",
-      "expo-sqlite"
+      "expo-web-browser"
     ],
     "extra": {
       "webBaseUrl": "http://10.0.2.2:3000",
