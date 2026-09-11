@@ -329,6 +329,19 @@ Multi-profile UI (schema-ready only), friend/social graph, cross-device auto-syn
 
 Phase 2 local-model quality test (§6 Q1) still decides the paid premise. Build 7.1–7.5 only after it passes, or timebox 7.1 as the offline test harness for it.
 
+### 7.4 screen breakdown (repurpose, no redesign)
+
+Design system stays pixel-identical (brand tokens, gradient CTAs, cards, layout). Only fields, copy, and navigation change:
+
+| Screen | Becomes | Keep | Change | Acceptance |
+|---|---|---|---|---|
+| `SignUp.tsx` | `ProfileCreate` (first-run local profile) | Full Name input, styles, gradient CTA, layout | CTA "Create Account" → "Start Planning"; delete email, password, confirm, strength meter, ToS checkbox; drop `validatePasswordStrength` import; no `POST /api/auth/register` — writes display name to SQLite | First run creates local profile offline, lands on Home |
+| `SignIn.tsx` | `LinkAccount` (Settings-only) | Email + password inputs, show/hide, gradient CTA, error states | Copy "Sign in" → "Link web account" + "Import your web trips" subcopy; reachable from Settings only, never blocks boot | Hidden from boot flow; links + imports when invoked |
+| `AuthEntry.tsx` | Delete | — | Signin/signup toggle has no purpose with one local profile | No references remain (nav + imports) |
+| `AuthGate.tsx` | Delete (or keep as post-link callback) | — | Boot no longer passes through it | `initialRouteName` chain bypasses it |
+| `Landing.tsx` | Unchanged design | Hero, how-it-works, footer, CTA style | CTA → `ProfileCreate` first run, → `Home` ("Continue") when profile exists | Both paths verified on device |
+| Terms/Privacy links | Move to Settings → About | Link components | Out of creation flow (nothing to consent to locally) | Reachable, not gating |
+
 ### Preservation (auth UI snapshot)
 
 Pre-repurpose auth screens are tagged, not kept in-tree (dead screens rot; Metro/tsc must never see them):
