@@ -313,7 +313,7 @@ Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.
 | 7.1 | SQLite core loop: `trips` table mirroring `itineraries` columns, single active profile, nullable `profile_id` reserved (multi-profile later = additive) | `tarana-mobile/src/db/*` (new) | Trips CRUD works airplane-mode, no token |
 | 7.2 | `SavedTrips` reads SQLite, not Supabase; remove `Sign in first` wall | `tarana-mobile/src/screens/SavedTrips.tsx:30-51` | Renders offline from local DB |
 | 7.3 | `Spots`: bundled Baguio curated pool offline; non-Baguio = cached snapshot + `synced_at` stale badge; live third-party POIs/photos only when online | `tarana-mobile/src/screens/Spots.tsx:36-52` | Offline shows cache, online enriches |
-| 7.4 | Auth demoted: Landing → Home directly; `exchangeForMobileToken()` moves to Settings → "Link web account" (one-time import) | `tarana-mobile/App.tsx:34`, `src/auth.ts:59-80` | Boot needs no network, no login |
+| 7.4 | Auth demoted: Landing → AuthEntry (Start fresh → ProfileCreate \| Import → LinkAccount) → Home; `exchangeForMobileToken()` lives behind the Import tab (one-time import) | `tarana-mobile/App.tsx:34`, `src/auth.ts:59-80`, `src/screens/AuthEntry.tsx:23-110` | Boot needs no network, no login; toggle preserved with rebound semantics |
 | 7.5 | Binary hygiene: remove Supabase anon key from `app.json extra`; `webBaseUrl` becomes enrichment-only | `tarana-mobile/app.json:30-34` | Zero server keys in binary |
 | 7.6 | Proxy hardening (no user login): receipt validation for enrichment, per-device rate limits, App Attest/Play Integrity when available, cert pinning, server feature flags | web `/api/spots`, `/api/auth/mobile-token` | Cloned/unsigned clients get degraded local-only |
 
@@ -337,7 +337,7 @@ Design system stays pixel-identical (brand tokens, gradient CTAs, cards, layout)
 |---|---|---|---|---|
 | `SignUp.tsx` | `ProfileCreate` (first-run local profile) | Full Name input, styles, gradient CTA, layout | CTA "Create Account" → "Start Planning"; delete email, password, confirm, strength meter, ToS checkbox; drop `validatePasswordStrength` import; no `POST /api/auth/register` — writes display name to SQLite | First run creates local profile offline, lands on Home |
 | `SignIn.tsx` | `LinkAccount` (Settings-only) | Email + password inputs, show/hide, gradient CTA, error states | Copy "Sign in" → "Link web account" + "Import your web trips" subcopy; reachable from Settings only, never blocks boot | Hidden from boot flow; links + imports when invoked |
-| `AuthEntry.tsx` | Delete | — | Signin/signup toggle has no purpose with one local profile | No references remain (nav + imports) |
+| `AuthEntry.tsx` | Repurpose shell (keep file + pill UI) | Segmented toggle, header shell, Home button, formShell, mode-param pattern | Mode `'signin'|'signup'` → `'fresh'|'import'`; pills "Start fresh" → ProfileCreate, "Import" → LinkAccount; `onSignedIn` → `onDone`; LinkAccount lazily imported so the offline first-run path stays lean | Toggle switches fresh/import; Landing → AuthEntry defaults fresh; Settings → AuthEntry import |
 | `AuthGate.tsx` | Delete (or keep as post-link callback) | — | Boot no longer passes through it | `initialRouteName` chain bypasses it |
 | `Landing.tsx` | Unchanged design | Hero, how-it-works, footer, CTA style | CTA → `ProfileCreate` first run, → `Home` ("Continue") when profile exists | Both paths verified on device |
 | Terms/Privacy links | Move to Settings → About | Link components | Out of creation flow (nothing to consent to locally) | Reachable, not gating |
