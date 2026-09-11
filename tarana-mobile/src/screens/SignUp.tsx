@@ -77,9 +77,9 @@ export default function SignUp({ navigation, onSignedIn }: { navigation: any; on
         </View>
         <View style={styles.field}>
           <Text style={styles.label}>Password</Text>
-          <View style={styles.row}>
-            <TextInput ref={passwordRef} style={[styles.input, { flex: 1, marginRight: 8 }]} placeholder="Enter your Password" value={password} onChangeText={setPassword} secureTextEntry={!showPw} autoComplete="new-password" returnKeyType="next" blurOnSubmit={false} onSubmitEditing={() => confirmRef.current?.focus()} accessibilityLabel="Password" />
-            <TouchableOpacity style={styles.eye} onPress={() => setShowPw((p) => !p)} accessibilityLabel={showPw ? 'Hide password' : 'Show password'}>{showPw ? <EyeSlashIcon size={20} /> : <EyeIcon size={20} />}</TouchableOpacity>
+          <View style={styles.pwWrap}>
+            <TextInput ref={passwordRef} style={[styles.input, { paddingRight: 40 }]} placeholder="Enter your Password" value={password} onChangeText={setPassword} secureTextEntry={!showPw} autoComplete="new-password" returnKeyType="next" blurOnSubmit={false} onSubmitEditing={() => confirmRef.current?.focus()} accessibilityLabel="Password" />
+            <TouchableOpacity style={styles.eyeOverlay} onPress={() => setShowPw((p) => !p)} accessibilityLabel={showPw ? 'Hide password' : 'Show password'}>{showPw ? <EyeSlashIcon size={20} /> : <EyeIcon size={20} />}</TouchableOpacity>
           </View>
           {ps ? (
             <View style={styles.meter}>
@@ -92,9 +92,9 @@ export default function SignUp({ navigation, onSignedIn }: { navigation: any; on
         </View>
         <View style={styles.field}>
           <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.row}>
-            <TextInput ref={confirmRef} style={[styles.input, { flex: 1, marginRight: 8 }]} placeholder="Re-enter your Password" value={confirm} onChangeText={setConfirm} secureTextEntry={!showCPw} autoComplete="new-password" returnKeyType="done" onSubmitEditing={() => { if (!loading) void handleSubmit(); }} accessibilityLabel="Confirm Password" />
-            <TouchableOpacity style={styles.eye} onPress={() => setShowCPw((p) => !p)} accessibilityLabel={showCPw ? 'Hide password' : 'Show password'}>{showCPw ? <EyeSlashIcon size={20} /> : <EyeIcon size={20} />}</TouchableOpacity>
+          <View style={styles.pwWrap}>
+            <TextInput ref={confirmRef} style={[styles.input, { paddingRight: 40 }]} placeholder="Re-enter your Password" value={confirm} onChangeText={setConfirm} secureTextEntry={!showCPw} autoComplete="new-password" returnKeyType="done" onSubmitEditing={() => { if (!loading) void handleSubmit(); }} accessibilityLabel="Confirm Password" />
+            <TouchableOpacity style={styles.eyeOverlay} onPress={() => setShowCPw((p) => !p)} accessibilityLabel={showCPw ? 'Hide password' : 'Show password'}>{showCPw ? <EyeSlashIcon size={20} /> : <EyeIcon size={20} />}</TouchableOpacity>
           </View>
         </View>
 
@@ -140,11 +140,13 @@ export default function SignUp({ navigation, onSignedIn }: { navigation: any; on
 const styles = StyleSheet.create({
   kav: { flex: 1, backgroundColor: '#ffffff' },
   root: { flex: 1, backgroundColor: '#ffffff' },
-  container: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 40, paddingVertical: 24 },
+  container: { flexGrow: 1, justifyContent: 'flex-start', paddingHorizontal: 40, paddingVertical: 24 },
   form: { width: '100%', maxWidth: 448, alignSelf: 'center' },
   field: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 6 },
   row: { flexDirection: 'row', alignItems: 'center' },
+  pwWrap: { position: 'relative', justifyContent: 'center' },
+  eyeOverlay: { position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center', padding: 4 },
   input: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, fontSize: 16, color: '#111827' },
   eye: { padding: 4 },
   checkbox: { width: 16, height: 16, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 4, backgroundColor: '#ffffff' },
