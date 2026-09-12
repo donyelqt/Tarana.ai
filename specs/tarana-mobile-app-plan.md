@@ -401,7 +401,7 @@ No MCP tools exist in this environment, so reference-study came from the shipped
 
 ### Stack overrides (project already differs — kept deliberately)
 
-React Navigation native stack (no Expo Router migration), no Reanimated/Gesture-handler/FlashList/`expo-image` (frequency gate: hub/lists are low-motion and small — native transitions + `FlatList` suffice; each gets a revisit trigger instead of a preemptive dep), `expo-linear-gradient` for the brand CTA (brand-mandated, not decorative).
+React Navigation native stack (no Expo Router migration), no Gesture-handler/FlashList/`expo-image` (frequency gate stood — hub/lists are low-motion and small; revisit triggers remain). Reanimated + WebView added 2026-09-13 (Explore island morph + TomTom embed; the recorded revisit trigger fired — both Go-bundled, no dev-build needed). `expo-linear-gradient` for the brand CTA (brand-mandated, not decorative).
 
 ### Fidelity + anti-slop locks
 
@@ -415,6 +415,6 @@ Screens import ONLY `../data` (+ `../config` for link URLs, navigator props). Ve
 
 Done: Landing, AuthEntry shell, ProfileCreate, LinkAccount, Home (spots-only hub), SavedTrips (SQLite + thumbs), TripDetail, Spots (top-3 parity + badges + Maps CTA), SavedCafes + CafeDetail, Eats (vendored catalog + local suggest), Plan form (Phase-2-gated generate), Explore (list-based routes), Settings, MainTabs + ActionSheet, grouped-canvas + gradient-pill polish, canonical GradientCTA (auth/app variants from verified web stops). Next: device run, then sliced PRs. 7.3 bundled-cache, 7.5 hygiene, 7.6 hardening: not started.
 
-### Explore rule (user call, recorded)
+### Explore rule (user call, recorded + SUPERSEDED 2026-09-13)
 
-When Explore ships, it mirrors the web `ExploreMapView` mobile composition (top search card + bottom route sheet) recomposed native — not a fresh design. Still deferred: needs `react-native-maps` + live routing has no offline story.
+~~When Explore ships, it mirrors the web `ExploreMapView` mobile composition (top search card + bottom route sheet) recomposed native — not a fresh design. Still deferred: needs `react-native-maps` + live routing has no offline story.~~ **Superseded:** user ordered the real TomTom map + island motion. Map = first-party `/embed/map` (same `InteractiveRouteMap`, key stays allowlisted server-side, zero keys in binary) in a WebView bridge; island = Reanimated with the identical 210/23 spring. `react-native-maps` was evaluated and removed same-session (wrong map). Still deferred: silent 5-min traffic refresh (traffic-analysis endpoint session-free status unverified), departure picker (new native dep).

@@ -220,6 +220,46 @@ export function PlusIcon({ size = 28, color = '#ffffff', strokeWidth = 2.5 }: Ic
   );
 }
 
+/** Tilt cube — Explore 3D toggle. Simple geometric mark, same stroke language. */
+export function TiltIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M21 8l-9-5-9 5v8l9 5 9-5V8z" />
+      <Path d="M3 8l9 5 9-5" />
+      <Path d="M12 13v8" />
+    </Svg>
+  );
+}
+
+/** Layers — Explore map-style toggle. Simple geometric mark, same stroke language. */
+export function LayersIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M12 2l9 5-9 5-9-5 9-5z" />
+      <Path d="M3 12l9 5 9-5" />
+      <Path d="M3 17l9 5 9-5" />
+    </Svg>
+  );
+}
+
 // Re-exported as a RN-friendly wrapper so consumers can render via JSX without
 // touching the SVG namespace.
 export const Icon = ({ children }: { children: React.ReactNode }) => (
