@@ -210,14 +210,101 @@ export type RouteStep = {
   seconds: number;
 };
 
+export type RouteTrafficLevel = 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
+
+/** Web parity: RouteType/VehicleType from `src/types/route-optimization.ts:33-34`. */
+export type ExploreRouteType = 'fastest' | 'shortest' | 'eco' | 'thrilling';
+export type ExploreVehicleType = 'car' | 'truck' | 'motorcycle' | 'bicycle' | 'walk';
+
+/**
+ * Web parity: FloatingSearchCard preferences (minus departureTime — that
+ * needs a native datetime picker dep; the web default is unset, so
+ * defaults stay at parity). Scenic sends 'thrilling' (web value).
+ */
+export type ExplorePreferences = {
+  routeType: ExploreRouteType;
+  vehicleType: ExploreVehicleType;
+  avoidTolls?: boolean;
+  avoidHighways?: boolean;
+  avoidFerries?: boolean;
+  avoidTrafficJams?: boolean;
+};
+
+/** Web parity: ExploreMapView DEFAULT_PREFERENCES (routeType fastest, car, avoid jams). */
+export const DEFAULT_EXPLORE_PREFS: ExplorePreferences = {
+  routeType: 'fastest',
+  vehicleType: 'car',
+  avoidTrafficJams: true,
+};
+
+/**
+ * Web parity: ExploreMapView POPULAR_LOCATIONS (pure data, Metro-safe).
+ * Shown when the field is not actively typing — same isTyping rule as
+ * FloatingSearchCard LocationField. lng → lon at the boundary.
+ */
+export const POPULAR_LOCATIONS: Place[] = [
+  { id: 'uc_baguio', name: 'University of the Cordilleras', address: 'Gov. Pack Rd, Baguio City', lat: 16.4088, lon: 120.5979 },
+  { id: 'newtown_plaza', name: 'New Town Plaza Hotel', address: 'Navy Base Road, Baguio City', lat: 16.4158, lon: 120.6122 },
+  { id: 'burnham_park', name: 'Burnham Park', address: 'Downtown Baguio City', lat: 16.4095, lon: 120.5948 },
+  { id: 'sm_baguio', name: 'SM City Baguio', address: 'Upper Session Rd, Baguio City', lat: 16.4088, lon: 120.5993 },
+  { id: 'session_road', name: 'Session Road', address: 'Session Rd, Baguio City', lat: 16.4124, lon: 120.5973 },
+  { id: 'baguio_cathedral', name: 'Baguio Cathedral', address: 'Cathedral Loop, Baguio City', lat: 16.4138, lon: 120.5934 },
+  { id: 'camp_john_hay', name: 'Camp John Hay', address: 'Loakan Rd, Baguio City', lat: 16.4025, lon: 120.5897 },
+  { id: 'mines_view_park', name: 'Mines View Park', address: 'Mines View Park Rd, Baguio City', lat: 16.4089, lon: 120.5678 },
+];
+
+export type RouteAlternative = {
+  id: string;
+  minutes: number;
+  km: number;
+  delayMinutes: number;
+  steps: RouteStep[];
+  /** Flattened leg geometry for map polylines (TomTom embed bridge). */
+  path: Array<{ lat: number; lon: number }>;
+};
+
+export type RouteTraffic = {
+  level: RouteTrafficLevel;
+  congestion: number;
+  delayMinutes: number;
+  incidents: number;
+};
+
+/** Web parity: BottomRouteSheet traffic labels (Heavy for HIGH, Severe kept). */
+export const TRAFFIC_LABELS: Record<RouteTrafficLevel, string> = {
+  VERY_LOW: 'Very low',
+  LOW: 'Low',
+  MODERATE: 'Moderate',
+  HIGH: 'Heavy',
+  SEVERE: 'Severe',
+};
+
+/** Web parity: BottomRouteSheet dot colors as hex (no Tailwind on native). */
+export const TRAFFIC_DOTS: Record<RouteTrafficLevel, string> = {
+  VERY_LOW: '#10b981',
+  LOW: '#22c55e',
+  MODERATE: '#eab308',
+  HIGH: '#f97316',
+  SEVERE: '#ef4444',
+};
+
 export type RouteSummary = {
   minutes: number;
   km: number;
   delayMinutes: number;
   arrival: string | null;
   steps: RouteStep[];
+  /** Kept for backward compat (S3 drops usage): prefer `alternatives.length`. */
   alternativeCount: number;
+  /** Kept for backward compat (S3 drops usage): prefer `recommendation`. */
   note: string | null;
+  alternatives: RouteAlternative[];
+  traffic: RouteTraffic | null;
+  recommendation: { message: string; timeSavingsMinutes: number | null } | null;
+  /** ISO timestamp — BottomRouteSheet "Updated … · refreshes every 5 min". */
+  updatedAt: string;
+  /** Flattened primary-leg geometry for map polylines (TomTom embed bridge). */
+  path: Array<{ lat: number; lon: number }>;
 };
 
 function num(value: unknown): number | null {
@@ -229,7 +316,11 @@ function str(value: unknown): string | null {
 }
 
 /** Route via `POST /api/routes/calculate` (no auth). List-first: no map SDK on device. */
-export async function calculateRoute(origin: Place, destination: Place): Promise<RouteSummary> {
+export async function calculateRoute(
+  origin: Place,
+  destination: Place,
+  prefs: ExplorePreferences = DEFAULT_EXPLORE_PREFS,
+): Promise<RouteSummary> {
   const baseUrl = config.webBaseUrl.replace(/\/$/, '');
   let res: Response;
   try {
@@ -239,7 +330,14 @@ export async function calculateRoute(origin: Place, destination: Place): Promise
       body: JSON.stringify({
         origin: { lat: origin.lat, lng: origin.lon, name: origin.name },
         destination: { lat: destination.lat, lng: destination.lon, name: destination.name },
-        preferences: { routeType: 'fastest' },
+        preferences: {
+          routeType: prefs.routeType,
+          vehicleType: prefs.vehicleType,
+          ...(prefs.avoidTolls ? { avoidTolls: true } : {}),
+          ...(prefs.avoidHighways ? { avoidHighways: true } : {}),
+          ...(prefs.avoidFerries ? { avoidFerries: true } : {}),
+          ...(prefs.avoidTrafficJams ? { avoidTrafficJams: true } : {}),
+        },
       }),
     });
   } catch {
@@ -254,38 +352,101 @@ export async function calculateRoute(origin: Place, destination: Place): Promise
   }
   if (typeof json !== 'object' || json === null) throw new Error('Route response was not successful.');
   const body = json as {
-    primaryRoute?: { summary?: Record<string, unknown>; instructions?: unknown[]; legs?: Array<{ instructions?: unknown[] }> };
-    alternativeRoutes?: unknown[];
-    recommendations?: Array<{ title?: unknown; description?: unknown }>;
+    primaryRoute?: { id?: unknown; summary?: Record<string, unknown>; instructions?: unknown[]; legs?: Array<{ instructions?: unknown[]; geometry?: { coordinates?: unknown } }>; geometry?: { coordinates?: unknown } };
+    alternativeRoutes?: Array<{ id?: unknown; summary?: Record<string, unknown>; instructions?: unknown[]; legs?: Array<{ instructions?: unknown[]; geometry?: { coordinates?: unknown } }>; geometry?: { coordinates?: unknown } }>;
+    trafficAnalysis?: Record<string, unknown>;
+    recommendations?: Array<{ message?: unknown; timeSavings?: unknown }>;
   };
   const summary = body.primaryRoute?.summary;
   if (!summary) throw new Error('Route response was not successful.');
+  const toSteps = (route: { instructions?: unknown[]; legs?: Array<{ instructions?: unknown[] }> }): RouteStep[] => {
+    const direct = Array.isArray(route.instructions) ? (route.instructions as unknown[]) : null;
+    const legSteps = (route.legs ?? []).flatMap((l) =>
+      Array.isArray(l.instructions) ? (l.instructions as unknown[]) : []
+    );
+    return (direct ?? legSteps)
+      .filter((s): s is Record<string, unknown> => typeof s === 'object' && s !== null)
+      .map((s) => ({
+        text: str(s.instruction) ?? 'Continue',
+        meters: num(s.distance) ?? 0,
+        seconds: num(s.time) ?? 0,
+      }));
+  };
+  const toMinutes = (s: Record<string, unknown>): number => Math.round((num(s.travelTimeInSeconds) ?? 0) / 60);
+  const toKm = (s: Record<string, unknown>): number => Math.round(((num(s.lengthInMeters) ?? 0) / 1000) * 10) / 10;
+  // Polyline source (web parity: InteractiveRouteMap flattens
+  // legs[].geometry.coordinates; falls back to route.geometry).
+  const toPath = (route: {
+    legs?: Array<{ geometry?: { coordinates?: unknown } }>;
+    geometry?: { coordinates?: unknown };
+  }): Array<{ lat: number; lon: number }> => {
+    const legPts = (route.legs ?? []).flatMap((l) =>
+      Array.isArray(l.geometry?.coordinates) ? (l.geometry.coordinates as unknown[]) : []
+    );
+    const topPts =
+      legPts.length === 0 && route.geometry && Array.isArray(route.geometry.coordinates)
+        ? (route.geometry.coordinates as unknown[])
+        : [];
+    return (legPts.length > 0 ? legPts : topPts)
+      .filter((c): c is Record<string, unknown> => typeof c === 'object' && c !== null)
+      .map((c) => ({
+        lat: typeof c.lat === 'number' ? c.lat : NaN,
+        lon:
+          typeof c.lng === 'number' ? c.lng : typeof c.lon === 'number' ? (c.lon as number) : NaN,
+      }))
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+  };
   const seconds = num(summary.travelTimeInSeconds) ?? 0;
   const meters = num(summary.lengthInMeters) ?? 0;
   const delay = num(summary.trafficDelayInSeconds) ?? 0;
-  const direct = Array.isArray(body.primaryRoute?.instructions) ? (body.primaryRoute?.instructions as unknown[]) : null;
-  const legSteps = (body.primaryRoute?.legs ?? []).flatMap((l) =>
-    Array.isArray(l.instructions) ? (l.instructions as unknown[]) : []
-  );
-  const steps: RouteStep[] = (direct ?? legSteps)
-    .filter((s): s is Record<string, unknown> => typeof s === 'object' && s !== null)
-    .map((s) => ({
-      text: str(s.instruction) ?? 'Continue',
-      meters: num(s.distance) ?? 0,
-      seconds: num(s.time) ?? 0,
-    }));
+  const alternatives: RouteAlternative[] = Array.isArray(body.alternativeRoutes)
+    ? body.alternativeRoutes
+        .filter((a): a is NonNullable<typeof a> & { summary: Record<string, unknown> } =>
+          typeof a === 'object' && a !== null && typeof a.summary === 'object' && a.summary !== null)
+        .map((a) => ({
+          id: typeof a.id === 'string' ? a.id : `${a.summary.lengthInMeters}-${a.summary.travelTimeInSeconds}`,
+          minutes: toMinutes(a.summary),
+          km: toKm(a.summary),
+          delayMinutes: Math.round((num(a.summary.trafficDelayInSeconds) ?? 0) / 60),
+          steps: toSteps(a),
+          path: toPath(a),
+        }))
+    : [];
+  // Traffic: web RouteTrafficAnalysis shape (BottomRouteSheet reads
+  // overallTrafficLevel, congestionScore, estimatedDelay, segmentAnalysis).
+  let traffic: RouteTraffic | null = null;
+  const ta = body.trafficAnalysis;
+  if (ta && typeof ta.overallTrafficLevel === 'string') {
+    const level = ta.overallTrafficLevel as RouteTrafficLevel;
+    if (TRAFFIC_LABELS[level]) {
+      const segs = Array.isArray(ta.segmentAnalysis) ? (ta.segmentAnalysis as Array<{ incidents?: unknown[] }>) : [];
+      traffic = {
+        level,
+        congestion: num(ta.congestionScore) ?? 0,
+        delayMinutes: Math.round((num(ta.estimatedDelay) ?? 0) / 60),
+        incidents: segs.reduce((n, s) => n + (Array.isArray(s.incidents) ? s.incidents.length : 0), 0),
+      };
+    }
+  }
+  // Recommendation: web sends {message, timeSavings} — NOT title/description
+  // (the old reader here looked for title/description, so note was always null).
   const rec = Array.isArray(body.recommendations) ? body.recommendations[0] : undefined;
+  const message = rec && typeof rec.message === 'string' ? rec.message : null;
+  const savings = rec && typeof rec.timeSavings === 'number' && Number.isFinite(rec.timeSavings) ? rec.timeSavings : null;
+  const recommendation = message ? { message, timeSavingsMinutes: savings } : null;
   return {
     minutes: Math.round(seconds / 60),
     km: Math.round((meters / 1000) * 10) / 10,
     delayMinutes: Math.round(delay / 60),
     arrival: str(summary.arrivalTime),
-    steps,
-    alternativeCount: Array.isArray(body.alternativeRoutes) ? body.alternativeRoutes.length : 0,
-    note:
-      rec && (str(rec.title) || str(rec.description))
-        ? [str(rec.title), str(rec.description)].filter(Boolean).join(' — ')
-        : null,
+    steps: toSteps(body.primaryRoute ?? {}),
+    alternativeCount: alternatives.length,
+    note: recommendation ? recommendation.message : null,
+    alternatives,
+    traffic,
+    recommendation,
+    updatedAt: new Date().toISOString(),
+    path: toPath((body.primaryRoute ?? {}) as Parameters<typeof toPath>[0]),
   };
 }
 
