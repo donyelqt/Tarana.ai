@@ -39,12 +39,13 @@ export default function AuthEntry({
   // and the time/battery row, so it never overlaps the system chrome.
   const insets = useSafeAreaInsets();
 
-  // After profile creation or a completed import, drop into Home.
-  // Reset the toggle to `fresh` so a return visit never strands the user
-  // on the import screen.
+  // After profile creation or a completed import, drop into the tabbed
+  // app through a one-way door: replace (never navigate) so back can
+  // never re-enter the auth shell. Reset the toggle to `fresh` first so
+  // a return visit never strands the user on the import screen.
   const onDone = () => {
     setMode('fresh');
-    navigation.navigate('Home');
+    navigation.replace('MainTabs');
   };
 
   return (
