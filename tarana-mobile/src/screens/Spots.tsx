@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Linking, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientCTA, GRADIENT } from './ui';
@@ -55,6 +55,12 @@ export default function Spots() {
   useEffect(() => {
     load(city);
   }, [city, load]);
+
+  const { width: viewportWidth } = useWindowDimensions();
+  // 1.15 cards peek: card fills the guttered width minus a peek strip,
+  // so the next card advertises the swipe. Snap interval = card + gap.
+  const cardWidth = Math.round(viewportWidth - 32 - 56);
+  const snapInterval = cardWidth + 12;
 
   const head = (cards ?? []).slice(0, TOP_PICKS);
   const rest = (cards ?? []).slice(TOP_PICKS);
@@ -120,32 +126,34 @@ export default function Spots() {
       ) : head.length === 0 && !error ? (
         <Text className="px-1 text-sm text-muted-foreground">No spots found yet — try Baguio.</Text>
       ) : (
-        <FlatList
-          data={showAll ? [...head, ...rest] : head}
-          keyExtractor={(item, index) => `${item.name}-${index}`}
-          ListFooterComponent={
-            rest.length > 0 ? (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={showAll ? 'Show fewer spots' : `Show all ${cards?.length} spots`}
-                onPress={() => setShowAll((v) => !v)}
-                className="items-center py-3"
-              >
-                <Text className="text-sm font-semibold text-primary">
-                  {showAll ? 'Show less' : `Show all ${cards?.length} spots`}
-                </Text>
-              </TouchableOpacity>
-            ) : null
-          }
-          renderItem={({ item, index }) =>
-            showAll && index >= TOP_PICKS ? (
-              <SpotRow card={item} />
-            ) : (
-              <SpotCard card={item} />
-            )
-          }
-        />
+        <View>
+          <FlatList
+            data={head}
+            keyExtractor={(item, index) => `${item.name}-${index}`}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={snapInterval}
+            decelerationRate="fast"
+            contentContainerStyle={{ gap: 12, paddingRight: 24 }}
+            renderItem={({ item }) => <SpotCard card={item} width={cardWidth} />}
+          />
+          {rest.length > 0 ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={showAll ? 'Show fewer spots' : `Show all ${cards?.length} spots`}
+              onPress={() => setShowAll((v) => !v)}
+              className="items-center py-3"
+            >
+              <Text className="text-sm font-semibold text-primary">
+                {showAll ? 'Show less' : `Show all ${cards?.length} spots`}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+          {showAll
+            ? rest.map((item, index) => <SpotRow key={`${item.name}-${index}`} card={item} />)
+            : null}
+        </View>
       )}
       <StatusBar style="auto" />
     </View>
@@ -153,34 +161,52 @@ export default function Spots() {
 }
 
 /**
- * Spot card — web `SpotlightCard` recomposed native: photo, name,
- * distance · time (city-center estimates, same formula), traffic badge,
- * peak hours, and one "Open in Maps" action (the iframe facade + external
- * link collapse into the system Maps app — zero function lost).
+ * Spot card — web `SpotlightCard` composition in a carousel cell: photo
+ * led (full-bleed top, Airbnb rule), name, distance · time, traffic
+ * badge, one "Open in Maps" action. Fixed width comes from the caller
+ * (viewport-derived); Thumb stays the row-sized helper elsewhere.
  */
-function SpotCard({ card: item }: { card: SpotView }) {
+function SpotCard({ card: item, width }: { card: SpotView; width: number }) {
   const url = spotMapsUrl(item.lat, item.lon);
+  const [imgFailed, setImgFailed] = useState(false);
+  const uri = resolveWebImage(item.image);
+  const showPhoto = !!uri && !imgFailed;
   return (
-    <View className="mb-3 rounded-lg bg-card p-3">
-      <View className="flex-row gap-3">
-        <Thumb uri={resolveWebImage(item.image)} size={64} />
-        <View className="flex-1">
-          <Text className="text-base font-semibold text-foreground">{item.name}</Text>
-          <Text className="mt-1 text-sm text-muted-foreground">
-            {[item.distance, item.time, item.peakHours ? `Peak: ${item.peakHours}` : null]
-              .filter(Boolean)
-              .join(' · ')}
-          </Text>
-          {item.traffic ? <TrafficBadge level={item.traffic} /> : null}
-        </View>
-      </View>
-      {url ? (
-        <GradientCTA
-          variant="app"
-          title="Open in Maps"
-          onPress={() => Linking.openURL(url)}
-          accessibilityLabel={`Open ${item.name} in Maps`}
+    <View className="rounded-lg bg-card p-3" style={{ width }}>
+      <View style={styles.photoSlot}>
+        <Image
+          source={require('../../assets/taranaai-mark.png')}
+          style={styles.mark}
+          resizeMode="contain"
+          accessibilityRole="image"
+          accessibilityLabel="Tarana.ai"
         />
+        {showPhoto ? (
+          <Image
+            source={{ uri: uri as string }}
+            style={StyleSheet.absoluteFill}
+            onError={() => setImgFailed(true)}
+            accessibilityRole="image"
+            accessibilityLabel={`${item.name} photo`}
+          />
+        ) : null}
+      </View>
+      <Text className="mt-2 text-base font-semibold text-foreground">{item.name}</Text>
+      <Text className="mt-1 text-sm text-muted-foreground">
+        {[item.distance, item.time, item.peakHours ? `Peak: ${item.peakHours}` : null]
+          .filter(Boolean)
+          .join(' · ')}
+      </Text>
+      {item.traffic ? <TrafficBadge level={item.traffic} /> : null}
+      {url ? (
+        <View className="mt-2">
+          <GradientCTA
+            variant="app"
+            title="Open in Maps"
+            onPress={() => Linking.openURL(url)}
+            accessibilityLabel={`Open ${item.name} in Maps`}
+          />
+        </View>
       ) : null}
     </View>
   );
@@ -212,6 +238,16 @@ function SpotRow({ card: item }: { card: SpotView }) {
 }
 
 const styles = StyleSheet.create({
+  photoSlot: {
+    width: '100%',
+    height: 150,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mark: { width: 96, height: 96 },
   heroWrap: {
     borderRadius: 16,
     borderCurve: 'continuous',
