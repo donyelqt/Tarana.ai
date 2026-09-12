@@ -21,7 +21,10 @@ export default function Thumb({
   const [failed, setFailed] = useState(false);
   if (!uri || failed) return null;
   return (
-    <View style={{ width: size, height: size, borderRadius: radius, overflow: 'hidden', backgroundColor: '#ffffff' }}>
+    <View
+      accessible={false}
+      style={{ width: size, height: size, borderRadius: radius, overflow: 'hidden', backgroundColor: '#ffffff' }}
+    >
       <Image
         source={{ uri }}
         style={{ width: size, height: size }}
