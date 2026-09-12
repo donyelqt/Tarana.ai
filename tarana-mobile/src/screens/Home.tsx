@@ -1,89 +1,91 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   getActiveProfile,
   getActiveProfileId,
   listTrips,
   listMeals,
-  fetchSpots,
-  fetchWeather,
-  signOut,
+  fetchSpotCards,
   type LocalProfile,
-  type LocalMeal,
-  type Spot,
-  type Weather,
+  type SpotView,
 } from '../data';
+import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 import Thumb from './Thumb';
+import { LinearGradient } from 'expo-linear-gradient';
+import { manilaDaypart, TrafficBadge, GRADIENT } from './ui';
+import { resolveWebImage } from '../data';
 
-const BLUE = '#0066FF';
-const BLUE_LIGHT = '#1E90FF';
+const CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao'];
 
 type HomeNav = {
-  replace: (route: string) => void;
   navigate: (route: string, params?: Record<string, unknown>) => void;
 };
 
 /**
- * Home — native dashboard hub (web dashboard skeleton, funnel removed).
+ * Home — hub: 2 count cards (Trips, Cafes) + Suggested spots.
  *
- * Pattern: greeting → hero stat → live preview sections → destination
- * rows. Credits, referrals, tiers, invites, and ads are cut (ADR-002:
- * meaningless in a paid offline app). Preview sections render only when
- * their data exists — offline or empty means the section is omitted,
- * never a dead card. Plan/Eats rows arrive with their own slices (§8);
- * this file grows one row per slice, nothing speculative.
+ * Spots section mirrors the Spots tab contract: city pills, top 3 only,
+ * same shaped cards (photo, distance · time, traffic badge). Full
+ * browsing lives one tap away in the Spots tab (See all). Trips and
+ * cafes are counts here, lists in their tabs — no duplicated lists.
  */
 export default function Home({ navigation }: { navigation: HomeNav }) {
   const [profile, setProfile] = useState<LocalProfile | null>(null);
   const [tripCount, setTripCount] = useState<number | null>(null);
-  const [spots, setSpots] = useState<Spot[] | null>(null);
-  const [meals, setMeals] = useState<LocalMeal[] | null>(null);
-  const [weather, setWeather] = useState<Weather | null>(null);
+  const [cafeCount, setCafeCount] = useState<number | null>(null);
+  const [city, setCity] = useState<CityId>('baguio');
+  const [spots, setSpots] = useState<SpotView[] | null>(null);
+  const [spotsLoading, setSpotsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const loadCounts = useCallback(async () => {
     try {
       const [p, id] = await Promise.all([getActiveProfile(), getActiveProfileId()]);
       setProfile(p);
       if (!id) {
         setTripCount(0);
-        setMeals([]);
-        setSpots(null);
+        setCafeCount(0);
         return;
       }
-      const [trips, savedMeals] = await Promise.all([listTrips(id), listMeals(id)]);
+      const [trips, meals] = await Promise.all([listTrips(id), listMeals(id)]);
       setTripCount(trips.length);
-      setMeals(savedMeals.slice(0, 3));
-      try {
-        setSpots((await fetchSpots('baguio')).slice(0, 3));
-      } catch {
-        setSpots(null);
-      }
-      try {
-        // Baguio defaults match the route's own fallback (16.4023, 120.5960).
-        const w = await fetchWeather(16.4023, 120.596);
-        setWeather(w.temperature != null || w.condition ? w : null);
-      } catch {
-        setWeather(null);
-      }
+      setCafeCount(meals.length);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load your hub.');
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const loadSpots = useCallback(async (cityId: CityId) => {
+    setSpotsLoading(true);
+    setError(null);
+    try {
+      setSpots((await fetchSpotCards(cityId)).slice(0, 3));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load spots.');
+      setSpots([]);
+    } finally {
+      setSpotsLoading(false);
+    }
+  }, []);
 
-  const onSignOut = async () => {
-    await signOut();
-    navigation.replace('Landing');
-  };
+  useEffect(() => {
+    loadCounts();
+  }, [loadCounts]);
+
+  useEffect(() => {
+    loadSpots(city);
+  }, [city, loadSpots]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCounts();
+    }, [loadCounts])
+  );
 
   const firstName = profile?.display_name.split(' ')[0] ?? 'Traveller';
-  const loading = tripCount === null && !error;
+  const countsReady = tripCount !== null && cafeCount !== null;
 
   return (
     <ScrollView
@@ -92,18 +94,8 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
       showsVerticalScrollIndicator={false}
     >
       <Text style={styles.eyebrow}>Tarana.ai</Text>
-      <Text style={styles.greeting}>Hi, {firstName}</Text>
+      <Text style={styles.greeting}>Good {manilaDaypart()}, {firstName}</Text>
       <Text style={styles.subcopy}>Everything stays on this device.</Text>
-
-      {weather ? (
-        <View style={styles.weatherStrip}>
-          <Thumb uri={weather.iconUrl} size={36} radius={18} />
-          <Text style={styles.weatherText}>
-            {weather.temperature != null ? `${Math.round(weather.temperature)}°C` : '—'}
-            {weather.condition ? ` · ${weather.condition}` : ''} in Baguio
-          </Text>
-        </View>
-      ) : null}
 
       {error ? (
         <View style={styles.errorBox}>
@@ -111,249 +103,177 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
         </View>
       ) : null}
 
-      {loading ? (
-        <View style={styles.heroSkeleton}>
-          <ActivityIndicator color={BLUE} />
-          <Text style={styles.skeletonText}>Loading…</Text>
+      {!countsReady && !error ? (
+        <View style={styles.cardsLoading}>
+          <ActivityIndicator color="#0066FF" />
         </View>
       ) : (
-        <View style={styles.heroWrapper}>
-          <LinearGradient
-            colors={[BLUE, BLUE_LIGHT]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.hero}
+        <View style={styles.cards}>
+          <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Open saved trips, ${tripCount ?? 0} saved`}
+            onPress={() => navigation.navigate('SavedTrips')}
           >
-            <Text style={styles.heroCount}>{tripCount ?? 0}</Text>
-            <Text style={styles.heroLabel}>
-              {(tripCount ?? 0) === 1 ? 'saved trip' : 'saved trips'}
-            </Text>
-            <TouchableOpacity
-              style={styles.heroCta}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="View trips"
-              onPress={() => navigation.navigate('SavedTrips')}
-            >
-              <Text style={styles.heroCtaText}>View trips</Text>
-            </TouchableOpacity>
-          </LinearGradient>
+            <Text style={styles.cardCount}>{tripCount ?? 0}</Text>
+            <Text style={styles.cardLabel}>Saved trips</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Open saved cafes, ${cafeCount ?? 0} saved`}
+            onPress={() => navigation.navigate('SavedCafes')}
+          >
+            <Text style={styles.cardCount}>{cafeCount ?? 0}</Text>
+            <Text style={styles.cardLabel}>Saved cafes</Text>
+          </TouchableOpacity>
         </View>
       )}
 
-      {spots && spots.length > 0 ? (
-        <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>Nearby spots</Text>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="See all spots"
-              onPress={() => navigation.navigate('Spots')}
-            >
-              <Text style={styles.seeAll}>See all</Text>
-            </TouchableOpacity>
+      <View style={styles.section}>
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>Suggested spots</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="See all spots"
+            onPress={() => navigation.navigate('Spots')}
+          >
+            <Text style={styles.seeAll}>See all</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.pills}>
+          {CITIES.map((c) => {
+            const active = c === city;
+            const label = (
+              <Text style={[styles.pillText, active && styles.pillTextActive]}>
+                {CITY_CONFIGS[c].name}
+              </Text>
+            );
+            return active ? (
+              <TouchableOpacity
+                key={c}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityState={{ selected: true }}
+                accessibilityLabel={`${CITY_CONFIGS[c].name} spots, selected`}
+                onPress={() => setCity(c)}
+              >
+                <LinearGradient
+                  colors={[GRADIENT.auth.from, GRADIENT.auth.to]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.pillActive}
+                >
+                  {label}
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                key={c}
+                style={styles.pill}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityState={{ selected: false }}
+                accessibilityLabel={`${CITY_CONFIGS[c].name} spots`}
+                onPress={() => setCity(c)}
+              >
+                {label}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {spotsLoading ? (
+          <View style={styles.listSkeleton}>
+            <ActivityIndicator color="#0066FF" />
+            <Text style={styles.skeletonText}>Finding spots…</Text>
           </View>
-          {spots.map((s) => (
+        ) : (
+          spots?.map((s) => (
             <TouchableOpacity
               key={s.name}
-              style={styles.miniRow}
+              style={styles.row}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel={`Open spots in ${s.name}`}
+              accessibilityLabel={`Open ${s.name} in Spots`}
               onPress={() => navigation.navigate('Spots')}
             >
+              <Thumb uri={resolveWebImage(s.image)} size={52} />
               <View style={styles.rowText}>
                 <Text style={styles.rowTitle}>{s.name}</Text>
-                {s.traffic ? <Text style={styles.rowSub}>Traffic: {s.traffic}</Text> : null}
+                <Text style={styles.rowSub}>
+                  {[s.distance, s.time].filter(Boolean).join(' · ')}
+                </Text>
+                {s.traffic ? <TrafficBadge level={s.traffic} /> : null}
               </View>
-              <Text style={styles.rowChevron}>›</Text>
             </TouchableOpacity>
-          ))}
-        </View>
-      ) : null}
-
-      {meals && meals.length > 0 ? (
-        <View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>Saved cafes</Text>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="See all saved cafes"
-              onPress={() => navigation.navigate('SavedCafes')}
-            >
-              <Text style={styles.seeAll}>See all</Text>
-            </TouchableOpacity>
-          </View>
-          {meals.map((m) => (
-            <TouchableOpacity
-              key={m.id}
-              style={styles.miniRow}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${m.cafe_name}`}
-              onPress={() => navigation.navigate('CafeDetail', { name: m.cafe_name })}
-            >
-              <View style={styles.rowText}>
-                <Text style={styles.rowTitle}>{m.cafe_name}</Text>
-                {m.price != null ? <Text style={styles.rowSub}>₱{m.price}</Text> : null}
-              </View>
-              <Text style={styles.rowChevron}>›</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      ) : null}
-
-      <TouchableOpacity
-        style={styles.row}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Plan a trip"
-        onPress={() => navigation.navigate('Plan')}
-      >
-        <View style={styles.rowText}>
-          <Text style={styles.rowTitle}>Plan a trip</Text>
-          <Text style={styles.rowSub}>Baguio, Cebu, Manila, Davao</Text>
-        </View>
-        <Text style={styles.rowChevron}>›</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.row}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Explore routes"
-        onPress={() => navigation.navigate('Explore')}
-      >
-        <View style={styles.rowText}>
-          <Text style={styles.rowTitle}>Explore routes</Text>
-          <Text style={styles.rowSub}>Live directions with traffic</Text>
-        </View>
-        <Text style={styles.rowChevron}>›</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.row}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Find a meal"
-        onPress={() => navigation.navigate('Eats')}
-      >
-        <View style={styles.rowText}>
-          <Text style={styles.rowTitle}>Find a meal</Text>
-          <Text style={styles.rowSub}>20 Baguio cafes, filtered on-device</Text>
-        </View>
-        <Text style={styles.rowChevron}>›</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.row}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Open settings"
-        onPress={() => navigation.navigate('Settings')}
-      >
-        <View style={styles.rowText}>
-          <Text style={styles.rowTitle}>Settings</Text>
-          <Text style={styles.rowSub}>Profile, about, link account</Text>
-        </View>
-        <Text style={styles.rowChevron}>›</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        accessibilityRole="button"
-        accessibilityLabel="Sign out"
-        onPress={onSignOut}
-        style={styles.signOut}
-      >
-        <Text style={styles.signOutText}>Sign out</Text>
-      </TouchableOpacity>
+          ))
+        )}
+      </View>
       <StatusBar style="auto" />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#ffffff' },
+  root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 24, paddingVertical: 24, gap: 12 },
   eyebrow: {
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 2,
     textTransform: 'uppercase',
-    color: BLUE,
+    color: '#0066FF',
   },
   greeting: { fontSize: 28, fontWeight: '600', color: '#111827', lineHeight: 34 },
   subcopy: { fontSize: 14, color: '#6b7280', marginTop: 2 },
-  weatherStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  weatherText: { fontSize: 14, color: '#374151', fontWeight: '500', fontVariant: ['tabular-nums'] },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 12, padding: 10 },
   errorText: { color: '#dc2626', fontSize: 13 },
-  heroSkeleton: {
+  cardsLoading: {
     borderRadius: 16,
-    backgroundColor: '#f3f4f6',
-    paddingVertical: 28,
+    backgroundColor: '#ffffff',
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  cards: { flexDirection: 'row', gap: 12 },
+  card: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    gap: 2,
+  },
+  cardCount: { fontSize: 32, fontWeight: '700', color: '#111827', fontVariant: ['tabular-nums'] },
+  cardLabel: { fontSize: 13, color: '#6b7280', fontWeight: '500' },
+  section: { gap: 8, marginTop: 4 },
+  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#111827' },
+  seeAll: { fontSize: 14, color: '#0066FF', fontWeight: '600' },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pill: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999, backgroundColor: '#ffffff' },
+  pillActive: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 16 },
+  pillText: { color: '#0066FF', fontSize: 13, fontWeight: '500' },
+  pillTextActive: { color: '#ffffff' },
+  listSkeleton: {
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    paddingVertical: 24,
     alignItems: 'center',
     gap: 8,
   },
   skeletonText: { fontSize: 13, color: '#6b7280' },
-  heroWrapper: {
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    overflow: 'hidden',
-  },
-  hero: { paddingHorizontal: 20, paddingVertical: 20 },
-  heroCount: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: '#ffffff',
-    fontVariant: ['tabular-nums'],
-  },
-  heroLabel: { fontSize: 14, color: '#ffffff', opacity: 0.9, marginTop: 2 },
-  heroCta: {
-    marginTop: 14,
-    alignSelf: 'flex-start',
-    backgroundColor: '#ffffff',
-    borderRadius: 999,
-    paddingVertical: 10,
-    paddingHorizontal: 22,
-  },
-  heroCtaText: { color: BLUE, fontSize: 15, fontWeight: '600' },
-  section: { gap: 8, marginTop: 4 },
-  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#111827' },
-  seeAll: { fontSize: 14, color: BLUE, fontWeight: '600' },
-  miniRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
     borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
   },
-  rowText: { flex: 1 },
+  rowText: { flex: 1, gap: 2 },
   rowTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  rowSub: { fontSize: 13, color: '#6b7280', marginTop: 2 },
-  rowChevron: { fontSize: 22, color: '#9ca3af', fontWeight: '400' },
-  signOut: { alignItems: 'center', paddingVertical: 12 },
-  signOutText: { fontSize: 14, color: '#6b7280' },
+  rowSub: { fontSize: 13, color: '#6b7280', fontVariant: ['tabular-nums'] },
 });
