@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Linking, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GradientCTA, GRADIENT } from './ui';
 import { fetchSpotCards, resolveWebImage, spotMapsUrl, type SpotView } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 import Thumb from './Thumb';
+import SpotCityPills from './SpotCityPills';
 import { TrafficBadge } from './ui';
 
 const TOP_PICKS = 3;
@@ -66,7 +67,11 @@ export default function Spots() {
   const rest = (cards ?? []).slice(TOP_PICKS);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F2F2F7' }} className="px-4 pt-4">
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.heroWrap}>
         <LinearGradient
           colors={[GRADIENT.auth.from, GRADIENT.auth.to]}
@@ -78,53 +83,17 @@ export default function Spots() {
           <Text style={styles.heroSub}>Top picks in {CITY_CONFIGS[city].name}</Text>
         </LinearGradient>
       </View>
-      <View className="mb-3 flex-row flex-wrap gap-2">
-        {SPOT_CITIES.map((c) => {
-          const active = c === city;
-          const label = (
-            <Text style={[styles.pillText, active && styles.pillTextActive]}>{CITY_CONFIGS[c].name}</Text>
-          );
-          return active ? (
-            <TouchableOpacity
-              key={c}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityState={{ selected: true }}
-              accessibilityLabel={`${CITY_CONFIGS[c].name} spots, selected`}
-              onPress={() => setCity(c)}
-            >
-              <LinearGradient
-                colors={[GRADIENT.auth.from, GRADIENT.auth.to]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.pillActive}
-              >
-                {label}
-              </LinearGradient>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              key={c}
-              style={styles.pill}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityState={{ selected: false }}
-              accessibilityLabel={`${CITY_CONFIGS[c].name} spots`}
-              onPress={() => setCity(c)}
-            >
-              {label}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <SpotCityPills cities={SPOT_CITIES} city={city} onSelect={setCity} />
       {error ? <Text className="mb-2 text-sm text-destructive">{error}</Text> : null}
       {cards === null ? (
-        <View className="flex-1 items-center justify-center">
+        <View style={styles.loadingContainer}>
           <ActivityIndicator />
           <Text className="mt-2 text-sm text-muted-foreground">Finding spots…</Text>
         </View>
       ) : head.length === 0 && !error ? (
-        <Text className="px-1 text-sm text-muted-foreground">No spots found yet — try Baguio.</Text>
+        <View style={styles.emptyContainer}>
+          <Text className="px-1 text-sm text-muted-foreground">No spots found yet — try Baguio.</Text>
+        </View>
       ) : (
         <View>
           <FlatList
@@ -156,7 +125,7 @@ export default function Spots() {
         </View>
       )}
       <StatusBar style="auto" />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -238,6 +207,10 @@ function SpotRow({ card: item }: { card: SpotView }) {
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#F2F2F7' },
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   photoSlot: {
     width: '100%',
     height: 150,
@@ -257,15 +230,4 @@ const styles = StyleSheet.create({
   hero: { paddingHorizontal: 20, paddingVertical: 18 },
   heroTitle: { fontSize: 22, fontWeight: '700', color: '#ffffff', lineHeight: 28 },
   heroSub: { fontSize: 13, color: '#ffffff', opacity: 0.9, marginTop: 2 },
-  pill: {
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  pillActive: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 18 },
-  pillText: { color: '#0066FF', fontSize: 14, fontWeight: '500' },
-  pillTextActive: { color: '#ffffff' },
 });
