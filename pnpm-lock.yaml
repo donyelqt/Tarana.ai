@@ -186,6 +186,9 @@ importers:
       '@react-navigation/bottom-tabs':
         specifier: ^7.18.18
         version: 7.18.18(@react-navigation/native@7.3.18(react-native@0.86.3(@babel/core@7.29.0)(@react-native/metro-config@0.87.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.3.0))(react@19.3.0))(react-native-safe-area-context@5.9.1(react-native@0.86.3(@babel/core@7.29.0)(@react-native/metro-config@0.87.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.3.0))(react@19.3.0))(react-native-screens@4.27.0(react-native@0.86.3(@babel/core@7.29.0)(@react-native/metro-config@0.87.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.3.0))(react@19.3.0))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/metro-config@0.87.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.3.0))(react@19.3.0)
+      '@react-navigation/elements':
+        specifier: 2.9.40
+        version: 2.9.40(@react-navigation/native@7.3.18(react-native@0.86.3(@babel/core@7.29.0)(@react-native/metro-config@0.87.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.3.0))(react@19.3.0))(react-native-safe-area-context@5.9.1(react-native@0.86.3(@babel/core@7.29.0)(@react-native/metro-config@0.87.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.3.0))(react@19.3.0))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/metro-config@0.87.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.3.0))(react@19.3.0)
       '@react-navigation/native':
         specifier: ^7.3.18
         version: 7.3.18(react-native@0.86.3(@babel/core@7.29.0)(@react-native/metro-config@0.87.1(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.3.0))(react@19.3.0)
