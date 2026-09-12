@@ -335,6 +335,13 @@ class TomTomRoutingService {
         query: query.trim(),
         limit: '10',
         language,
+        // Pin the geopolitical view explicitly. Without it, TomTom derives
+        // the view from countrySet (PH here) and rejects with
+        // "400 BadRequest: 'PH' is not a valid view" — PH is a valid
+        // countrySet but not a valid view. 'Unified' is the documented
+        // default for non-listed regions and matches our static-map URLs.
+        // https://developer.tomtom.com/search-api/documentation/search-service/fuzzy-search
+        view: 'Unified',
       });
       if (countrySet) params.set('countrySet', countrySet);
 
