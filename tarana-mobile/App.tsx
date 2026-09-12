@@ -2,6 +2,7 @@ import { Button, Pressable, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { PlatformPressable } from '@react-navigation/elements';
 import Home from './src/screens/Home';
 import SavedTrips from './src/screens/SavedTrips';
 import TripDetail from './src/screens/TripDetail';
@@ -98,6 +99,13 @@ function MainTabs() {
         tabBarInactiveTintColor: INACTIVE,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerTitleStyle: { fontSize: 17, fontWeight: '600' },
+        // Subtle press feedback: default Android ripple flashes aggressive
+        // gray. Same default button component, only the ripple color
+        // overridden — zero layout delta by construction. The center
+        // Action tab owns its own button below — untouched.
+        tabBarButton: (props) => (
+          <PlatformPressable {...props} pressColor="rgba(0,102,255,0.16)" />
+        ),
       }}
     >
       <Tab.Screen
