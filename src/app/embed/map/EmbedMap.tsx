@@ -31,7 +31,8 @@ type BridgeCommand =
   | { type: 'clear' }
   | { type: 'recenter' }
   | { type: 'style'; style?: unknown }
-  | { type: 'tilt'; on?: unknown };
+  | { type: 'tilt'; on?: unknown }
+  | { type: 'loading'; on?: unknown };
 
 declare global {
   interface Window {
@@ -112,6 +113,8 @@ export default function EmbedMap() {
   const [mapStyle, setMapStyle] = useState<MapStyle>('main');
   const [recenterSignal, setRecenterSignal] = useState(0);
   const [tiltOn, setTiltOn] = useState(true);
+  // Web parity: useRouteCalculation isCalculating → "Analyzing routes…" overlay.
+  const [loading, setLoading] = useState(false);
   const styleControlRef = useRef<{ changeStyle: (style: MapStyle) => void } | null>(null);
 
   const handleRouteSelect = useCallback((routeId: string) => {
@@ -151,6 +154,9 @@ export default function EmbedMap() {
           case 'tilt':
             setTiltOn(cmd.on === true);
             break;
+          case 'loading':
+            setLoading(cmd.on === true);
+            break;
           default:
             break;
         }
@@ -173,7 +179,7 @@ export default function EmbedMap() {
         origin={origin}
         destination={destination}
         waypoints={[]}
-        isLoading={false}
+        isLoading={loading}
         onRouteSelect={handleRouteSelect}
         currentMapStyle={mapStyle}
         onStyleChange={setMapStyle}

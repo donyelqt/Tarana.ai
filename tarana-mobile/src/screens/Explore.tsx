@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   ScrollView,
   StyleSheet,
   Text,
@@ -154,6 +155,10 @@ export default function Explore() {
 
   const go = async () => {
     if (!from || !to) return;
+    // Web parity (FloatingSearchCard close): drop focus so the keyboard
+    // retracts together with the card. Never on pick — auto-advance needs
+    // the gesture chain alive.
+    Keyboard.dismiss();
     setRouting(true);
     setError(null);
     setRoute(null);
@@ -294,6 +299,7 @@ export default function Explore() {
           mapStyle={mapStyle}
           tiltOn={tiltOn}
           recenterSignal={recenterSignal}
+          loading={routing}
           onSelectRoute={setSelectedId}
         />
       </View>
