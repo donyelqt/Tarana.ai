@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   getActiveProfile,
@@ -13,7 +14,6 @@ import {
 } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 import Thumb from './Thumb';
-import { LinearGradient } from 'expo-linear-gradient';
 import { manilaDaypart, TrafficBadge, GRADIENT } from './ui';
 import { resolveWebImage } from '../data';
 
@@ -93,9 +93,24 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.eyebrow}>Tarana.ai</Text>
-      <Text style={styles.greeting}>Good {manilaDaypart()}, {firstName}</Text>
-      <Text style={styles.subcopy}>Everything stays on this device.</Text>
+      <Image
+        source={require('../../assets/taranaai2.png')}
+        accessibilityRole="image"
+        accessibilityLabel="Tarana.ai logo"
+        style={styles.logo}
+        resizeMode="contain"
+      />
+      <View style={styles.greetWrap}>
+        <LinearGradient
+          colors={['#0066FF', '#1E90FF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.greetCard}
+        >
+          <Text style={styles.greeting}>Good {manilaDaypart()}, {firstName}</Text>
+          <Text style={styles.greetSub}>Everything stays on this device.</Text>
+        </LinearGradient>
+      </View>
 
       {error ? (
         <View style={styles.errorBox}>
@@ -219,15 +234,15 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 24, paddingVertical: 24, gap: 12 },
-  eyebrow: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    color: '#0066FF',
+  logo: { width: 168, height: 28, marginBottom: 4 },
+  greetWrap: {
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
   },
-  greeting: { fontSize: 28, fontWeight: '600', color: '#111827', lineHeight: 34 },
-  subcopy: { fontSize: 14, color: '#6b7280', marginTop: 2 },
+  greetCard: { paddingHorizontal: 20, paddingVertical: 18 },
+  greeting: { fontSize: 24, fontWeight: '700', color: '#ffffff', lineHeight: 30 },
+  greetSub: { fontSize: 14, color: '#ffffff', opacity: 0.9, marginTop: 2 },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 12, padding: 10 },
   errorText: { color: '#dc2626', fontSize: 13 },
   cardsLoading: {
