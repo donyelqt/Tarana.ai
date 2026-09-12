@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GradientCTA } from './ui';
+import ExploreSheet from './ExploreSheet';
 import {
   calculateRoute,
   DEFAULT_EXPLORE_PREFS,
@@ -46,18 +47,6 @@ const AVOID_OPTIONS: Array<{ key: 'avoidTolls' | 'avoidFerries' | 'avoidTrafficJ
   { key: 'avoidHighways', label: 'Highways' },
 ];
 
-/** Arrival is an opaque server string (usually ISO) — format defensively. */
-function formatArrival(value: string | null): string | null {
-  if (!value) return null;
-  try {
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value;
-    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  } catch {
-    return value;
-  }
-}
-
 /**
  * Explore — web `ExploreMapView` mobile composition, native (§8).
  *
@@ -87,6 +76,7 @@ export default function Explore() {
   const [searching, setSearching] = useState<'from' | 'to' | null>(null);
   const [routing, setRouting] = useState(false);
   const [route, setRoute] = useState<RouteSummary | null>(null);
+  const [selectedId, setSelectedId] = useState('primary');
   const [error, setError] = useState<string | null>(null);
 
   const fromRef = useRef<TextInput | null>(null);
@@ -111,6 +101,7 @@ export default function Explore() {
       if (to && text !== to.name) setTo(null);
     }
     setRoute(null);
+    setSelectedId('primary');
     setError(null);
     seq.current += 1;
     if (timer.current) clearTimeout(timer.current);
@@ -146,6 +137,7 @@ export default function Explore() {
     setFromList([]);
     setToList([]);
     setRoute(null);
+    setSelectedId('primary');
     setError(null);
   };
 
@@ -154,6 +146,7 @@ export default function Explore() {
     setRouting(true);
     setError(null);
     setRoute(null);
+    setSelectedId('primary');
     setOpenWhich(null);
     try {
       setRoute(await calculateRoute(from, to, prefs));
@@ -162,6 +155,18 @@ export default function Explore() {
     } finally {
       setRouting(false);
     }
+  };
+
+  // Web parity: handleClose clears route AND endpoints (not just the sheet).
+  const closeRoute = () => {
+    setRoute(null);
+    setSelectedId('primary');
+    setFrom(null);
+    setTo(null);
+    setFromText('');
+    setToText('');
+    setFromList([]);
+    setToList([]);
   };
 
   const pick = (which: 'from' | 'to', place: Place) => {
@@ -355,26 +360,12 @@ export default function Explore() {
       ) : null}
 
       {route ? (
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <Text style={styles.sheetTitle}>
-            {route.minutes} min · {route.km} km
-          </Text>
-          <Text style={styles.sheetSub}>
-            {route.delayMinutes > 0 ? `+${route.delayMinutes} min traffic` : 'Traffic flowing'}
-            {formatArrival(route.arrival) ? ` · arrives ${formatArrival(route.arrival)}` : ''}
-            {route.alternativeCount > 0 ? ` · ${route.alternativeCount} alternative${route.alternativeCount === 1 ? '' : 's'}` : ''}
-          </Text>
-          {route.note ? <Text style={styles.sheetNote}>{route.note}</Text> : null}
-          {route.steps.map((s, i) => (
-            <View key={i} style={styles.step}>
-              <Text style={styles.stepText}>{s.text}</Text>
-              <Text style={styles.stepMeta}>
-                {s.meters >= 1000 ? `${(s.meters / 1000).toFixed(1)} km` : `${Math.round(s.meters)} m`}
-              </Text>
-            </View>
-          ))}
-        </View>
+        <ExploreSheet
+          route={route}
+          selectedId={selectedId}
+          onSelectAlternative={setSelectedId}
+          onClose={closeRoute}
+        />
       ) : null}
       <StatusBar style="auto" />
     </ScrollView>
@@ -420,12 +411,4 @@ const styles = StyleSheet.create({
   avoidTextActive: { color: '#ffffff' },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 12, padding: 10 },
   errorText: { color: '#dc2626', fontSize: 13 },
-  sheet: { backgroundColor: '#ffffff', borderRadius: 16, padding: 16, gap: 6 },
-  handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', marginBottom: 4 },
-  sheetTitle: { fontSize: 22, fontWeight: '700', color: '#111827', fontVariant: ['tabular-nums'] },
-  sheetSub: { fontSize: 13, color: '#6b7280' },
-  sheetNote: { fontSize: 13, color: BLUE, lineHeight: 18 },
-  step: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
-  stepText: { flex: 1, fontSize: 14, color: '#111827', lineHeight: 19 },
-  stepMeta: { fontSize: 13, color: '#6b7280', fontVariant: ['tabular-nums'] },
 });
