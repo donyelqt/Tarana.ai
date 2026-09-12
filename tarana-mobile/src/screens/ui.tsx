@@ -147,7 +147,9 @@ const BADGE: Record<SpotTraffic, { bg: string; fg: string; label: string }> = {
 /** Web parity: TrafficBadge matches web TrafficBadge.tsx exactly.
  * Shows colored dot + label, rounded-full, white bg with subtle shadow. */
 export function TrafficBadge({ level }: { level: SpotTraffic }) {
-  const c = BADGE[level];
+  // Normalize level to uppercase to handle API casing differences
+  const normalizedLevel = (level?.toUpperCase() ?? 'MODERATE') as SpotTraffic;
+  const c = BADGE[normalizedLevel] ?? BADGE.MODERATE;
   return (
     <View style={[styles.badge, { backgroundColor: c.bg }]}>
       <View style={styles.dot} />
