@@ -3,43 +3,13 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboa
 import * as WebBrowser from 'expo-web-browser';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EyeIcon, EyeSlashIcon, GoogleIcon } from './icons';
-import { exchangeForMobileToken } from '../auth';
-import { createMobileSupabaseClient } from '../supabase';
 import { config } from '../config';
-import { getActiveProfile, createProfile, upsertImportedTrip } from '../db';
+import { importWebTrips } from '../data';
 
 const API_BASE = config.webBaseUrl.replace(/\/$/, '');
 
 const BLUE = '#0066FF';
 const BLUE_LIGHT = '#1E90FF';
-
-type WebItineraryRow = {
-  id: string;
-  title?: string | null;
-  date?: string | null;
-  budget?: string | null;
-  tags?: string[] | null;
-  form_data?: unknown;
-  itinerary_data?: unknown;
-  weather_data?: unknown;
-};
-
-function toPayload(row: WebItineraryRow): string | null {
-  try {
-    return JSON.stringify({
-      formData: row.form_data ?? null,
-      itineraryData: row.itinerary_data ?? null,
-      weatherData: row.weather_data ?? null,
-    });
-  } catch {
-    return null;
-  }
-}
-
-function nameFromEmail(email: string): string {
-  const local = email.split('@')[0]?.replace(/[._-]+/g, ' ').trim();
-  return local || 'My Trips';
-}
 
 export default function LinkAccount({ navigation, onDone }: { navigation: any; onDone?: () => void }) {
   const [email, setEmail] = useState('');
@@ -51,39 +21,12 @@ export default function LinkAccount({ navigation, onDone }: { navigation: any; o
 
   /**
    * One-way import (§7.4): the typed email/password only gate the button —
-   * actual auth happens in the web-browser exchange (same as the old
-   * sign-in flow). The email local-part seeds a local profile name when
-   * no profile exists yet. The JWT is single-use here: trips are copied
-   * into SQLite, then the app forgets the web session entirely.
+   * actual auth happens in the web-browser exchange inside the data seam
+   * (same as the old sign-in flow). The JWT is single-use: trips are
+   * copied into SQLite, then the app forgets the web session entirely.
    */
   const runImport = async () => {
-    const payload = await exchangeForMobileToken();
-    const userId = payload?.id ?? payload?.sub;
-    if (!userId) throw new Error('Link did not return a user.');
-
-    const profile = (await getActiveProfile()) ?? (await createProfile(nameFromEmail(email)));
-
-    const client = await createMobileSupabaseClient();
-    const { data, error: qError } = await client
-      .from('itineraries')
-      .select('id,title,date,budget,tags,form_data,itinerary_data,weather_data')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    if (qError) throw new Error(qError.message);
-
-    const rows = (Array.isArray(data) ? data : []) as WebItineraryRow[];
-    for (const row of rows) {
-      if (!row || typeof row.id !== 'string') continue;
-      await upsertImportedTrip({
-        profileId: profile.id,
-        sourceId: row.id,
-        title: row.title ?? null,
-        date: row.date ?? null,
-        budget: row.budget ?? null,
-        tags: Array.isArray(row.tags) ? row.tags.filter((t): t is string => typeof t === 'string') : [],
-        payload: toPayload(row),
-      });
-    }
+    await importWebTrips(email);
   };
 
   const finish = () => {

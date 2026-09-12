@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { createProfile } from '../db';
+import { createProfile } from '../data';
 
 const BLUE = '#0066FF';
 const BLUE_LIGHT = '#1E90FF';

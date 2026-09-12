@@ -2,9 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
-import { clearStoredToken } from '../auth';
 import { config } from '../config';
-import { getActiveProfile, clearActiveProfile, type LocalProfile } from '../db';
+import { getActiveProfile, signOut, type LocalProfile } from '../data';
 
 const API_BASE = config.webBaseUrl.replace(/\/$/, '');
 
@@ -38,8 +37,7 @@ export default function Settings({ navigation }: { navigation: SettingsNav }) {
   };
 
   const onSignOut = async () => {
-    await clearActiveProfile();
-    await clearStoredToken();
+    await signOut();
     navigation.replace('Landing');
   };
 
