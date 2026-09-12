@@ -2,32 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect } from '@react-navigation/native';
-import { getActiveProfileId, listTrips, resolveWebImage, type LocalTrip } from '../data';
-import { formatDate } from './ui';
+import { getActiveProfileId, listTrips, type LocalTrip } from '../data';
+import { formatDate, firstPayloadImage } from './ui';
 import Thumb from './Thumb';
-
-/** First real photo in the saved payload (string http URL only). */
-function firstImage(payload: string | null): string | null {
-  if (!payload) return null;
-  try {
-    const parsed: unknown = JSON.parse(payload);
-    if (typeof parsed !== 'object' || parsed === null) return null;
-    const items = (parsed as { itineraryData?: { items?: Array<{ activities?: Array<{ image?: unknown }> }> } })
-      .itineraryData?.items;
-    if (!Array.isArray(items)) return null;
-    for (const period of items) {
-      for (const act of period.activities ?? []) {
-        if (typeof act.image === 'string') {
-          const uri = resolveWebImage(act.image);
-          if (uri) return uri;
-        }
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * SavedTrips — read-only list of the active profile's trips from SQLite.
@@ -94,7 +71,7 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
             onPress={() => navigation.navigate('TripDetail', { id: item.id })}
             className="mb-3 flex-row gap-3 rounded-lg bg-card p-3"
           >
-            <Thumb uri={firstImage(item.payload)} size={56} />
+            <Thumb uri={firstPayloadImage(item.payload)} size={56} />
             <View className="flex-1">
               <Text className="text-base font-semibold text-foreground">{item.title ?? 'Untitled trip'}</Text>
               <Text className="mt-1 text-sm text-muted-foreground">

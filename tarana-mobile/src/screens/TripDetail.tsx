@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { getActiveProfileId, listTrips, deleteTrip, resolveWebImage, type LocalTrip } from '../data';
-import { formatDate } from './ui';
+import { formatDate, firstPayloadImage } from './ui';
 import Thumb from './Thumb';
 
 const BLUE = '#0066FF';
@@ -114,10 +114,12 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
   const payload = parsePayload(trip.payload);
   const periods = payload?.itineraryData?.items ?? [];
   const form = payload?.formData;
+  const heroUri = firstPayloadImage(trip.payload);
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>{trip.title ?? 'Untitled trip'}</Text>
+      {heroUri ? <TripHero uri={heroUri} title={trip.title ?? 'Trip photo'} /> : null}
       <Text style={styles.meta}>{[formatDate(trip.date), trip.budget].filter(Boolean).join(' · ') || 'No details'}</Text>
       {trip.tags.length > 0 ? <Text style={styles.tags}>{trip.tags.join(', ')}</Text> : null}
 
@@ -188,6 +190,26 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
   );
 }
 
+/**
+ * Photo hero (Airbnb pattern: photography carries the card). Renders only
+ * when a real photo exists; the title block below stands alone otherwise.
+ */
+function TripHero({ uri, title }: { uri: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <View style={styles.heroWrap}>
+      <Image
+        source={{ uri }}
+        style={styles.hero}
+        onError={() => setFailed(true)}
+        accessibilityRole="image"
+        accessibilityLabel={title}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 24, paddingVertical: 24, gap: 12 },
@@ -195,6 +217,8 @@ const styles = StyleSheet.create({
   muted: { fontSize: 13, color: '#6b7280' },
   errorText: { fontSize: 14, color: '#dc2626', textAlign: 'center' },
   title: { fontSize: 24, fontWeight: '700', color: '#111827', lineHeight: 30 },
+  heroWrap: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#ffffff', marginTop: 8 },
+  hero: { width: '100%', height: 200 },
   meta: { fontSize: 14, color: '#6b7280', marginTop: 2 },
   tags: { fontSize: 12, color: '#6b7280', marginTop: 4 },
   tiles: { flexDirection: 'row', gap: 8, marginTop: 4 },
