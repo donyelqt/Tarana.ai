@@ -10,7 +10,7 @@
  */
 import React from 'react';
 import { View } from 'react-native';
-import Svg, { Path, Polyline, Circle, Line } from 'react-native-svg';
+import Svg, { Path, Polyline, Circle, Line, Polygon } from 'react-native-svg';
 
 type IconProps = {
   size?: number;
@@ -124,8 +124,8 @@ export function GoogleIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-/** Forward arrow — used on CTAs. */
-export function ArrowRightIcon({ size = 20, color = '#ffffff', strokeWidth = 2.5 }: IconProps) {
+/** Map pin — Trips tab. Same stroke language as the set (2.0 at tab size). */
+export function MapPinIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
       width={size}
@@ -137,8 +137,85 @@ export function ArrowRightIcon({ size = 20, color = '#ffffff', strokeWidth = 2.5
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <Line x1="5" y1="12" x2="19" y2="12" />
-      <Polyline points="12 5 19 12 12 19" />
+      <Path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+      <Circle cx="12" cy="10" r="3" />
+    </Svg>
+  );
+}
+
+/** Compass — Spots tab. */
+export function CompassIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Circle cx="12" cy="12" r="10" />
+      <Polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </Svg>
+  );
+}
+
+/** Utensils — Eats tab. */
+export function UtensilsIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+      <Path d="M7 2v20" />
+      <Path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
+    </Svg>
+  );
+}
+
+/** Gear — Settings tab. */
+export function GearIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <Circle cx="12" cy="12" r="3" />
+    </Svg>
+  );
+}
+
+/** Plus — center action button. Same stroke language (2.5 at large size). */
+export function PlusIcon({ size = 28, color = '#ffffff', strokeWidth = 2.5 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M12 5v14" />
+      <Path d="M5 12h14" />
     </Svg>
   );
 }
