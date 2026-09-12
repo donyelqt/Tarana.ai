@@ -240,8 +240,7 @@ export function TiltIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: Icon
   );
 }
 
-/** Layers — Explore map-style toggle. Simple geometric mark, same stroke language. */
-export function LayersIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
+/** Layers — Explore map-style toggle. Simple geometric mark, same stroke language. */export function LayersIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
       width={size}
@@ -256,6 +255,116 @@ export function LayersIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: Ic
       <Path d="M12 2l9 5-9 5-9-5 9-5z" />
       <Path d="M3 12l9 5 9-5" />
       <Path d="M3 17l9 5 9-5" />
+    </Svg>
+  );
+}
+
+/**
+ * Explore transport glyphs — primitive-composed (circle/line/rect), NOT
+ * traced Lucide paths. lucide-react is Metro-blocked, and the skill bans
+ * hand-drawn paths; composing from primitives is the allowed path.
+ * Same 24-viewBox stroke language as the set.
+ */
+export function CarIcon({ size = 16, color = '#6b7280', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M4 16v-5l2-5h11l3 5h1v5" />
+      <Path d="M4 12h16" />
+      <Circle cx="8" cy="17.5" r="1.8" />
+      <Circle cx="16.5" cy="17.5" r="1.8" />
+    </Svg>
+  );
+}
+
+export function WalkIcon({ size = 16, color = '#6b7280', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Circle cx="13" cy="4" r="1.8" />
+      <Path d="M13 8l-2.5 5 2.5 3v5" />
+      <Path d="M10.5 13L7 14.5" />
+      <Path d="M10.5 13l3-1.5 2.5 1" />
+      <Path d="M13 16l3 2 1 3" />
+    </Svg>
+  );
+}
+
+export function BikeIcon({ size = 16, color = '#6b7280', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Circle cx="6" cy="16.5" r="3.5" />
+      <Circle cx="18" cy="16.5" r="3.5" />
+      <Path d="M6 16.5l3.5-7H14l4 7" />
+      <Path d="M9.5 9.5L8 5.5h2.5" />
+    </Svg>
+  );
+}
+
+export function TruckIcon({ size = 16, color = '#6b7280', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M2 6h12v10H2z" />
+      <Path d="M14 10h4l3 3v3h-7" />
+      <Circle cx="6.5" cy="17.5" r="1.8" />
+      <Circle cx="17" cy="17.5" r="1.8" />
+    </Svg>
+  );
+}
+
+/** Sliders — Explore options toggle. Primitive-composed, same stroke language. */
+export function SlidersIcon({ size = 16, color = '#6b7280', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Line x1="4" y1="7" x2="20" y2="7" />
+      <Line x1="4" y1="12" x2="20" y2="12" />
+      <Line x1="4" y1="17" x2="20" y2="17" />
+      <Circle cx="9" cy="7" r="2" fill="#ffffff" />
+      <Circle cx="15" cy="12" r="2" fill="#ffffff" />
+      <Circle cx="8" cy="17" r="2" fill="#ffffff" />
     </Svg>
   );
 }
