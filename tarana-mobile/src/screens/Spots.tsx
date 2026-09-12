@@ -60,10 +60,17 @@ export default function Spots() {
   const rest = (cards ?? []).slice(TOP_PICKS);
 
   return (
-    <View className="flex-1 bg-background px-4 pt-4">
-      <View className="mb-1 flex-row items-baseline justify-between px-1">
-        <Text className="text-xl font-medium text-foreground">Suggested Spots</Text>
-        <Text className="text-sm text-muted-foreground">Top picks in {CITY_CONFIGS[city].name}</Text>
+    <View style={{ flex: 1, backgroundColor: '#F2F2F7' }} className="px-4 pt-4">
+      <View style={styles.heroWrap}>
+        <LinearGradient
+          colors={[GRADIENT.auth.from, GRADIENT.auth.to]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.hero}
+        >
+          <Text style={styles.heroTitle}>Suggested Spots</Text>
+          <Text style={styles.heroSub}>Top picks in {CITY_CONFIGS[city].name}</Text>
+        </LinearGradient>
       </View>
       <View className="mb-3 flex-row flex-wrap gap-2">
         {SPOT_CITIES.map((c) => {
@@ -205,6 +212,15 @@ function SpotRow({ card: item }: { card: SpotView }) {
 }
 
 const styles = StyleSheet.create({
+  heroWrap: {
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  hero: { paddingHorizontal: 20, paddingVertical: 18 },
+  heroTitle: { fontSize: 22, fontWeight: '700', color: '#ffffff', lineHeight: 28 },
+  heroSub: { fontSize: 13, color: '#ffffff', opacity: 0.9, marginTop: 2 },
   pill: {
     paddingVertical: 8,
     paddingHorizontal: 18,
