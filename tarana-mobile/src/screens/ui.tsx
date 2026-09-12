@@ -133,29 +133,32 @@ export function formatPHP(value: number | null | undefined): string | null {
   }
 }
 
-/**
- * Traffic badge — web semantics (SpotlightCard green/yellow/red):
- * Low = green tint, Moderate = amber tint, High = red tint.
- * Color never stands alone: the level word is always present as text.
- * Canonical home (moved from Spots): every surface uses this.
- */
-const BADGE: Record<SpotTraffic, { bg: string; fg: string }> = {
-  Low: { bg: '#dcfce7', fg: '#15803d' },
-  Moderate: { bg: '#fef9c3', fg: '#a16207' },
-  High: { bg: '#fee2e2', fg: '#b91c1c' },
+/** Web parity: 5 traffic levels matching web TrafficLevel (route-optimization.ts:109).
+ * Colors match web TRAFFIC_COLORS (trafficColors.ts:28-64).
+ * Labels match web TRAFFIC_LABELS (TrafficBadge.tsx:14-20). */
+const BADGE: Record<SpotTraffic, { bg: string; fg: string; label: string }> = {
+  VERY_LOW: { bg: '#dcfce7', fg: '#166534', label: 'Very low' },
+  LOW: { bg: '#dcfce7', fg: '#166534', label: 'Low' },
+  MODERATE: { bg: '#fef9c3', fg: '#854d0e', label: 'Moderate' },
+  HIGH: { bg: '#ffedd5', fg: '#9a3412', label: 'Heavy' },
+  SEVERE: { bg: '#fef2f2', fg: '#991b1b', label: 'Severe' },
 };
 
+/** Web parity: TrafficBadge matches web TrafficBadge.tsx exactly.
+ * Shows colored dot + label, rounded-full, white bg with subtle shadow. */
 export function TrafficBadge({ level }: { level: SpotTraffic }) {
   const c = BADGE[level];
   return (
     <View style={[styles.badge, { backgroundColor: c.bg }]}>
-      <Text style={[styles.badgeText, { color: c.fg }]}>{level} traffic</Text>
+      <View style={styles.dot} />
+      <Text style={[styles.badgeText, { color: c.fg }]}>{c.label} traffic</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  badge: { alignSelf: 'flex-start', borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10, marginTop: 6 },
+  badge: { alignSelf: 'flex-start', borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10, marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   badgeText: { fontSize: 12, fontWeight: '600' },
   ctaOuter: { borderRadius: 16, marginTop: 4 },
   cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
