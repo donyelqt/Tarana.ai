@@ -387,9 +387,9 @@ Name correction: there is **no `/tarana-gala` route** — Gala is `/itinerary-ge
 
 `next/image` + `StaticImageData` → URL-string/bundled PNG · `lucide-react` → inline SVG in `./icons` (established) · `framer-motion` → static or Reanimated (new dep only if motion earns it) · `window.*` SDKs → stay server-side behind proxy · Node `crypto`/`buffer` → never imported · portable as-is: `cityConfig`, pure utils, `dailyRotation`, traffic thresholds.
 
-### Nav target (rows appear only when their slice lands — no dead buttons)
+### Nav target (built 2026-09-12, worktree — rows appear only when their slice lands)
 
-`Landing → AuthEntry (fresh/import) → Home` hub: Trips (done), Spots (done), Settings (done) → then TripDetail → Eats → SavedCafes → Plan (post-Phase-2). Each row is added by its own slice with its own tsc + bundle + device gates.
+`Landing → AuthEntry (fresh/import, replace-sealed) → MainTabs`: Home · Trips · **[ + ]** · Spots · Settings. Center action opens a transparent-modal sheet (Plan / Eats / Explore). Flows + details (Plan, Explore, Eats, TripDetail, SavedCafes, CafeDetail) live in the root stack above tabs; auth seals both directions with `replace`. Each row/slice carries its own tsc + bundle + device gates.
 
 ---
 
@@ -413,7 +413,7 @@ Screens import ONLY `../data` (+ `../config` for link URLs, navigator props). Ve
 
 ### Screen build status (worktree, 2026-09-12 — unmerged)
 
-Done: Landing, AuthEntry shell, ProfileCreate, LinkAccount, Home hub (live counts, weather strip), SavedTrips (SQLite + thumbs), TripDetail, Spots (top-3 parity + badges + Maps CTA), SavedCafes + CafeDetail, Eats (vendored catalog + local suggest), Plan form (Phase-2-gated generate), Explore (list-based routes), Settings. Next: device run, then sliced PRs. 7.3 bundled-cache, 7.5 hygiene, 7.6 hardening: not started.
+Done: Landing, AuthEntry shell, ProfileCreate, LinkAccount, Home (spots-only hub), SavedTrips (SQLite + thumbs), TripDetail, Spots (top-3 parity + badges + Maps CTA), SavedCafes + CafeDetail, Eats (vendored catalog + local suggest), Plan form (Phase-2-gated generate), Explore (list-based routes), Settings, MainTabs + ActionSheet, grouped-canvas + gradient-pill polish, canonical GradientCTA (auth/app variants from verified web stops). Next: device run, then sliced PRs. 7.3 bundled-cache, 7.5 hygiene, 7.6 hardening: not started.
 
 ### Explore rule (user call, recorded)
 
