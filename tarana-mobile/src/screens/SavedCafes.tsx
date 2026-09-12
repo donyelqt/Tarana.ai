@@ -49,7 +49,7 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
 
   if (meals === null) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
+      <View style={{ flex: 1, backgroundColor: '#F2F2F7' }} className="items-center justify-center">
         <ActivityIndicator />
         <Text className="mt-2 text-sm text-muted-foreground">Loading saved cafes…</Text>
         <StatusBar style="auto" />
@@ -58,7 +58,7 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
   }
 
   return (
-    <View className="flex-1 bg-background px-4 pt-4">
+    <View style={{ flex: 1, backgroundColor: '#F2F2F7' }} className="px-4 pt-4">
       <TextInput
         className="mb-3 rounded-xl border border-border bg-card px-4 py-3 text-base text-foreground"
         placeholder="Search saved cafes…"
