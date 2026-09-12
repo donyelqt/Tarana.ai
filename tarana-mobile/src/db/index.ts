@@ -19,7 +19,7 @@ import * as SQLite from 'expo-sqlite';
 import * as TokenStorage from '../tokenStorage';
 
 const DB_NAME = 'tarana.db';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const ACTIVE_PROFILE_KEY = 'tarana.activeProfileId';
 
 const MAX_DISPLAY_NAME = 60;
@@ -50,6 +50,26 @@ type TripRow = Omit<LocalTrip, 'tags' | 'source'> & {
   source: string;
 };
 
+export type LocalMeal = {
+  id: string;
+  profile_id: string | null;
+  cafe_name: string;
+  meal_type: string | null;
+  price: number | null;
+  good_for: string[];
+  location: string | null;
+  items: string | null;
+  source: 'local' | 'web-import';
+  source_id: string | null;
+  imported_at: string | null;
+  created_at: string;
+};
+
+type MealRow = Omit<LocalMeal, 'good_for' | 'source'> & {
+  good_for: string | null;
+  source: string;
+};
+
 const SCHEMA = `
 PRAGMA journal_mode = WAL;
 CREATE TABLE IF NOT EXISTS profiles (
@@ -72,6 +92,22 @@ CREATE TABLE IF NOT EXISTS trips (
   UNIQUE(source, source_id)
 );
 CREATE INDEX IF NOT EXISTS idx_trips_profile ON trips(profile_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS meals (
+  id TEXT PRIMARY KEY NOT NULL,
+  profile_id TEXT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  cafe_name TEXT NOT NULL,
+  meal_type TEXT NULL,
+  price REAL NULL,
+  good_for TEXT NULL,
+  location TEXT NULL,
+  items TEXT NULL,
+  source TEXT NOT NULL DEFAULT 'local',
+  source_id TEXT NULL,
+  imported_at TEXT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  UNIQUE(source, source_id)
+);
+CREATE INDEX IF NOT EXISTS idx_meals_profile ON meals(profile_id, created_at DESC);
 `;
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -252,4 +288,76 @@ export async function upsertImportedTrip(input: {
 export async function deleteTrip(id: string, profileId: string): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM trips WHERE id = ? AND profile_id = ?', id, profileId);
+}
+
+// ── Meals ────────────────────────────────────────────────
+
+function toMeal(row: MealRow): LocalMeal {
+  let goodFor: string[] = [];
+  if (row.good_for) {
+    try {
+      const parsed: unknown = JSON.parse(row.good_for);
+      if (Array.isArray(parsed)) goodFor = parsed.filter((t): t is string => typeof t === 'string');
+    } catch {
+      goodFor = [];
+    }
+  }
+  return {
+    id: row.id,
+    profile_id: row.profile_id,
+    cafe_name: row.cafe_name,
+    meal_type: row.meal_type,
+    price: row.price,
+    good_for: goodFor,
+    location: row.location,
+    items: row.items,
+    source: row.source === 'web-import' ? 'web-import' : 'local',
+    source_id: row.source_id,
+    imported_at: row.imported_at,
+    created_at: row.created_at,
+  };
+}
+
+export async function createMeal(input: {
+  profileId: string;
+  cafeName: string;
+  mealType?: string | null;
+  price?: number | null;
+  goodFor?: string[];
+  location?: string | null;
+  items?: string | null;
+}): Promise<LocalMeal> {
+  const name = input.cafeName.trim();
+  if (!name) throw new Error('Meal needs a cafe name.');
+  const db = await getDb();
+  const id = newId();
+  await db.runAsync(
+    'INSERT INTO meals (id, profile_id, cafe_name, meal_type, price, good_for, location, items, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    id,
+    input.profileId,
+    name,
+    input.mealType ?? null,
+    input.price ?? null,
+    JSON.stringify(input.goodFor ?? []),
+    input.location ?? null,
+    input.items ?? null,
+    'local'
+  );
+  const row = await db.getFirstAsync<MealRow>('SELECT * FROM meals WHERE id = ?', id);
+  if (!row) throw new Error('Meal was not created.');
+  return toMeal(row);
+}
+
+export async function listMealsByProfile(profileId: string): Promise<LocalMeal[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<MealRow>(
+    'SELECT * FROM meals WHERE profile_id = ? ORDER BY created_at DESC',
+    profileId
+  );
+  return rows.map(toMeal);
+}
+
+export async function deleteMeal(id: string, profileId: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('DELETE FROM meals WHERE id = ? AND profile_id = ?', id, profileId);
 }
