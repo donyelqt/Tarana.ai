@@ -46,7 +46,10 @@
 
   /* Web auth pages use a hard-coded heading color, not the theme foreground */
   --foreground: 222.2 47.4% 11.2%;         /* #111827-ish heading gray */
-  --background: 0 0% 100%;
+  /* In-app grouped canvas (iOS inset-grouped). Auth/entry screens hardcode
+     #fff roots and are unaffected — only bg-background consumers (the tab
+     list screens) follow this token. White cards + hairline-free rows. */
+  --background: 240 5% 96%;                  /* #F2F2F7 system grouped */
 }
 
 @layer components {
