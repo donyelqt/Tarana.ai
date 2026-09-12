@@ -19,7 +19,7 @@ import * as SQLite from 'expo-sqlite';
 import * as TokenStorage from '../tokenStorage';
 
 const DB_NAME = 'tarana.db';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 const ACTIVE_PROFILE_KEY = 'tarana.activeProfileId';
 
 const MAX_DISPLAY_NAME = 60;
@@ -27,6 +27,10 @@ const MAX_DISPLAY_NAME = 60;
 export type LocalProfile = {
   id: string;
   display_name: string;
+  email: string | null;
+  avatar_url: string | null;
+  location: string | null;
+  bio: string | null;
   created_at: string;
 };
 
@@ -75,6 +79,10 @@ PRAGMA journal_mode = WAL;
 CREATE TABLE IF NOT EXISTS profiles (
   id TEXT PRIMARY KEY NOT NULL,
   display_name TEXT NOT NULL,
+  email TEXT,
+  avatar_url TEXT,
+  location TEXT,
+  bio TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE TABLE IF NOT EXISTS trips (
@@ -116,9 +124,21 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const current = row?.user_version ?? 0;
   if (current >= SCHEMA_VERSION) return;
-  // v1: fresh tables only. Future versions add `if (current === N)` steps
-  // above the version bump, per the docs migration pattern.
-  await db.execAsync(SCHEMA);
+  // v1: fresh tables only.
+  // v2: added trips/meals tables.
+  // v3: added email, avatar_url, location, bio to profiles table.
+  if (current === 0) {
+    await db.execAsync(SCHEMA);
+  } else if (current === 1) {
+    await db.execAsync(SCHEMA);
+  } else if (current === 2) {
+    await db.execAsync(`
+      ALTER TABLE profiles ADD COLUMN email TEXT;
+      ALTER TABLE profiles ADD COLUMN avatar_url TEXT;
+      ALTER TABLE profiles ADD COLUMN location TEXT;
+      ALTER TABLE profiles ADD COLUMN bio TEXT;
+    `);
+  }
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
@@ -178,11 +198,14 @@ function toTrip(row: TripRow): LocalTrip {
 
 // ── Profiles ─────────────────────────────────────────────
 
-export async function createProfile(displayName: string): Promise<LocalProfile> {
+export async function createProfile(displayName: string, extras?: { email?: string | null; avatar_url?: string | null; location?: string | null; bio?: string | null }): Promise<LocalProfile> {
   const name = cleanDisplayName(displayName);
   const db = await getDb();
   const id = newId();
-  await db.runAsync('INSERT INTO profiles (id, display_name) VALUES (?, ?)', id, name);
+  await db.runAsync(
+    'INSERT INTO profiles (id, display_name, email, avatar_url, location, bio) VALUES (?, ?, ?, ?, ?, ?)',
+    id, name, extras?.email ?? null, extras?.avatar_url ?? null, extras?.location ?? null, extras?.bio ?? null
+  );
   await TokenStorage.setItemAsync(ACTIVE_PROFILE_KEY, id);
   const row = await db.getFirstAsync<LocalProfile>('SELECT * FROM profiles WHERE id = ?', id);
   if (!row) throw new Error('Profile was not created.');
@@ -197,7 +220,7 @@ export async function getActiveProfile(): Promise<LocalProfile | null> {
   const id = await getActiveProfileId();
   if (!id) return null;
   const db = await getDb();
-  return db.getFirstAsync<LocalProfile>('SELECT * FROM profiles WHERE id = ?', id);
+  return db.getFirstAsync<LocalProfile>('SELECT id, display_name, email, avatar_url, location, bio, created_at FROM profiles WHERE id = ?', id);
 }
 
 export async function clearActiveProfile(): Promise<void> {

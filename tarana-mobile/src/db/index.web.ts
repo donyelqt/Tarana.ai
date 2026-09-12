@@ -29,7 +29,7 @@ export async function getDb(): Promise<null> {
   return null;
 }
 
-export async function createProfile(displayName: string): Promise<LocalProfile> {
+export async function createProfile(displayName: string, extras?: { email?: string | null; avatar_url?: string | null; location?: string | null; bio?: string | null }): Promise<LocalProfile> {
   const name = displayName.trim().replace(/\s+/g, ' ');
   if (!name) throw new Error('Please enter a display name.');
   if (name.length > MAX_DISPLAY_NAME) {
@@ -38,6 +38,10 @@ export async function createProfile(displayName: string): Promise<LocalProfile> 
   const profile: LocalProfile = {
     id: newId('p'),
     display_name: name,
+    email: extras?.email ?? null,
+    avatar_url: extras?.avatar_url ?? null,
+    location: extras?.location ?? null,
+    bio: extras?.bio ?? null,
     created_at: new Date().toISOString(),
   };
   profiles.set(profile.id, profile);
