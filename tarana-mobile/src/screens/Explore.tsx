@@ -143,7 +143,6 @@ export default function Explore() {
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>Get directions</Text>
-      <Text style={styles.subcopy}>Live routing with traffic. Needs a connection.</Text>
 
       <View style={styles.card}>
         {renderField('from', 'From', fromText, fromList, from)}
@@ -205,8 +204,7 @@ export default function Explore() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 24, paddingVertical: 24, gap: 10 },
-  title: { fontSize: 24, fontWeight: '700', color: '#111827', lineHeight: 30 },
-  subcopy: { fontSize: 14, color: '#6b7280' },
+  title: { fontSize: 22, fontWeight: '600', color: '#111827', lineHeight: 28 },
   card: { backgroundColor: '#ffffff', borderRadius: 16, padding: 16, gap: 10 },
   fieldLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4 },
   input: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, fontSize: 16, color: '#111827' },

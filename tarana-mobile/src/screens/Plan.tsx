@@ -80,7 +80,6 @@ export default function Plan() {
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>Plan my trip</Text>
-      <Text style={styles.subcopy}>Runs on-device when the local model lands. Your form is saved as you go.</Text>
 
       <Text style={styles.label}>Destination</Text>
       <View style={styles.pills}>
@@ -237,8 +236,7 @@ export default function Plan() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 24, paddingVertical: 24, gap: 10 },
-  title: { fontSize: 24, fontWeight: '700', color: '#111827', lineHeight: 30 },
-  subcopy: { fontSize: 14, color: '#6b7280' },
+  title: { fontSize: 22, fontWeight: '600', color: '#111827', lineHeight: 28 },
   label: { fontSize: 14, fontWeight: '500', color: '#374151', marginTop: 8 },
   input: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, fontSize: 16, color: '#111827', fontVariant: ['tabular-nums'] },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
