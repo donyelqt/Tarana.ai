@@ -17,6 +17,8 @@ export type ExploreMapProps = {
   mapStyle: 'main' | 'satellite';
   tiltOn: boolean;
   recenterSignal: number;
+  /** Web parity: useRouteCalculation isCalculating → map "Analyzing routes…" overlay. */
+  loading: boolean;
   onSelectRoute: (id: string) => void;
 };
 
@@ -38,6 +40,7 @@ export default function ExploreMapView({
   mapStyle,
   tiltOn,
   recenterSignal,
+  loading,
   onSelectRoute,
 }: ExploreMapProps) {
   const webRef = useRef<WebView | null>(null);
@@ -128,6 +131,11 @@ export default function ExploreMapView({
     send({ type: 'tilt', on: tiltOn });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tiltOn]);
+
+  useEffect(() => {
+    send({ type: 'loading', on: loading });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   useEffect(() => {
     if (firstSignal.current) {
