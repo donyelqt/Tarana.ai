@@ -299,6 +299,7 @@ Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.
 4. ~~**Phase 3b design contract — literal pixel parity or shared design system?**~~ **DECIDED 2026-09-10: shared design system, recomposed for mobile.** Rationale: the web pages are desktop split-panel layouts that cannot render acceptably on a 375pt phone; a literal port would ship a *worse* experience. See §5 decision table.
 5. ~~**Mobile sign-up — native form or embedded web view?**~~ **DECIDED 2026-09-10: native form.** Rationale: embedded-web sign-up inherits the known Android cookie-isolation wall (Chrome Custom Tabs in `WebBrowser.openAuthSessionAsync` does not share cookies with the app's `fetch` — the exact problem `exchange-redirect` was built for). A native form posting to the existing `POST /api/auth/register` sidesteps it and reuses web's validation + error copy. Now in scope for 3b.5, not deferred.
 6. **Landing page on web too?** (NEW) Web currently goes straight to `HeroSection` on `/`. Out of scope for this amendment unless wanted.
+7. **TomTom Search `view` outage (2026-09-12, ACTIVE).** Every `searchLocations` call 400s: `BadRequest: 'PH' is not a valid view`. Chain: `cityConfig` `countrySet: "PH"` → forwarded as `countrySet=PH` with no `view` (`tomtomRouting.ts:324-339`) → TomTom derives `view=PH` → rejected (allowed: `RS, IL, RU, TW, IN, CN, AR, Unified, MA, PK, TR` — TomTom Fuzzy Search docs, `view` defaults by origin). Pre-existing latent defect (countrySet threading since `c8a9e7f`; `countrySet: 'PH'` hardcoded before that) exposed by provider-side tightening — no bad commit, no mobile-side cause (mobile touches zero `src/` files). Blast radius: Baguio degraded-but-alive (curated only), Cebu/Manila/Davao empty, Explore autocomplete dead, route-calc unaffected. Fix: pin `view: 'Unified'` + regression test — branch `fix/tomtom-search-view-unified`, implemented + jest-green, **unmerged pending review**.
 
 ---
 
@@ -328,6 +329,10 @@ Multi-profile UI (schema-ready only), friend/social graph, cross-device auto-syn
 ### Kill-gate unchanged
 
 Phase 2 local-model quality test (§6 Q1) still decides the paid premise. Build 7.1–7.5 only after it passes, or timebox 7.1 as the offline test harness for it.
+
+### Build status (worktree, 2026-09-12 — implemented, UNMERGED, no push)
+
+7.1 SQLite store (`db/index.ts` + `.web.ts` stub, profiles/trips/meals, v2 migration), 7.2 SavedTrips→SQLite, 7.4 screens (ProfileCreate/LinkAccount/AuthEntry rebind/Settings/nav), Spots parity (top-3 + derived badges + Maps CTA), TripDetail, SavedCafes + CafeDetail, Eats (20-cafe vendored catalog), Plan form (Phase-2-gated generate), Explore (list-based routes), Home hub, data seam (`data/index.ts`), weather-shape fix. Gates green: `tsc` exit 0, Metro `-p web` complete, banned imports zero. Outstanding: device run on new paths, then sliced PRs. 7.3 bundled-cache, 7.5 binary hygiene, 7.6 proxy hardening: not started.
 
 ### 7.4 screen breakdown (repurpose, no redesign)
 
@@ -363,12 +368,12 @@ Name correction: there is **no `/tarana-gala` route** — Gala is `/itinerary-ge
 | Web page | Mobile verdict | Reason (evidence) |
 |---|---|---|
 | Dashboard `/dashboard` | CUT, not ported | Session-walled mashup of referrals/credits/stats/weather/spots/cafes (`page.tsx:161-167` redirects unauthenticated). Referrals/credits/tiers are funnel mechanics — meaningless in a paid offline app (ADR-002). Home hub already covers entry; its data goes to Spots / Eats-later / per-trip weather. |
-| Gala `/itinerary-generator` | NEW Plan screen, **gated on Phase 2** | `POST` generation is 401-without-session + 402-without-credits by design (`route.ts:230-249`, fail-closed). Mobile cannot ride it — only path is on-device LLM + SQLite save. Until the Phase-2 quality gate passes, a Plan button is a dead end, so it stays out. Metro: form logic portable; `ItineraryMap` (`window.tt`, `ItineraryMap.tsx:69-95`) stays web-only → static snapshot or no map in v1. |
-| Eats `/tarana-eats` | NEW Eats screen, **after trips loop** | Best local-first fit: static catalog (`restaurants.ts` + 20 `menus/*.ts`) bundles offline — Baguio subset first, the full set too heavy for a v1 binary. Web already proves rule-based works without AI (`food-recommendations/route.ts:388-391` free fallback). Saves to a new SQLite `meals` table. POST AI path unusable (401 at `route.ts:79-85`) — local LLM or fallback only. Metro: `FoodMatchCard` next/image + StaticImageData → URL-string/bundled assets. |
-| Explore `/tarana-explore` (public, 27-line page) | DEFER post-launch | Zero auth (`grep` over dir: no session/credit refs) is tempting, but heaviest native cost: the `InteractiveRouteMap` on the `window` TomTom SDK + the animated `FloatingSearchCard` → needs `react-native-maps` (new native dep, keys, review surface). Routing/traffic is inherently live — no offline story. Documented HTTP surface for later: `locations/search`, `routes/calculate`, `weather`. |
+| Gala `/itinerary-generator` | Plan screen BUILT IN WORKTREE (unmerged), **gated on Phase 2 for generation** | `POST` generation is 401-without-session + 402-without-credits by design (`route.ts:230-249`, fail-closed). Mobile cannot ride it — only path is on-device LLM + SQLite save. Form validates fully; Generate answers via the Phase-2 seam (honest pending card, never a dead spinner). Metro: form logic portable; `ItineraryMap` (`window.tt`, `ItineraryMap.tsx:69-95`) stays web-only → static snapshot or no map in v1. |
+| Eats `/tarana-eats` | Eats screen BUILT IN WORKTREE (unmerged), **after trips loop** | Best local-first fit: static catalog (`restaurants.ts` + 20 `menus/*.ts`) bundles offline — 6 full menus vendored verbatim + 20-entry index, remainder via later endpoint. Web already proves rule-based works without AI (`food-recommendations/route.ts:388-391` free fallback). Saves to SQLite `meals` table (built). POST AI path unusable (401 at `route.ts:79-85`) — local filter engine + fallback only. Metro: `FoodMatchCard` next/image + StaticImageData → URL-string/bundled assets. |
+| Explore `/tarana-explore` (public, 27-line page) | Explore screen BUILT IN WORKTREE (unmerged) | Zero auth (`grep` over dir: no session/credit refs). Web-mobile composition reused (search card + bottom sheet), legs as readable list — no map SDK, no new native dep. Uses verified session-free `locations/search` + `routes/calculate`. Currently degraded by the §6.7 TomTom outage (autocomplete 0 results until the view fix lands). |
 | Saved trips list `/saved-trips` | DONE (SQLite, §7.2) | — |
-| Trip detail `/saved-trips/[id]` | NEW TripDetail, **read-only + delete in v1** | Reads the SQLite `payload` already stored by import. Web refresh (`GET/POST …/refresh`, 401 at `refresh/route.ts:56-63`) deferred to post-Phase-4 local re-run. `PlaceDetail` modal → inline section (modals + 375pt don't mix; keep simple). |
-| Saved meals `/saved-meals` + detail | NEW SavedCafes + detail, **after Eats** | Needs SQLite `meals` table (7.1 extension), enrichment from bundled catalog, scoped by `profile_id`. **Web bug flagged (not mobile scope):** `getSavedMealById` filters `.eq('id')` with no `user_id` (`supabaseMeals.ts:31-36`) — mobile must not repeat this; trips pattern (profile-scoped everywhere) is the rule. |
+| Trip detail `/saved-trips/[id]` | TripDetail BUILT IN WORKTREE (unmerged), **read-only + delete in v1** | Reads the SQLite `payload` already stored by import. Web refresh (`GET/POST …/refresh`, 401 at `refresh/route.ts:56-63`) deferred to post-Phase-4 local re-run. `PlaceDetail` modal → inline section (modals + 375pt don't mix; keep simple). |
+| Saved meals `/saved-meals` + detail | SavedCafes + CafeDetail BUILT IN WORKTREE (unmerged), **after Eats** | Needs SQLite `meals` table (7.1 extension), enrichment from bundled catalog, scoped by `profile_id`. **Web bug flagged (not mobile scope):** `getSavedMealById` filters `.eq('id')` with no `user_id` (`supabaseMeals.ts:31-36`) — mobile must not repeat this; trips pattern (profile-scoped everywhere) is the rule. |
 | Settings `/settings` | DIVERGE, not a port (built) | Web settings PATCHes the server profile behind a session (`page.tsx:112-133`, 401 at `profile/route.ts:12-17`). Mobile has no session to authorize that — mobile Settings stays local (profile + About + Link + sign-out). Recorded divergence, not debt. |
 | Auth pages `/auth/*` | SUPERSEDED (§7.4) | — |
 | Referrals / credits / tiers / stats / invite | CUT on mobile | No credits, no tiers, no invites in a one-time-purchase app. |
@@ -385,3 +390,31 @@ Name correction: there is **no `/tarana-gala` route** — Gala is `/itinerary-ge
 ### Nav target (rows appear only when their slice lands — no dead buttons)
 
 `Landing → AuthEntry (fresh/import) → Home` hub: Trips (done), Spots (done), Settings (done) → then TripDetail → Eats → SavedCafes → Plan (post-Phase-2). Each row is added by its own slice with its own tsc + bundle + device gates.
+
+---
+
+## 9. Native design contract (Appllama-applied, 2026-09-12)
+
+### Research path (no Appllama MCP connected)
+
+No MCP tools exist in this environment, so reference-study came from the shipped web app itself (proven, user-tested screens): design tokens in `src/app/globals.css`, skeletons in §8. Pattern-not-pixels throughout — nothing ported 1:1 except Explore later (below).
+
+### Stack overrides (project already differs — kept deliberately)
+
+React Navigation native stack (no Expo Router migration), no Reanimated/Gesture-handler/FlashList/`expo-image` (frequency gate: hub/lists are low-motion and small — native transitions + `FlatList` suffice; each gets a revisit trigger instead of a preemptive dep), `expo-linear-gradient` for the brand CTA (brand-mandated, not decorative).
+
+### Fidelity + anti-slop locks
+
+One accent `#0066FF` locked app-wide; one grey family (cool, from brand tokens); shape lock — actions are pills, cards 16, inputs 12; `borderCurve: 'continuous'` on gradient cards; tabular-nums on counts/prices; zero emoji in chrome; one label per intent; full state cycles on every screen (loading pulse matching layout shape, inline errors, composed empty states). Motion: platform defaults only, press-in opacity, no custom animation (strongest move per frequency gate). Pre-flight counts re-run per slice.
+
+### Backend-agnostic seam (`tarana-mobile/src/data/index.ts`)
+
+Screens import ONLY `../data` (+ `../config` for link URLs, navigator props). Verified by grep: zero screen imports of `../db`, `../supabase`, `../auth`. Current bindings — profiles/trips local SQLite; spots/weather session-free HTTP with boundary validation (untrusted responses); `importWebTrips` one-way copy (JWT single-use, never persisted); `signOut` drops profile pointer + token. Swapping any domain local↔HTTP later = one function body, zero screen rewrites.
+
+### Screen build status (worktree, 2026-09-12 — unmerged)
+
+Done: Landing, AuthEntry shell, ProfileCreate, LinkAccount, Home hub (live counts, weather strip), SavedTrips (SQLite + thumbs), TripDetail, Spots (top-3 parity + badges + Maps CTA), SavedCafes + CafeDetail, Eats (vendored catalog + local suggest), Plan form (Phase-2-gated generate), Explore (list-based routes), Settings. Next: device run, then sliced PRs. 7.3 bundled-cache, 7.5 hygiene, 7.6 hardening: not started.
+
+### Explore rule (user call, recorded)
+
+When Explore ships, it mirrors the web `ExploreMapView` mobile composition (top search card + bottom route sheet) recomposed native — not a fresh design. Still deferred: needs `react-native-maps` + live routing has no offline story.
