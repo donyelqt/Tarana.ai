@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { SpotTraffic } from '../data';
+import { resolveWebImage } from '../data';
 
 /** Web gradient truth (verified in src/, not from memory). */
 export const GRADIENT = {
@@ -161,3 +162,30 @@ const styles = StyleSheet.create({
   ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
   ctaTextDisabled: { color: '#6b7280' },
 });
+
+/**
+ * First real photo in a saved-trip payload (string http URL only).
+ * Canonical home (moved from SavedTrips): list thumbs and the detail
+ * hero share one extractor, one rule — photo-led depth, Airbnb pattern.
+ */
+export function firstPayloadImage(payload: string | null): string | null {
+  if (!payload) return null;
+  try {
+    const parsed: unknown = JSON.parse(payload);
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const items = (parsed as { itineraryData?: { items?: Array<{ activities?: Array<{ image?: unknown }> }> } })
+      .itineraryData?.items;
+    if (!Array.isArray(items)) return null;
+    for (const period of items) {
+      for (const act of period.activities ?? []) {
+        if (typeof act.image === 'string') {
+          const uri = resolveWebImage(act.image);
+          if (uri) return uri;
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
