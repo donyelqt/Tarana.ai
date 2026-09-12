@@ -13,12 +13,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // --primary: 217 91% 60%
-        primary: { DEFAULT: '#3b82f6', foreground: '#f8fafc' },
+        // Brand blue (auth truth #0066FF — NOT the web theme default).
+        // NativeWind compiles these statically; global.css :root values
+        // are documentation for web-export, not runtime for utilities.
+        primary: { DEFAULT: '#0066FF', foreground: '#f8fafc' },
         // --secondary / --accent: 210 40% 96.1% / fg 222.2 47.4% 11.2%
         secondary: { DEFAULT: '#f1f5f9', foreground: '#0f172a' },
         accent: { DEFAULT: '#f1f5f9', foreground: '#0f172a' },
-        background: '#ffffff',
+        background: '#F2F2F7',
         foreground: '#020817',
         card: { DEFAULT: '#ffffff', foreground: '#0f172a' },
         popover: { DEFAULT: '#ffffff', foreground: '#0f172a' },
