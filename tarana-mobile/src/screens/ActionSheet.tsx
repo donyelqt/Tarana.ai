@@ -8,7 +8,7 @@ const BLUE_LIGHT = '#1E90FF';
 const ACTIONS = [
   {
     route: 'Plan' as const,
-    title: 'Itinerary plan',
+    title: 'Tarana Gala',
     sub: 'Build a day-by-day trip',
   },
   {
@@ -18,7 +18,7 @@ const ACTIONS = [
   },
   {
     route: 'Explore' as const,
-    title: 'Explore',
+    title: 'Tarana Explore',
     sub: 'Live directions with traffic',
   },
 ];
