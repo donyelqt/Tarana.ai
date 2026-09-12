@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   getActiveProfile,
@@ -25,7 +26,7 @@ import {
   type Weather,
 } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
-import { manilaDaypart, TrafficBadge } from './ui';
+import { manilaDaypart, TrafficBadge, GRADIENT } from './ui';
 import { MapPinIcon, UtensilsIcon } from './icons';
 
 const CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao'];
@@ -248,7 +249,14 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
                 accessibilityLabel={`${CITY_CONFIGS[c].name} spots, selected`}
                 onPress={() => setCity(c)}
               >
-                <View style={styles.pillActive}>{label}</View>
+                <LinearGradient
+                  colors={[GRADIENT.auth.from, GRADIENT.auth.to]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.pillActive}
+                >
+                  {label}
+                </LinearGradient>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -418,7 +426,7 @@ const styles = StyleSheet.create({
   pillsWrap: { marginHorizontal: -20, paddingHorizontal: 20 },
   pills: { flexDirection: 'row', gap: 8, paddingRight: 20 },
   pill: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999, backgroundColor: '#ffffff' },
-  pillActive: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#0066FF' },
+  pillActive: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 16 },
   pillText: { color: '#0066FF', fontSize: 13, fontWeight: '500' },
   pillTextActive: { color: '#ffffff' },
   listSkeleton: {
