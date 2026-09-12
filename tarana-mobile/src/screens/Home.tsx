@@ -9,8 +9,10 @@ import {
   listTrips,
   listMeals,
   fetchSpotCards,
+  fetchWeather,
   type LocalProfile,
   type SpotView,
+  type Weather,
 } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 import Thumb from './Thumb';
@@ -38,6 +40,7 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
   const [city, setCity] = useState<CityId>('baguio');
   const [spots, setSpots] = useState<SpotView[] | null>(null);
   const [spotsLoading, setSpotsLoading] = useState(true);
+  const [weather, setWeather] = useState<Weather | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadCounts = useCallback(async () => {
@@ -52,6 +55,13 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
       const [trips, meals] = await Promise.all([listTrips(id), listMeals(id)]);
       setTripCount(trips.length);
       setCafeCount(meals.length);
+      // Baguio weather is best-effort enrichment (web dashboard pattern):
+      // failure omits the card instead of blocking the hub.
+      fetchWeather(16.4023, 120.596)
+        .then((w) => {
+          if (w.temperature != null || w.condition) setWeather(w);
+        })
+        .catch(() => {});
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load your hub.');
     }
@@ -111,6 +121,20 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
           <Text style={styles.greetSub}>Everything stays on this device.</Text>
         </LinearGradient>
       </View>
+
+      {weather ? (
+        <View style={styles.weatherCard}>
+          <Thumb uri={weather.iconUrl} size={48} />
+          <View style={styles.weatherText}>
+            <Text style={styles.weatherTemp}>
+              {weather.temperature != null ? `${Math.round(weather.temperature)}°C` : '—'}
+            </Text>
+            <Text style={styles.weatherCond}>
+              {[weather.condition, 'Baguio now'].filter(Boolean).join(' · ')}
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       {error ? (
         <View style={styles.errorBox}>
@@ -245,6 +269,18 @@ const styles = StyleSheet.create({
   greetSub: { fontSize: 14, color: '#ffffff', opacity: 0.9, marginTop: 2 },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 12, padding: 10 },
   errorText: { color: '#dc2626', fontSize: 13 },
+  weatherCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  weatherText: { flex: 1, gap: 2 },
+  weatherTemp: { fontSize: 28, fontWeight: '700', color: '#111827', fontVariant: ['tabular-nums'] },
+  weatherCond: { fontSize: 13, color: '#6b7280', textTransform: 'capitalize' },
   cardsLoading: {
     borderRadius: 16,
     backgroundColor: '#ffffff',
