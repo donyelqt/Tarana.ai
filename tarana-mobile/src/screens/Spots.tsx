@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Button, FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { fetchSpotCards, resolveWebImage, spotMapsUrl, type SpotTraffic, type SpotView } from '../data';
+import { GradientCTA, GRADIENT } from './ui';
+import { fetchSpotCards, resolveWebImage, spotMapsUrl, type SpotView } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 import Thumb from './Thumb';
+import { TrafficBadge } from './ui';
 
-const BLUE = '#0066FF';
-const BLUE_LIGHT = '#1E90FF';
 const TOP_PICKS = 3;
 
 /**
@@ -66,15 +66,43 @@ export default function Spots() {
         <Text className="text-sm text-muted-foreground">Top picks in {CITY_CONFIGS[city].name}</Text>
       </View>
       <View className="mb-3 flex-row flex-wrap gap-2">
-        {SPOT_CITIES.map((c) => (
-          <View key={c} className={`rounded-full px-1 ${c === city ? 'bg-primary' : 'bg-secondary'}`}>
-            <Button
-              title={CITY_CONFIGS[c].name}
-              color={c === city ? '#ffffff' : '#0f172a'}
+        {SPOT_CITIES.map((c) => {
+          const active = c === city;
+          const label = (
+            <Text style={[styles.pillText, active && styles.pillTextActive]}>{CITY_CONFIGS[c].name}</Text>
+          );
+          return active ? (
+            <TouchableOpacity
+              key={c}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityState={{ selected: true }}
+              accessibilityLabel={`${CITY_CONFIGS[c].name} spots, selected`}
               onPress={() => setCity(c)}
-            />
-          </View>
-        ))}
+            >
+              <LinearGradient
+                colors={[GRADIENT.auth.from, GRADIENT.auth.to]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.pillActive}
+              >
+                {label}
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              key={c}
+              style={styles.pill}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityState={{ selected: false }}
+              accessibilityLabel={`${CITY_CONFIGS[c].name} spots`}
+              onPress={() => setCity(c)}
+            >
+              {label}
+            </TouchableOpacity>
+          );
+        })}
       </View>
       {error ? <Text className="mb-2 text-sm text-destructive">{error}</Text> : null}
       {cards === null ? (
@@ -126,7 +154,7 @@ export default function Spots() {
 function SpotCard({ card: item }: { card: SpotView }) {
   const url = spotMapsUrl(item.lat, item.lon);
   return (
-    <View className="mb-3 rounded-lg border border-border bg-card p-3">
+    <View className="mb-3 rounded-lg bg-card p-3">
       <View className="flex-row gap-3">
         <Thumb uri={resolveWebImage(item.image)} size={64} />
         <View className="flex-1">
@@ -140,22 +168,12 @@ function SpotCard({ card: item }: { card: SpotView }) {
         </View>
       </View>
       {url ? (
-        <TouchableOpacity
+        <GradientCTA
+          variant="app"
+          title="Open in Maps"
           onPress={() => Linking.openURL(url)}
-          activeOpacity={0.85}
-          accessibilityRole="button"
           accessibilityLabel={`Open ${item.name} in Maps`}
-          style={styles.mapCtaOuter}
-        >
-          <LinearGradient
-            colors={[BLUE, BLUE_LIGHT]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.mapCta}
-          >
-            <Text style={styles.mapCtaText}>Open in Maps</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        />
       ) : null}
     </View>
   );
@@ -173,7 +191,7 @@ function SpotRow({ card: item }: { card: SpotView }) {
       accessibilityLabel={url ? `Open ${item.name} in Maps` : item.name}
       disabled={!url}
       onPress={() => url && Linking.openURL(url)}
-      className="mb-2 flex-row items-center gap-3 rounded-lg border border-border bg-card px-3 py-2"
+      className="mb-2 flex-row items-center gap-3 rounded-lg bg-card px-3 py-2"
     >
       <View className="flex-1">
         <Text className="text-sm font-semibold text-foreground">{item.name}</Text>
@@ -185,30 +203,17 @@ function SpotRow({ card: item }: { card: SpotView }) {
     </TouchableOpacity>
   );
 }
-/**
- * Traffic badge — web semantics (SpotlightCard green/yellow/red):
- * Low = green tint, Moderate = amber tint, High = red tint.
- * Color never stands alone: the level word is always present as text.
- */
-const BADGE: Record<SpotTraffic, { bg: string; fg: string }> = {
-  Low: { bg: '#dcfce7', fg: '#15803d' },
-  Moderate: { bg: '#fef9c3', fg: '#a16207' },
-  High: { bg: '#fee2e2', fg: '#b91c1c' },
-};
-
-function TrafficBadge({ level }: { level: SpotTraffic }) {
-  const c = BADGE[level];
-  return (
-    <View style={[styles.badge, { backgroundColor: c.bg }]}>
-      <Text style={[styles.badgeText, { color: c.fg }]}>{level} traffic</Text>
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
-  badge: { alignSelf: 'flex-start', borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10, marginTop: 6 },
-  badgeText: { fontSize: 12, fontWeight: '600' },
-  mapCtaOuter: { borderRadius: 12, marginTop: 10 },
-  mapCta: { paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
-  mapCtaText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
+  pill: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  pillActive: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 18 },
+  pillText: { color: '#0066FF', fontSize: 14, fontWeight: '500' },
+  pillTextActive: { color: '#ffffff' },
 });
