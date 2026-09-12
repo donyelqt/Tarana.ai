@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -10,9 +10,24 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import DynamicIsland from './DynamicIsland';
 import ExploreMapView from './ExploreMapView';
-import { CompassIcon, LayersIcon, TiltIcon } from './icons';
+import {
+  BikeIcon,
+  CarIcon,
+  CompassIcon,
+  LayersIcon,
+  SlidersIcon,
+  TiltIcon,
+  TruckIcon,
+  WalkIcon,
+} from './icons';
 import { GradientCTA } from './ui';
 import ExploreSheet from './ExploreSheet';
 import {
@@ -36,7 +51,14 @@ const MIN_QUERY = 2;
 const SEARCH_DEBOUNCE_MS = 220;
 const MAX_SUGGESTIONS = 8;
 
-/** Web parity: VEHICLE_OPTIONS values (text pills — mobile pill language, no icon lib). */
+/**
+ * Web parity: FloatingSearchCard SlidingSegmented thumb spring. NOTE these
+ * are the SEGMENT constants (stiffness 420, damping 34, mass 0.9) — NOT the
+ * island morph constants (210/23/1). Each motion keeps its own verified set.
+ */
+const SEG_SPRING = { stiffness: 420, damping: 34, mass: 0.9 } as const;
+
+/** Web parity: VEHICLE_OPTIONS (Ride reuses the Bike glyph — web does too). */
 const VEHICLE_OPTIONS: Array<{ value: ExploreVehicleType; label: string }> = [
   { value: 'car', label: 'Drive' },
   { value: 'walk', label: 'Walk' },
@@ -45,11 +67,19 @@ const VEHICLE_OPTIONS: Array<{ value: ExploreVehicleType; label: string }> = [
   { value: 'truck', label: 'Truck' },
 ];
 
+const VEHICLE_GLYPHS: Record<ExploreVehicleType, (p: { color: string }) => ReactNode> = {
+  car: ({ color }) => <CarIcon size={16} color={color} />,
+  walk: ({ color }) => <WalkIcon size={16} color={color} />,
+  bicycle: ({ color }) => <BikeIcon size={16} color={color} />,
+  motorcycle: ({ color }) => <BikeIcon size={16} color={color} />,
+  truck: ({ color }) => <TruckIcon size={16} color={color} />,
+};
+
 /** Web parity: ROUTE_TYPE_OPTIONS values (Scenic sends 'thrilling'). */
-const ROUTE_TYPE_OPTIONS: Array<{ value: ExploreRouteType; label: string }> = [
-  { value: 'fastest', label: 'Fastest' },
-  { value: 'shortest', label: 'Shortest' },
-  { value: 'thrilling', label: 'Scenic' },
+const ROUTE_TYPE_OPTIONS: Array<{ value: ExploreRouteType; label: string; glyph: string }> = [
+  { value: 'fastest', label: 'Fastest', glyph: '⚡' },
+  { value: 'shortest', label: 'Shortest', glyph: '➲' },
+  { value: 'thrilling', label: 'Scenic', glyph: '◷' },
 ];
 
 /** Web parity: options-drawer avoid pills. Departure datetime omitted — it needs
@@ -62,6 +92,73 @@ const AVOID_OPTIONS: Array<{ key: 'avoidTolls' | 'avoidFerries' | 'avoidTrafficJ
 ];
 
 /**
+ * Apple-style segmented track: one white thumb sliding between icon-only
+ * options. Web SlidingSegmented parity (gray-50 track, thumb + labels).
+ */
+function SlidingTrack<T extends string>({
+  options,
+  value,
+  onChange,
+  a11yPrefix,
+  renderIcon,
+}: {
+  options: Array<{ value: T; label: string }>;
+  value: T;
+  onChange: (v: T) => void;
+  a11yPrefix: string;
+  renderIcon: (value: T, active: boolean) => ReactNode;
+}) {
+  const [rects, setRects] = useState<Record<string, { x: number; width: number }>>({});
+  const left = useSharedValue(0);
+  const thumbWidth = useSharedValue(0);
+  const active = rects[value];
+  const activeX = active?.x;
+  const activeW = active?.width;
+
+  useEffect(() => {
+    if (activeX !== undefined && activeW !== undefined) {
+      left.value = withSpring(activeX, SEG_SPRING);
+      thumbWidth.value = withSpring(activeW, SEG_SPRING);
+    }
+  }, [activeX, activeW, left, thumbWidth]);
+
+  const thumbStyle = useAnimatedStyle(() => ({
+    left: left.value,
+    width: thumbWidth.value,
+  }));
+
+  return (
+    <View style={styles.track}>
+      {active ? <Animated.View style={[styles.thumb, thumbStyle]} /> : null}
+      {options.map((o) => {
+        const isActive = o.value === value;
+        return (
+          <TouchableOpacity
+            key={o.value}
+            style={styles.trackBtn}
+            activeOpacity={0.9}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
+            accessibilityLabel={`${o.label} ${a11yPrefix}`}
+            onPress={() => onChange(o.value)}
+            onLayout={(e) => {
+              const { x, width } = e.nativeEvent.layout;
+              setRects((prev) => {
+                const p = prev[o.value];
+                if (p && Math.abs(p.x - x) < 0.5 && Math.abs(p.width - width) < 0.5) return prev;
+                return { ...prev, [o.value]: { x, width } };
+              });
+            }}
+          >
+            {renderIcon(o.value, isActive)}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+/**
  * Explore — web `ExploreMapView` translated to native (§8).
  *
  * Same composition: TomTom map background (the actual web map via
@@ -70,6 +167,13 @@ const AVOID_OPTIONS: Array<{ key: 'avoidTolls' | 'avoidFerries' | 'avoidTrafficJ
  * spring morph, collapsed "Where to?" pill) + traffic badge + map
  * controls (recenter/tilt/style) + bottom route sheet. No map SDK or
  * motion libs invented: WebView + Reanimated are the native carriers.
+ *
+ * Island content is a 1:1 of FloatingSearchCard (no title row, no X —
+ * the hamburger corner is excluded per call): borderless From/To with
+ * absolute left swap circle, icon-only vehicle track with sliding thumb,
+ * transparent route-type row, sliders options button, gradient avoid
+ * pills, magnifier CTA. Collapse = post-calc or keyboard-away (the
+ * native translation of outside-click/Escape).
  */
 export default function Explore() {
   const [fromText, setFromText] = useState('');
@@ -103,6 +207,14 @@ export default function Explore() {
     },
     []
   );
+
+  // Native translation of web outside-click/Escape dismiss: a user-sent
+  // keyboard retreat means "done with input". No routing guard needed —
+  // expanded survives on `routing`, and on error the toast owns the screen.
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidHide', () => setIslandOpen(false));
+    return () => sub.remove();
+  }, []);
 
   const suggest = (which: 'from' | 'to', text: string) => {
     if (which === 'from') {
@@ -139,6 +251,26 @@ export default function Explore() {
         if (id === seq.current) setSearching((s) => (s === which ? null : s));
       }
     }, SEARCH_DEBOUNCE_MS);
+  };
+
+  // Web LocationField clear(): drop the commit, reopen the list, refocus.
+  const clearField = (which: 'from' | 'to') => {
+    seq.current += 1;
+    if (timer.current) clearTimeout(timer.current);
+    setSearching((s) => (s === which ? null : s));
+    if (which === 'from') {
+      setFromText('');
+      setFrom(null);
+      setFromList([]);
+      setOpenWhich('from');
+      fromRef.current?.focus();
+    } else {
+      setToText('');
+      setTo(null);
+      setToList([]);
+      setOpenWhich('to');
+      toRef.current?.focus();
+    }
   };
 
   const swap = () => {
@@ -243,23 +375,37 @@ export default function Explore() {
           <View style={[styles.dot, which === 'from' ? styles.dotFrom : styles.dotTo]} />
           <Text style={styles.fieldLabel}>{label}</Text>
         </View>
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          placeholder={which === 'from' ? 'Choose starting point' : 'Choose destination'}
-          value={value}
-          onChangeText={(t) => suggest(which, t)}
-          onFocus={() => setOpenWhich(which)}
-          returnKeyType="search"
-          placeholderTextColor="#9ca3af"
-          accessibilityLabel={`${label} location`}
-          accessibilityRole="combobox"
-          onSubmitEditing={() => {
-            if (which === 'from') toRef.current?.focus();
-            else if (canSubmit) go();
-          }}
-        />
-        {searching === which ? <ActivityIndicator color={BLUE} style={styles.inlineLoader} /> : null}
+        <View style={styles.inputWrap}>
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            placeholder={which === 'from' ? 'Choose starting point' : 'Choose destination'}
+            value={value}
+            onChangeText={(t) => suggest(which, t)}
+            onFocus={() => setOpenWhich(which)}
+            returnKeyType="search"
+            placeholderTextColor="#9ca3af"
+            accessibilityLabel={`${label} location`}
+            accessibilityRole="combobox"
+            onSubmitEditing={() => {
+              if (which === 'from') toRef.current?.focus();
+              else if (canSubmit) go();
+            }}
+          />
+          {searching === which ? (
+            <ActivityIndicator color={BLUE} size="small" style={styles.inputSide} />
+          ) : value ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Clear ${label.toLowerCase()}`}
+              onPress={() => clearField(which)}
+              style={styles.inputSide}
+            >
+              <Text style={styles.clearText}>✕</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
         {showList ? (
           <View style={styles.panel}>
             <Text style={styles.panelHead}>{typing ? 'Results' : 'Popular places'}</Text>
@@ -273,8 +419,11 @@ export default function Explore() {
                   accessibilityLabel={`Use ${p.name}`}
                   onPress={() => pick(which, p)}
                 >
-                  <Text style={styles.suggestionName}>{p.name}</Text>
-                  <Text style={styles.suggestionAddr} numberOfLines={1}>{p.address}</Text>
+                  <Text style={styles.sugIcon}>{typing ? '⌕' : '◉'}</Text>
+                  <View style={styles.sugTexts}>
+                    <Text style={styles.suggestionName}>{p.name}</Text>
+                    <Text style={styles.suggestionAddr} numberOfLines={1}>{p.address}</Text>
+                  </View>
                 </TouchableOpacity>
               ))}
               {typing && items.length === 0 ? (
@@ -283,7 +432,6 @@ export default function Explore() {
             </ScrollView>
           </View>
         ) : null}
-        {picked ? <Text style={styles.picked}>✓ {picked.name}</Text> : null}
       </View>
     );
   };
@@ -329,67 +477,51 @@ export default function Explore() {
           }
         >
           <View style={styles.islandBody}>
-            <View style={styles.islandHead}>
-              <Text style={styles.islandTitle}>Plan route</Text>
+            <View style={styles.fieldsBox}>
+              {renderField('from', 'From', fromText, fromList, from, fromRef)}
               <TouchableOpacity
+                style={styles.swapBtn}
                 activeOpacity={0.7}
                 accessibilityRole="button"
-                accessibilityLabel="Close search"
-                onPress={() => setIslandOpen(false)}
-                style={styles.islandCloseHit}
+                accessibilityLabel="Swap origin and destination"
+                onPress={swap}
               >
-                <Text style={styles.islandClose}>✕</Text>
+                <Text style={styles.swapGlyph}>⇅</Text>
               </TouchableOpacity>
+              {renderField('to', 'To', toText, toList, to, toRef)}
             </View>
-            {renderField('from', 'From', fromText, fromList, from, fromRef)}
-            <TouchableOpacity
-              style={styles.swap}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Swap origin and destination"
-              onPress={swap}
-            >
-              <Text style={styles.swapText}>⇅ Swap</Text>
-            </TouchableOpacity>
-            {renderField('to', 'To', toText, toList, to, toRef)}
 
-            <View style={styles.segRow}>
-              {VEHICLE_OPTIONS.map((o) => {
-                const active = prefs.vehicleType === o.value;
-                return (
-                  <TouchableOpacity
-                    key={o.value}
-                    activeOpacity={0.85}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
-                    accessibilityLabel={`${o.label} transport`}
-                    onPress={() => setPrefs((p) => ({ ...p, vehicleType: o.value }))}
-                    style={[styles.segPill, active && styles.segPillActive]}
-                  >
-                    <Text style={[styles.segText, active && styles.segTextActive]}>{o.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+            <View style={styles.transportRow}>
+              <SlidingTrack
+                options={VEHICLE_OPTIONS}
+                value={prefs.vehicleType}
+                onChange={(v) => setPrefs((p) => ({ ...p, vehicleType: v }))}
+                a11yPrefix="transport"
+                renderIcon={(v, active) => {
+                  const G = VEHICLE_GLYPHS[v];
+                  return <G color={active ? '#111827' : '#6b7280'} />;
+                }}
+              />
             </View>
 
             <View style={styles.typeRow}>
-              <View style={styles.segRowFlex}>
-                {ROUTE_TYPE_OPTIONS.map((o) => {
-                  const active = prefs.routeType === o.value;
-                  return (
-                    <TouchableOpacity
-                      key={o.value}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      accessibilityLabel={`${o.label} route`}
-                      onPress={() => setPrefs((p) => ({ ...p, routeType: o.value }))}
-                      style={[styles.segPill, active && styles.segPillActive]}
-                    >
-                      <Text style={[styles.segText, active && styles.segTextActive]}>{o.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+              <View style={styles.typeTrackWrap}>
+                <SlidingTrack
+                  options={ROUTE_TYPE_OPTIONS}
+                  value={prefs.routeType}
+                  onChange={(v) => setPrefs((p) => ({ ...p, routeType: v }))}
+                  a11yPrefix="route"
+                  renderIcon={(v, active) => {
+                    const opt = ROUTE_TYPE_OPTIONS.find((o) => o.value === v);
+                    const color = active ? '#111827' : '#6b7280';
+                    return (
+                      <View style={styles.typeOpt}>
+                        <Text style={[styles.typeGlyph, { color }]}>{opt?.glyph ?? ''}</Text>
+                        <Text style={[styles.typeText, active && styles.typeTextActive]}>{opt?.label ?? ''}</Text>
+                      </View>
+                    );
+                  }}
+                />
               </View>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -397,42 +529,60 @@ export default function Explore() {
                 accessibilityLabel="More options"
                 accessibilityState={{ expanded: showOptions }}
                 onPress={() => setShowOptions((v) => !v)}
-                style={[styles.optionsBtn, showOptions && styles.optionsBtnActive]}
+                style={[styles.optBtn, showOptions && styles.optBtnActive]}
               >
-                <Text style={[styles.optionsText, showOptions && styles.optionsTextActive]}>Options</Text>
+                <SlidersIcon size={16} color={showOptions ? BLUE : '#6b7280'} />
               </TouchableOpacity>
             </View>
 
             {showOptions ? (
-              <View style={styles.avoidRow}>
-                {AVOID_OPTIONS.map((o) => {
-                  const active = !!prefs[o.key];
-                  return (
-                    <TouchableOpacity
-                      key={o.key}
-                      activeOpacity={0.85}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      accessibilityLabel={`Avoid ${o.label}`}
-                      onPress={() => setPrefs((p) => ({ ...p, [o.key]: !p[o.key] }))}
-                      style={[styles.avoidPill, active && styles.avoidPillActive]}
-                    >
-                      <Text style={[styles.avoidText, active && styles.avoidTextActive]}>{o.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+              <View style={styles.drawer}>
+                <View style={styles.avoidRow}>
+                  {AVOID_OPTIONS.map((o) => {
+                    const active = !!prefs[o.key];
+                    return (
+                      <TouchableOpacity
+                        key={o.key}
+                        activeOpacity={0.85}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                        accessibilityLabel={`Avoid ${o.label}`}
+                        onPress={() => setPrefs((p) => ({ ...p, [o.key]: !p[o.key] }))}
+                      >
+                        {active ? (
+                          <LinearGradient
+                            colors={['#1D4ED8', '#3B82F6']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 0, y: 1 }}
+                            style={[styles.avoidPill, styles.avoidPillActive]}
+                          >
+                            <Text style={[styles.avoidText, styles.avoidTextActive]}>{o.label}</Text>
+                          </LinearGradient>
+                        ) : (
+                          <View style={styles.avoidPill}>
+                            <Text style={styles.avoidText}>{o.label}</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
             ) : null}
 
-            <GradientCTA
-              variant="app"
-              title="Get directions"
-              loadingTitle="Finding best route…"
-              loading={routing}
-              disabled={!from || !to}
-              onPress={go}
-              accessibilityLabel="Get directions"
-            />
+            <View style={styles.submitWrap}>
+              <GradientCTA
+                variant="app"
+                // Web submit carries a leading magnifier; GradientCTA is
+                // canonical-shared so the glyph rides the title, not the module.
+                title="⌕  Get directions"
+                loadingTitle="Finding best route…"
+                loading={routing}
+                disabled={!from || !to}
+                onPress={go}
+                accessibilityLabel="Get directions"
+              />
+            </View>
           </View>
         </DynamicIsland>
       </View>
@@ -501,29 +651,54 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F2F2F7' },
   mapFill: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 },
   islandSlot: { position: 'absolute', top: 12, left: 0, right: 0, zIndex: 30 },
-  islandBody: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12, gap: 8 },
-  islandHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  islandTitle: { fontSize: 16, fontWeight: '700', color: '#111827', letterSpacing: -0.2 },
-  islandCloseHit: { padding: 6 },
-  islandClose: { fontSize: 14, color: '#9ca3af', fontWeight: '700' },
+  islandBody: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 12, gap: 4 },
   pillSummary: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16 },
   pillDot: { width: 6, height: 6, borderRadius: 3 },
   pillText: { flex: 1, fontSize: 13, fontWeight: '500', color: '#111827' },
   pillTextDim: { color: '#9ca3af' },
   pillArrow: { fontSize: 13, color: '#9ca3af', fontWeight: '700' },
+  fieldsBox: { position: 'relative', paddingLeft: 38 },
+  swapBtn: {
+    position: 'absolute',
+    left: 0,
+    top: '50%',
+    marginTop: -15,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 60,
+    elevation: 6,
+  },
+  swapGlyph: { fontSize: 14, color: '#6b7280', fontWeight: '700' },
   fieldWrap: { position: 'relative' },
   fieldWrapOpen: { zIndex: 100, elevation: 20 },
-  fieldHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  fieldHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   dotFrom: { backgroundColor: '#10b981' },
   dotTo: { backgroundColor: '#f43f5e' },
   fieldLabel: { fontSize: 10, fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.8 },
-  input: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, fontSize: 16, color: '#111827' },
-  inlineLoader: { marginTop: 8 },
+  inputWrap: { position: 'relative', justifyContent: 'center' },
+  input: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    paddingVertical: 8,
+    paddingHorizontal: 0,
+    paddingRight: 40,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  inputSide: { position: 'absolute', right: 4, top: 0, bottom: 0, justifyContent: 'center', paddingHorizontal: 6 },
+  clearText: { fontSize: 14, color: '#9ca3af', fontWeight: '700' },
   panel: {
     position: 'absolute',
     top: '100%',
-    left: 0,
+    left: -38,
     right: 0,
     marginTop: 4,
     backgroundColor: '#ffffff',
@@ -540,29 +715,59 @@ const styles = StyleSheet.create({
   },
   panelList: { maxHeight: 300 },
   panelHead: { paddingHorizontal: 12, paddingVertical: 6, fontSize: 10, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.8, backgroundColor: '#F9FAFB' },
-  suggestion: { paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
-  suggestionName: { fontSize: 15, fontWeight: '600', color: '#111827' },
+  suggestion: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
+  sugIcon: { fontSize: 14, color: '#9ca3af', width: 18, textAlign: 'center' },
+  sugTexts: { flex: 1, minWidth: 0 },
+  suggestionName: { fontSize: 14, fontWeight: '500', color: '#111827' },
   suggestionAddr: { fontSize: 12, color: '#6b7280' },
   noMatches: { paddingVertical: 14, textAlign: 'center', fontSize: 13, color: '#6b7280' },
-  picked: { fontSize: 13, color: BLUE, fontWeight: '600', marginTop: 4 },
-  swap: { alignSelf: 'center', paddingVertical: 4, paddingHorizontal: 12 },
-  swapText: { color: BLUE, fontSize: 14, fontWeight: '600' },
-  segRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  segRowFlex: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  segPill: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: '#F3F4F6' },
-  segPillActive: { backgroundColor: BLUE },
-  segText: { fontSize: 12, fontWeight: '600', color: '#374151' },
-  segTextActive: { color: '#ffffff' },
-  typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  optionsBtn: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: '#E5E7EB' },
-  optionsBtnActive: { backgroundColor: '#EFF6FF', borderColor: BLUE },
-  optionsText: { fontSize: 12, fontWeight: '600', color: '#4b5563' },
-  optionsTextActive: { color: BLUE },
+  transportRow: { paddingHorizontal: 0, paddingVertical: 6 },
+  track: {
+    flexDirection: 'row',
+    position: 'relative',
+    alignSelf: 'stretch',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 999,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+  },
+  thumb: {
+    position: 'absolute',
+    top: 2,
+    bottom: 2,
+    borderRadius: 999,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+    shadowColor: '#000000',
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  trackBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6, zIndex: 1 },
+  typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  typeTrackWrap: { flex: 1 },
+  typeOpt: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  typeGlyph: { fontSize: 14 },
+  typeText: { fontSize: 12, fontWeight: '500', color: '#6b7280' },
+  typeTextActive: { color: '#111827', fontWeight: '600' },
+  optBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optBtnActive: { backgroundColor: '#EFF6FF' },
+  drawer: { borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 10 },
   avoidRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   avoidPill: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#E5E7EB' },
-  avoidPillActive: { backgroundColor: '#1D4ED8', borderColor: '#1D4ED8' },
+  avoidPillActive: { borderColor: '#1D4ED8' },
   avoidText: { fontSize: 12, fontWeight: '600', color: '#4b5563' },
   avoidTextActive: { color: '#ffffff' },
+  submitWrap: { borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 10 },
   badge: {
     position: 'absolute',
     top: 78,
