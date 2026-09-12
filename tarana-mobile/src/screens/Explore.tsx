@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
+import { GradientCTA } from './ui';
 import { searchPlaces, calculateRoute, type Place, type RouteSummary } from '../data';
 
 const BLUE = '#0066FF';
-const BLUE_LIGHT = '#1E90FF';
 
 /** Arrival is an opaque server string (usually ISO) — format defensively. */
 function formatArrival(value: string | null): string | null {
@@ -120,6 +119,7 @@ export default function Explore() {
         value={value}
         onChangeText={(t) => suggest(which, t)}
         returnKeyType="search"
+        placeholderTextColor="#9ca3af"
         accessibilityLabel={`${label} location`}
       />
       {searching === which ? <ActivityIndicator color={BLUE} style={styles.inlineLoader} /> : null}
@@ -142,7 +142,6 @@ export default function Explore() {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={styles.eyebrow}>Tarana Explore</Text>
       <Text style={styles.title}>Get directions</Text>
       <Text style={styles.subcopy}>Live routing with traffic. Needs a connection.</Text>
 
@@ -159,23 +158,15 @@ export default function Explore() {
         </TouchableOpacity>
         {renderField('to', 'To', toText, toList, to)}
 
-        <TouchableOpacity
+        <GradientCTA
+          variant="app"
+          title="Get directions"
+          loadingTitle="Finding best route…"
+          loading={routing}
+          disabled={!from || !to}
           onPress={go}
-          disabled={!from || !to || routing}
-          activeOpacity={0.85}
-          accessibilityRole="button"
           accessibilityLabel="Get directions"
-          style={[styles.ctaOuter, (!from || !to) && styles.ctaDisabled]}
-        >
-          <LinearGradient
-            colors={from && to ? [BLUE, BLUE_LIGHT] : ['#9ca3af', '#9ca3af']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.cta}
-          >
-            <Text style={styles.ctaText}>{routing ? 'Finding best route…' : 'Get directions'}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        />
       </View>
 
       {error ? (
@@ -212,12 +203,11 @@ export default function Explore() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#ffffff' },
+  root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 24, paddingVertical: 24, gap: 10 },
-  eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 2, textTransform: 'uppercase', color: BLUE },
   title: { fontSize: 24, fontWeight: '700', color: '#111827', lineHeight: 30 },
   subcopy: { fontSize: 14, color: '#6b7280' },
-  card: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 16, padding: 16, gap: 10 },
+  card: { backgroundColor: '#ffffff', borderRadius: 16, padding: 16, gap: 10 },
   fieldLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4 },
   input: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, fontSize: 16, color: '#111827' },
   inlineLoader: { marginTop: 8 },
@@ -227,13 +217,9 @@ const styles = StyleSheet.create({
   picked: { fontSize: 13, color: BLUE, fontWeight: '600', marginTop: 4 },
   swap: { alignSelf: 'center', paddingVertical: 4, paddingHorizontal: 12 },
   swapText: { color: BLUE, fontSize: 14, fontWeight: '600' },
-  ctaOuter: { borderRadius: 16, marginTop: 4 },
-  ctaDisabled: { opacity: 0.9 },
-  cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
-  ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 12, padding: 10 },
   errorText: { color: '#dc2626', fontSize: 13 },
-  sheet: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 16, padding: 16, gap: 6 },
+  sheet: { backgroundColor: '#ffffff', borderRadius: 16, padding: 16, gap: 6 },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', marginBottom: 4 },
   sheetTitle: { fontSize: 22, fontWeight: '700', color: '#111827', fontVariant: ['tabular-nums'] },
   sheetSub: { fontSize: 13, color: '#6b7280' },

@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react
 import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect } from '@react-navigation/native';
 import { getActiveProfileId, listTrips, resolveWebImage, type LocalTrip } from '../data';
+import { formatDate } from './ui';
 import Thumb from './Thumb';
 
 /** First real photo in the saved payload (string http URL only). */
@@ -91,13 +92,13 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
             accessibilityRole="button"
             accessibilityLabel={`Open ${item.title ?? 'untitled trip'}`}
             onPress={() => navigation.navigate('TripDetail', { id: item.id })}
-            className="mb-3 flex-row gap-3 rounded-lg border border-border bg-card p-3"
+            className="mb-3 flex-row gap-3 rounded-lg bg-card p-3"
           >
             <Thumb uri={firstImage(item.payload)} size={56} />
             <View className="flex-1">
               <Text className="text-base font-semibold text-foreground">{item.title ?? 'Untitled trip'}</Text>
               <Text className="mt-1 text-sm text-muted-foreground">
-                {[item.date, item.budget].filter(Boolean).join(' · ') || 'No details'}
+                {[formatDate(item.date), item.budget].filter(Boolean).join(' · ') || 'No details'}
               </Text>
               {item.tags && item.tags.length > 0 ? (
                 <Text className="mt-1 text-xs text-muted-foreground">{item.tags.join(', ')}</Text>

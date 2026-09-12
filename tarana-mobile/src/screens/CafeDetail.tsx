@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
+import { GradientCTA } from './ui';
 import { getActiveProfileId, listMeals, createMeal, deleteMeal, resolveWebImage } from '../data';
+import { formatPHP } from './ui';
 import Thumb from './Thumb';
 import { findCafe, menuDishCount, type Cafe, type FullMenu } from '../data/catalog';
 import type { MenuItem } from '../data/catalog/types';
 
 const BLUE = '#0066FF';
-const BLUE_LIGHT = '#1E90FF';
 
 const MEAL_TABS = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'] as const;
 type MealTab = (typeof MEAL_TABS)[number];
@@ -126,7 +126,7 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
       <Text style={styles.title}>{cafe.name}</Text>
       <CafeHero uri={resolveWebImage(cafe.image)} name={cafe.name} />
       <Text style={styles.price}>
-        ₱{cafe.priceRange.min} – ₱{cafe.priceRange.max}
+        {formatPHP(cafe.priceRange.min)} – {formatPHP(cafe.priceRange.max)}
       </Text>
       <Text style={styles.meta}>{cafe.location}{cafe.hours ? ` · ${cafe.hours}` : ''}</Text>
       <Text style={styles.about}>{cafe.about}</Text>
@@ -163,7 +163,7 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
                     <Text style={styles.dishDesc} numberOfLines={2}>{d.description}</Text>
                   ) : null}
                 </View>
-                <Text style={styles.dishPrice}>₱{d.price}</Text>
+                <Text style={styles.dishPrice}>{formatPHP(d.price)}</Text>
               </View>
             ))
           )}
@@ -179,28 +179,19 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
           onPress={onUnsave}
           disabled={busy}
         >
-          <Text style={styles.unsaveText}>
-            {busy ? 'Removing…' : arming ? 'Tap again to remove' : 'Saved ✓ — tap to remove'}
-          </Text>
+            <Text style={styles.unsaveText}>
+              {busy ? 'Removing…' : arming ? 'Tap again to remove' : 'Saved — tap to remove'}
+            </Text>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity
+        <GradientCTA
+          variant="app"
+          title="Save cafe"
+          loadingTitle="Saving…"
+          loading={busy}
           onPress={onSave}
-          disabled={busy}
-          activeOpacity={0.85}
-          accessibilityRole="button"
           accessibilityLabel="Save cafe"
-          style={styles.ctaOuter}
-        >
-          <LinearGradient
-            colors={[BLUE, BLUE_LIGHT]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.cta}
-          >
-            <Text style={styles.ctaText}>{busy ? 'Saving…' : 'Save cafe'}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        />
       )}
       <StatusBar style="auto" />
     </ScrollView>
@@ -236,14 +227,14 @@ function CafeHero({ uri, name }: { uri: string | null; name: string }) {
   );
 }
 
-const styles = StyleSheet.create({  root: { flex: 1, backgroundColor: '#ffffff' },
+const styles = StyleSheet.create({  root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 24, paddingVertical: 24, gap: 8 },
-  center: { flex: 1, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 },
+  center: { flex: 1, backgroundColor: '#F2F2F7', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 },
   muted: { fontSize: 13, color: '#6b7280' },
   errorText: { fontSize: 14, color: '#dc2626', textAlign: 'center' },
   eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 2, textTransform: 'uppercase', color: BLUE },
   title: { fontSize: 24, fontWeight: '700', color: '#111827', lineHeight: 30 },
-  heroWrap: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#f3f4f6', marginTop: 8 },
+  heroWrap: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#ffffff', marginTop: 8 },
   hero: { width: '100%', height: 180 },
   price: { fontSize: 20, fontWeight: '700', color: BLUE, fontVariant: ['tabular-nums'] },
   meta: { fontSize: 13, color: '#6b7280' },
@@ -256,14 +247,11 @@ const styles = StyleSheet.create({  root: { flex: 1, backgroundColor: '#ffffff' 
   tabActive: { backgroundColor: BLUE, borderColor: BLUE },
   tabText: { color: BLUE, fontSize: 13, fontWeight: '500' },
   tabTextActive: { color: '#ffffff' },
-  dish: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 12 },
+  dish: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, backgroundColor: '#ffffff', borderRadius: 12, padding: 12 },
   dishText: { flex: 1, gap: 2 },
   dishName: { fontSize: 15, fontWeight: '600', color: '#111827' },
   dishDesc: { fontSize: 13, color: '#6b7280', lineHeight: 18 },
   dishPrice: { fontSize: 15, fontWeight: '700', color: BLUE, fontVariant: ['tabular-nums'] },
-  ctaOuter: { borderRadius: 16, marginTop: 8 },
-  cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
-  ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
   unsaveBtn: { marginTop: 8, borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', paddingVertical: 14, alignItems: 'center' },
   unsaveArmed: { backgroundColor: '#fef2f2', borderColor: '#dc2626' },
   unsaveText: { color: '#374151', fontSize: 15, fontWeight: '600' },

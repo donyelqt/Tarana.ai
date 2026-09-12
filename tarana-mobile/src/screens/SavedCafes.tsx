@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Text, TextInput, TouchableOpacity, View } 
 import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect } from '@react-navigation/native';
 import { getActiveProfileId, listMeals, type LocalMeal } from '../data';
+import { formatPHP } from './ui';
 
 /**
  * SavedCafes — the active profile's saved meals from SQLite (§8).
@@ -64,6 +65,7 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
         value={query}
         onChangeText={setQuery}
         autoCapitalize="none"
+        placeholderTextColor="#9ca3af"
         accessibilityLabel="Search saved cafes"
       />
       {error ? <Text className="mb-2 text-sm text-destructive">{error}</Text> : null}
@@ -93,11 +95,11 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
             accessibilityRole="button"
             accessibilityLabel={`Open ${item.cafe_name}`}
             onPress={() => navigation.navigate('CafeDetail', { name: item.cafe_name })}
-            className="mb-3 rounded-lg border border-border bg-card p-3"
+            className="mb-3 rounded-lg bg-card p-3"
           >
             <Text className="text-base font-semibold text-foreground">{item.cafe_name}</Text>
             <Text className="mt-1 text-sm text-muted-foreground">
-              {[item.meal_type, item.price != null ? `₱${item.price}` : null].filter(Boolean).join(' · ') || 'Saved'}
+              {[item.meal_type, item.price != null ? formatPHP(item.price) : null].filter(Boolean).join(' · ') || 'Saved'}
             </Text>
             {item.location ? (
               <Text className="mt-1 text-xs text-muted-foreground">{item.location}</Text>
