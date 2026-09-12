@@ -42,7 +42,7 @@ export default function Settings({ navigation }: { navigation: SettingsNav }) {
   };
 
   return (
-    <View className="flex-1 bg-background px-6 pt-4">
+    <View style={{ flex: 1, backgroundColor: '#F2F2F7' }} className="px-6 pt-4">
       <Text className="mb-1 text-2xl font-semibold text-foreground">
         {profile ? `Hi, ${profile.display_name}` : 'Settings'}
       </Text>

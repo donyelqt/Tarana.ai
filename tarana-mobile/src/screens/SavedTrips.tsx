@@ -69,7 +69,7 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
 
   if (trips === null) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
+      <View style={{ flex: 1, backgroundColor: '#F2F2F7' }} className="items-center justify-center">
         <ActivityIndicator />
         <Text className="mt-2 text-sm text-muted-foreground">Loading saved trips…</Text>
         <StatusBar style="auto" />
@@ -78,7 +78,7 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
   }
 
   return (
-    <View className="flex-1 bg-background px-4 pt-4">
+    <View style={{ flex: 1, backgroundColor: '#F2F2F7' }} className="px-4 pt-4">
       {error ? <Text className="mb-2 text-sm text-destructive">{error}</Text> : null}
       {trips.length === 0 && !error ? (
         <Text className="text-sm text-muted-foreground">No saved trips yet. Create one or import from the web.</Text>
