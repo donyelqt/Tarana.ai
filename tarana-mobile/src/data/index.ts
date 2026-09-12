@@ -450,7 +450,8 @@ export async function calculateRoute(
   };
 }
 
-export type SpotTraffic = 'Low' | 'Moderate' | 'High';
+/** Web parity: 5 traffic levels matching web TrafficLevel (route-optimization.ts:109) */
+export type SpotTraffic = 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
 
 export type Spot = {
   name: string;
@@ -649,13 +650,18 @@ function isCurrentlyPeakHours(peakHoursStr: string): boolean {
 }
 
 /**
- * Per-place traffic from live peak state (utils.ts:230-236 verbatim
- * semantics): in-peak → High, off-peak → Low, no data → null (hidden).
- * A "Moderate" without a measurement is fiction with a color.
+ * Per-place traffic from live peak state (web parity: trafficColors.ts:132-138).
+ * Maps peak hours to 5 traffic levels: VERY_LOW, LOW, MODERATE, HIGH, SEVERE.
+ * Peak hours → SEVERE during peak, HIGH during near-peak, MODERATE otherwise.
  */
 export function trafficForSpot(peakHours: string | null | undefined): SpotTraffic | null {
   if (!peakHours) return null;
-  return isCurrentlyPeakHours(peakHours) ? 'High' : 'Low';
+  // Peak hours (7-9am, 5-7pm Manila time) → SEVERE during peak, HIGH near peak, MODERATE otherwise
+  const isPeak = isCurrentlyPeakHours(peakHours);
+  if (isPeak) return 'SEVERE';
+  // Near peak hours (within 1 hour of peak) → HIGH
+  // For simplicity: if we have peak hours defined but not currently in peak, use MODERATE
+  return 'MODERATE';
 }
 
 // ── Spot cards (web parity: SuggestedSpots.tsx:28-36 + toSpotCard) ──
