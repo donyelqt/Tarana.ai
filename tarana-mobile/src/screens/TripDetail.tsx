@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { getActiveProfileId, listTrips, deleteTrip, resolveWebImage, type LocalTrip } from '../data';
+import { formatDate } from './ui';
 import Thumb from './Thumb';
 
 const BLUE = '#0066FF';
@@ -117,7 +118,7 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>{trip.title ?? 'Untitled trip'}</Text>
-      <Text style={styles.meta}>{[trip.date, trip.budget].filter(Boolean).join(' · ') || 'No details'}</Text>
+      <Text style={styles.meta}>{[formatDate(trip.date), trip.budget].filter(Boolean).join(' · ') || 'No details'}</Text>
       {trip.tags.length > 0 ? <Text style={styles.tags}>{trip.tags.join(', ')}</Text> : null}
 
       {form ? (
@@ -188,24 +189,24 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#ffffff' },
+  root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 24, paddingVertical: 24, gap: 12 },
-  center: { flex: 1, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 },
+  center: { flex: 1, backgroundColor: '#F2F2F7', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 },
   muted: { fontSize: 13, color: '#6b7280' },
   errorText: { fontSize: 14, color: '#dc2626', textAlign: 'center' },
   title: { fontSize: 24, fontWeight: '700', color: '#111827', lineHeight: 30 },
   meta: { fontSize: 14, color: '#6b7280', marginTop: 2 },
   tags: { fontSize: 12, color: '#6b7280', marginTop: 4 },
   tiles: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  tile: { flex: 1, backgroundColor: '#f3f4f6', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12 },
+  tile: { flex: 1, backgroundColor: '#ffffff', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12 },
   tileLabel: { fontSize: 11, color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
   tileValue: { fontSize: 14, color: '#111827', fontWeight: '600', marginTop: 2 },
-  emptyBox: { backgroundColor: '#f3f4f6', borderRadius: 12, padding: 16, marginTop: 4 },
+  emptyBox: { backgroundColor: '#ffffff', borderRadius: 12, padding: 16, marginTop: 4 },
   emptyText: { fontSize: 13, color: '#6b7280', textAlign: 'center' },
   period: { marginTop: 8, gap: 8 },
   periodPill: { alignSelf: 'flex-start', backgroundColor: '#eff6ff', borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
   periodPillText: { color: BLUE, fontSize: 13, fontWeight: '600' },
-  activity: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 16, padding: 14, gap: 6 },
+  activity: { backgroundColor: '#ffffff', borderRadius: 16, padding: 14, gap: 6 },
   activityTop: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   activityHead: { flex: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
   activityTitle: { flex: 1, fontSize: 16, fontWeight: '600', color: '#111827' },

@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { GradientCTA } from './ui';
 import { createProfile } from '../data';
-
-const BLUE = '#0066FF';
-const BLUE_LIGHT = '#1E90FF';
 
 export default function ProfileCreate({ onDone }: { navigation: any; onDone?: () => void }) {
   const [fullName, setFullName] = useState('');
@@ -33,28 +30,20 @@ export default function ProfileCreate({ onDone }: { navigation: any; onDone?: ()
             autoComplete="name"
             returnKeyType="done"
             onSubmitEditing={() => { if (!loading) void handleSubmit(); }}
+            placeholderTextColor="#9ca3af"
             accessibilityLabel="Display Name" />
         </View>
 
         {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View> : null}
 
-        <TouchableOpacity
+        <GradientCTA
+          variant="auth"
+          title="Start Planning"
+          loadingTitle="Creating Profile..."
+          loading={loading}
           onPress={handleSubmit}
-          disabled={loading}
-          activeOpacity={0.85}
-          accessibilityRole="button"
           accessibilityLabel="Start Planning"
-          style={styles.ctaOuter}
-        >
-          <LinearGradient
-            colors={[BLUE, BLUE_LIGHT]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.cta}
-          >
-            <Text style={styles.ctaText}>{loading ? 'Creating Profile...' : 'Start Planning'}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        />
 
       </View>
       </ScrollView>
@@ -72,7 +61,4 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#d1d5db', backgroundColor: '#ffffff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, fontSize: 16, color: '#111827' },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 8, padding: 10, marginBottom: 12 },
   errorText: { color: '#dc2626', fontSize: 13 },
-  ctaOuter: { borderRadius: 16, marginTop: 4 },
-  cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
-  ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
 });

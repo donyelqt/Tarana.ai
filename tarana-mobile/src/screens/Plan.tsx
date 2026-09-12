@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
+import { GradientCTA } from './ui';
 import { generateItinerary } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 
 const BLUE = '#0066FF';
-const BLUE_LIGHT = '#1E90FF';
 
 const PLAN_CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao'];
 const INTERESTS = ['Food', 'Nature', 'Culture', 'Adventure', 'Cafes', 'History', 'Nightlife', 'Shopping'];
@@ -80,7 +79,6 @@ export default function Plan() {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={styles.eyebrow}>Tarana Gala</Text>
       <Text style={styles.title}>Plan my trip</Text>
       <Text style={styles.subcopy}>Runs on-device when the local model lands. Your form is saved as you go.</Text>
 
@@ -115,6 +113,7 @@ export default function Plan() {
         }}
         keyboardType="number-pad"
         returnKeyType="done"
+        placeholderTextColor="#9ca3af"
         accessibilityLabel="Trip budget total in pesos"
       />
 
@@ -174,6 +173,7 @@ export default function Plan() {
           setPending(null);
         }}
         autoCapitalize="none"
+        placeholderTextColor="#9ca3af"
         accessibilityLabel="Trip start date"
       />
 
@@ -187,6 +187,7 @@ export default function Plan() {
           setPending(null);
         }}
         autoCapitalize="none"
+        placeholderTextColor="#9ca3af"
         accessibilityLabel="Trip end date"
       />
 
@@ -220,32 +221,22 @@ export default function Plan() {
         </View>
       ) : null}
 
-      <TouchableOpacity
+      <GradientCTA
+        variant="app"
+        title="Generate itinerary"
+        loadingTitle="Checking…"
+        loading={loading}
         onPress={handleGenerate}
-        disabled={loading}
-        activeOpacity={0.85}
-        accessibilityRole="button"
         accessibilityLabel="Generate itinerary"
-        style={styles.ctaOuter}
-      >
-        <LinearGradient
-          colors={[BLUE, BLUE_LIGHT]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.cta}
-        >
-          <Text style={styles.ctaText}>{loading ? 'Checking…' : 'Generate itinerary'}</Text>
-        </LinearGradient>
-      </TouchableOpacity>
+      />
       <StatusBar style="auto" />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#ffffff' },
+  root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 24, paddingVertical: 24, gap: 10 },
-  eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 2, textTransform: 'uppercase', color: BLUE },
   title: { fontSize: 24, fontWeight: '700', color: '#111827', lineHeight: 30 },
   subcopy: { fontSize: 14, color: '#6b7280' },
   label: { fontSize: 14, fontWeight: '500', color: '#374151', marginTop: 8 },
@@ -256,7 +247,7 @@ const styles = StyleSheet.create({
   pillText: { color: BLUE, fontSize: 13, fontWeight: '500' },
   pillTextActive: { color: '#ffffff' },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  stepBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  stepBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' },
   stepText: { fontSize: 22, color: BLUE, fontWeight: '600' },
   stepValue: { fontSize: 20, fontWeight: '700', color: '#111827', minWidth: 32, textAlign: 'center', fontVariant: ['tabular-nums'] },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 12, padding: 10 },
@@ -264,7 +255,4 @@ const styles = StyleSheet.create({
   pendingBox: { backgroundColor: '#eff6ff', borderRadius: 16, padding: 16, gap: 6, borderWidth: 1, borderColor: '#dbeafe' },
   pendingTitle: { fontSize: 15, fontWeight: '600', color: BLUE },
   pendingText: { fontSize: 13, color: '#374151', lineHeight: 19 },
-  ctaOuter: { borderRadius: 16, marginTop: 8 },
-  cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
-  ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
 });

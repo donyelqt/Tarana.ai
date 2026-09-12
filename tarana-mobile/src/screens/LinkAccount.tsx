@@ -1,15 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import { LinearGradient } from 'expo-linear-gradient';
 import { EyeIcon, EyeSlashIcon, GoogleIcon } from './icons';
+import { GradientCTA } from './ui';
 import { config } from '../config';
 import { importWebTrips } from '../data';
 
 const API_BASE = config.webBaseUrl.replace(/\/$/, '');
-
-const BLUE = '#0066FF';
-const BLUE_LIGHT = '#1E90FF';
 
 export default function LinkAccount({ navigation, onDone }: { navigation: any; onDone?: () => void }) {
   const [email, setEmail] = useState('');
@@ -31,7 +28,7 @@ export default function LinkAccount({ navigation, onDone }: { navigation: any; o
 
   const finish = () => {
     if (onDone) onDone();
-    else navigation.navigate('Home');
+    else navigation.replace('MainTabs');
   };
 
   const handleSubmit = async () => {
@@ -85,6 +82,7 @@ export default function LinkAccount({ navigation, onDone }: { navigation: any; o
             returnKeyType="next"
             blurOnSubmit={false}
             onSubmitEditing={() => passwordRef.current?.focus()}
+            placeholderTextColor="#9ca3af"
             accessibilityLabel="Email"
           />
         </View>
@@ -101,6 +99,7 @@ export default function LinkAccount({ navigation, onDone }: { navigation: any; o
               autoComplete="current-password"
               returnKeyType="done"
               onSubmitEditing={() => { if (!loading) void handleSubmit(); }}
+              placeholderTextColor="#9ca3af"
               accessibilityLabel="Password"
             />
             <TouchableOpacity
@@ -121,23 +120,14 @@ export default function LinkAccount({ navigation, onDone }: { navigation: any; o
 
         {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View> : null}
 
-        <TouchableOpacity
+        <GradientCTA
+          variant="auth"
+          title="Link web account"
+          loadingTitle="Linking..."
+          loading={loading}
           onPress={handleSubmit}
-          disabled={loading}
-          activeOpacity={0.85}
-          accessibilityRole="button"
           accessibilityLabel="Link web account"
-          style={styles.ctaOuter}
-        >
-          <LinearGradient
-            colors={[BLUE, BLUE_LIGHT]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.cta}
-          >
-            <Text style={styles.ctaText}>{loading ? 'Linking...' : 'Link web account'}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        />
 
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
@@ -178,9 +168,6 @@ const styles = StyleSheet.create({
   forgot: { fontSize: 12, color: '#9ca3af' },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 8, padding: 10, marginBottom: 12 },
   errorText: { color: '#dc2626', fontSize: 13 },
-  ctaOuter: { borderRadius: 16, marginTop: 4 },
-  cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
-  ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#d1d5db' },
   dividerText: { marginHorizontal: 12, fontSize: 12, color: '#6b7280', backgroundColor: '#f3f4f6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },

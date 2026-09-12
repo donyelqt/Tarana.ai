@@ -54,12 +54,12 @@ export default function Settings({ navigation }: { navigation: SettingsNav }) {
           color="#ffffff"
         />
       </View>
-      <View className="mb-3 w-full flex-row justify-center gap-4 rounded-lg bg-secondary px-4 py-3">
+      <View className="mb-3 w-full flex-row justify-center gap-4 rounded-lg bg-card px-4 py-3">
         <Text className="text-sm text-primary" onPress={openTerms}>Terms of Service</Text>
         <Text className="text-sm text-muted-foreground">·</Text>
         <Text className="text-sm text-primary" onPress={openPrivacy}>Privacy Policy</Text>
       </View>
-      <View className="rounded-lg bg-secondary px-4 py-1">
+      <View className="rounded-lg bg-card px-4 py-1">
         <Button title="Sign out" onPress={onSignOut} color="#0f172a" />
       </View>
       <StatusBar style="auto" />

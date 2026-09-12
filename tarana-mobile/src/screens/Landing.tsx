@@ -94,19 +94,18 @@ export default function Landing() {
           <View style={styles.logoPill}>
             <Image
               source={require('../../assets/icon.png')}
-              alt="Tarana.ai"
+              accessibilityRole="image"
+              accessibilityLabel="Tarana.ai logo"
               style={styles.logo}
               resizeMode="contain"
             />
           </View>
           <Text style={styles.headline}>
-            Plan Your Perfect{'\n'}
-            <Text style={styles.headlineAccent}>{city.name} Trip</Text>
-            {'\n'}in Seconds
+            Your {city.name} trip,{'\n'}
+            <Text style={styles.headlineAccent}>planned in seconds.</Text>
           </Text>
           <Text style={styles.subcopy}>
-            We craft your perfect itinerary — personalized to your budget, interests, group size, and
-            real-time traffic conditions — so you can focus on the adventure, not the stress.
+            Itineraries tuned to your budget, interests, group, and live traffic.
           </Text>
 
           <TouchableOpacity
@@ -197,7 +196,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -261,11 +260,10 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: 56,
     backgroundColor: BRAND_BLUE,
-    borderRadius: 40,
+    borderRadius: 24,
     paddingVertical: 40,
     paddingHorizontal: 24,
     alignItems: 'center',
-    textAlign: 'center',
   },
   footerTitle: { fontSize: 26, fontWeight: '600', color: '#ffffff', marginBottom: 8, textAlign: 'center' },
   footerSub: { fontSize: 16, color: '#dbeafe', marginBottom: 8, textAlign: 'center' },

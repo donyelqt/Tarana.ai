@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
+import { formatPHP, GradientCTA } from './ui';
 import { CAFES, suggestCafes, type Cafe } from '../data/catalog';
 import { resolveWebImage } from '../data';
 import Thumb from './Thumb';
 
 const BLUE = '#0066FF';
-const BLUE_LIGHT = '#1E90FF';
 
 /**
  * Eats — browse Baguio cafes + local suggestions (§8).
@@ -47,7 +46,6 @@ export default function Eats({ navigation }: { navigation: any }) {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={styles.eyebrow}>Tarana Eats</Text>
       <Text style={styles.title}>Find your next meal</Text>
       <Text style={styles.subcopy}>20 real Baguio spots. Filters run on-device.</Text>
 
@@ -62,6 +60,7 @@ export default function Eats({ navigation }: { navigation: any }) {
         }}
         keyboardType="number-pad"
         returnKeyType="done"
+        placeholderTextColor="#9ca3af"
         accessibilityLabel="Max budget per person in pesos"
       />
 
@@ -128,22 +127,12 @@ export default function Eats({ navigation }: { navigation: any }) {
         ))}
       </View>
 
-      <TouchableOpacity
+      <GradientCTA
+        variant="app"
+        title="Find cafes"
         onPress={() => setRan(true)}
-        activeOpacity={0.85}
-        accessibilityRole="button"
         accessibilityLabel="Find cafes"
-        style={styles.ctaOuter}
-      >
-        <LinearGradient
-          colors={[BLUE, BLUE_LIGHT]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.cta}
-        >
-          <Text style={styles.ctaText}>Find cafes</Text>
-        </LinearGradient>
-      </TouchableOpacity>
+      />
 
       {ran ? (
         <View style={styles.results}>
@@ -169,9 +158,9 @@ export default function Eats({ navigation }: { navigation: any }) {
                     {c.cuisine.join(' · ')}
                   </Text>
                   <Text style={styles.cardPrice}>
-                    ₱{c.priceRange.min}–₱{c.priceRange.max}
+                    {formatPHP(c.priceRange.min)}–{formatPHP(c.priceRange.max)}
                     {pax > 1 ? (
-                      <Text style={styles.cardEach}> · ≈₱{c.priceRange.min * pax} for {pax}</Text>
+                      <Text style={styles.cardEach}> · ≈{formatPHP(c.priceRange.min * pax)} for {pax}</Text>
                     ) : null}
                   </Text>
                   {c.hasMenu ? <Text style={styles.menuBadge}>Full menu inside</Text> : null}
@@ -187,9 +176,8 @@ export default function Eats({ navigation }: { navigation: any }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#ffffff' },
+  root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 24, paddingVertical: 24, gap: 10 },
-  eyebrow: { fontSize: 11, fontWeight: '600', letterSpacing: 2, textTransform: 'uppercase', color: BLUE },
   title: { fontSize: 24, fontWeight: '700', color: '#111827', lineHeight: 30 },
   subcopy: { fontSize: 14, color: '#6b7280' },
   label: { fontSize: 14, fontWeight: '500', color: '#374151', marginTop: 8 },
@@ -200,16 +188,13 @@ const styles = StyleSheet.create({
   pillText: { color: BLUE, fontSize: 13, fontWeight: '500' },
   pillTextActive: { color: '#ffffff' },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  stepBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  stepBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center' },
   stepText: { fontSize: 22, color: BLUE, fontWeight: '600' },
   pax: { fontSize: 20, fontWeight: '700', color: '#111827', minWidth: 32, textAlign: 'center', fontVariant: ['tabular-nums'] },
-  ctaOuter: { borderRadius: 16, marginTop: 8 },
-  cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
-  ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
   results: { gap: 8, marginTop: 8 },
   resultsTitle: { fontSize: 18, fontWeight: '600', color: '#111827' },
   muted: { fontSize: 13, color: '#6b7280' },
-  card: { backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 16, padding: 14, gap: 4 },
+  card: { backgroundColor: '#ffffff', borderRadius: 16, padding: 14, gap: 4 },
   cardRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   cardText: { flex: 1, gap: 4 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
