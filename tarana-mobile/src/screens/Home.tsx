@@ -268,15 +268,13 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
         >
           {CITIES.map((c) => {
             const active = c === city;
+            // Pills read cleaner without the redundant suffix
+            // ("Baguio", not "Baguio City"); config data stays canonical.
+            const shortName = CITY_CONFIGS[c].name.replace(/ City$/, '');
             const pillLabel = (
-              <View style={styles.pillContent}>
-                <View accessible={false} importantForAccessibility="no-hide-descendants">
-                  <MapPinIcon size={14} color={active ? '#ffffff' : '#0066FF'} />
-                </View>
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>
-                  {CITY_CONFIGS[c].name}
-                </Text>
-              </View>
+              <Text style={[styles.pillText, active && styles.pillTextActive]}>
+                {shortName}
+              </Text>
             );
             return active ? (
               <TouchableOpacity
@@ -284,7 +282,7 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
                 activeOpacity={0.85}
                 accessibilityRole="button"
                 accessibilityState={{ selected: true }}
-                accessibilityLabel={`${CITY_CONFIGS[c].name} spots, selected`}
+                accessibilityLabel={`${shortName} spots, selected`}
                 hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
                 onPress={() => setCity(c)}
               >
@@ -304,7 +302,7 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
                 activeOpacity={0.85}
                 accessibilityRole="button"
                 accessibilityState={{ selected: false }}
-                accessibilityLabel={`${CITY_CONFIGS[c].name} spots`}
+                accessibilityLabel={`${shortName} spots`}
                 hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
                 onPress={() => setCity(c)}
               >
@@ -471,7 +469,6 @@ const styles = StyleSheet.create({
   pills: { flexDirection: 'row', gap: 8, paddingRight: 20 },
   pill: { paddingVertical: 11, paddingHorizontal: 16, borderRadius: 999, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#E5E7EB' },
   pillActive: { borderRadius: 999, paddingVertical: 11, paddingHorizontal: 16 },
-  pillContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pillText: { color: '#0066FF', fontSize: 13, fontWeight: '500' },
   pillTextActive: { color: '#ffffff' },
   listSkeleton: {
