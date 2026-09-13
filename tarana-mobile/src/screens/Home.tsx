@@ -26,7 +26,7 @@ import {
   type Weather,
 } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
-import { manilaDaypart, TrafficBadge, GRADIENT } from './ui';
+import { manilaDaypart, SpotPhoto, TrafficBadge, GRADIENT } from './ui';
 import { MapPinIcon, SearchIcon, UtensilsIcon } from './icons';
 
 const CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao'];
@@ -298,10 +298,10 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
 }
 
 /**
- * Reference-polished photo card: image-led top (taller, 168), name,
- * blue-pin meta, badge. Tap goes to the full Spots screen (preview
- * never duplicates actions). Nothing removed — distance · time +
- * traffic all survive, recomposed to the Popular Destination pattern.
+ * Home preview card — Spots card composition, preview role: shared
+ * SpotPhoto (logo fallback), name, pin meta, badge. Tap goes to the full
+ * Spots screen; the "Open in Maps" action lives there only (preview never
+ * duplicates actions). Meta matches Spots (distance · time · peak).
  */
 function HomeSpotCard({
   card: item,
@@ -312,9 +312,10 @@ function HomeSpotCard({
   width: number;
   navigation: HomeNav;
 }) {
-  const [imgFailed, setImgFailed] = useState(false);
   const uri = resolveWebImage(item.image);
-  const meta = [item.distance, item.time].filter(Boolean).join(' · ');
+  const meta = [item.distance, item.time, item.peakHours ? `Peak: ${item.peakHours}` : null]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <TouchableOpacity
       activeOpacity={0.85}
@@ -323,19 +324,7 @@ function HomeSpotCard({
       onPress={() => navigation.navigate('Spots')}
       style={[styles.photoCard, { width }]}
     >
-      {uri && !imgFailed ? (
-        <Image
-          source={{ uri }}
-          style={styles.photo}
-          onError={() => setImgFailed(true)}
-          accessibilityRole="image"
-          accessibilityLabel={`${item.name} photo`}
-        />
-      ) : (
-        <View style={[styles.photo, styles.photoEmpty]}>
-          <Text style={styles.photoEmptyText}>{item.name[0] ?? '·'}</Text>
-        </View>
-      )}
+      <SpotPhoto uri={uri} name={item.name} height={168} radius={0} />
       <View style={styles.photoBody}>
         <Text style={styles.photoTitle} numberOfLines={1}>{item.name}</Text>
         {meta ? (
@@ -462,10 +451,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  photo: { width: '100%', height: 168, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
-  photoEmpty: { backgroundColor: '#EFF6FF' },
   photoBody: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12, gap: 3 },
-  photoEmptyText: { fontSize: 40, fontWeight: '700', color: '#0066FF', opacity: 0.5 },
   photoTitle: { fontSize: 16, fontWeight: '700', color: '#111827', letterSpacing: -0.2 },
   photoMeta: { flex: 1, fontSize: 12, color: '#6b7280', fontVariant: ['tabular-nums'] },
   photoMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },

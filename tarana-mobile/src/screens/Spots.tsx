@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GradientCTA, GRADIENT } from './ui';
+import { GradientCTA, GRADIENT, SpotPhoto } from './ui';
 import { fetchSpotCards, resolveWebImage, spotMapsUrl, type SpotView } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 import Thumb from './Thumb';
@@ -137,29 +137,10 @@ export default function Spots() {
  */
 function SpotCard({ card: item, width }: { card: SpotView; width: number }) {
   const url = spotMapsUrl(item.lat, item.lon);
-  const [imgFailed, setImgFailed] = useState(false);
   const uri = resolveWebImage(item.image);
-  const showPhoto = !!uri && !imgFailed;
   return (
     <View className="rounded-lg bg-card p-3" style={{ width }}>
-      <View style={styles.photoSlot}>
-        <Image
-          source={require('../../assets/taranaai-mark.png')}
-          style={styles.mark}
-          resizeMode="contain"
-          accessibilityRole="image"
-          accessibilityLabel="Tarana.ai"
-        />
-        {showPhoto ? (
-          <Image
-            source={{ uri: uri as string }}
-            style={StyleSheet.absoluteFill}
-            onError={() => setImgFailed(true)}
-            accessibilityRole="image"
-            accessibilityLabel={`${item.name} photo`}
-          />
-        ) : null}
-      </View>
+      <SpotPhoto uri={uri} name={item.name} height={150} radius={12} />
       <Text className="mt-2 text-base font-semibold text-foreground">{item.name}</Text>
       <Text className="mt-1 text-sm text-muted-foreground">
         {[item.distance, item.time, item.peakHours ? `Peak: ${item.peakHours}` : null]
@@ -211,16 +192,6 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  photoSlot: {
-    width: '100%',
-    height: 150,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#eff6ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mark: { width: 96, height: 96 },
   heroWrap: {
     borderRadius: 16,
     borderCurve: 'continuous',
