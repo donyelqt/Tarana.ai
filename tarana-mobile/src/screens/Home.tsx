@@ -29,7 +29,7 @@ import {
 } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 import { manilaDaypart, SpotPhoto, spotCardStyles, TrafficBadge, GRADIENT } from './ui';
-import { MapPinIcon, SearchIcon, UtensilsIcon } from './icons';
+import { MapPinIcon, SearchIcon, ChevronRightIcon, UtensilsIcon } from './icons';
 import Thumb from './Thumb';
 
 const CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao'];
@@ -216,8 +216,13 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
             accessibilityLabel={`Open saved trips, ${tripCount ?? 0} saved`}
             onPress={() => navigation.navigate('SavedTrips')}
           >
-            <View style={styles.cardIcon} accessible={false} importantForAccessibility="no-hide-descendants">
-              <MapPinIcon size={20} color="#0066FF" />
+            <View style={styles.cardTop}>
+              <View style={styles.cardIcon} accessible={false} importantForAccessibility="no-hide-descendants">
+                <MapPinIcon size={20} color="#0066FF" />
+              </View>
+              <View accessible={false} importantForAccessibility="no-hide-descendants">
+                <ChevronRightIcon size={18} color="#6b7280" />
+              </View>
             </View>
             <Text style={styles.cardCount}>{tripCount ?? 0}</Text>
             <Text style={styles.cardLabel}>Saved trips</Text>
@@ -229,8 +234,13 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
             accessibilityLabel={`Open saved cafes, ${cafeCount ?? 0} saved`}
             onPress={() => navigation.navigate('SavedCafes')}
           >
-            <View style={styles.cardIcon} accessible={false} importantForAccessibility="no-hide-descendants">
-              <UtensilsIcon size={20} color="#0066FF" />
+            <View style={styles.cardTop}>
+              <View style={styles.cardIcon} accessible={false} importantForAccessibility="no-hide-descendants">
+                <UtensilsIcon size={20} color="#0066FF" />
+              </View>
+              <View accessible={false} importantForAccessibility="no-hide-descendants">
+                <ChevronRightIcon size={18} color="#6b7280" />
+              </View>
             </View>
             <Text style={styles.cardCount}>{cafeCount ?? 0}</Text>
             <Text style={styles.cardLabel}>Saved cafes</Text>
@@ -444,6 +454,7 @@ const styles = StyleSheet.create({
   },
   cardCount: { fontSize: 30, fontWeight: '800', color: '#111827', fontVariant: ['tabular-nums'], letterSpacing: -0.3 },
   cardLabel: { fontSize: 13, color: '#6b7280', fontWeight: '500' },
+  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardIcon: {
     width: 40,
     height: 40,
@@ -451,7 +462,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#eff6ff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
   section: { gap: 12, marginTop: 4 },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
