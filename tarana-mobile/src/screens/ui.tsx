@@ -7,7 +7,7 @@
  * system. NOT here: brand colors/gradients (live with their screens).
  */
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TrafficConeIcon } from './icons';
 import type { SpotTraffic } from '../data';
@@ -160,6 +160,51 @@ export function TrafficBadge({ level }: { level: SpotTraffic }) {
   );
 }
 
+/**
+ * SpotPhoto — photo-led slot with branded absence (canonical — use this,
+ * don't duplicate). Consumed by Home preview cards and Spots full cards.
+ *
+ * The Tarana.ai mark is the permanent base layer; the remote photo (if any)
+ * overlays it via absoluteFill. Null uri or load failure therefore degrades
+ * to the logo on `#eff6ff` — never a broken-image box, never an initial
+ * letter. Fixed `height` keeps carousels from reflowing (no CLS); `radius`
+ * follows the caller (both spot cards pass 0 and let the card clip).
+ */
+export function SpotPhoto({
+  uri,
+  name,
+  height,
+  radius = 12,
+}: {
+  uri: string | null;
+  name: string;
+  height: number;
+  radius?: number;
+}) {
+  const [failed, setFailed] = useState(false);
+  const showPhoto = !!uri && !failed;
+  return (
+    <View style={[styles.photoSlot, { height, borderRadius: radius }]} accessible={false}>
+      <Image
+        source={require('../../assets/taranaai-mark.png')}
+        style={styles.photoMark}
+        resizeMode="contain"
+        accessibilityRole="image"
+        accessibilityLabel="Tarana.ai"
+      />
+      {showPhoto ? (
+        <Image
+          source={{ uri: uri as string }}
+          style={StyleSheet.absoluteFill}
+          onError={() => setFailed(true)}
+          accessibilityRole="image"
+          accessibilityLabel={`${name} photo`}
+        />
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   badge: {
     alignSelf: 'flex-start',
@@ -171,6 +216,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   badgeText: { fontSize: 12, fontWeight: '600', marginLeft: 6 },
+  photoSlot: {
+    width: '100%',
+    backgroundColor: '#eff6ff',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoMark: { width: 96, height: 96 },
   ctaOuter: { borderRadius: 16, marginTop: 4 },
   cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
   ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
