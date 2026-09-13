@@ -11,8 +11,9 @@ import { GRADIENT } from './ui';
  * direct child of a bounded flex:1 View the lane adopts the remaining
  * space and the pills stretch — that was the giant-pills bug. Spots root
  * is a ScrollView for exactly this reason (which also un-cuts the
- * show-all rows below the fold). Visual tokens stay Spots-owned (18px
- * gutters, hairline border, 14px blue text, auth-gradient active).
+ * show-all rows below the fold). Visual tokens follow Home's pills
+ * (white + hairline border inactive, 13px blue text, app-gradient
+ * vertical active).
  */
 export default function SpotCityPills({
   cities,
@@ -32,8 +33,10 @@ export default function SpotCityPills({
     >
       {cities.map((c) => {
         const active = c === city;
+        // Short names like Home ("Baguio", not "Baguio City").
+        const shortName = CITY_CONFIGS[c].name.replace(/ City$/, '');
         const label = (
-          <Text style={[styles.pillText, active && styles.pillTextActive]}>{CITY_CONFIGS[c].name}</Text>
+          <Text style={[styles.pillText, active && styles.pillTextActive]}>{shortName}</Text>
         );
         return active ? (
           <TouchableOpacity
@@ -41,15 +44,16 @@ export default function SpotCityPills({
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityState={{ selected: true }}
-            accessibilityLabel={`${CITY_CONFIGS[c].name} spots, selected`}
-            onPress={() => onSelect(c)}
-          >
-            <LinearGradient
-              colors={[GRADIENT.auth.from, GRADIENT.auth.to]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.pillActive}
-            >
+                accessibilityLabel={`${shortName} spots, selected`}
+                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                onPress={() => onSelect(c)}
+              >
+                <LinearGradient
+                  colors={[GRADIENT.app.from, GRADIENT.app.to]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={styles.pillActive}
+                >
               {label}
             </LinearGradient>
           </TouchableOpacity>
@@ -60,8 +64,9 @@ export default function SpotCityPills({
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityState={{ selected: false }}
-            accessibilityLabel={`${CITY_CONFIGS[c].name} spots`}
-            onPress={() => onSelect(c)}
+                accessibilityLabel={`${shortName} spots`}
+                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                onPress={() => onSelect(c)}
           >
             {label}
           </TouchableOpacity>
@@ -75,14 +80,16 @@ const styles = StyleSheet.create({
   pillsWrap: { marginHorizontal: -16, paddingHorizontal: 16, marginBottom: 12 },
   pills: { flexDirection: 'row', gap: 8, paddingRight: 16 },
   pill: {
-    paddingVertical: 8,
+    paddingVertical: 11,
     paddingHorizontal: 16,
     borderRadius: 999,
     backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   pillActive: {
     borderRadius: 999,
-    paddingVertical: 8,
+    paddingVertical: 11,
     paddingHorizontal: 16,
   },
   pillText: { color: '#0066FF', fontSize: 13, fontWeight: '500' },
