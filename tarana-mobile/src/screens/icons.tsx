@@ -389,6 +389,25 @@ export function SearchIcon({ size = 20, color = '#6b7280', strokeWidth = 2 }: Ic
   );
 }
 
+/** Chevron-right — lucide `chevron-right`: disclosure cue for navigation
+ *  rows and tappable cards (same stroke language, never emoji/glyph). */
+export function ChevronRightIcon({ size = 20, color = '#6b7280', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="m9 18 6-6-6-6" />
+    </Svg>
+  );
+}
+
 /** Traffic cone — web `lucide-react` TrafficCone (SpotlightCard:76, saved-trips:608).
  *  Exact path data from node_modules/lucide-react/dist/esm/icons/traffic-cone.js;
  *  stroke-only, viewBox 0 0 24 24, stroke language 2.0. */
