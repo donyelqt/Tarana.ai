@@ -27,23 +27,15 @@ import {
 } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 import { manilaDaypart, TrafficBadge, GRADIENT } from './ui';
-import { MapPinIcon, UtensilsIcon } from './icons';
+import { MapPinIcon, SearchIcon, UtensilsIcon } from './icons';
 
 const CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao'];
 
 /**
- * Reference-mapped pill icons (travel-app pattern, our cities).
- * Emoji here is intentional: the reference uses Beach ⛱ / Mountain ⛰ /
- * Camping 🏕 glyphs as the pill signifier. We keep our city logic and
- * only add the signifier — Baguio highlands, Cebu coast, Manila city,
- * Davao gulf. No new behavior, no removed content.
+ * City pills share one vector signifier (MapPin, system stroke 2.0) instead
+ * of per-city emoji: emoji renders inconsistently across Android/iOS OEM
+ * fonts and can't follow tint tokens. City identity comes from the label.
  */
-const CITY_ICONS: Partial<Record<CityId, string>> = {
-  baguio: '⛰️',
-  cebu: '🏖️',
-  manila: '🏙️',
-  davao: '🌊',
-};
 
 type HomeNav = {
   navigate: (route: string, params?: Record<string, unknown>) => void;
@@ -145,7 +137,7 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
       <View style={styles.header}>
         <View style={styles.headerText}>
           <Text style={styles.daypart}>Good {manilaDaypart()},</Text>
-          <Text style={styles.name}>{firstName}?</Text>
+          <Text style={styles.name}>{firstName}</Text>
         </View>
         <View style={styles.avatar} accessibilityRole="image" accessibilityLabel={`${firstName} profile`}>
           <Text style={styles.avatarText}>{initial}</Text>
@@ -159,7 +151,9 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
         accessibilityLabel="Search destinations"
         onPress={() => navigation.navigate('Explore')}
       >
-        <Text style={styles.searchIcon}>⌕</Text>
+        <View accessible={false} importantForAccessibility="no-hide-descendants">
+          <SearchIcon size={18} color="#6b7280" />
+        </View>
         <Text style={styles.searchText}>Search destinations…</Text>
       </TouchableOpacity>
 
@@ -181,7 +175,7 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
       ) : null}
 
       {!countsReady && !error ? (
-        <View style={styles.cardsLoading}>
+        <View style={styles.cardsLoading} accessibilityLiveRegion="polite">
           <ActivityIndicator color="#0066FF" />
         </View>
       ) : (
@@ -194,7 +188,7 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
             onPress={() => navigation.navigate('SavedTrips')}
           >
             <View style={styles.cardIcon} accessible={false} importantForAccessibility="no-hide-descendants">
-              <MapPinIcon size={30} color="#0066FF" />
+              <MapPinIcon size={20} color="#0066FF" />
             </View>
             <Text style={styles.cardCount}>{tripCount ?? 0}</Text>
             <Text style={styles.cardLabel}>Saved trips</Text>
@@ -207,7 +201,7 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
             onPress={() => navigation.navigate('SavedCafes')}
           >
             <View style={styles.cardIcon} accessible={false} importantForAccessibility="no-hide-descendants">
-              <UtensilsIcon size={30} color="#0066FF" />
+              <UtensilsIcon size={20} color="#0066FF" />
             </View>
             <Text style={styles.cardCount}>{cafeCount ?? 0}</Text>
             <Text style={styles.cardLabel}>Saved cafes</Text>
@@ -221,6 +215,7 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="See all spots"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             onPress={() => navigation.navigate('Spots')}
           >
             <Text style={styles.seeAll}>See all</Text>
@@ -234,11 +229,15 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
         >
           {CITIES.map((c) => {
             const active = c === city;
-            const icon = CITY_ICONS[c] ?? '📍';
-            const label = (
-              <Text style={[styles.pillText, active && styles.pillTextActive]}>
-                {icon}  {CITY_CONFIGS[c].name}
-              </Text>
+            const pillLabel = (
+              <View style={styles.pillContent}>
+                <View accessible={false} importantForAccessibility="no-hide-descendants">
+                  <MapPinIcon size={14} color={active ? '#ffffff' : '#0066FF'} />
+                </View>
+                <Text style={[styles.pillText, active && styles.pillTextActive]}>
+                  {CITY_CONFIGS[c].name}
+                </Text>
+              </View>
             );
             return active ? (
               <TouchableOpacity
@@ -247,15 +246,16 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
                 accessibilityRole="button"
                 accessibilityState={{ selected: true }}
                 accessibilityLabel={`${CITY_CONFIGS[c].name} spots, selected`}
+                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
                 onPress={() => setCity(c)}
               >
                 <LinearGradient
-                  colors={[GRADIENT.auth.from, GRADIENT.auth.to]}
+                  colors={[GRADIENT.app.from, GRADIENT.app.to]}
                   start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
+                  end={{ x: 0, y: 1 }}
                   style={styles.pillActive}
                 >
-                  {label}
+                  {pillLabel}
                 </LinearGradient>
               </TouchableOpacity>
             ) : (
@@ -266,15 +266,16 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
                 accessibilityRole="button"
                 accessibilityState={{ selected: false }}
                 accessibilityLabel={`${CITY_CONFIGS[c].name} spots`}
+                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
                 onPress={() => setCity(c)}
               >
-                {label}
+                {pillLabel}
               </TouchableOpacity>
             );
           })}
         </ScrollView>
         {spotsLoading ? (
-          <View style={styles.listSkeleton}>
+          <View style={styles.listSkeleton} accessibilityLiveRegion="polite">
             <ActivityIndicator color="#0066FF" />
             <Text style={styles.skeletonText}>Finding spots…</Text>
           </View>
@@ -338,10 +339,14 @@ function HomeSpotCard({
       <View style={styles.photoBody}>
         <Text style={styles.photoTitle} numberOfLines={1}>{item.name}</Text>
         {meta ? (
-          <Text style={styles.photoMeta} numberOfLines={1}>
-            <Text style={styles.photoPin}>◉ </Text>
-            {meta}
-          </Text>
+          <View style={styles.photoMetaRow}>
+            <View accessible={false} importantForAccessibility="no-hide-descendants">
+              <MapPinIcon size={12} color="#0066FF" />
+            </View>
+            <Text style={styles.photoMeta} numberOfLines={1}>
+              {meta}
+            </Text>
+          </View>
         ) : null}
         {item.traffic ? <TrafficBadge level={item.traffic} /> : null}
       </View>
@@ -373,14 +378,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
+    minHeight: 52,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  searchIcon: { fontSize: 18, color: '#9ca3af' },
-  searchText: { fontSize: 15, color: '#9ca3af' },
+  searchText: { fontSize: 15, color: '#6b7280' },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FECACA' },
   errorText: { color: '#dc2626', fontSize: 13 },
   weatherCard: {
@@ -412,21 +417,30 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 16,
-    gap: 2,
+    gap: 6,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   cardCount: { fontSize: 30, fontWeight: '800', color: '#111827', fontVariant: ['tabular-nums'], letterSpacing: -0.3 },
   cardLabel: { fontSize: 13, color: '#6b7280', fontWeight: '500' },
-  cardIcon: { position: 'absolute', top: 12, right: 12, opacity: 0.28 },
+  cardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
   section: { gap: 12, marginTop: 4 },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   sectionTitle: { fontSize: 19, fontWeight: '700', color: '#111827', letterSpacing: -0.2 },
   seeAll: { fontSize: 14, color: '#0066FF', fontWeight: '600' },
   pillsWrap: { marginHorizontal: -20, paddingHorizontal: 20 },
   pills: { flexDirection: 'row', gap: 8, paddingRight: 20 },
-  pill: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999, backgroundColor: '#ffffff' },
-  pillActive: { borderRadius: 999, paddingVertical: 8, paddingHorizontal: 16 },
+  pill: { paddingVertical: 11, paddingHorizontal: 16, borderRadius: 999, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#E5E7EB' },
+  pillActive: { borderRadius: 999, paddingVertical: 11, paddingHorizontal: 16 },
+  pillContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pillText: { color: '#0066FF', fontSize: 13, fontWeight: '500' },
   pillTextActive: { color: '#ffffff' },
   listSkeleton: {
@@ -441,7 +455,7 @@ const styles = StyleSheet.create({
   skeletonText: { fontSize: 13, color: '#6b7280' },
   photoCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 0,
     gap: 0,
     overflow: 'hidden',
@@ -453,6 +467,6 @@ const styles = StyleSheet.create({
   photoBody: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12, gap: 3 },
   photoEmptyText: { fontSize: 40, fontWeight: '700', color: '#0066FF', opacity: 0.5 },
   photoTitle: { fontSize: 16, fontWeight: '700', color: '#111827', letterSpacing: -0.2 },
-  photoMeta: { fontSize: 12, color: '#6b7280', fontVariant: ['tabular-nums'] },
-  photoPin: { color: '#0066FF', fontSize: 12 },
+  photoMeta: { flex: 1, fontSize: 12, color: '#6b7280', fontVariant: ['tabular-nums'] },
+  photoMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 });
