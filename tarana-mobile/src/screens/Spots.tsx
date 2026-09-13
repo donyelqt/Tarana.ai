@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GradientCTA, GRADIENT, SpotPhoto } from './ui';
+import { GradientCTA, GRADIENT, SpotPhoto, spotCardStyles } from './ui';
+import { MapPinIcon } from './icons';
 import { fetchSpotCards, resolveWebImage, spotMapsUrl, type SpotView } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 import Thumb from './Thumb';
@@ -130,34 +131,42 @@ export default function Spots() {
 }
 
 /**
- * Spot card — web `SpotlightCard` composition in a carousel cell: photo
- * led (full-bleed top, Airbnb rule), name, distance · time, traffic
- * badge, one "Open in Maps" action. Fixed width comes from the caller
- * (viewport-derived); Thumb stays the row-sized helper elsewhere.
+ * Spot card — Home card language via shared `spotCardStyles`: photo-led
+ * full-bleed top, name, pin meta, traffic badge. Spots-only additions kept:
+ * the "Open in Maps" action (this screen's purpose) and peak-hours in meta.
+ * Fixed width comes from the caller (viewport-derived).
  */
 function SpotCard({ card: item, width }: { card: SpotView; width: number }) {
   const url = spotMapsUrl(item.lat, item.lon);
   const uri = resolveWebImage(item.image);
+  const meta = [item.distance, item.time, item.peakHours ? `Peak: ${item.peakHours}` : null]
+    .filter(Boolean)
+    .join(' · ');
   return (
-    <View className="rounded-lg bg-card p-3" style={{ width }}>
-      <SpotPhoto uri={uri} name={item.name} height={150} radius={12} />
-      <Text className="mt-2 text-base font-semibold text-foreground">{item.name}</Text>
-      <Text className="mt-1 text-sm text-muted-foreground">
-        {[item.distance, item.time, item.peakHours ? `Peak: ${item.peakHours}` : null]
-          .filter(Boolean)
-          .join(' · ')}
-      </Text>
-      {item.traffic ? <TrafficBadge level={item.traffic} /> : null}
-      {url ? (
-        <View className="mt-2">
-          <GradientCTA
-            variant="app"
-            title="Open in Maps"
-            onPress={() => Linking.openURL(url)}
-            accessibilityLabel={`Open ${item.name} in Maps`}
-          />
-        </View>
-      ) : null}
+    <View style={[spotCardStyles.card, { width }]}>
+      <SpotPhoto uri={uri} name={item.name} height={168} radius={0} />
+      <View style={spotCardStyles.body}>
+        <Text style={spotCardStyles.title} numberOfLines={1}>{item.name}</Text>
+        {meta ? (
+          <View style={spotCardStyles.metaRow}>
+            <View accessible={false} importantForAccessibility="no-hide-descendants">
+              <MapPinIcon size={12} color="#0066FF" />
+            </View>
+            <Text style={spotCardStyles.meta} numberOfLines={1}>{meta}</Text>
+          </View>
+        ) : null}
+        {item.traffic ? <TrafficBadge level={item.traffic} /> : null}
+        {url ? (
+          <View style={styles.ctaWrap}>
+            <GradientCTA
+              variant="app"
+              title="Open in Maps"
+              onPress={() => Linking.openURL(url)}
+              accessibilityLabel={`Open ${item.name} in Maps`}
+            />
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -201,4 +210,5 @@ const styles = StyleSheet.create({
   hero: { paddingHorizontal: 20, paddingVertical: 18 },
   heroTitle: { fontSize: 22, fontWeight: '700', color: '#ffffff', lineHeight: 28 },
   heroSub: { fontSize: 13, color: '#ffffff', opacity: 0.9, marginTop: 2 },
+  ctaWrap: { marginTop: 8 },
 });

@@ -26,7 +26,7 @@ import {
   type Weather,
 } from '../data';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
-import { manilaDaypart, SpotPhoto, TrafficBadge, GRADIENT } from './ui';
+import { manilaDaypart, SpotPhoto, spotCardStyles, TrafficBadge, GRADIENT } from './ui';
 import { MapPinIcon, SearchIcon, UtensilsIcon } from './icons';
 import Thumb from './Thumb';
 
@@ -326,17 +326,17 @@ function HomeSpotCard({
       accessibilityRole="button"
       accessibilityLabel={`Open ${item.name} in Spots`}
       onPress={() => navigation.navigate('Spots')}
-      style={[styles.photoCard, { width }]}
+      style={[spotCardStyles.card, { width }]}
     >
       <SpotPhoto uri={uri} name={item.name} height={168} radius={0} />
-      <View style={styles.photoBody}>
-        <Text style={styles.photoTitle} numberOfLines={1}>{item.name}</Text>
+      <View style={spotCardStyles.body}>
+        <Text style={spotCardStyles.title} numberOfLines={1}>{item.name}</Text>
         {meta ? (
-          <View style={styles.photoMetaRow}>
+          <View style={spotCardStyles.metaRow}>
             <View accessible={false} importantForAccessibility="no-hide-descendants">
               <MapPinIcon size={12} color="#0066FF" />
             </View>
-            <Text style={styles.photoMeta} numberOfLines={1}>
+            <Text style={spotCardStyles.meta} numberOfLines={1}>
               {meta}
             </Text>
           </View>
@@ -446,17 +446,4 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   skeletonText: { fontSize: 13, color: '#6b7280' },
-  photoCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 0,
-    gap: 0,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  photoBody: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12, gap: 3 },
-  photoTitle: { fontSize: 16, fontWeight: '700', color: '#111827', letterSpacing: -0.2 },
-  photoMeta: { flex: 1, fontSize: 12, color: '#6b7280', fontVariant: ['tabular-nums'] },
-  photoMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 });

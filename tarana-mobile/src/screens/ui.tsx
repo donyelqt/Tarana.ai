@@ -205,6 +205,26 @@ export function SpotPhoto({
   );
 }
 
+/**
+ * Spot card shell — shared by Home preview cards and Spots full cards
+ * (one visual language, don't fork it). Photo-led top via SpotPhoto
+ * (full-bleed), padded body, title, pin meta, badge. Geometry (card width,
+ * photo height) and actions (Spots' Maps CTA) stay with the caller.
+ */
+export const spotCardStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  body: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12, gap: 3 },
+  title: { fontSize: 16, fontWeight: '700', color: '#111827', letterSpacing: -0.2 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  meta: { flex: 1, fontSize: 12, color: '#6b7280', fontVariant: ['tabular-nums'] },
+});
+
 const styles = StyleSheet.create({
   badge: {
     alignSelf: 'flex-start',
