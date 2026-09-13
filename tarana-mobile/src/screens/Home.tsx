@@ -28,6 +28,7 @@ import {
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 import { manilaDaypart, SpotPhoto, TrafficBadge, GRADIENT } from './ui';
 import { MapPinIcon, SearchIcon, UtensilsIcon } from './icons';
+import Thumb from './Thumb';
 
 const CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao'];
 
@@ -159,12 +160,15 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
 
       {weather ? (
         <View style={styles.weatherCard}>
-          <Text style={styles.weatherTemp}>
-            {weather.temperature != null ? `${Math.round(weather.temperature)}°C` : '—'}
-          </Text>
-          <Text style={styles.weatherCond}>
-            {[weather.condition, 'Baguio now'].filter(Boolean).join(' · ')}
-          </Text>
+          <Thumb uri={weather.iconUrl} size={48} />
+          <View style={styles.weatherText}>
+            <Text style={styles.weatherTemp}>
+              {weather.temperature != null ? `${Math.round(weather.temperature)}°C` : '—'}
+            </Text>
+            <Text style={styles.weatherCond}>
+              {[weather.condition, 'Baguio now'].filter(Boolean).join(' · ')}
+            </Text>
+          </View>
         </View>
       ) : null}
 
