@@ -1,4 +1,5 @@
 import { Button, Pressable, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -112,7 +113,10 @@ function MainTabs() {
         name="Home"
         component={Home}
         options={{
-          title: 'Home',
+          // Chromeless: the screen owns its blue header band, so the
+          // navigator's sticky "Home" title bar is removed (was dead
+          // chrome eating 50px+ and duplicating the tab label).
+          headerShown: false,
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => <HomeIcon size={size} color={color} strokeWidth={2} />,
           tabBarAccessibilityLabel: 'Home tab',
@@ -180,6 +184,10 @@ function MainTabs() {
  * App — navigation shell only. Screens own their logic;
  * no business logic lives here.
  *
+ * SafeAreaProvider at the root makes every SafeAreaView/useSafeAreaInsets
+ * consumer report real device insets (notch, punch-hole camera, status
+ * bar) instead of zero fallbacks. It renders no UI of its own.
+ *
  * Local-first (§2.1, §7.4): `Landing` is the initial route. First run
  * goes Landing → AuthEntry (fresh → ProfileCreate, import → LinkAccount)
  * → MainTabs (one-way door: replace, back can never re-enter auth).
@@ -188,7 +196,8 @@ function MainTabs() {
  */
 export default function App() {
   return (
-    <NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
       <Stack.Navigator initialRouteName="Landing">
         <Stack.Screen
           name="Landing"
@@ -227,5 +236,6 @@ export default function App() {
         />
       </Stack.Navigator>
     </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

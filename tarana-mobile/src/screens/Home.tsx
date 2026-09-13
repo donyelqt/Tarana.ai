@@ -13,6 +13,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   getActiveProfile,
@@ -125,8 +126,12 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
   const countsReady = tripCount !== null && cafeCount !== null;
 
   return (
+    // Top inset only (AuthEntry precedent): the logo clears the notch /
+    // punch-hole camera and status bar on every device. Bottom is owned
+    // by the navigator's tab bar, so it is deliberately not inset here.
+    <SafeAreaView style={styles.root} edges={['top']}>
     <ScrollView
-      style={styles.root}
+      style={styles.scroll}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
@@ -318,6 +323,7 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
       </View>
       <StatusBar style="auto" />
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -369,6 +375,7 @@ function HomeSpotCard({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F2F2F7' },
+  scroll: { flex: 1 },
   content: { paddingHorizontal: 20, paddingVertical: 24, gap: 16 },
   logo: { width: 152, height: 26, marginBottom: 2, opacity: 0.95 },
   band: { marginHorizontal: -20 },
