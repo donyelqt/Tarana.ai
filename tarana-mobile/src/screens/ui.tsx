@@ -6,9 +6,10 @@
  * elevation would fight the grouped language, so there is no shadow
  * system. NOT here: brand colors/gradients (live with their screens).
  */
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { TrafficConeIcon } from './icons';
 import type { SpotTraffic } from '../data';
 import { resolveWebImage } from '../data';
 
@@ -133,35 +134,43 @@ export function formatPHP(value: number | null | undefined): string | null {
   }
 }
 
-/** Web parity: 5 traffic levels matching web TrafficLevel (route-optimization.ts:109).
- * Colors match web TRAFFIC_COLORS (trafficColors.ts:28-64).
- * Labels match web TRAFFIC_LABELS (TrafficBadge.tsx:14-20). */
-const BADGE: Record<SpotTraffic, { bg: string; fg: string; label: string }> = {
-  VERY_LOW: { bg: '#dcfce7', fg: '#166534', label: 'Very low' },
-  LOW: { bg: '#dcfce7', fg: '#166534', label: 'Low' },
-  MODERATE: { bg: '#fef9c3', fg: '#854d0e', label: 'Moderate' },
-  HIGH: { bg: '#ffedd5', fg: '#9a3412', label: 'Heavy' },
-  SEVERE: { bg: '#fef2f2', fg: '#991b1b', label: 'Severe' },
+/** Web parity: TrafficBadge matches web SpotlightCard.tsx:9-13 exactly.
+ *  Bordered pill with TrafficCone icon, "X Traffic" text.
+ *  Colors = web Tailwind: green-300/bg-50/text-600, yellow-*, red-*. */
+const BADGE: Record<SpotTraffic, { bg: string; border: string; fg: string; label: string }> = {
+  VERY_LOW: { bg: '#f0fdf4', border: '#86efac', fg: '#16a34a', label: 'Low' },
+  LOW: { bg: '#f0fdf4', border: '#86efac', fg: '#16a34a', label: 'Low' },
+  MODERATE: { bg: '#fefce8', border: '#fde047', fg: '#ca8a04', label: 'Moderate' },
+  HIGH: { bg: '#fffbeb', border: '#fde047', fg: '#ca8a04', label: 'Heavy' },
+  SEVERE: { bg: '#fef2f2', border: '#fca5a5', fg: '#dc2626', label: 'Severe' },
 };
 
-/** Web parity: TrafficBadge matches web TrafficBadge.tsx exactly.
- * Shows colored dot + label, rounded-full, white bg with subtle shadow. */
+/** Web parity: TrafficBadge matches web SpotlightCard.tsx:72-78 exactly.
+ *  Bordered pill, TrafficCone icon (14px), "{label} Traffic" text,
+ *  hover:scale-105 → RN activeOpacity press. */
 export function TrafficBadge({ level }: { level: SpotTraffic }) {
   // Normalize level to uppercase to handle API casing differences
   const normalizedLevel = (level?.toUpperCase() ?? 'MODERATE') as SpotTraffic;
   const c = BADGE[normalizedLevel] ?? BADGE.MODERATE;
   return (
-    <View style={[styles.badge, { backgroundColor: c.bg }]}>
-      <View style={styles.dot} />
-      <Text style={[styles.badgeText, { color: c.fg }]}>{c.label} traffic</Text>
+    <View style={[styles.badge, { backgroundColor: c.bg, borderColor: c.border }]}>
+      <TrafficConeIcon size={14} color={c.fg} strokeWidth={2} />
+      <Text style={[styles.badgeText, { color: c.fg }]}>{c.label} Traffic</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  badge: { alignSelf: 'flex-start', borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10, marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  badgeText: { fontSize: 12, fontWeight: '600' },
+  badge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+  },
+  badgeText: { fontSize: 12, fontWeight: '600', marginLeft: 6 },
   ctaOuter: { borderRadius: 16, marginTop: 4 },
   cta: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
   ctaText: { color: '#ffffff', fontSize: 16, fontWeight: '500' },
