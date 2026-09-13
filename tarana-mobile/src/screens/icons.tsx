@@ -369,6 +369,29 @@ export function SlidersIcon({ size = 16, color = '#6b7280', strokeWidth = 2 }: I
   );
 }
 
+/** Traffic cone — web `lucide-react` TrafficCone (SpotlightCard:76, saved-trips:608).
+ *  Exact path data from node_modules/lucide-react/dist/esm/icons/traffic-cone.js;
+ *  stroke-only, viewBox 0 0 24 24, stroke language 2.0. */
+export function TrafficConeIcon({ size = 14, color = '#16a34a', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M16.05 10.966a5 2.5 0 0 1-8.1 0" />
+      <Path d="m16.923 14.049 4.48 2.04a1 1 0 0 1 .001 1.831l-8.574 3.9a2 2 0 0 1-1.66 0l-8.574-3.91a1 1 0 0 1 0-1.83l4.484-2.04" />
+      <Path d="M16.949 14.14a5 2.5 0 1 1-9.9 0L10.063 3.5a2 2 0 0 1 3.874 0z" />
+      <Path d="M9.194 6.57a5 2.5 0 0 0 5.61 0" />
+    </Svg>
+  );
+}
+
 // Re-exported as a RN-friendly wrapper so consumers can render via JSX without
 // touching the SVG namespace.
 export const Icon = ({ children }: { children: React.ReactNode }) => (
