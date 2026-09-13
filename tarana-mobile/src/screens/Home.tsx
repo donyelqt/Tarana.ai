@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   getActiveProfile,
@@ -45,12 +46,14 @@ type HomeNav = {
 /**
  * Home — reference-composed hub (travel-app pattern, our voice).
  *
- * Pattern borrowed (never pixels): identity header (muted daypart +
- * statement name + avatar) → search entry → counts → weather → city
- * pills → horizontal photo cards → see-all. Nothing removed: greeting,
- * subcopy (also in Settings), counts, weather, pills, preview rows all
- * survive recomposed. Heart toggles stay out — they need a favorites
- * system that does not exist yet (explicit follow-up, not a silent gap).
+ * Pattern borrowed (never pixels): brand-blue header band (greeting +
+ * search on gradient, wave divider into the grouped canvas) → counts →
+ * weather → city pills → horizontal photo cards → see-all. Nothing
+ * removed: greeting, subcopy (also in Settings), counts, weather, pills,
+ * preview rows all survive recomposed. Heart toggles stay out — they need
+ * a favorites system that does not exist yet (explicit follow-up, not a
+ * silent gap). The blue logo stays on the canvas above the band: blue on
+ * blue would be illegible, so it is not forced inside.
  */
 export default function Home({ navigation }: { navigation: HomeNav }) {
   const [profile, setProfile] = useState<LocalProfile | null>(null);
@@ -135,28 +138,45 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
         resizeMode="contain"
       />
 
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.daypart}>Good {manilaDaypart()},</Text>
-          <Text style={styles.name}>{firstName}</Text>
-        </View>
-        <View style={styles.avatar} accessibilityRole="image" accessibilityLabel={`${firstName} profile`}>
-          <Text style={styles.avatarText}>{initial}</Text>
+      <View style={styles.band}>
+        <LinearGradient
+          colors={[GRADIENT.auth.pressedFrom, GRADIENT.auth.from]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.bandBody}
+        >
+          <View style={styles.header}>
+            <View style={styles.headerText}>
+              <Text style={styles.daypart}>Good {manilaDaypart()},</Text>
+              <Text style={styles.name}>{firstName}</Text>
+            </View>
+            <View style={styles.avatar} accessibilityRole="image" accessibilityLabel={`${firstName} profile`}>
+              <Text style={styles.avatarText}>{initial}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.search}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Search destinations"
+            onPress={() => navigation.navigate('Explore')}
+          >
+            <View accessible={false} importantForAccessibility="no-hide-descendants">
+              <SearchIcon size={18} color="#6b7280" />
+            </View>
+            <Text style={styles.searchText}>Search destinations…</Text>
+          </TouchableOpacity>
+        </LinearGradient>
+        <View style={styles.wave} accessible={false} importantForAccessibility="no-hide-descendants">
+          <Svg width="100%" height={30} viewBox="0 0 1440 90" preserveAspectRatio="none">
+            <Path
+              d="M0,58 C260,88 520,90 780,62 C1040,34 1240,16 1440,38 L1440,90 L0,90 Z"
+              fill="#F2F2F7"
+            />
+          </Svg>
         </View>
       </View>
-
-      <TouchableOpacity
-        style={styles.search}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Search destinations"
-        onPress={() => navigation.navigate('Explore')}
-      >
-        <View accessible={false} importantForAccessibility="no-hide-descendants">
-          <SearchIcon size={18} color="#6b7280" />
-        </View>
-        <Text style={styles.searchText}>Search destinations…</Text>
-      </TouchableOpacity>
 
       {weather ? (
         <View style={styles.weatherCard}>
@@ -351,21 +371,24 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 20, paddingVertical: 24, gap: 16 },
   logo: { width: 152, height: 26, marginBottom: 2, opacity: 0.95 },
+  band: { marginHorizontal: -20 },
+  bandBody: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 46, gap: 16 },
+  wave: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 30 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerText: { flex: 1, gap: 2 },
-  daypart: { fontSize: 14, color: '#6b7280', fontWeight: '400' },
-  name: { fontSize: 28, fontWeight: '800', color: '#111827', lineHeight: 34, letterSpacing: -0.5 },
+  daypart: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: '400' },
+  name: { fontSize: 28, fontWeight: '800', color: '#ffffff', lineHeight: 34, letterSpacing: -0.5 },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#DBEAFE',
+    borderColor: 'rgba(255,255,255,0.4)',
   },
-  avatarText: { fontSize: 20, fontWeight: '700', color: '#0066FF' },
+  avatarText: { fontSize: 20, fontWeight: '700', color: '#ffffff' },
   search: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -375,8 +398,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     minHeight: 52,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   searchText: { fontSize: 15, color: '#6b7280' },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FECACA' },
