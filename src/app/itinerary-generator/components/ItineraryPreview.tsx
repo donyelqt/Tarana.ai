@@ -65,6 +65,88 @@ const getTrafficLevel = (activity: any): "Low" | "Moderate" | "High" => {
   return "Low";
 };
 
+interface ActivityCardProps {
+  act: {
+    image: { src?: string } | string;
+    title: string;
+    time: string;
+    desc: string;
+    tags: string[];
+    trafficAnalysis?: { realTimeTraffic?: { trafficLevel?: string } };
+    trafficRecommendation?: string;
+    isCurrentlyPeak?: boolean;
+    peakHours?: string;
+    relevanceScore?: number;
+  };
+  taranaaiLogo: { src?: string } | string;
+}
+
+function ActivityCard({ act, taranaaiLogo }: ActivityCardProps) {
+  const [imgFailed, setImgFailed] = useState(false);
+  let imageSrc: string = "";
+  if (typeof act.image === "string") {
+    if (act.image.startsWith("images/")) {
+      imageSrc = `/${act.image}`;
+    } else {
+      imageSrc = act.image;
+    }
+  } else if (act.image && typeof act.image === "object" && "src" in act.image) {
+    imageSrc = act.image.src;
+  }
+  const showActivityPhoto = !!imageSrc && !imgFailed;
+  const trafficLevel = getTrafficLevel(act);
+  return (
+    <div className="bg-white rounded-xl shadow-md mb-4 overflow-hidden border border-gray-100">
+      <div className="relative w-full h-[200px] bg-[#eff6ff] overflow-hidden flex items-center justify-center">
+        <Image
+          src={taranaaiLogo}
+          alt="Tarana.ai"
+          width={96}
+          height={96}
+          className="object-contain"
+        />
+        {showActivityPhoto && (
+          <Image
+            src={imageSrc}
+            alt={act.title}
+            width={300}
+            height={200}
+            className="w-full h-[200px] object-cover absolute inset-0"
+            onError={() => setImgFailed(true)}
+          />
+        )}
+      </div>
+      <div className="p-4">
+        <div className="font-semibold text-gray-900 text-base mb-1">{act.title}</div>
+        <div className="text-xs text-gray-500 mb-2">{act.time}</div>
+        <div className="text-sm text-gray-700 mb-3">
+          {act.desc}
+        </div>
+        <div className="flex gap-2 flex-wrap mb-3">
+          <span className={`text-xs font-medium px-3 py-1 rounded-lg border flex items-center ${trafficStyles[trafficLevel]}`}>
+            <TrafficCone size={12} className="mr-1.5" />
+            {trafficLevel} Traffic
+          </span>
+          {act.relevanceScore !== undefined && (
+            <span className="inline-block bg-blue-100 rounded-lg px-2 py-1 text-xs font-medium text-blue-700 border border-blue-300">
+              Match: {(act.relevanceScore * 100).toFixed(0)}%
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {act.tags.filter(tag => !tag.toLowerCase().includes('traffic')).map((tag, index) => (
+            <span
+              key={index}
+              className="inline-block bg-white rounded-lg px-2 py-1 text-xs font-medium text-gray-500 border border-gray-300"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function ItineraryPreview({
   showPreview,
   isLoadingItinerary,
@@ -189,78 +271,9 @@ export default function ItineraryPreview({
               <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold">{section.period}</span>
             </div>
             {section.activities && section.activities.length > 0 ? (
-              section.activities.map((act, i) => {
-                let imageSrc: string = "";
-                if (typeof act.image === "string") {
-                  if (act.image.startsWith("images/")) {
-                    imageSrc = `/${act.image}`;
-                  } else {
-                    imageSrc = act.image;
-                  }
-                } else if (act.image && typeof act.image === "object" && "src" in act.image) {
-                  imageSrc = act.image.src;
-                }
-                const [imgFailed, setImgFailed] = useState(false);
-                const showActivityPhoto = !!imageSrc && !imgFailed;
-                return (
-                  <div key={i} className="bg-white rounded-xl shadow-md mb-4 overflow-hidden border border-gray-100">
-                    <div className="relative w-full h-[200px] bg-[#eff6ff] overflow-hidden flex items-center justify-center">
-                      <Image
-                        src={taranaaiLogo}
-                        alt="Tarana.ai"
-                        width={96}
-                        height={96}
-                        className="object-contain"
-                      />
-                      {showActivityPhoto && (
-                        <Image
-                          src={imageSrc}
-                          alt={act.title}
-                          width={300}
-                          height={200}
-                          className="w-full h-[200px] object-cover absolute inset-0"
-                          onError={() => setImgFailed(true)}
-                        />
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <div className="font-semibold text-gray-900 text-base mb-1">{act.title}</div>
-                      <div className="text-xs text-gray-500 mb-2">{act.time}</div>
-                      <div className="text-sm text-gray-700 mb-3">
-                        {act.desc}
-                      </div>
-                      <div className="flex gap-2 flex-wrap mb-3">
-                        {(() => {
-                          const trafficLevel = getTrafficLevel(act);
-                          return (
-                            <span className={`text-xs font-medium px-3 py-1 rounded-lg border flex items-center ${trafficStyles[trafficLevel]}`}>
-                              <TrafficCone size={12} className="mr-1.5" />
-                              {trafficLevel} Traffic
-                            </span>
-                          );
-                        })()}
-                        
-                        {act.relevanceScore !== undefined && (
-                          <span className="inline-block bg-blue-100 rounded-lg px-2 py-1 text-xs font-medium text-blue-700 border border-blue-300">
-                            Match: {(act.relevanceScore * 100).toFixed(0)}%
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="flex gap-2 flex-wrap">
-                        {act.tags.filter(tag => !tag.toLowerCase().includes('traffic')).map((tag, index) => (
-                          <span
-                            key={index}
-                            className="inline-block bg-white rounded-lg px-2 py-1 text-xs font-medium text-gray-500 border border-gray-300"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
+              section.activities.map((act, i) => (
+                <ActivityCard key={i} act={act} taranaaiLogo={taranaaiLogo} />
+              ))
             ) : (
               section.reason && (
                 <div className="bg-gradient-to-b from-blue-700 to-blue-500 rounded-3xl shadow-lg p-4 border border-gray-200">
