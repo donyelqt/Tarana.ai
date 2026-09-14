@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { getActiveProfileId, listTrips, type LocalTrip } from '../data';
-import { formatDate, firstPayloadImage } from './ui';
+import { formatDate, firstPayloadImage, GRADIENT } from './ui';
 import Thumb from './Thumb';
 
 /**
@@ -54,8 +57,32 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
     );
   }
 
+  const countText = trips.length === 1 ? '1 trip saved' : `${trips.length} trips saved`;
+
   return (
+    // Top inset only (Home precedent): content clears the notch /
+    // punch-hole camera and status bar. Bottom stays navigator-owned.
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F2F7' }} edges={['top']}>
     <View style={{ flex: 1, backgroundColor: '#F2F2F7' }} className="px-4 pt-4">
+      <View style={styles.band}>
+        <LinearGradient
+          colors={[GRADIENT.auth.pressedFrom, GRADIENT.auth.from]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.bandBody}
+        >
+          <Text style={styles.bandTitle}>Saved trips</Text>
+          <Text style={styles.bandSub}>{countText}</Text>
+        </LinearGradient>
+        <View style={styles.wave} accessible={false} importantForAccessibility="no-hide-descendants">
+          <Svg width="100%" height={30} viewBox="0 0 1440 90" preserveAspectRatio="none">
+            <Path
+              d="M0,58 C260,88 520,90 780,62 C1040,34 1240,16 1440,38 L1440,90 L0,90 Z"
+              fill="#F2F2F7"
+            />
+          </Svg>
+        </View>
+      </View>
       {error ? <Text className="mb-2 text-sm text-destructive">{error}</Text> : null}
       {trips.length === 0 && !error ? (
         <Text className="text-sm text-muted-foreground">No saved trips yet. Create one or import from the web.</Text>
@@ -86,5 +113,14 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
       />
       <StatusBar style="auto" />
     </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  band: { marginHorizontal: -16 },
+  bandBody: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 46, gap: 2 },
+  wave: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 30 },
+  bandTitle: { fontSize: 22, fontWeight: '700', color: '#ffffff', lineHeight: 28 },
+  bandSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+});
