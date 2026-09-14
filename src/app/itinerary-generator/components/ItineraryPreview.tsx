@@ -192,7 +192,6 @@ export default function ItineraryPreview({
               section.activities.map((act, i) => {
                 let imageSrc: string = "";
                 if (typeof act.image === "string") {
-                  // Ensure relative paths start with a leading slash
                   if (act.image.startsWith("images/")) {
                     imageSrc = `/${act.image}`;
                   } else {
@@ -201,9 +200,29 @@ export default function ItineraryPreview({
                 } else if (act.image && typeof act.image === "object" && "src" in act.image) {
                   imageSrc = act.image.src;
                 }
+                const [imgFailed, setImgFailed] = useState(false);
+                const showActivityPhoto = !!imageSrc && !imgFailed;
                 return (
                   <div key={i} className="bg-white rounded-xl shadow-md mb-4 overflow-hidden border border-gray-100">
-                    <Image src={imageSrc} alt={act.title} width={300} height={200} className="w-full h-[200px] object-cover" />
+                    <div className="relative w-full h-[200px] bg-[#eff6ff] overflow-hidden flex items-center justify-center">
+                      <Image
+                        src={taranaaiLogo}
+                        alt="Tarana.ai"
+                        width={96}
+                        height={96}
+                        className="object-contain"
+                      />
+                      {showActivityPhoto && (
+                        <Image
+                          src={imageSrc}
+                          alt={act.title}
+                          width={300}
+                          height={200}
+                          className="w-full h-[200px] object-cover absolute inset-0"
+                          onError={() => setImgFailed(true)}
+                        />
+                      )}
+                    </div>
                     <div className="p-4">
                       <div className="font-semibold text-gray-900 text-base mb-1">{act.title}</div>
                       <div className="text-xs text-gray-500 mb-2">{act.time}</div>
@@ -211,7 +230,6 @@ export default function ItineraryPreview({
                         {act.desc}
                       </div>
                       <div className="flex gap-2 flex-wrap mb-3">
-                        {/* Traffic Level Tag */}
                         {(() => {
                           const trafficLevel = getTrafficLevel(act);
                           return (
@@ -222,7 +240,6 @@ export default function ItineraryPreview({
                           );
                         })()}
                         
-                        {/* Display relevance score if available */}
                         {act.relevanceScore !== undefined && (
                           <span className="inline-block bg-blue-100 rounded-lg px-2 py-1 text-xs font-medium text-blue-700 border border-blue-300">
                             Match: {(act.relevanceScore * 100).toFixed(0)}%
@@ -230,7 +247,6 @@ export default function ItineraryPreview({
                         )}
                       </div>
                       
-                      {/* Activity Tags */}
                       <div className="flex gap-2 flex-wrap">
                         {act.tags.filter(tag => !tag.toLowerCase().includes('traffic')).map((tag, index) => (
                           <span

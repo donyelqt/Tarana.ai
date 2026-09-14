@@ -14,7 +14,7 @@ const trafficStyles: { [key: string]: string } = {
 
 interface SpotlightCardProps {
   name: string;
-  image: string;
+  image: string | null;
   distance: string;
   time: string;
   /** Absent = no live signal — badge hidden rather than guessed. */
@@ -52,10 +52,28 @@ const SpotlightCard = ({
   // explicit tap — six eager iframes used to load on every dashboard view.
   const [mapLoaded, setMapLoaded] = useState(false);
 
+  const [imageFailed, setImageFailed] = useState(false);
+  const showPhoto = !!image && !imageFailed;
+
   return (
     <div className="bg-white border border-gray-200/40 rounded-2xl flex flex-col shadow-lg hover:shadow-xl hover:-translate-y-1 transition-[transform,box-shadow] duration-300 overflow-hidden">
-      <div className="relative w-full h-40">
-        <Image src={image} alt={name} layout="fill" objectFit="cover" />
+      <div className="relative w-full h-40 bg-[#eff6ff] overflow-hidden flex items-center justify-center">
+        <Image
+          src="/images/taranaai2.png"
+          alt="Tarana.ai"
+          width={96}
+          height={96}
+          className="object-contain"
+        />
+        {showPhoto && (
+          <Image
+            src={image}
+            alt={name}
+            layout="fill"
+            objectFit="cover"
+            onError={() => setImageFailed(true)}
+          />
+        )}
       </div>
       <div className="p-3 flex flex-col flex-grow">
         <h3 className="font-medium text-lg text-gray-800 mb-2 text-balance">{name}</h3>
