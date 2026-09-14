@@ -242,7 +242,7 @@ export default function App() {
           })}
         />
         <Stack.Screen name="Plan" component={Plan} options={{ title: 'Plan a trip' }} />
-        <Stack.Screen name="Explore" component={Explore} options={{ title: 'Explore' }} />
+        <Stack.Screen name="Explore" component={Explore} options={{ headerShown: false, title: 'Explore' }} />
         <Stack.Screen
           name="ActionSheet"
           component={ActionSheet}

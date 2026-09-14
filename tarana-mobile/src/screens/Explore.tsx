@@ -11,14 +11,15 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Svg, Path } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import DynamicIsland from './DynamicIsland';
-import ExploreMapView from './ExploreMapView';
 import {
+  ChevronLeftIcon,
   BikeIcon,
   CarIcon,
   CompassIcon,
@@ -28,8 +29,10 @@ import {
   TruckIcon,
   WalkIcon,
 } from './icons';
-import { GradientCTA } from './ui';
 import ExploreSheet from './ExploreSheet';
+import ExploreMapView from './ExploreMapView';
+import DynamicIsland from './DynamicIsland';
+import { GradientCTA, GRADIENT } from './ui';
 import {
   calculateRoute,
   DEFAULT_EXPLORE_PREFS,
@@ -175,7 +178,7 @@ function SlidingTrack<T extends string>({
  * pills, magnifier CTA. Collapse = post-calc or keyboard-away (the
  * native translation of outside-click/Escape).
  */
-export default function Explore() {
+export default function Explore({ navigation }: { navigation: any }) {
   const [fromText, setFromText] = useState('');
   const [toText, setToText] = useState('');
   const [fromList, setFromList] = useState<Place[]>([]);
@@ -437,7 +440,39 @@ export default function Explore() {
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F2F7' }} edges={['top']}>
     <View style={styles.root}>
+      <View style={styles.band}>
+        <LinearGradient
+          colors={[GRADIENT.auth.pressedFrom, GRADIENT.auth.from]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.bandBody}
+        >
+          <View style={styles.titleRow}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              onPress={() => navigation.goBack()}
+            >
+              <ChevronLeftIcon size={22} color="#ffffff" />
+            </TouchableOpacity>
+            <View style={styles.titleText}>
+              <Text style={styles.bandTitle}>Explore</Text>
+            </View>
+          </View>
+        </LinearGradient>
+        <View style={styles.wave} accessible={false} importantForAccessibility="no-hide-descendants">
+          <Svg width="100%" height={30} viewBox="0 0 1440 90" preserveAspectRatio="none">
+            <Path
+              d="M0,58 C260,88 520,90 780,62 C1040,34 1240,16 1440,38 L1440,90 L0,90 Z"
+              fill="#F2F2F7"
+            />
+          </Svg>
+        </View>
+      </View>
       <View style={styles.mapFill}>
         <ExploreMapView
           origin={from}
@@ -644,10 +679,17 @@ export default function Explore() {
       ) : null}
       <StatusBar style="auto" />
     </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  band: { marginHorizontal: -16 },
+  bandBody: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 46, gap: 2 },
+  wave: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 30 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  titleText: { flex: 1, gap: 2 },
+  bandTitle: { fontSize: 22, fontWeight: '700', color: '#ffffff', lineHeight: 28 },
   root: { flex: 1, backgroundColor: '#F2F2F7' },
   mapFill: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 },
   islandSlot: { position: 'absolute', top: 12, left: 0, right: 0, zIndex: 30 },
