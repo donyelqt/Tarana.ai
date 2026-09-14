@@ -44,7 +44,13 @@ export class PipelineCoordinator {
 
       return session;
     } catch (error) {
-      this.deps.concierge.failSession(session.id, (error as Error).message, error);
+      // Bookkeeping must never mask the refund below: isolate it so a
+      // store failure still attempts the refund and preserves the error.
+      try {
+        this.deps.concierge.failSession(session.id, (error as Error).message, error);
+      } catch (bookkeepingError) {
+        console.error(`Bookkeeping failed for session ${session.id} (refund still attempted):`, bookkeepingError);
+      }
       if (charged && !isBenchUser) {
         try {
           await CreditService.refundCredits({
