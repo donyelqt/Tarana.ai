@@ -1,9 +1,9 @@
 "use client"
 
-import Image from "next/image";
+import Image, { StaticImageData } from "next/image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/core";
-import { ItineraryPreviewProps } from "../types";
+import { ItineraryPreviewProps, Activity } from "../types";
 import { sampleItinerary } from "../data/itineraryData";
 import { getWeatherIconUrl, getWeatherDescription } from "../utils/weatherUtils";
 import { TrafficCone } from "lucide-react";
@@ -66,19 +66,8 @@ const getTrafficLevel = (activity: any): "Low" | "Moderate" | "High" => {
 };
 
 interface ActivityCardProps {
-  act: {
-    image: { src?: string } | string;
-    title: string;
-    time: string;
-    desc: string;
-    tags: string[];
-    trafficAnalysis?: { realTimeTraffic?: { trafficLevel?: string } };
-    trafficRecommendation?: string;
-    isCurrentlyPeak?: boolean;
-    peakHours?: string;
-    relevanceScore?: number;
-  };
-  taranaaiLogo: { src?: string } | string;
+  act: Activity;
+  taranaaiLogo: StaticImageData | string;
 }
 
 function ActivityCard({ act, taranaaiLogo }: ActivityCardProps) {
@@ -91,7 +80,8 @@ function ActivityCard({ act, taranaaiLogo }: ActivityCardProps) {
       imageSrc = act.image;
     }
   } else if (act.image && typeof act.image === "object" && "src" in act.image) {
-    imageSrc = act.image.src;
+    const src = act.image.src;
+    if (src) imageSrc = src;
   }
   const showActivityPhoto = !!imageSrc && !imgFailed;
   const trafficLevel = getTrafficLevel(act);
