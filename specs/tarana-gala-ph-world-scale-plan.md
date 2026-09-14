@@ -119,12 +119,10 @@ Without the backfill, every Baguio request re-pays Tier-1 Google Places cost for
 | 0 | `CURATED_IMAGE_MAP` 35 titles → `/images/*.png` | ★★★★★ exact | $0 | 0ms | Baguio hit |
 | 1 | Google Places TextSearch → Details `photos[0].photo_reference` → `maps.googleapis.com/maps/api/place/photo` | ★★★★★ per place_id | $0.007 | 300ms | PH/world restaurants/cafes |
 | 2 | Wikimedia `w/api.php?prop=pageimages` | ★★★★ landmark | $0 | 180ms | Museums/parks/churches |
-| 3 | TomTom StaticMap `api.tomtom.com/map/1/staticimage?center=lon,lat` | ★★★ location-accurate map | $0 (already pay TomTom) | 120ms | Guaranteed fallback |
-| 4 | `/images/comingsoon.png` | ★★ placeholder | $0 | 0ms | Never 404 |
+| 2b | Unsplash `api.unsplash.com/search/photos` | ★★★ category | $0 | 500ms | Cafes/food where Wiki misses; 403 = rate-limited → skip |
+| — | **No photo available** → `null` | — | $0 | 0ms | Logo base layer (SpotlightCard / ItineraryPreview) renders the brand mark |
 
-**Wiring:** `activitySearch.ts:8` `import {enrichActivitiesWithImages}` → both branches `trafficAware` (247) and `fastMode` (279) `await enrichActivitiesWithImages(finalActivities, {concurrency:5})` before `sanitisedAllowedActivities`. `next.config.ts:37` remotePatterns added for `maps.googleapis.com`, `upload.wikimedia.org`, `api.tomtom.com`.
-
-**To get Tier 1 dish accuracy:** set `GOOGLE_PLACES_API_KEY` (same GCP project as `GOOGLE_GEMINI_API_KEY`, enable Places API). Without it, Tier 2+3 still gives location-accurate image (Wikimedia for landmarks, static map for eateries) — no broken images.
+**Tier 3 (TomTom static map) and Tier 4 (comingsoon) were removed as photo sources (2026-09-15, PR #473).** Map tiles are not photos — they displaced the tarana.ai brand mark in photo-led cards. `getAccurateImageForPlace` now returns `null` when no real photo is available; callers render the logo base layer (`/images/taranaai2.png` on `#eff6ff`) instead. This matches the mobile `SpotPhoto` pattern (`tarana-mobile/src/screens/ui.tsx:163-206`): logo is the permanent base layer, photo is a conditional overlay.
 
 ---
 

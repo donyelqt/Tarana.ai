@@ -322,6 +322,8 @@ Toolchain since proven (PR #397): `babel-preset-expo` installed + `babel.config.
 
 Ranking/rotation, image tier chain (`src/lib/services/imageService.ts`), traffic fusion, itinerary prompts. Mobile caches outputs, never owns the algorithm. Curated-pool refreshes ship via API/OTA weekly so clones rot.
 
+**Canonical image fallback (PR #473, 2026-09-15):** when the image tier chain returns no photo (Unsplash 403 rate-limited, no Wikimedia match, no Google photo, no curated entry), `getAccurateImageForPlace` returns `null` — not a TomTom static map, not `comingsoon.png`. The caller renders the tarana.ai logo as a permanent base layer (`#eff6ff` + `/images/taranaai2.png` on web, `taranaai-mark.png` on mobile) with the remote photo as a conditional overlay. This is the `SpotPhoto` pattern (`tarana-mobile/src/screens/ui.tsx:163-206`): logo is always rendered, photo overlays only when truthy and load-succeeds. Map tiles are not photos and must never serve as place images.
+
 ### Explicitly deferred
 
 Multi-profile UI (schema-ready only), friend/social graph, cross-device auto-sync. Share-via-link precedes all three.

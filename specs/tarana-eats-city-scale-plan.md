@@ -54,8 +54,8 @@ User [Destination chips: Baguio • Cebu • Manila ▾] + budget/cravings
   │        with price_level estimate, imageService photo, tag "menu unavailable"
   │
   ├─ imageService.enrich (NEW wiring — must be called before response)
-  │   └─ for each result lacking image_url → tiered chain (curated → Unsplash → Wiki → TomTom static map → comingsoon)
-  │
+  │   └─ for each result lacking image_url → tiered chain (curated → Unsplash → Wiki → null)
+  │      No photo → null. Callers render the tarana.ai logo base layer, never a map tile.
   ├─ Gemini food-recommendations (charge-first per AGENTS.md; prompt MUST interpolate ${CITY_CONFIGS[cityId].name})
   │
   └─ budgetAllocator + recommendationEngine (must accept and enforce cityId param)
@@ -179,7 +179,7 @@ All 11 changes ship in Slice 1 as a single atomic PR. Any partial state (e.g., f
 
 ### 5.4 Images
 
-`imageService.enrich` (reuse the Gala implementation at `src/lib/services/imageService.ts:91-257`) MUST be called inside the Eats pipeline before the response is returned. The current Eats code never imports `imageService` (grep `imageService` under `src/app/tarana-eats/` → 0 hits). Slice 1 verify column: a query for `cityId=manila` with a TomTom POI card returns a non-404 image (Tier 2 Wikimedia or Tier 3 TomTom static map fallback).
+`imageService.enrich` (reuse the Gala implementation at `src/lib/services/imageService.ts:91-257`) MUST be called inside the Eats pipeline before the response is returned. The current Eats code never imports `imageService` (grep `imageService` under `src/app/tarana-eats/` → 0 hits). Slice 1 verify column: a query for `cityId=manila` with a TomTom POI card returns a non-404 image (Tier 2 Wikimedia) or null → logo base layer. TomTom static maps are no longer photo sources (PR #473).
 
 ---
 
