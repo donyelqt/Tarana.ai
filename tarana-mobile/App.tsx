@@ -126,7 +126,9 @@ function MainTabs() {
         name="SavedTrips"
         component={SavedTrips}
         options={{
-          title: 'Saved trips',
+          // Chromeless like Home/Spots: the screen owns its blue title
+          // band, so the navigator's sticky bar is removed.
+          headerShown: false,
           tabBarLabel: 'Trips',
           tabBarIcon: ({ color, size }) => <MapPinIcon size={size} color={color} />,
           tabBarAccessibilityLabel: 'Trips tab',
