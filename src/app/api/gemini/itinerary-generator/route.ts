@@ -189,7 +189,7 @@ const getCachedItinerary = unstable_cache(
               trafficAware,
               cityId
             );
-            const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, safeInterests, durationDays, safeBudget, safePax);
+            const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, safeInterests, durationDays, safeBudget, safePax, true, cityId);
             
             // Use Guaranteed JSON Engine for 100% reliable output
             const peakHoursContext = getPeakHoursContext();
@@ -366,7 +366,7 @@ export async function POST(req: NextRequest) {
               trafficAware,
               cityId
             );
-                const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, safeInterests, durationDays, safeBudget, safePax);
+                const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, safeInterests, durationDays, safeBudget, safePax, true, cityId);
                 
                 const peakHoursContext = getPeakHoursContext();
                 const weatherContext = `Weather: ${weatherData?.weather?.[0]?.description || 'clear'}, ${weatherData?.main?.temp || 20}°C`;

@@ -86,8 +86,14 @@ const getCachedItinerary = unstable_cache(
         };
         const weatherType: WeatherCondition = getWeatherType(weatherId, temperature);
 
+            // No zod schema on this route: allowlist cityId so an unknown
+            // value can never reach getCityConfig (which throws) or leak a
+            // wrong-city default into the prompt.
+            const cityId = typeof requestBody?.cityId === "string" && ["baguio", "cebu", "manila", "davao", "ph-wide", "world"].includes(requestBody.cityId)
+              ? requestBody.cityId
+              : "baguio";
             const effectiveSampleItinerary = await findAndScoreActivities(prompt, interests, weatherType, durationDays, geminiModel);
-            const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, interests, durationDays, budget, pax);
+            const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, interests, durationDays, budget, pax, true, cityId);
             const response = await generateItinerary(detailedPrompt, prompt, durationDays);
 
             const text = response.text();
