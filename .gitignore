@@ -83,3 +83,7 @@ tarana-mobile/build/
 # Expo cache accidentally generatable at root; tarana-mobile/.expo already covered separately
 .expo/
 
+
+# Local IDE/tooling configs (environment-specific, not for commit)
+/.lsp.json
+/.dap.json
