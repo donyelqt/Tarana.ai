@@ -134,7 +134,7 @@ export type TrafficLevel = 'Low' | 'Moderate' | 'High';
 
 export interface RecommendationCard {
   name: string;
-  image: string;
+  image: string | null;
   distance: string;
   time: string;
   /** Absent when no live signal exists — the card hides the badge. */
@@ -322,10 +322,9 @@ export function toSpotCard(
   const km = haversineKm(origin, coords);
   return {
     name: payload.name,
-    image: payload.image || SPOT_PLACEHOLDER_IMAGE,
+    image: payload.image || null,
     distance: formatDistanceKm(km),
     time: estimateMinutes(km),
-    // Measured flow congestion wins; else peak-schedule signal; else hidden.
     traffic: payload.traffic ?? trafficForSpot(payload.peakHours) ?? undefined,
     lat: coords.lat,
     lon: coords.lon,

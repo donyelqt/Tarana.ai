@@ -241,7 +241,7 @@ function getTomTomStaticMap(lat: number, lon: number): string | null {
 // Public API
 // ─────────────────────────────────────────────────────────────
 
-export async function getAccurateImageForPlace(place: PlaceInput): Promise<string> {
+export async function getAccurateImageForPlace(place: PlaceInput): Promise<string | null> {
   const cacheKey = getCacheKey(place)
   const cached = cache.get(cacheKey)
   if (cached && Date.now() < cached.expiry) return cached.url
@@ -277,22 +277,22 @@ export async function getAccurateImageForPlace(place: PlaceInput): Promise<strin
     return unsplash
   }
 
-  // Tier 3: TomTom static map (guaranteed)
+  // Tier 3: TomTom static map — NOT a photo. Map tiles must never serve as
+  // a place image (they displace the brand mark and look wrong in a photo
+  // slot). Return null so callers degrade to the logo base layer instead.
   if (place.lat != null && place.lon != null) {
     const tomtom = getTomTomStaticMap(place.lat, place.lon)
     if (tomtom) {
-      console.log(`🖼️ Image for "${place.title}": tier=tomtom-static-map`)
-      cache.set(cacheKey, { url: tomtom, expiry: Date.now() + IMAGE_CACHE_TTL })
-      return tomtom
+      console.log(`🖼️ Image for "${place.title}": tier=tomtom-static-map → rejected (not a photo)`)
+      return null
     }
     console.warn(`🖼️ Tier3 TomTom: miss "${place.title}" (missing-key: TOMTOM_API_KEY not set)`)
   }
 
-  // Tier 4: Category fallback (never empty — prevents broken <img>)
-  console.log(`🖼️ Image for "${place.title}": tier=fallback-comingsoon`)
-  const fallback = "/images/comingsoon.png"
-  cache.set(cacheKey, { url: fallback, expiry: Date.now() + IMAGE_CACHE_TTL })
-  return fallback
+  // Tier 4: No photo available. Return null — the caller's logo base layer
+  // (SpotlightCard / ItineraryPreview) renders the brand mark instead.
+  console.log(`🖼️ Image for "${place.title}": tier=no-photo → null (logo fallback)`)
+  return null
 }
 
 /**
