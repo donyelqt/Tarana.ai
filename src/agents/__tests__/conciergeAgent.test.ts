@@ -106,4 +106,66 @@ describe("ConciergeAgent", () => {
 
     await expect(agent.initialize(invalidRequest)).rejects.toThrow("Invalid request payload");
   });
+
+  describe("HMAC bench bypass", () => {
+    const TEST_SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef";
+    const OLD_ENV = { ...process.env };
+
+    const benchRequest = (token: string | null) => {
+      const body = { prompt: "Trip" };
+      const get = jest.fn((name: string) => (name === "x-bench-token" ? token : null));
+      return {
+        json: jest.fn().mockResolvedValue(body),
+        headers: { get, has: jest.fn().mockReturnValue(token !== null) } as unknown as Headers,
+        clone: jest.fn().mockReturnValue({ json: jest.fn().mockResolvedValue(body) } as unknown as Request),
+      } as unknown as MockedRequest;
+    };
+
+    beforeEach(() => {
+      process.env = {
+        ...OLD_ENV,
+        NODE_ENV: "test",
+        BENCH_BYPASS_AUTH: "true",
+        BENCH_HMAC_SECRET: TEST_SECRET,
+      } as NodeJS.ProcessEnv;
+    });
+
+    afterAll(() => {
+      process.env = OLD_ENV;
+    });
+
+    it("accepts a fresh HMAC token without touching NextAuth", async () => {
+      const { computeBenchToken, currentWindowIndex } = await import("@/lib/auth/benchToken");
+      const token = `${currentWindowIndex(Date.now())}:${computeBenchToken(TEST_SECRET, currentWindowIndex(Date.now()))}`;
+
+      const result = await agent.initialize(benchRequest(token));
+
+      expect(mockGetServerSession).not.toHaveBeenCalled();
+      expect(result.requestSession.userId).toBe("00000000-0000-0000-0000-000000000001");
+      expect(result.requestBody.prompt).toBe("Trip");
+    });
+
+    it("ignores a wrong-secret token and falls through to real auth", async () => {
+      mockGetServerSession.mockResolvedValue(null);
+      const { computeBenchToken, currentWindowIndex } = await import("@/lib/auth/benchToken");
+      const token = `${currentWindowIndex(Date.now())}:${computeBenchToken("ffffffffffffffffffffffffffffffffffffffff", currentWindowIndex(Date.now()))}`;
+
+      await expect(agent.initialize(benchRequest(token))).rejects.toThrow("Authentication required");
+      expect(mockGetServerSession).toHaveBeenCalled();
+    });
+
+    it("ignores the retired static x-bench-bypass header", async () => {
+      mockGetServerSession.mockResolvedValue(null);
+      const body = { prompt: "Trip" };
+      const get = jest.fn((name: string) => (name === "x-bench-bypass" ? "true" : null));
+      const request = {
+        json: jest.fn().mockResolvedValue(body),
+        headers: { get, has: jest.fn().mockReturnValue(true) } as unknown as Headers,
+        clone: jest.fn().mockReturnValue({ json: jest.fn().mockResolvedValue(body) } as unknown as Request),
+      } as unknown as MockedRequest;
+
+      await expect(agent.initialize(request)).rejects.toThrow("Authentication required");
+      expect(mockGetServerSession).toHaveBeenCalled();
+    });
+  });
 });

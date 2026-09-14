@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
+import { verifyBenchToken, resolveBenchUserId, BENCH_TOKEN_HEADER } from '@/lib/auth/benchToken';
 
 export function unauthorized(message = 'Authentication required') {
   return NextResponse.json({ error: message, text: '' }, { status: 401 });
@@ -29,8 +30,9 @@ export type AuthedHandler = (
 
 export function withAuth(handler: AuthedHandler) {
   return async function (req: NextRequest): Promise<NextResponse> {
-    if ((process.env.BENCH_BYPASS_AUTH?.trim() === "true" || req.headers.get("x-bench-bypass") === "true") && process.env.NODE_ENV !== "production") {
-      const benchUserId = process.env.BENCH_USER_ID || "00000000-0000-0000-0000-000000000001";
+    // Bench bypass for k6 (non-prod only): same HMAC proof as concierge.
+    const benchUserId = resolveBenchUserId(req.headers.get(BENCH_TOKEN_HEADER));
+    if (benchUserId !== null) {
       return handler(req, benchUserId);
     }
     const userId = await getUserId(req);

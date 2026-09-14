@@ -4,6 +4,7 @@ import { ContextScoutAgent } from "./contextScoutAgent";
 import { RetrievalStrategistAgent } from "./retrievalStrategistAgent";
 import { ItineraryComposerAgent } from "./itineraryComposerAgent";
 import { CreditService } from "@/lib/referral-system";
+import { benchBypassEnabled, configuredBenchUserId } from "@/lib/auth/benchToken";
 import type { RequestSession } from "@/lib/agentic/sessionStore";
 
 export interface PipelineCoordinatorDeps {
@@ -30,8 +31,10 @@ export class PipelineCoordinator {
     const init = await this.deps.concierge.initialize(request);
     let session = init.requestSession;
 
-    // H2: charge-before - consume before any generation work (AGENTS.md) - skip for bench k6 user
-    const isBenchUser = session.userId === "00000000-0000-0000-0000-000000000001";
+    // H2: charge-before - consume before any generation work (AGENTS.md) - skip for bench k6 user.
+    // The exemption is gated on the bypass being active, not just id
+    // equality: a bare UUID match with the bypass disabled must still pay.
+    const isBenchUser = benchBypassEnabled() && session.userId === configuredBenchUserId();
     const creditService = this.deps.creditService ?? CreditService;
     let charged = false;
     if (!isBenchUser) {

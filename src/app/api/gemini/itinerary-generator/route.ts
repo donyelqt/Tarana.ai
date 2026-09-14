@@ -21,6 +21,7 @@ import { RetrievalStrategistAgent } from "@/agents/retrievalStrategistAgent";
 import { ItineraryComposerAgent } from "@/agents/itineraryComposerAgent";
 import { RequestWeatherProvider } from "@/agents/providers/requestWeatherProvider";
 import { clearSession, type RequestSession } from "@/lib/agentic/sessionStore";
+import { benchBypassEnabled, configuredBenchUserId, resolveBenchUserId, BENCH_TOKEN_HEADER } from "@/lib/auth/benchToken";
 
 const itineraryRequestSchema = z.object({
     prompt: z.string().min(1).max(5000),
@@ -119,8 +120,9 @@ async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
 
         // Primary refund lives in PipelineCoordinator.catch (it owns charged-state);
         // this block covers only the post-success throw path (anti-double-spend
-        // via __galaRefunded flag).
-        if (!(error as any).__galaRefunded && session?.userId && session.userId !== "00000000-0000-0000-0000-000000000001") {
+        // via __galaRefunded flag). The bench exemption is gated on the bypass
+        // being active, not bare id equality (see pipelineCoordinator).
+        if (!(error as any).__galaRefunded && session?.userId && !(benchBypassEnabled() && session.userId === configuredBenchUserId())) {
             try {
                 await CreditService.refundCredits({
                     userId: session.userId,
@@ -234,17 +236,23 @@ export async function POST(req: NextRequest) {
     // requests are two separate charges needing independent refunds.
     const attemptId = randomUUID();
     try {
-        // ✅ CREDIT SYSTEM: Check authentication
+        // ✅ CREDIT SYSTEM: Check authentication. Bench HMAC accepted here
+        // too (k6 targets this URL regardless of USE_MULTI_AGENT); the bench
+        // identity skips the balance pre-check and charge below, mirroring
+        // the multi-agent coordinator.
         const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const benchUserId = session?.user?.id ? null : resolveBenchUserId(req.headers.get(BENCH_TOKEN_HEADER));
+        if (!session?.user?.id && benchUserId === null) {
             return NextResponse.json({ 
                 error: "Authentication required",
                 text: "" 
             }, { status: 401 });
         }
 
-        userId = session.user.id;
+        userId = session?.user?.id ?? (benchUserId as string);
+        const isBenchRequest = benchUserId !== null;
         // ✅ CREDIT SYSTEM: Check available credits (fail-closed)
+        if (!isBenchRequest) {
             const balance = await CreditService.getCurrentBalance(userId);
             if (balance.remainingToday < 1) {
                 return NextResponse.json({ 
@@ -255,6 +263,7 @@ export async function POST(req: NextRequest) {
                     nextRefresh: balance.nextRefresh
                 }, { status: 402 });
             }
+        }
 
         const rawRequestBody = await req.json();
         const parsedRequestBody = itineraryRequestSchema.safeParse(rawRequestBody);
@@ -302,6 +311,8 @@ export async function POST(req: NextRequest) {
         // Charge BEFORE generating (TOCTOU / wasted-compute fix, mirrors the
         // optimized route). consumeCredits is an atomic check-and-deduct RPC,
         // so concurrent same-user requests are serialized with no over-spend.
+        // Bench requests skip the charge (coordinator parity).
+        if (!isBenchRequest) {
         try {
             await CreditService.consumeCredits({
                 userId,
@@ -320,6 +331,7 @@ export async function POST(req: NextRequest) {
                 }, { status: 402 });
             }
             throw creditErr;
+        }
         }
         // Generate a stable cache key from the request body
         const baseHash = createHash('sha256').update(JSON.stringify(requestBody)).digest('hex');
