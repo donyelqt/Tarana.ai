@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, ActivityIndicator, StyleSheet, Switch, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import { config } from '../config';
 import { getActiveProfile, signOut, type LocalProfile } from '../data';
 import { fetchWeather } from '../data';
-import { GradientCTA } from './ui';
+import { GradientCTA, GRADIENT } from './ui';
 
 const API_BASE = config.webBaseUrl.replace(/\/$/, '');
 
@@ -164,25 +167,43 @@ export default function Settings({ navigation }: { navigation: SettingsNav }) {
   }
 
   return (
+    // Top inset only (Home precedent): content clears the notch /
+    // punch-hole camera and status bar. Bottom stays navigator-owned.
+    <SafeAreaView style={styles.root} edges={['top']}>
     <ScrollView
-      style={styles.root}
+      style={styles.scroll}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.avatar}>
-            {profile?.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-            ) : (
-              <Text style={styles.avatarText}>{initial}</Text>
-            )}
+      <View style={styles.band}>
+        <LinearGradient
+          colors={[GRADIENT.auth.pressedFrom, GRADIENT.auth.from]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.bandBody}
+        >
+          <View style={styles.headerContent}>
+            <View style={styles.avatar}>
+              {profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{initial}</Text>
+              )}
+            </View>
+            <View style={styles.headerText}>
+              <Text style={styles.name}>{firstName}</Text>
+              <Text style={styles.subtitle}>Settings</Text>
+            </View>
           </View>
-          <View style={styles.headerText}>
-            <Text style={styles.name}>{firstName}</Text>
-            <Text style={styles.subtitle}>Settings</Text>
-          </View>
+        </LinearGradient>
+        <View style={styles.wave} accessible={false} importantForAccessibility="no-hide-descendants">
+          <Svg width="100%" height={30} viewBox="0 0 1440 90" preserveAspectRatio="none">
+            <Path
+              d="M0,58 C260,88 520,90 780,62 C1040,34 1240,16 1440,38 L1440,90 L0,90 Z"
+              fill="#F2F2F7"
+            />
+          </Svg>
         </View>
       </View>
 
@@ -396,24 +417,28 @@ export default function Settings({ navigation }: { navigation: SettingsNav }) {
       </View>
       <StatusBar style="auto" />
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F2F2F7' },
+  scroll: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, flexGrow: 1 },
-  header: { marginBottom: 8 },
+  band: { marginHorizontal: -16 },
+  bandBody: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 46 },
+  wave: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 30 },
   headerContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' },
   avatarImage: { width: 48, height: 48, borderRadius: 24 },
-  avatarText: { fontSize: 20, fontWeight: '700', color: '#0066FF' },
+  avatarText: { fontSize: 20, fontWeight: '700', color: '#ffffff' },
   avatarLarge: { width: 72, height: 72, borderRadius: 36 },
   avatarContainer: { marginRight: 12 },
   avatarPlaceholder: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
   avatarPlaceholderText: { fontSize: 28, fontWeight: '700', color: '#0066FF' },
   headerText: { flex: 1 },
-  name: { fontSize: 22, fontWeight: '700', color: '#111827', lineHeight: 28 },
-  subtitle: { fontSize: 14, color: '#6b7280', marginTop: 2 },
+  name: { fontSize: 22, fontWeight: '700', color: '#ffffff', lineHeight: 28 },
+  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   section: { marginBottom: 16 },
   sectionTitle: { fontSize: 13, fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, marginLeft: 4 },
   card: { backgroundColor: '#ffffff', borderRadius: 16, padding: 16, gap: 12, borderWidth: 1, borderColor: '#e5e7eb' },

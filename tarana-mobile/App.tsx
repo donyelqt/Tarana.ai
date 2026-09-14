@@ -172,7 +172,9 @@ function MainTabs() {
         name="Settings"
         component={Settings}
         options={{
-          title: 'Settings',
+          // Chromeless like Home/Spots: the screen owns its blue title
+          // band, so the navigator's sticky "Settings" bar is removed.
+          headerShown: false,
           tabBarLabel: 'Settings',
           tabBarIcon: ({ color, size }) => <GearIcon size={size} color={color} />,
           tabBarAccessibilityLabel: 'Settings tab',
