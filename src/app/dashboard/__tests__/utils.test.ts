@@ -270,13 +270,11 @@ describe('recommendations engine', () => {
     expect(['Low', 'Moderate', 'High']).toContain(card?.traffic);
     expect(card?.lat).toBeCloseTo(16.4093);
   });
-
-  it('toSpotCard hides the badge and uses the placeholder honestly', () => {
+  it('toSpotCard hides the badge and returns null image honestly', () => {
     const card = toSpotCard({ name: 'Cebu Spot', image: null, lat: 10.3, lon: 123.9, peakHours: null });
     expect(card?.traffic).toBeUndefined();
-    expect(card?.image).toBe('/images/comingsoon.png');
+    expect(card?.image).toBeNull();
   });
-
   it('toSpotCard prefers measured flow traffic over the schedule signal', () => {
     const card = toSpotCard({ name: 'X', image: '/i.jpg', lat: 10.3, lon: 123.9, peakHours: 'OFF', traffic: 'High' });
     expect(card?.traffic).toBe('High');
