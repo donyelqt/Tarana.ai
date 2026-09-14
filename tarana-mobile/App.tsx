@@ -221,7 +221,15 @@ export default function App() {
           options={{ headerShown: false }}
         />
         <Stack.Screen name="TripDetail" component={TripDetail} options={{ title: 'Trip' }} />
-        <Stack.Screen name="SavedCafes" component={SavedCafes} options={{ title: 'Saved cafes' }} />
+        <Stack.Screen
+          name="SavedCafes"
+          component={SavedCafes}
+          options={{
+            // Chromeless: the screen owns a custom back row in its blue
+            // title band (edge-swipe and system back keep working).
+            headerShown: false,
+          }}
+        />
         <Stack.Screen name="CafeDetail" component={CafeDetail} options={{ title: 'Cafe' }} />
         <Stack.Screen
           name="Eats"
