@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { optimizedPipeline } from "@/lib/performance/optimizedPipeline";
 import { smartCacheManager } from "@/lib/performance/smartCacheManager";
 import { ErrorHandler, ErrorType, ItineraryError } from "../../lib/errorHandler";
@@ -64,6 +64,10 @@ async function generateOptimizedItinerary(requestBody: any, requestId: string) {
 
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   const requestStartTime = Date.now();
+  // Per-attempt refund identity (see route.ts): unique per invocation so
+  // retried requests keep independent refunds; stable within it so
+  // overlapping calls dedupe.
+  const attemptId = randomUUID();
 
   try {
     const requestBody = await req.json();
@@ -203,7 +207,8 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
           userId,
           amount: 1,
           service: 'tarana_gala',
-          description: `Refund: failed generation ${requestId}`
+          description: `Refund: failed generation ${requestId}`,
+          idempotencyKey: `refund:fail:${attemptId}`,
         });
       }
       throw genError;

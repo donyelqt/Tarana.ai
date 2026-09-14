@@ -139,7 +139,7 @@ describe("PipelineCoordinator", () => {
       prompt: "Trip",
       preferences: { interests: [], durationDays: null },
     };
-    const refundSpy = jest.spyOn(CreditService, "refundCredits").mockResolvedValue(undefined);
+    const refundSpy = jest.spyOn(CreditService, "refundCredits").mockResolvedValue(true);
     try {
       const coordinator = new PipelineCoordinator({
         concierge: {
@@ -172,6 +172,13 @@ describe("PipelineCoordinator", () => {
 
       await expect(coordinator.handleRequest(createMockRequest())).rejects.toThrow("retrieval failed");
       expect(refundSpy).toHaveBeenCalledTimes(1);
+      expect(refundSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "user-9",
+          amount: 1,
+          idempotencyKey: `refund:${fabricated.id}`,
+        })
+      );
     } finally {
       refundSpy.mockRestore();
     }

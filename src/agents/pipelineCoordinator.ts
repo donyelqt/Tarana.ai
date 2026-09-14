@@ -11,7 +11,16 @@ export interface PipelineCoordinatorDeps {
   contextScout: ContextScoutAgent;
   retrievalStrategist: RetrievalStrategistAgent;
   itineraryComposer: ItineraryComposerAgent;
-  creditService?: { consumeCredits: (args: { userId: string; amount: number; service: string; description?: string }) => Promise<unknown> };
+  creditService?: {
+    consumeCredits: (args: { userId: string; amount: number; service: string; description?: string }) => Promise<unknown>;
+    refundCredits?: (args: {
+      userId: string;
+      amount: number;
+      service: string;
+      description?: string;
+      idempotencyKey: string;
+    }) => Promise<unknown>;
+  };
 }
 
 export class PipelineCoordinator {
@@ -53,11 +62,16 @@ export class PipelineCoordinator {
       }
       if (charged && !isBenchUser) {
         try {
-          await CreditService.refundCredits({
+          // Prefer the injected seam (tests observe it); fall back to the
+          // concrete service so older dep objects keep working.
+          const refund =
+            creditService.refundCredits?.bind(creditService) ?? CreditService.refundCredits;
+          await refund({
             userId: session.userId,
             amount: 1,
             service: "tarana_gala",
             description: `Refund: multi-agent failed ${session.id}`,
+            idempotencyKey: `refund:${session.id}`,
           });
           console.log(`💸 Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`);
         } catch {

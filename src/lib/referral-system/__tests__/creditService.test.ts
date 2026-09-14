@@ -72,34 +72,45 @@ describe('CreditService', () => {
   });
 
   describe('refundCredits', () => {
-    it('restores credits and writes a refund transaction', async () => {
-      await CreditService.refundCredits({ userId: 'u1', amount: 1, service: 'tarana_gala' });
-      expect(mockUpdate).toHaveBeenCalledWith({ credits_used_today: 1 });
-      expect(mockInsert).toHaveBeenCalledWith(
+    it('calls the refund_credits RPC with the idempotency key and returns true', async () => {
+      mockRpc.mockResolvedValue({ data: true, error: null });
+      const res = await CreditService.refundCredits({
+        userId: 'u1',
+        amount: 1,
+        service: 'tarana_gala',
+        idempotencyKey: 'refund:sess-1',
+      });
+      expect(res).toBe(true);
+      expect(mockRpc).toHaveBeenCalledWith(
+        'refund_credits',
         expect.objectContaining({
-          user_id: 'u1',
-          transaction_type: 'refund',
-          amount: 1,
+          p_user_id: 'u1',
+          p_amount: 1,
+          p_service: 'tarana_gala',
+          p_idempotency_key: 'refund:sess-1',
         })
       );
     });
 
-    it('does not throw when the DB client throws', async () => {
-      mockFrom.mockImplementation(() => {
-        throw new Error('db down');
-      });
-      const g: any = global as any;
-      if (g.mockSupabaseAdmin) g.mockSupabaseAdmin.from = mockFrom;
+    it('returns false without throwing when the RPC reports a duplicate replay', async () => {
+      mockRpc.mockResolvedValue({ data: false, error: null });
       await expect(
-        CreditService.refundCredits({ userId: 'u1', amount: 1, service: 'tarana_gala' })
-      ).resolves.toBeUndefined();
+        CreditService.refundCredits({ userId: 'u1', amount: 1, service: 'tarana_gala', idempotencyKey: 'refund:sess-1' })
+      ).resolves.toBe(false);
     });
 
-    it('returns early and does not write when the profile read errors', async () => {
-      mockSelectSingle.mockResolvedValue({ data: null, error: { message: 'boom' } });
-      await CreditService.refundCredits({ userId: 'u1', amount: 1, service: 'tarana_gala' });
-      expect(mockUpdate).not.toHaveBeenCalled();
-      expect(mockInsert).not.toHaveBeenCalled();
+    it('returns false without throwing when the RPC errors', async () => {
+      mockRpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
+      await expect(
+        CreditService.refundCredits({ userId: 'u1', amount: 1, service: 'tarana_gala', idempotencyKey: 'refund:sess-1' })
+      ).resolves.toBe(false);
+    });
+
+    it('returns false without throwing when the DB client throws', async () => {
+      mockRpc.mockRejectedValueOnce(new Error('db down'));
+      await expect(
+        CreditService.refundCredits({ userId: 'u1', amount: 1, service: 'tarana_gala', idempotencyKey: 'refund:sess-1' })
+      ).resolves.toBe(false);
     });
   });
 });
