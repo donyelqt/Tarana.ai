@@ -160,7 +160,9 @@ function MainTabs() {
         name="Spots"
         component={Spots}
         options={{
-          title: 'Spots',
+          // Chromeless like Home: the screen owns its blue title band,
+          // so the navigator's sticky "Spots" bar is removed.
+          headerShown: false,
           tabBarLabel: 'Spots',
           tabBarIcon: ({ color, size }) => <CompassIcon size={size} color={color} />,
           tabBarAccessibilityLabel: 'Spots tab',

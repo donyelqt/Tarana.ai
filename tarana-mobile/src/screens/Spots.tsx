@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { GradientCTA, GRADIENT, SpotPhoto, spotCardStyles } from './ui';
 import { MapPinIcon } from './icons';
 import { fetchSpotCards, resolveWebImage, spotMapsUrl, type SpotView } from '../data';
@@ -68,21 +70,32 @@ export default function Spots() {
   const rest = (cards ?? []).slice(TOP_PICKS);
 
   return (
+    // Top inset only (Home/AuthEntry precedent): content clears the notch /
+    // punch-hole camera and status bar. Bottom stays navigator-owned.
+    <SafeAreaView style={styles.root} edges={['top']}>
     <ScrollView
-      style={styles.root}
+      style={styles.scroll}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.heroWrap}>
+      <View style={styles.band}>
         <LinearGradient
-          colors={[GRADIENT.auth.from, GRADIENT.auth.to]}
+          colors={[GRADIENT.auth.pressedFrom, GRADIENT.auth.from]}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.hero}
+          end={{ x: 0, y: 1 }}
+          style={styles.bandBody}
         >
           <Text style={styles.heroTitle}>Suggested Spots</Text>
           <Text style={styles.heroSub}>Top picks in {CITY_CONFIGS[city].name}</Text>
         </LinearGradient>
+        <View style={styles.wave} accessible={false} importantForAccessibility="no-hide-descendants">
+          <Svg width="100%" height={30} viewBox="0 0 1440 90" preserveAspectRatio="none">
+            <Path
+              d="M0,58 C260,88 520,90 780,62 C1040,34 1240,16 1440,38 L1440,90 L0,90 Z"
+              fill="#F2F2F7"
+            />
+          </Svg>
+        </View>
       </View>
       <SpotCityPills cities={SPOT_CITIES} city={city} onSelect={setCity} />
       {error ? <Text className="mb-2 text-sm text-destructive">{error}</Text> : null}
@@ -127,6 +140,7 @@ export default function Spots() {
       )}
       <StatusBar style="auto" />
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -198,16 +212,13 @@ function SpotRow({ card: item }: { card: SpotView }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F2F2F7' },
+  scroll: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  heroWrap: {
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  hero: { paddingHorizontal: 20, paddingVertical: 18 },
+  band: { marginHorizontal: -16 },
+  bandBody: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 46, gap: 2 },
+  wave: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 30 },
   heroTitle: { fontSize: 22, fontWeight: '700', color: '#ffffff', lineHeight: 28 },
   heroSub: { fontSize: 13, color: '#ffffff', opacity: 0.9, marginTop: 2 },
   ctaWrap: { marginTop: 8 },
