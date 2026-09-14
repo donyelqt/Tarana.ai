@@ -4,6 +4,7 @@ import type { Session } from "next-auth";
 import { authOptions } from "@/lib/auth/auth";
 import { CreditService, InsufficientCreditsError, type CreditBalance } from "@/lib/referral-system";
 import { createSession, updateSession, appendError, type RequestSession, type RequestPreferences, type GeneratedItinerary } from "@/lib/agentic/sessionStore";
+import { resolveBenchUserId, BENCH_TOKEN_HEADER } from "@/lib/auth/benchToken";
 import { z } from "zod";
 
 export type ConciergePayload = {
@@ -31,15 +32,16 @@ export class ConciergeAgent {
   constructor(private readonly deps: ConciergeDependencies) {}
 
   async initialize(request: NextRequest): Promise<ConciergeInitializeResult> {
-    console.log("[concierge] BENCH check", JSON.stringify({ bench: process.env.BENCH_BYPASS_AUTH?.trim(), header: request.headers.get("x-bench-bypass"), nodeEnv: process.env.NODE_ENV }));
-    // Bench bypass for k6 (non-prod only) - allows k6 without NextAuth session
-    if ((process.env.BENCH_BYPASS_AUTH?.trim() === "true" || request.headers.get("x-bench-bypass") === "true") && process.env.NODE_ENV !== "production") {
+    // Bench bypass for k6 (non-prod only): per-request HMAC proof, not a
+    // guessable static header. See benchToken.ts for the wire format.
+    const benchUserId = resolveBenchUserId(request.headers.get(BENCH_TOKEN_HEADER));
+    if (benchUserId !== null) {
       const rawBody = await request.clone().json().catch(() => ({} as any));
       const parsed = this.deps.requestSchema.safeParse(rawBody);
       if (!parsed.success) throw this.formatSchemaError(parsed.error);
       const preferences = this.extractPreferences(parsed.data);
       const session = createSession({
-        userId: process.env.BENCH_USER_ID || "00000000-0000-0000-0000-000000000001",
+        userId: benchUserId,
         prompt: parsed.data.prompt,
         preferences,
         status: "pending",
@@ -63,8 +65,9 @@ export class ConciergeAgent {
     }
 
     const creditBalance = await this.getCreditBalance(authSession.user.id);
-    const isBenchForCheck = (process.env.BENCH_BYPASS_AUTH?.trim() === "true" || request.headers.get("x-bench-bypass") === "true") && process.env.NODE_ENV !== "production";
-    if (!isBenchForCheck && creditBalance && creditBalance.remainingToday < 1) {
+    // The bench path returns before this point, so any request reaching
+    // here pays the normal credit gate — no second bypass check needed.
+    if (creditBalance && creditBalance.remainingToday < 1) {
       throw new InsufficientCreditsError(1, creditBalance.remainingToday, "tarana_gala");
     }
 

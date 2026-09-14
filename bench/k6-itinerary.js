@@ -1,4 +1,5 @@
 import http from "k6/http";
+import crypto from "k6/crypto";
 import { check, sleep } from "k6";
 
 export const options = {
@@ -20,6 +21,30 @@ const BASELINE = {
 };
 
 const BASE_URL = __ENV.BASE_URL || "http://localhost:3000";
+
+// Bench auth proof. MUST construct the identical string as
+// src/lib/auth/benchToken.ts: domain "tarana-bench-v1", 300s windows,
+// header "x-bench-token" = "<window>:<hex-hmac-sha256>".
+// Secret comes from -e BENCH_HMAC_SECRET and must equal the server's
+// BENCH_HMAC_SECRET (with BENCH_BYPASS_AUTH=true, non-prod only).
+const BENCH_WINDOW_SECONDS = 300;
+const BENCH_DOMAIN = "tarana-bench-v1";
+
+function benchToken() {
+  const secret = (__ENV.BENCH_HMAC_SECRET || "").trim();
+  const w = Math.floor(Date.now() / 1000 / BENCH_WINDOW_SECONDS);
+  const sig = crypto.hmac("sha256", secret, `${BENCH_DOMAIN}:${w}`, "hex");
+  return `${w}:${sig}`;
+}
+
+export function setup() {
+  // Fail fast on misconfiguration: without a proper secret every request
+  // 401s and the 30s run reports a threshold failure instead of the cause.
+  const secret = (__ENV.BENCH_HMAC_SECRET || "").trim();
+  if (secret.length < 32) {
+    throw new Error("BENCH_HMAC_SECRET must be set (>=32 chars) and match the server's secret");
+  }
+}
 const PAYLOADS = [
   { prompt: "food, chill vibes", interests: ["Food & Culinary"], cityId: "baguio", trafficAware: true },
   { prompt: "restaurants near Burnham", interests: ["Food & Culinary"], cityId: "baguio", trafficAware: true },
@@ -42,7 +67,7 @@ export default function () {
   });
 
   const res = http.post(`${BASE_URL}/api/gemini/itinerary-generator`, body, {
-    headers: { "Content-Type": "application/json", "x-bench-bypass": "true" },
+    headers: { "Content-Type": "application/json", "x-bench-token": benchToken() },
   });
 
   const ok = check(res, {
