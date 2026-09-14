@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { getActiveProfileId, listTrips, type LocalTrip } from '../data';
 import { formatDate, firstPayloadImage, GRADIENT } from './ui';
+import { ChevronLeftIcon } from './icons';
 import Thumb from './Thumb';
 
 /**
@@ -71,8 +72,21 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
           end={{ x: 0, y: 1 }}
           style={styles.bandBody}
         >
-          <Text style={styles.bandTitle}>Saved trips</Text>
-          <Text style={styles.bandSub}>{countText}</Text>
+          <View style={styles.titleRow}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Back to home"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              onPress={() => navigation.navigate('Home')}
+            >
+              <ChevronLeftIcon size={22} color="#ffffff" />
+            </TouchableOpacity>
+            <View style={styles.titleText}>
+              <Text style={styles.bandTitle}>Saved trips</Text>
+              <Text style={styles.bandSub}>{countText}</Text>
+            </View>
+          </View>
         </LinearGradient>
         <View style={styles.wave} accessible={false} importantForAccessibility="no-hide-descendants">
           <Svg width="100%" height={30} viewBox="0 0 1440 90" preserveAspectRatio="none">
@@ -121,6 +135,8 @@ const styles = StyleSheet.create({
   band: { marginHorizontal: -16 },
   bandBody: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 46, gap: 2 },
   wave: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 30 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  titleText: { flex: 1, gap: 2 },
   bandTitle: { fontSize: 22, fontWeight: '700', color: '#ffffff', lineHeight: 28 },
   bandSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
 });
