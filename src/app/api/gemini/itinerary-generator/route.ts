@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/auth";
 import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
@@ -127,6 +127,7 @@ async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
                     amount: 1,
                     service: "tarana_gala",
                     description: `Refund: multi-agent failed ${session.id}`,
+                    idempotencyKey: `refund:${session.id}`,
                 });
                 console.log(`💸 Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`);
             } catch (refundErr) {
@@ -225,6 +226,13 @@ export async function POST(req: NextRequest) {
 
     let userId = '';
     let charged = false;
+    let cacheKeyBase = '';
+    // Per-attempt refund identity: stable within this invocation (so
+    // overlapping refund calls dedupe) but unique across retries (so a
+    // retried request's legitimate second refund is never swallowed).
+    // Body-derived fingerprints must NOT be used here: two identical
+    // requests are two separate charges needing independent refunds.
+    const attemptId = randomUUID();
     try {
         // ✅ CREDIT SYSTEM: Check authentication
         const session = await getServerSession(authOptions);
@@ -315,7 +323,7 @@ export async function POST(req: NextRequest) {
         }
         // Generate a stable cache key from the request body
         const baseHash = createHash('sha256').update(JSON.stringify(requestBody)).digest('hex');
-        const cacheKeyBase = `${userId}:${baseHash}`;
+        cacheKeyBase = `${userId}:${baseHash}`;
         
         let responseData;
         
@@ -405,6 +413,7 @@ export async function POST(req: NextRequest) {
                         amount: 1,
                         service: 'tarana_gala',
                         description: `Refund: zero-activity itinerary ${userId}`,
+                        idempotencyKey: `refund:zero:${attemptId}`,
                     });
                 } catch {
                     // best-effort; swallow refund errors
@@ -429,6 +438,7 @@ export async function POST(req: NextRequest) {
                     amount: 1,
                     service: 'tarana_gala',
                     description: `Refund: failed generation ${userId}`,
+                    idempotencyKey: `refund:fail:${attemptId}`,
                 });
             } catch {
                 // best-effort; swallow refund errors

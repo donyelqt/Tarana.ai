@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/auth";
 import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
@@ -119,6 +119,10 @@ const getCachedItinerary = unstable_cache(
 export async function POST(req: NextRequest) {
     let userId = '';
     let charged = false;
+    // Per-attempt refund identity (see route.ts): unique per invocation so
+    // retried requests keep independent refunds; stable within it so
+    // overlapping calls dedupe.
+    const attemptId = randomUUID();
     try {
         // ✅ CREDIT SYSTEM: Check authentication
         const session = await getServerSession(authOptions);
@@ -195,6 +199,7 @@ export async function POST(req: NextRequest) {
                     amount: 1,
                     service: 'tarana_gala',
                     description: `Refund: failed generation ${userId}`,
+                    idempotencyKey: `refund:fail:${attemptId}`,
                 });
             } catch {
                 // best-effort; swallow refund errors

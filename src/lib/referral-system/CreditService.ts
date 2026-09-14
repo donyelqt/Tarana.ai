@@ -244,67 +244,60 @@ export class CreditService {
 
   /**
    * Refund credits after a generation that was charged but failed to deliver.
-   * Best-effort: a failure here is logged but never masks the original error.
+   *
+   * Delegates to the atomic `refund_credits` RPC: the decrement is a single
+   * guarded UPDATE (no read-modify-write race) and `idempotencyKey` makes
+   * replays — retries, overlapping catch blocks, concurrent duplicates — a
+   * safe no-op. Returns TRUE when this call applied a refund, FALSE when it
+   * was a no-op (unknown profile, replayed key, DB unavailable). Never
+   * throws: callers invoke this from error paths where a throw would mask
+   * the original failure.
    */
   static async refundCredits(request: {
     userId: string;
     amount: number;
     service: string;
     description?: string;
-  }): Promise<void> {
-    if (unlimitedIds.has(request.userId)) return;
+    idempotencyKey: string;
+  }): Promise<boolean> {
+    if (unlimitedIds.has(request.userId)) return true;
 
     if (!supabaseAdmin) {
       console.warn(`[CreditService] refundCredits skipped: supabaseAdmin not available for ${request.userId}`);
-      return;
+      return false;
     }
 
-    const { userId, amount, service, description } = request;
+    const { userId, amount, service, description, idempotencyKey } = request;
 
     try {
       console.log(`[CreditService] Refunding ${amount} credit(s) for ${userId} (${service})`);
 
-      const { data: profile, error: readError } = await supabaseAdmin
-        .from('user_profiles')
-        .select('credits_used_today, daily_credits')
-        .eq('id', userId)
-        .single();
-
-      if (readError) {
-        console.error(`[CreditService] refundCredits profile read failed for ${userId}:`, readError);
-        return;
-      }
-
-      const usedToday = profile?.credits_used_today ?? 0;
-      const restored = Math.max(0, usedToday - amount);
-
-      const { error: updateError } = await supabaseAdmin
-        .from('user_profiles')
-        .update({ credits_used_today: restored })
-        .eq('id', userId);
-
-      if (updateError) {
-        console.error(`[CreditService] refundCredits profile update failed for ${userId}:`, updateError);
-        return;
-      }
-
-      const { error: txError } = await supabaseAdmin.from('credit_transactions').insert({
-        user_id: userId,
-        transaction_type: 'refund',
-        amount: amount,
-        service_used: service,
-        description: description || `Refund ${amount} credit(s) for ${service}`,
-        balance_after: Math.max(0, (profile?.daily_credits ?? 0) - restored),
+      const { data, error } = await supabaseAdmin.rpc('refund_credits', {
+        p_user_id: userId,
+        p_amount: amount,
+        p_service: service,
+        p_description: description || `Refund ${amount} credit(s) for ${service}`,
+        p_idempotency_key: idempotencyKey,
       });
 
-      if (txError) {
-        console.error(`[CreditService] refundCredits transaction insert failed for ${userId}:`, txError);
-        return;
+      if (error) {
+        console.error(`[CreditService] refund_credits RPC failed for ${userId}:`, error);
+        return false;
+      }
+
+      if (data !== true) {
+        // No-op: unknown profile or replayed idempotency key. Warn (not
+        // silent) with the key so replays vs missing users stay
+        // distinguishable in logs.
+        console.warn(`[CreditService] refund no-op for ${userId} (key ${idempotencyKey})`);
+        return false;
       }
 
       console.log(`[CreditService] ✅ Refunded credits for ${userId}`);
+      return true;
     } catch (error: any) {
       console.error(`[CreditService] ❌ Exception during refundCredits for ${userId}:`, error?.message || error);
+      return false;
     }
   }
 
