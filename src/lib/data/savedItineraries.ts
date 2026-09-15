@@ -1,5 +1,9 @@
 // Utility functions for managing saved itineraries
-import { StaticImageData } from "next/image";
+import type { StaticImageData } from "next/image";
+import type { WeatherData } from "../core/utils";
+import type { RefreshMetadata, TrafficSnapshot } from "../services/itineraryRefreshService";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { mapRowToSavedItinerary as mapApiRow, resolveItineraryImage } from "./itineraryMapper";
 
 export interface ItineraryActivity {
   image: string | StaticImageData;
@@ -17,7 +21,7 @@ export interface ItineraryActivity {
     lat?: number;
     lon?: number;
   };
-  trafficData?: any;
+  trafficData?: unknown;
   trafficLevel?: string;
   trafficRecommendation?: string;
   lat?: number;
@@ -34,10 +38,6 @@ export interface ItineraryData {
   subtitle: string;
   items: ItineraryPeriod[];
 }
-
-import { WeatherData } from "../core/utils"; // Added import
-import { normalizeImagePath, getFallbackImage } from "../images/imageUtils";
-import { RefreshMetadata, TrafficSnapshot } from "../services/itineraryRefreshService";
 
 export interface SavedItinerary {
   id: string;
@@ -62,26 +62,46 @@ export interface SavedItinerary {
   activityCoordinates?: Array<{ lat: number; lon: number; name: string }>;
 }
 
-import { getSupabase } from "./supabaseClient"; // Import regular Supabase client
-import type { SupabaseClient } from '@supabase/supabase-js';
-
-// Helper to get the appropriate Supabase client
-async function getSupabaseClient(): Promise<SupabaseClient> {
-  // On server-side, use admin client
-  if (typeof window === 'undefined') {
-    const { supabaseAdmin } = await import('./supabaseAdmin');
-    return supabaseAdmin;
+// Browser callers MUST go through /api/saved-itineraries: the app mints no
+// Supabase JWT (NextAuth custom `users` table, so auth.uid() is always NULL)
+// and the route authorizes via the session cookie with the admin client.
+async function requestItinerariesApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+  });
+  const body: unknown = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(readApiErrorDetail(body, response.status));
   }
-  // On client-side, use regular client (RLS must be disabled or policies must allow access)
-  return getSupabase();
+  if (body && typeof body === "object" && "data" in body) {
+    const data: unknown = body.data;
+    return data as T;
+  }
+  if (body && typeof body === "object" && "success" in body && body.success === true) {
+    return undefined as T;
+  }
+  throw new Error(`Request failed with status ${response.status}`);
 }
+function readApiErrorDetail(body: unknown, status: number): string {
+  if (body && typeof body === "object") {
+    if ("details" in body && typeof body.details === "string") {
+      return body.details;
+    }
+    if ("error" in body && typeof body.error === "string") {
+      return body.error;
+    }
+  }
+  return `Request failed with status ${status}`;
+}
+
 async function getCurrentUserId(): Promise<string | null> {
   try {
     if (typeof window === 'undefined') {
-      const [{ getServerSession }, { authOptions }] = await Promise.all([
-        import('next-auth'),
-        import('../auth/auth'),
-      ]);
+      // Exception: the auth entry point is genuinely runtime-selected —
+      // server uses next-auth + authOptions, browser uses next-auth/react.
+      const { getServerSession } = await import('next-auth');
+      const { authOptions } = await import('../auth/auth');
 
       const session = await getServerSession(authOptions);
       return session?.user?.id ?? null;
@@ -96,32 +116,43 @@ async function getCurrentUserId(): Promise<string | null> {
   }
 }
 
+async function getServerAdminClient(): Promise<SupabaseClient> {
+  // Exception: supabaseAdmin throws on client-side import by design, so it
+  // can only be loaded inside the server branch at runtime.
+  const { supabaseAdmin } = await import('./supabaseAdmin');
+  return supabaseAdmin;
+}
+
+function toSavedItinerary(row: Record<string, unknown>): SavedItinerary {
+  // Boundary cast: columns are controlled by our own table + API mapper.
+  return mapApiRow(row) as SavedItinerary;
+}
+
 export const getSavedItineraries = async (): Promise<SavedItinerary[]> => {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    console.log('No user logged in, returning empty itineraries.');
-    return [];
-  }
-
-  try {
-    const client = await getSupabaseClient();
-    const { data, error } = await client
-      .from('itineraries')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error loading saved itineraries from Supabase:', error);
+  if (typeof window === 'undefined') {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.log('No user logged in, returning empty itineraries.');
       return [];
     }
-    // Ensure data matches SavedItinerary structure, especially for JSON fields
-    return data.map(item => ({
-      ...item,
-      image: normalizeImagePath(item.image) || getFallbackImage(item.tags),
-      formData: typeof item.form_data === 'string' ? JSON.parse(item.form_data) : item.form_data,
-      itineraryData: typeof item.itinerary_data === 'string' ? JSON.parse(item.itinerary_data) : item.itinerary_data,
-    })) as SavedItinerary[];
+    try {
+      const { data, error } = await (await getServerAdminClient())
+        .from('itineraries')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Error loading saved itineraries from Supabase:', error);
+        return [];
+      }
+      return ((data ?? []) as Record<string, unknown>[]).map(toSavedItinerary);
+    } catch (error) {
+      console.error('Error loading saved itineraries:', error);
+      return [];
+    }
+  }
+  try {
+    return await requestItinerariesApi<SavedItinerary[]>('/api/saved-itineraries');
   } catch (error) {
     console.error('Error loading saved itineraries:', error);
     return [];
@@ -129,194 +160,194 @@ export const getSavedItineraries = async (): Promise<SavedItinerary[]> => {
 };
 
 export const saveItinerary = async (itinerary: Omit<SavedItinerary, 'id' | 'createdAt'>): Promise<SavedItinerary> => {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    console.error('SaveItinerary: User ID is null. User must be logged in.');
-    throw new Error('User must be logged in to save an itinerary');
-  }
-
-  const newItineraryData = {
-    user_id: userId,
-    title: itinerary.title,
-    date: itinerary.date,
-    budget: itinerary.budget,
-    image: normalizeImagePath(typeof itinerary.image === 'string' ? itinerary.image : (itinerary.image as StaticImageData).src) || getFallbackImage(itinerary.tags),
-    tags: itinerary.tags,
-    form_data: itinerary.formData,
-    itinerary_data: itinerary.itineraryData,
-    weather_data: itinerary.weatherData, // Stored as JSONB, optional. Ensure this is included if present in 'itinerary'
-  };
-
-  try {
-    console.log('Attempting to save itinerary with data:', JSON.stringify(newItineraryData, null, 2)); // Log data being sent
-
-    const client = await getSupabaseClient();
-    const { data, error } = await client
+  if (typeof window === 'undefined') {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.error('SaveItinerary: User ID is null. User must be logged in.');
+      throw new Error('User must be logged in to save an itinerary');
+    }
+    const { data, error } = await (await getServerAdminClient())
       .from('itineraries')
-      .insert(newItineraryData)
+      .insert({
+        user_id: userId,
+        title: itinerary.title,
+        date: itinerary.date,
+        budget: itinerary.budget,
+        image: resolveItineraryImage(typeof itinerary.image === 'string' ? itinerary.image : itinerary.image.src, itinerary.tags),
+        tags: itinerary.tags,
+        form_data: itinerary.formData,
+        itinerary_data: itinerary.itineraryData,
+        weather_data: itinerary.weatherData,
+      })
       .select()
       .single();
-
-    if (error) {
-      // More detailed error logging
-      console.error('Error saving itinerary to Supabase. Code:', error.code);
-      console.error('Error saving itinerary to Supabase. Message:', error.message);
-      console.error('Error saving itinerary to Supabase. Details:', error.details);
-      console.error('Error saving itinerary to Supabase. Hint:', error.hint);
-      console.error('Full error object:', JSON.stringify(error, null, 2)); // Log the full error object
-      throw new Error(`Failed to save itinerary. Code: ${error.code || 'N/A'}`);
+    if (error || !data) {
+      console.error('Error saving itinerary to Supabase:', error);
+      throw new Error('Failed to save itinerary. Details: Unknown error');
     }
-    console.log('Itinerary saved successfully:', data);
-    return data as SavedItinerary;
-  } catch (error: any) { // Catch as 'any' to access potential properties like 'code'
-    console.error('Outer catch block - Error saving itinerary:', error.message || JSON.stringify(error));
-    if (error.code) {
-        console.error('Outer catch block - Error code:', error.code);
-    }
-    throw new Error(`Failed to save itinerary. Details: ${error.message || 'Unknown error'}`);
+    return toSavedItinerary(data as Record<string, unknown>);
+  }
+  try {
+    const imageSrc = typeof itinerary.image === 'string' ? itinerary.image : itinerary.image.src;
+    return await requestItinerariesApi<SavedItinerary>('/api/saved-itineraries', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: itinerary.title,
+        date: itinerary.date,
+        budget: itinerary.budget,
+        image: imageSrc,
+        tags: itinerary.tags,
+        formData: itinerary.formData,
+        itineraryData: itinerary.itineraryData,
+        weatherData: itinerary.weatherData,
+      }),
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Error saving itinerary:', message);
+    throw new Error(`Failed to save itinerary. Details: ${message}`);
   }
 };
 
 export const deleteItinerary = async (id: string): Promise<void> => {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    throw new Error('User must be logged in to delete an itinerary');
-  }
-
-  try {
-    const client = await getSupabaseClient();
-    const { error } = await client
-      .from('itineraries')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId); // Ensure user can only delete their own itineraries
-
-    if (error) {
-      console.error('Error deleting itinerary from Supabase:', error);
+  if (typeof window === 'undefined') {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      throw new Error('User must be logged in to delete an itinerary');
+    }
+    try {
+      const { error } = await (await getServerAdminClient())
+        .from('itineraries')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId); // Ensure user can only delete their own itineraries
+      if (error) {
+        console.error('Error deleting itinerary from Supabase:', error);
+        throw new Error('Failed to delete itinerary');
+      }
+    } catch (error) {
+      console.error('Error deleting itinerary:', error);
       throw new Error('Failed to delete itinerary');
     }
+    return;
+  }
+  try {
+    await requestItinerariesApi<{ id: string }>(`/api/saved-itineraries/${id}`, {
+      method: 'DELETE',
+    });
   } catch (error) {
     console.error('Error deleting itinerary:', error);
     throw new Error('Failed to delete itinerary');
   }
 };
 
-export const updateItinerary = async (id: string, updatedData: Partial<Omit<SavedItinerary, 'id' | 'createdAt' | 'userId'>>): Promise<SavedItinerary | null> => {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    throw new Error('User must be logged in to update an itinerary');
+// Single builder for partial updates; the [id] API takes these camelCase
+// keys while the direct server path translates them to snake_case below.
+function buildUpdatePayload(
+  updatedData: Partial<Omit<SavedItinerary, 'id' | 'createdAt' | 'userId'>>
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  if (updatedData.title) payload.title = updatedData.title;
+  if (updatedData.date) payload.date = updatedData.date;
+  if (updatedData.budget) payload.budget = updatedData.budget;
+  if (updatedData.image) {
+    payload.image = typeof updatedData.image === 'string' ? updatedData.image : updatedData.image.src;
   }
-
-  // 🔍 CRITICAL DEBUG: Log incoming data
-  console.log('\n🔍 updateItinerary() - INCOMING DATA:');
-  console.log('   ID:', id);
-  console.log('   trafficSnapshot:', updatedData.trafficSnapshot ? 'EXISTS' : 'NULL/UNDEFINED');
-  console.log('   refreshMetadata:', updatedData.refreshMetadata ? 'EXISTS' : 'NULL/UNDEFINED');
-  console.log('   activityCoordinates:', updatedData.activityCoordinates ? `EXISTS (${updatedData.activityCoordinates.length})` : 'NULL/UNDEFINED');
-  
-  if (updatedData.refreshMetadata) {
-    console.log('   refreshMetadata.trafficSnapshot:', updatedData.refreshMetadata.trafficSnapshot ? 'EXISTS' : 'NULL/UNDEFINED');
-    console.log('   refreshMetadata.refreshCount:', updatedData.refreshMetadata.refreshCount);
-  }
-
-  // Prepare data for Supabase, ensuring correct field names and types
-  const updatePayload: { [key: string]: any } = {};
-  if (updatedData.title) updatePayload.title = updatedData.title;
-  if (updatedData.date) updatePayload.date = updatedData.date;
-  if (updatedData.budget) updatePayload.budget = updatedData.budget;
-  if (updatedData.image) updatePayload.image = updatedData.image as string;
-  if (updatedData.tags) updatePayload.tags = updatedData.tags;
-  if (updatedData.formData) updatePayload.form_data = updatedData.formData;
-  if (updatedData.itineraryData) updatePayload.itinerary_data = updatedData.itineraryData;
-  if (updatedData.weatherData) updatePayload.weather_data = updatedData.weatherData;
-  
-  // ✅ CRITICAL FIX: Use explicit undefined check instead of truthy check
-  // This allows null, empty objects, and empty arrays to be set
-  if (updatedData.refreshMetadata !== undefined) {
-    updatePayload.refresh_metadata = updatedData.refreshMetadata;
-  }
-  if (updatedData.trafficSnapshot !== undefined) {
-    updatePayload.traffic_snapshot = updatedData.trafficSnapshot;
-  }
-  if (updatedData.activityCoordinates !== undefined) {
-    updatePayload.activity_coordinates = updatedData.activityCoordinates;
-  }
+  if (updatedData.tags) payload.tags = updatedData.tags;
+  if (updatedData.formData) payload.formData = updatedData.formData;
+  if (updatedData.itineraryData) payload.itineraryData = updatedData.itineraryData;
+  if (updatedData.weatherData) payload.weatherData = updatedData.weatherData;
+  // Explicit undefined checks: null/empty values must reach the database.
+  if (updatedData.refreshMetadata !== undefined) payload.refreshMetadata = updatedData.refreshMetadata;
+  if (updatedData.trafficSnapshot !== undefined) payload.trafficSnapshot = updatedData.trafficSnapshot;
+  if (updatedData.activityCoordinates !== undefined) payload.activityCoordinates = updatedData.activityCoordinates;
   // Do not allow updating user_id or created_at directly
-  
-  // 🔍 CRITICAL DEBUG: Log what will be sent to database
-  console.log('\n📤 updateItinerary() - PAYLOAD TO DATABASE:');
-  console.log('   Keys being updated:', Object.keys(updatePayload));
-  console.log('   refresh_metadata:', updatePayload.refresh_metadata ? 'SET' : 'NOT SET');
-  console.log('   traffic_snapshot:', updatePayload.traffic_snapshot ? 'SET' : 'NOT SET');
-  console.log('   activity_coordinates:', updatePayload.activity_coordinates ? 'SET' : 'NOT SET');
+  return payload;
+}
 
-  const client = await getSupabaseClient();
-  
-  if (Object.keys(updatePayload).length === 0) {
-    console.log("No data provided for update.");
-    // Optionally, fetch and return the existing itinerary
-    const { data: currentItinerary, error: fetchError } = await client
-      .from('itineraries')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single();
-    if (fetchError || !currentItinerary) return null;
-    return currentItinerary as SavedItinerary;
+const UPDATE_DB_KEY_MAP: Record<string, string> = {
+  formData: 'form_data',
+  itineraryData: 'itinerary_data',
+  weatherData: 'weather_data',
+  refreshMetadata: 'refresh_metadata',
+  trafficSnapshot: 'traffic_snapshot',
+  activityCoordinates: 'activity_coordinates',
+};
+
+function toDbUpdatePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const dbPayload: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    dbPayload[UPDATE_DB_KEY_MAP[key] ?? key] = value;
   }
+  return dbPayload;
+}
 
-  try {
-    const { data, error } = await client
+export const updateItinerary = async (id: string, updatedData: Partial<Omit<SavedItinerary, 'id' | 'createdAt' | 'userId'>>): Promise<SavedItinerary | null> => {
+  const payload = buildUpdatePayload(updatedData);
+
+  if (typeof window === 'undefined') {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      throw new Error('User must be logged in to update an itinerary');
+    }
+    const admin = await getServerAdminClient();
+    if (Object.keys(payload).length === 0) {
+      // Optionally, fetch and return the existing itinerary
+      const { data, error } = await admin
+        .from('itineraries')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single();
+      if (error || !data) return null;
+      return toSavedItinerary(data as Record<string, unknown>);
+    }
+    const { data, error } = await admin
       .from('itineraries')
-      .update(updatePayload)
+      .update(toDbUpdatePayload(payload))
       .eq('id', id)
       .eq('user_id', userId) // Ensure user can only update their own itineraries
       .select()
       .single();
+    if (error || !data) return null;
+    return toSavedItinerary(data as Record<string, unknown>);
+  }
 
-    if (error) {
-      console.error('\n❌ updateItinerary() - SUPABASE ERROR:', error);
-      console.error('   Error code:', error.code);
-      console.error('   Error message:', error.message);
-      console.error('   Error details:', error.details);
-      return null;
+  try {
+    if (Object.keys(payload).length === 0) {
+      try {
+        return await requestItinerariesApi<SavedItinerary>(`/api/saved-itineraries/${id}`);
+      } catch {
+        return null;
+      }
     }
-    
-    // 🔍 CRITICAL DEBUG: Log what database returned
-    console.log('\n✅ updateItinerary() - DATABASE RESPONSE:');
-    console.log('   Update successful');
-    console.log('   refresh_metadata in response:', data.refresh_metadata ? 'EXISTS' : 'NULL');
-    console.log('   traffic_snapshot in response:', data.traffic_snapshot ? 'EXISTS' : 'NULL');
-    console.log('   activity_coordinates in response:', data.activity_coordinates ? 'EXISTS' : 'NULL');
-    
-    if (data.refresh_metadata) {
-      console.log('   refresh_metadata.refreshCount:', (data.refresh_metadata as any).refreshCount);
-      console.log('   refresh_metadata.trafficSnapshot:', (data.refresh_metadata as any).trafficSnapshot ? 'EXISTS' : 'NULL');
-    }
-    
-    return data as SavedItinerary;
-  } catch (error) {
-    console.error('\n❌ updateItinerary() - EXCEPTION:', error);
-    console.error('   Error type:', error instanceof Error ? error.constructor.name : typeof error);
+    return await requestItinerariesApi<SavedItinerary>(`/api/saved-itineraries/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    // Preserve the null-on-missing contract the refresh flow relies on.
+    if (message.toLowerCase().includes('not found')) return null;
     throw new Error('Failed to update itinerary');
   }
 };
 
 export const formatDateRange = (startDate: string, endDate: string): string => {
   if (!startDate || !endDate) return 'Date not specified';
-  
+
   const start = new Date(startDate);
   const end = new Date(endDate);
-  
-  const options: Intl.DateTimeFormatOptions = { 
-    month: 'long', 
-    day: 'numeric', 
-    year: 'numeric' 
+
+  const options: Intl.DateTimeFormatOptions = {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
   };
-  
+
   if (start.toDateString() === end.toDateString()) {
     return start.toLocaleDateString('en-US', options);
   }
-  
+
   return `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)}`;
 };
