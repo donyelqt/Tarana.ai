@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Svg, Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedStyle,
@@ -440,53 +439,25 @@ export default function Explore({ navigation }: { navigation: any }) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F2F7' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['top']}>
     <View style={styles.root}>
-      <View style={styles.band}>
-        <LinearGradient
-          colors={[GRADIENT.auth.pressedFrom, GRADIENT.auth.from]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.bandBody}
+      <LinearGradient
+        colors={[GRADIENT.auth.from, GRADIENT.auth.to]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.backBtn}
+      >
+        <TouchableOpacity
+          activeOpacity={0.6}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          onPress={() => navigation.goBack()}
+          style={styles.backBtnInner}
         >
-          <View style={styles.titleRow}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              onPress={() => navigation.goBack()}
-            >
-              <ChevronLeftIcon size={22} color="#ffffff" />
-            </TouchableOpacity>
-            <View style={styles.titleText}>
-              <Text style={styles.bandTitle}>Explore</Text>
-            </View>
-          </View>
-        </LinearGradient>
-        <View style={styles.wave} accessible={false} importantForAccessibility="no-hide-descendants">
-          <Svg width="100%" height={30} viewBox="0 0 1440 90" preserveAspectRatio="none">
-            <Path
-              d="M0,58 C260,88 520,90 780,62 C1040,34 1240,16 1440,38 L1440,90 L0,90 Z"
-              fill="#F2F2F7"
-            />
-          </Svg>
-        </View>
-      </View>
-      <View style={styles.mapFill}>
-        <ExploreMapView
-          origin={from}
-          destination={to}
-          primary={mapPrimary}
-          alternatives={mapAlternatives}
-          mapStyle={mapStyle}
-          tiltOn={tiltOn}
-          recenterSignal={recenterSignal}
-          loading={routing}
-          onSelectRoute={setSelectedId}
-        />
-      </View>
-
+          <ChevronLeftIcon size={26} color="#ffffff" strokeWidth={2.5} />
+        </TouchableOpacity>
+      </LinearGradient>
       <View style={styles.islandSlot} pointerEvents="box-none">
         <DynamicIsland
           expanded={expanded}
@@ -621,7 +592,19 @@ export default function Explore({ navigation }: { navigation: any }) {
           </View>
         </DynamicIsland>
       </View>
-
+      <View style={styles.mapFill}>
+        <ExploreMapView
+          origin={from}
+          destination={to}
+          primary={mapPrimary}
+          alternatives={mapAlternatives}
+          mapStyle={mapStyle}
+          tiltOn={tiltOn}
+          recenterSignal={recenterSignal}
+          loading={routing}
+          onSelectRoute={setSelectedId}
+        />
+      </View>
       {route?.traffic && !expanded ? (
         <View style={styles.badge} pointerEvents="none">
           <View style={[styles.badgeDot, { backgroundColor: TRAFFIC_DOTS[route.traffic.level] }]} />
@@ -684,14 +667,26 @@ export default function Explore({ navigation }: { navigation: any }) {
 }
 
 const styles = StyleSheet.create({
-  band: { marginHorizontal: -16 },
-  bandBody: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 46, gap: 2 },
-  wave: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 30 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  titleText: { flex: 1, gap: 2 },
-  bandTitle: { fontSize: 22, fontWeight: '700', color: '#ffffff', lineHeight: 28 },
-  root: { flex: 1, backgroundColor: '#F2F2F7' },
-  mapFill: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 },
+  backBtn: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    zIndex: 40,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backBtnInner: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  root: { flex: 1, backgroundColor: 'transparent' },
+  mapFill: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 0 },
   islandSlot: { position: 'absolute', top: 12, left: 0, right: 0, zIndex: 30 },
   islandBody: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 12, gap: 4 },
   pillSummary: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16 },
@@ -812,7 +807,7 @@ const styles = StyleSheet.create({
   submitWrap: { borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 10 },
   badge: {
     position: 'absolute',
-    top: 78,
+    top: 80,
     left: 12,
     zIndex: 20,
     flexDirection: 'row',
