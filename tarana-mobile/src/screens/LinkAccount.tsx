@@ -4,7 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { EyeIcon, EyeSlashIcon, GoogleIcon } from './icons';
 import { GradientCTA } from './ui';
 import { config } from '../config';
-import { importWebTrips } from '../data';
+import { importWebTrips, importWebMeals } from '../data';
 
 const API_BASE = config.webBaseUrl.replace(/\/$/, '');
 
@@ -19,11 +19,18 @@ export default function LinkAccount({ navigation, onDone }: { navigation: any; o
   /**
    * One-way import (§7.4): the typed email/password only gate the button —
    * actual auth happens in the web-browser exchange inside the data seam
-   * (same as the old sign-in flow). The JWT is single-use: trips are
-   * copied into SQLite, then the app forgets the web session entirely.
+   * (same as the old sign-in flow). The JWT is single-use: trips AND meals
+   * are copied into SQLite, then the app forgets the web session entirely.
+   * Meals reuse the trips exchange identity (single browser round-trip);
+   * a meals failure degrades to trips-only, never blocks the link.
    */
   const runImport = async () => {
-    await importWebTrips(email);
+    const { profile, userId } = await importWebTrips(email);
+    try {
+      await importWebMeals(userId, profile.id);
+    } catch (e) {
+      console.warn('Meals import skipped:', e instanceof Error ? e.message : e);
+    }
   };
 
   const finish = () => {
