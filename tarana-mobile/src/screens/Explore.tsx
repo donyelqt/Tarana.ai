@@ -11,14 +11,14 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import DynamicIsland from './DynamicIsland';
-import ExploreMapView from './ExploreMapView';
 import {
+  ChevronLeftIcon,
   BikeIcon,
   CarIcon,
   CompassIcon,
@@ -28,8 +28,10 @@ import {
   TruckIcon,
   WalkIcon,
 } from './icons';
-import { GradientCTA } from './ui';
 import ExploreSheet from './ExploreSheet';
+import ExploreMapView from './ExploreMapView';
+import DynamicIsland from './DynamicIsland';
+import { GradientCTA, GRADIENT } from './ui';
 import {
   calculateRoute,
   DEFAULT_EXPLORE_PREFS,
@@ -175,7 +177,7 @@ function SlidingTrack<T extends string>({
  * pills, magnifier CTA. Collapse = post-calc or keyboard-away (the
  * native translation of outside-click/Escape).
  */
-export default function Explore() {
+export default function Explore({ navigation }: { navigation: any }) {
   const [fromText, setFromText] = useState('');
   const [toText, setToText] = useState('');
   const [fromList, setFromList] = useState<Place[]>([]);
@@ -437,21 +439,25 @@ export default function Explore() {
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['top']}>
     <View style={styles.root}>
-      <View style={styles.mapFill}>
-        <ExploreMapView
-          origin={from}
-          destination={to}
-          primary={mapPrimary}
-          alternatives={mapAlternatives}
-          mapStyle={mapStyle}
-          tiltOn={tiltOn}
-          recenterSignal={recenterSignal}
-          loading={routing}
-          onSelectRoute={setSelectedId}
-        />
-      </View>
-
+      <LinearGradient
+        colors={[GRADIENT.auth.from, GRADIENT.auth.to]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.backBtn}
+      >
+        <TouchableOpacity
+          activeOpacity={0.6}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          onPress={() => navigation.goBack()}
+          style={styles.backBtnInner}
+        >
+          <ChevronLeftIcon size={26} color="#ffffff" strokeWidth={2.5} />
+        </TouchableOpacity>
+      </LinearGradient>
       <View style={styles.islandSlot} pointerEvents="box-none">
         <DynamicIsland
           expanded={expanded}
@@ -586,7 +592,19 @@ export default function Explore() {
           </View>
         </DynamicIsland>
       </View>
-
+      <View style={styles.mapFill}>
+        <ExploreMapView
+          origin={from}
+          destination={to}
+          primary={mapPrimary}
+          alternatives={mapAlternatives}
+          mapStyle={mapStyle}
+          tiltOn={tiltOn}
+          recenterSignal={recenterSignal}
+          loading={routing}
+          onSelectRoute={setSelectedId}
+        />
+      </View>
       {route?.traffic && !expanded ? (
         <View style={styles.badge} pointerEvents="none">
           <View style={[styles.badgeDot, { backgroundColor: TRAFFIC_DOTS[route.traffic.level] }]} />
@@ -644,12 +662,31 @@ export default function Explore() {
       ) : null}
       <StatusBar style="auto" />
     </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F2F2F7' },
-  mapFill: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 },
+  backBtn: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    zIndex: 40,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backBtnInner: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  root: { flex: 1, backgroundColor: 'transparent' },
+  mapFill: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 0 },
   islandSlot: { position: 'absolute', top: 12, left: 0, right: 0, zIndex: 30 },
   islandBody: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 12, gap: 4 },
   pillSummary: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16 },
@@ -770,7 +807,7 @@ const styles = StyleSheet.create({
   submitWrap: { borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 10 },
   badge: {
     position: 'absolute',
-    top: 78,
+    top: 80,
     left: 12,
     zIndex: 20,
     flexDirection: 'row',
