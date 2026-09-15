@@ -178,3 +178,52 @@ export async function deleteMeal(id: string, profileId: string): Promise<void> {
   const meal = meals.get(id);
   if (meal && meal.profile_id === profileId) meals.delete(id);
 }
+
+export async function upsertImportedMeal(input: {
+  profileId: string;
+  sourceId: string;
+  cafeName: string;
+  mealType?: string | null;
+  price?: number | null;
+  goodFor?: string[];
+  location?: string | null;
+  items?: string | null;
+}): Promise<LocalMeal> {
+  const name = input.cafeName.trim();
+  if (!name) throw new Error('Import requires a cafe name.');
+  if (!input.sourceId) throw new Error('Import requires a source id.');
+  const now = new Date().toISOString();
+  for (const meal of meals.values()) {
+    if (meal.source === 'web-import' && meal.source_id === input.sourceId) {
+      const updated: LocalMeal = {
+        ...meal,
+        profile_id: input.profileId,
+        cafe_name: name,
+        meal_type: input.mealType ?? null,
+        price: input.price ?? null,
+        good_for: input.goodFor ?? [],
+        location: input.location ?? null,
+        items: input.items ?? null,
+        imported_at: now,
+      };
+      meals.set(meal.id, updated);
+      return updated;
+    }
+  }
+  const created: LocalMeal = {
+    id: newId('m'),
+    profile_id: input.profileId,
+    cafe_name: name,
+    meal_type: input.mealType ?? null,
+    price: input.price ?? null,
+    good_for: input.goodFor ?? [],
+    location: input.location ?? null,
+    items: input.items ?? null,
+    source: 'web-import',
+    source_id: input.sourceId,
+    imported_at: now,
+    created_at: now,
+  };
+  meals.set(created.id, created);
+  return created;
+}

@@ -51,6 +51,7 @@ export const upsertImportedTrip = Db.upsertImportedTrip;
 export const listMeals = Db.listMealsByProfile;
 export const createMeal = Db.createMeal;
 export const deleteMeal = Db.deleteMeal;
+export const upsertImportedMeal = Db.upsertImportedMeal;
 
 // ── Web import (one-way copy; the JWT is single-use here) ───
 
@@ -88,7 +89,7 @@ function nameFromEmail(email: string): string {
  * actual auth happens in the exchange; the email only seeds a profile
  * name when none exists. Re-imports update via (source, source_id).
  */
-export async function importWebTrips(email: string): Promise<{ imported: number; profile: LocalProfile }> {
+export async function importWebTrips(email: string): Promise<{ imported: number; profile: LocalProfile; userId: string }> {
   const payload = await exchangeForMobileToken();
   const userId = payload?.id ?? payload?.sub;
   if (!userId) throw new Error('Link did not return a user.');
@@ -118,7 +119,76 @@ export async function importWebTrips(email: string): Promise<{ imported: number;
     });
     imported += 1;
   }
-  return { imported, profile };
+  return { imported, profile, userId };
+}
+
+type WebMealRow = {
+  id: string;
+  cafe_name?: string | null;
+  meal_type?: string | null;
+  price?: number | string | null;
+  good_for?: string | string[] | null;
+  location?: string | null;
+  menu_items?: unknown;
+};
+
+function mealPrice(value: WebMealRow["price"]): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function mealGoodFor(value: WebMealRow["good_for"]): string[] {
+  if (Array.isArray(value)) return value.filter((t): t is string => typeof t === 'string');
+  if (typeof value === 'string' && value.trim() !== '') return [value];
+  return [];
+}
+
+/**
+ * One-way web meals import (§7.4 twin of importWebTrips): same exchange,
+ * same profile, same (source, source_id) idempotency — `saved_meals` rows
+ * land in SQLite via upsertImportedMeal. Probes confirm the posture:
+ * anon SELECT on saved_meals returns rows (count=43), while itineraries
+ * returns zero — so the mobile token client copies meals directly like
+ * trips. No new auth surface.
+ */
+export async function importWebMeals(userId: string, profileId: string): Promise<{ imported: number }> {
+  const client = await createMobileSupabaseClient();
+  const { data, error: qError } = await client
+    .from('saved_meals')
+    .select('id,cafe_name,meal_type,price,good_for,location,menu_items')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (qError) throw new Error(qError.message);
+
+  const rows = (Array.isArray(data) ? data : []) as WebMealRow[];
+  let imported = 0;
+  for (const row of rows) {
+    if (!row || typeof row.id !== 'string') continue;
+    const cafeName = typeof row.cafe_name === 'string' ? row.cafe_name : '';
+    if (!cafeName.trim()) continue;
+    let items: string | null = null;
+    try {
+      items = JSON.stringify(row.menu_items ?? []);
+    } catch {
+      items = null;
+    }
+    await Db.upsertImportedMeal({
+      profileId,
+      sourceId: row.id,
+      cafeName,
+      mealType: typeof row.meal_type === 'string' ? row.meal_type : null,
+      price: mealPrice(row.price),
+      goodFor: mealGoodFor(row.good_for),
+      location: typeof row.location === 'string' ? row.location : null,
+      items,
+    });
+    imported += 1;
+  }
+  return { imported };
 }
 
 // ── Plan generation (Phase-2 gate — honest stub, not a mock) ─

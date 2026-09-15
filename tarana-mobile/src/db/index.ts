@@ -384,3 +384,53 @@ export async function deleteMeal(id: string, profileId: string): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM meals WHERE id = ? AND profile_id = ?', id, profileId);
 }
+
+/**
+ * One-way web import. Idempotent on (source, source_id): re-importing the
+ * same web meal updates the local copy instead of duplicating it.
+ * Mirrors upsertImportedTrip (same source/source_id UNIQUE contract).
+ */
+export async function upsertImportedMeal(input: {
+  profileId: string;
+  sourceId: string;
+  cafeName: string;
+  mealType?: string | null;
+  price?: number | null;
+  goodFor?: string[];
+  location?: string | null;
+  items?: string | null;
+}): Promise<LocalMeal> {
+  const name = input.cafeName.trim();
+  if (!name) throw new Error('Import requires a cafe name.');
+  if (!input.sourceId) throw new Error('Import requires a source id.');
+  const db = await getDb();
+  const now = new Date().toISOString();
+  await db.runAsync(
+    `INSERT INTO meals (id, profile_id, cafe_name, meal_type, price, good_for, location, items, source, source_id, imported_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'web-import', ?, ?)
+     ON CONFLICT(source, source_id) DO UPDATE SET
+       cafe_name = excluded.cafe_name,
+       meal_type = excluded.meal_type,
+       price = excluded.price,
+       good_for = excluded.good_for,
+       location = excluded.location,
+       items = excluded.items,
+       imported_at = excluded.imported_at`,
+    newId(),
+    input.profileId,
+    name,
+    input.mealType ?? null,
+    input.price ?? null,
+    JSON.stringify(input.goodFor ?? []),
+    input.location ?? null,
+    input.items ?? null,
+    input.sourceId,
+    now
+  );
+  const row = await db.getFirstAsync<MealRow>(
+    "SELECT * FROM meals WHERE source = 'web-import' AND source_id = ?",
+    input.sourceId
+  );
+  if (!row) throw new Error('Imported meal was not saved.');
+  return toMeal(row);
+}

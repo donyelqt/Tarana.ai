@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { GradientCTA } from './ui';
 import { getActiveProfileId, listMeals, createMeal, deleteMeal, resolveWebImage } from '../data';
 import { formatPHP } from './ui';
-import Thumb from './Thumb';
 import { findCafe, menuDishCount, type Cafe, type FullMenu } from '../data/catalog';
 import type { MenuItem } from '../data/catalog/types';
 
@@ -13,23 +12,52 @@ const BLUE = '#0066FF';
 const MEAL_TABS = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'] as const;
 type MealTab = (typeof MEAL_TABS)[number];
 
+type SavedDish = { name: string; price: number | null };
+
+/**
+ * Imported web rows store menu_items JSON in the opaque `items` column
+ * (data seam importWebMeals). Surface name + price only — the same two
+ * fields web renders per dish row. Anything unparseable degrades to no
+ * section, never a crash.
+ */
+function parseSavedItems(raw: string | null): SavedDish[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const dishes: SavedDish[] = [];
+    for (const item of parsed) {
+      if (typeof item !== 'object' || item === null) continue;
+      const rec = item as Record<string, unknown>;
+      const name = typeof rec.name === 'string' ? rec.name : null;
+      if (!name) continue;
+      const price = typeof rec.price === 'number' && Number.isFinite(rec.price) ? rec.price : null;
+      dishes.push({ name, price });
+    }
+    return dishes;
+  } catch {
+    return [];
+  }
+}
+
 /**
  * CafeDetail — one detail for catalog browsing AND saved records (§8).
  *
- * Keyed by cafe name: catalog info (real vendored data) + menu tabs where
- * dishes exist (section hidden otherwise — no dead buttons) + Save/Unsave
- * against the active profile. Saved state derives from SQLite, so list
- * and detail never disagree.
+ * Keyed by cafe name: catalog info (real vendored data) + "Your saved
+ * dishes" for web-imported menu_items + menu tabs where dishes exist
+ * (section hidden otherwise — no dead buttons) + Save/Unsave against the
+ * active profile. Saved state derives from SQLite, so list and detail
+ * never disagree.
  */
 export default function CafeDetail({ navigation, route }: { navigation: any; route: { params?: { name?: string } } }) {
   const [cafe, setCafe] = useState<Cafe | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [savedDishes, setSavedDishes] = useState<SavedDish[]>([]);
   const [tab, setTab] = useState<MealTab>('Breakfast');
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [arming, setArming] = useState(false);
-
   const name = route?.params?.name ?? '';
 
   const load = useCallback(async () => {
@@ -42,6 +70,7 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
       if (profileId) {
         const saved = (await listMeals(profileId)).find((m) => m.cafe_name === found.name) ?? null;
         setSavedId(saved ? saved.id : null);
+        setSavedDishes(parseSavedItems(saved?.items ?? null));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load cafe.');
@@ -71,6 +100,7 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
         location: cafe.location,
       });
       setSavedId(saved.id);
+      setSavedDishes(parseSavedItems(saved.items));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save cafe.');
     } finally {
@@ -89,6 +119,7 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
       const profileId = await getActiveProfileId();
       if (profileId) await deleteMeal(savedId, profileId);
       setSavedId(null);
+      setSavedDishes([]);
       setArming(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not remove cafe.');
@@ -132,6 +163,20 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
       <Text style={styles.about}>{cafe.about}</Text>
       {cafe.popularFor.length > 0 ? (
         <Text style={styles.tags}>Known for: {cafe.popularFor.join(', ')}</Text>
+      ) : null}
+
+      {savedDishes.length > 0 ? (
+        <View style={styles.menu}>
+          <Text style={styles.sectionTitle}>Your saved dishes</Text>
+          {savedDishes.map((d, i) => (
+            <View key={`${d.name}-${i}`} style={styles.dish}>
+              <View style={styles.dishText}>
+                <Text style={styles.dishName}>{d.name}</Text>
+              </View>
+              {d.price != null ? <Text style={styles.dishPrice}>{formatPHP(d.price)}</Text> : null}
+            </View>
+          ))}
+        </View>
       ) : null}
 
       {cafe.hasMenu && dishCount > 0 ? (
