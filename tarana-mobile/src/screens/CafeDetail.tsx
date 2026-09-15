@@ -91,6 +91,9 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
       const profileId = await getActiveProfileId();
       if (!profileId) throw new Error('Create a profile first.');
       const first = firstDish(cafe.fullMenu);
+      // Web parity (useTaranaEatsService.saveToMeals): persist the saved
+      // dish snapshot (name/price/quantity) into items, not just the
+      // cafe-level row — otherwise detail can never show what was saved.
       const saved = await createMeal({
         profileId,
         cafeName: cafe.name,
@@ -98,6 +101,7 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
         price: first ? first.price : null,
         goodFor: cafe.popularFor.slice(0, 3),
         location: cafe.location,
+        items: first ? JSON.stringify([{ name: first.name, price: first.price, quantity: 1 }]) : null,
       });
       setSavedId(saved.id);
       setSavedDishes(parseSavedItems(saved.items));
