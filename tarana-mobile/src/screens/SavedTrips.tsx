@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -16,11 +16,16 @@ import Thumb from './Thumb';
  * Local-first (§2.1, §7.2): no token, no network. Trips land here via
  * local creation (7.1) or the one-way web import behind the Import tab
  * (7.4). Only plain-text columns render — same display contract as before.
+ *
+ * Web parity (saved-trips/page.tsx): header band + search + rows
+ * (title, date · budget, tags) → TripDetail. Delete lives in the detail
+ * (two-step arm); the list never deletes. No dead web affordances ported
+ * (no refresh control — server-side, 401-gated).
  */
 export default function SavedTrips({ navigation }: { navigation: any }) {
   const [trips, setTrips] = useState<LocalTrip[] | null>(null);
+  const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
-
   const load = useCallback(async () => {
     try {
       const profileId = await getActiveProfileId();
@@ -47,6 +52,19 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
       load();
     }, [load])
   );
+
+  const visible = useMemo(() => {
+    if (trips === null) return [];
+    const q = query.trim().toLowerCase();
+    if (!q) return trips;
+    // Web order: title, then id — plus tags (mobile-only data, same shape).
+    return trips.filter(
+      (t) =>
+        (t.title ?? '').toLowerCase().includes(q) ||
+        t.id.toLowerCase().includes(q) ||
+        (t.tags ?? []).some((tag) => tag.toLowerCase().includes(q))
+    );
+  }, [trips, query]);
 
   if (trips === null) {
     return (
@@ -87,6 +105,16 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
               <Text style={styles.bandSub}>{countText}</Text>
             </View>
           </View>
+          <TextInput
+            style={styles.search}
+            placeholder="Search itineraries…"
+            placeholderTextColor="rgba(255,255,255,0.7)"
+            value={query}
+            onChangeText={setQuery}
+            autoCapitalize="none"
+            accessibilityLabel="Search saved trips"
+            returnKeyType="search"
+          />
         </LinearGradient>
         <View style={styles.wave} accessible={false} importantForAccessibility="no-hide-descendants">
           <Svg width="100%" height={30} viewBox="0 0 1440 90" preserveAspectRatio="none">
@@ -98,11 +126,20 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
         </View>
       </View>
       {error ? <Text className="mb-2 text-sm text-destructive">{error}</Text> : null}
-      {trips.length === 0 && !error ? (
-        <Text className="text-sm text-muted-foreground">No saved trips yet. Create one or import from the web.</Text>
+      {visible.length === 0 && !error ? (
+        <View className="items-center px-6 pt-10">
+          <Text className="text-base font-semibold text-foreground">
+            {query.trim() ? 'No trips match your search' : 'No saved trips yet'}
+          </Text>
+          <Text className="mt-1 text-center text-sm text-muted-foreground">
+            {query.trim()
+              ? 'Try a different title, id, or tag.'
+              : 'Create one or import from the web.'}
+          </Text>
+        </View>
       ) : null}
       <FlatList
-        data={trips}
+        data={visible}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -133,10 +170,18 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
 
 const styles = StyleSheet.create({
   band: { marginHorizontal: -16 },
-  bandBody: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 46, gap: 2 },
+  bandBody: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 46, gap: 10 },
   wave: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 30 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   titleText: { flex: 1, gap: 2 },
   bandTitle: { fontSize: 22, fontWeight: '700', color: '#ffffff', lineHeight: 28 },
   bandSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  search: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: '#ffffff',
+  },
 });
