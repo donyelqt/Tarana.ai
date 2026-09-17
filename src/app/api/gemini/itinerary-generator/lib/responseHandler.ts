@@ -2,11 +2,19 @@ import { NextResponse } from "next/server";
 import { processItinerary } from "../utils/itineraryUtils";
 import { geminiModel } from "./config";
 import { ItinerarySchema } from "../types/schemas";
+import type { EnhancedGenerateContentResponse, GenerateContentResult } from "@google/generative-ai";
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 2;
+// Hard per-call deadline bounded under the 60s Vercel Hobby kill (see
+// structuredOutputEngine.ts). Gemini has no request timeout of its own;
+// without this a hung 503/429 retry loop can exceed the platform limit and
+// the charge is lost with no possible refund.
+const CALL_TIMEOUT_MS = 25000;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function generateItinerary(detailedPrompt: string, prompt: string, durationDays: number | null) {
+// Returns the awaited GenerateContentResponse (callers invoke .text() on it);
+// typed via the guard below.
+export async function generateItinerary(detailedPrompt: string, prompt: string, durationDays: number | null): Promise<EnhancedGenerateContentResponse> {
     const generationConfig = {
         responseMimeType: "application/json",
         temperature: 0.7, // Further lowered for more predictable JSON output
@@ -16,19 +24,32 @@ export async function generateItinerary(detailedPrompt: string, prompt: string, 
         // Ensure single response
     };
 
-    let result: any = null;
+    let result: GenerateContentResult | null = null;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-            result = await geminiModel!.generateContent({
-                contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
-                generationConfig,
-            });
+            result = await Promise.race([
+                geminiModel!.generateContent({
+                    contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
+                    generationConfig,
+                }),
+                new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error("Generation timeout")), CALL_TIMEOUT_MS)
+                ),
+            ]);
             break; // Success
-        } catch (err: any) {
-            const status = err?.status || err?.response?.status;
+        } catch (err) {
+            let status: unknown;
+            if (err && typeof err === "object" && "status" in err) {
+                status = err.status;
+            } else if (
+                err && typeof err === "object" && "response" in err &&
+                err.response && typeof err.response === "object" && "status" in err.response
+            ) {
+                status = err.response.status;
+            }
             if (attempt < MAX_RETRIES && (status === 503 || status === 429)) {
                 const delay = 1000 * Math.pow(2, attempt - 1);
-                console.warn(`Gemini transient error (status ${status}). Retry ${attempt} of ${MAX_RETRIES} after ${delay}ms`);
+                console.warn(`Gemini transient error (status ${String(status)}). Retry ${attempt} of ${MAX_RETRIES} after ${delay}ms`);
                 await sleep(delay);
                 continue;
             }
