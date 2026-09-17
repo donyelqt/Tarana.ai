@@ -93,14 +93,25 @@ export async function proposeSubqueries(params: {
       Existing titles: ${existingTitles.slice(0, 60).join(" | ")}
       Output a JSON array of strings only, e.g.: ["low traffic morning hike", "evening market less crowded", "indoor museum avoid peak hours", "activities near low traffic areas"].
     `;
-    const resp = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: guidance + "\n\nUser prompt: " + userPrompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1092
-      }
-    });
-    const text = resp.response?.text() ?? "";
+    // The race can only resolve with the generateContent result (the timeout
+    // branch rejects); type it as the awaited call for typed .response access.
+    const resp = await Promise.race([
+      model.generateContent({
+        contents: [{ role: "user", parts: [{ text: guidance + "\n\nUser prompt: " + userPrompt }] }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1092
+        }
+      }),
+      // Bounded under the 60s Vercel Hobby kill (see structuredOutputEngine.ts);
+      // subquery generation is best-effort coverage, so a timeout returns [].
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Subquery generation timeout")), 25000)
+      ),
+    ]);
+    const text = resp && typeof resp === "object" && "response" in resp
+      ? resp.response?.text() ?? ""
+      : "";
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return [];
     const arr = JSON.parse(match[0]);

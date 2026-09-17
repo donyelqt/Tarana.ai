@@ -14,6 +14,11 @@ import { optimizedPipeline } from "@/lib/performance/optimizedPipeline";
 import { smartCacheManager } from "@/lib/performance/smartCacheManager";
 import type { WeatherCondition } from "../types/types";
 
+// Vercel Hobby caps Node functions at 60s. Slated for Phase-3 deletion, but
+// exported until then so a Vercel kill cannot truncate a generation mid-flight
+// (refund-after-death is impossible). Timeout-charge policy: see route.ts.
+export const maxDuration = 60;
+
 // Optimized logic for ultra-fast itinerary generation
 const getCachedItinerary = unstable_cache(
     async (requestBody: any, hash: string) => {

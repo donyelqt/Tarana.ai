@@ -87,3 +87,4 @@ tarana-mobile/build/
 # Local IDE/tooling configs (environment-specific, not for commit)
 /.lsp.json
 /.dap.json
+.idea/

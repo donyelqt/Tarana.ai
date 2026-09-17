@@ -2,7 +2,9 @@ import {
   BENCH_TOKEN_HEADER,
   benchBypassEnabled,
   computeBenchToken,
+  configuredBenchUserId,
   currentWindowIndex,
+  resolveBenchUserId,
   verifyBenchToken,
 } from "../benchToken";
 
@@ -90,5 +92,23 @@ describe("benchToken", () => {
 
   it("exposes a stable header name", () => {
     expect(BENCH_TOKEN_HEADER).toBe("x-bench-token");
+  });
+
+  it("resolves the configured BENCH_USER_ID over the default", () => {
+    const CUSTOM_ID = "11111111-2222-3333-4444-555555555555";
+    process.env.BENCH_USER_ID = CUSTOM_ID;
+    enableWith(TEST_SECRET);
+    const w = currentWindowIndex(FIXED_NOW);
+    const token = tokenFor(w);
+
+    expect(configuredBenchUserId()).toBe(CUSTOM_ID);
+    expect(verifyBenchToken(token, FIXED_NOW)).toBe(true);
+    // resolveBenchUserId defaults to the real clock, so use the current window
+    // (the fixed-clock token from 2026-09-14 is outside the ±1 window today).
+    const wNow = currentWindowIndex();
+    expect(resolveBenchUserId(tokenFor(wNow))).toBe(CUSTOM_ID);
+    // A valid token with no configured id still resolves to the default.
+    delete process.env.BENCH_USER_ID;
+    expect(resolveBenchUserId(tokenFor(wNow))).toBe("00000000-0000-0000-0000-000000000001");
   });
 });

@@ -42,8 +42,11 @@ export type StructuredItinerary = z.infer<typeof ItinerarySchema>;
  * Structured Output Engine - Guarantees valid JSON
  */
 export class StructuredOutputEngine {
-  private static readonly MAX_RETRIES = 3;
-  private static readonly TIMEOUT_MS = 45000;
+  private static readonly MAX_RETRIES = 2;
+  // Bounded under the 60s Vercel Hobby kill: 2 retries × 25s timeout = 50s,
+  // leaving headroom for route-level retry delays. Previously 3 × 45s = 135s,
+  // which a Vercel kill truncated mid-flight (refund-after-death impossible).
+  private static readonly TIMEOUT_MS = 25000;
 
   /**
    * Generate itinerary with guaranteed structure using enhanced JSON mode

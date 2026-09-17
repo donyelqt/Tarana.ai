@@ -63,6 +63,13 @@ const pipelineCoordinator = new PipelineCoordinator({
   itineraryComposer: itineraryComposerAgent,
 });
 
+// Vercel Hobby caps Node functions at 60s. Generations run 7.5–60s per bench
+// docs; a Vercel kill skips every refund block by construction, so total work
+// is bounded below this limit (retries × timeout + delay < 60s) and the
+// timeout-charge policy is documented here: a request killed at the platform
+// limit is charged with no possible refund (refund-after-death is impossible).
+export const maxDuration = 60;
+
 const USE_MULTI_AGENT = process.env.USE_MULTI_AGENT === "true";
 
 async function consumeCredit(userId: string, prompt: string) {
