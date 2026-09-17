@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
-import { verifyBenchToken, resolveBenchUserId, BENCH_TOKEN_HEADER } from '@/lib/auth/benchToken';
+import { resolveBenchUserId, BENCH_TOKEN_HEADER } from '@/lib/auth/benchToken';
 
 export function unauthorized(message = 'Authentication required') {
   return NextResponse.json({ error: message, text: '' }, { status: 401 });
