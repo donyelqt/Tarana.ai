@@ -15,6 +15,11 @@ import { API_KEY, geminiModel } from "../../lib/config";
 import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
 import { withAuth, getUserId, unauthorized } from "@/lib/auth/withAuth";
 
+// Vercel Hobby caps Node functions at 60s. Slated for Phase-3 deletion, but
+// exported until then so a Vercel kill cannot truncate a generation mid-flight
+// (refund-after-death is impossible). Timeout-charge policy: see ../route.ts.
+export const maxDuration = 60;
+
 // Ultra-fast cache with aggressive optimization
 const CACHE_TTL = 3 * 60 * 1000; // 3 minutes for faster updates
 const REQUEST_TIMEOUT = 15000; // 15 seconds max
