@@ -1,23 +1,20 @@
 /**
  * Performance Optimization Module Index
- * Centralized exports for ultra-fast itinerary generation
- * 
+ * Centralized exports for itinerary generation helpers
+ *
  * @author Doniele Arys Antonio
  * @version 3.0.0
  */
 
-export { UltraFastItineraryEngine, ultraFastItineraryEngine } from './ultraFastItineraryEngine';
+// Dead-code cleanup 2026-09-19 (Osmani review): removed exports for
+// optimizedPipeline, ultraFastItineraryEngine, performanceBenchmark,
+// test-optimizations, test-week1-optimizations — all had zero live consumers
+// (only test/bench; the surviving single route uses unstable_cache directly).
 export { SmartCacheManager, smartCacheManager } from './smartCacheManager';
 export { ParallelTrafficProcessor, parallelTrafficProcessor } from './parallelTrafficProcessor';
-export { OptimizedPipeline, optimizedPipeline } from './optimizedPipeline';
-export { PerformanceBenchmark, performanceBenchmark } from './performanceBenchmark';
 
 // Week 1 Optimization Testing & Monitoring (NEW)
-export { performanceMonitor, trackPerformance, WEEK1_BASELINE, runPerformanceTest } from './performanceMonitor';
-export { default as week1Tests } from './test-week1-optimizations';
+export { performanceMonitor, trackPerformance, WEEK1_BASELINE } from './performanceMonitor';
 
-export type { FastGenerationOptions, GenerationMetrics } from './ultraFastItineraryEngine';
 export type { CacheEntry, CacheStats, SmartCacheConfig } from './smartCacheManager';
 export type { TrafficProcessingOptions, TrafficProcessingMetrics } from './parallelTrafficProcessor';
-export type { PipelineMetrics, OptimizedGenerationRequest } from './optimizedPipeline';
-export type { BenchmarkResult, BenchmarkSuite } from './performanceBenchmark';
