@@ -11,7 +11,6 @@ import { SchemaType, type Schema } from "@google/generative-ai";
 import { geminiModel } from './config';
 import { StructuredOutputEngine, ItinerarySchema, PeriodSchema, type StructuredItinerary } from './structuredOutputEngine';
 import { EnhancedPromptEngine, JsonSyntaxValidator } from './enhancedPromptEngine';
-import { smartCacheManager as intelligentCacheManager } from '@/lib/performance/smartCacheManager';
 
 interface StrategyControls {
   signal?: AbortSignal;
