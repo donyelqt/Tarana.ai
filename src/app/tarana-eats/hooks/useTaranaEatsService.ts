@@ -55,7 +55,7 @@ export const useTaranaEatsService = () => {
         location: "Baguio City",
         image: restaurant.image
       };
-      const newMealId = await saveMeal(session.user.id, newSavedMeal, selectedItems);
+      const newMealId = await saveMeal(newSavedMeal, selectedItems);
       setLoading(false);
       return newMealId;
     } catch (err) {

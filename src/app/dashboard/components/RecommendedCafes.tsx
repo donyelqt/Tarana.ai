@@ -17,7 +17,7 @@ export const RecommendedCafes = () => {
     queryKey: ["saved-meals", session?.user?.id],
     queryFn: async () => {
       if (!session?.user?.id) return [];
-      return await getSavedMeals(session.user.id);
+      return await getSavedMeals();
     },
     enabled: !!session?.user?.id,
     staleTime: 5 * 60 * 1000,

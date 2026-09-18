@@ -99,6 +99,13 @@
 ### Checkpoint: Complete
 - [ ] Cost doc published (p50/p95 latency + $/itinerary); all acceptance criteria met; ready for review.
 
+## 6b. NEW TASK — saved_meals RLS remediation (P0, found 2026-09-19)
+- [ ] Task 11 (CRITICAL, live prod data exposure): anon key can SELECT all 43 saved_meals rows, PATCH/DELETE any user's row on `vryamakpawtzmvgnifie` — permissive policies from the deleted `FIX_SAVED_MEALS_RLS_FINAL.sql` are live; the intended `auth.uid() = user_id` policies were never applied. **Split fix, strict deploy order:**
+  - [x] 11a code (DONE 2026-09-19): `supabaseMeals.ts` moved off the anon key onto session-authed server routes (`/api/saved-meals` GET/POST existed; added `[id]` GET scoped by `user_id` — fixes the id-only authz hole — and DELETE with row-assert, mirroring `savedItineraries`). All 6 client call sites rewired; client no longer sends a forgeable `userId` (server derives from session). Verified: tsc clean, 258/264 tests (only pre-existing emailConfig env failure), lint baseline 14.
+  - [ ] 11b mobile: set Supabase project setting `SUPABASE_JWT_SECRET = NEXTAUTH_SECRET` (dashboard) so the mobile Bearer NextAuth JWT validates → `auth.uid()` = `sub` = `public.users.id`; without it `importWebMeals` breaks under strict RLS.
+  - [ ] 11c SQL (APPLY VIA DASHBOARD SQL EDITOR AFTER 11a/11b deploy): `supabase/migrations/20260919000000_saved_meals_rls_remediation.sql` — drop permissive + stale policies, recreate `auth.uid() = user_id` ×4. Probe: `scripts/prove-saved-meals-rls.mjs` exit 0 (anon → 0 rows/4xx; service-role → 2xx).
+  **Why not first:** 11a is required before 11c or real users lose saved meals (auth.uid() is NULL for all callers today — app mints no Supabase JWT).
+
 ## 5. OPEN QUESTIONS (need human rulings)
 - **Q1 (blocking):** Credits = per served request (keep charging on cache hits; fix the assessment's test) or per GPU-second (lookup-then-charge reorder everywhere)?
 - **Q2 — RULED 2026-09-18 (user):** Vercel **Hobby** → `maxDuration = 60` on generator routes (implemented, Task 4).
