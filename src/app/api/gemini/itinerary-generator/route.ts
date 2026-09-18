@@ -4,6 +4,7 @@ import { createHash, randomUUID } from "crypto";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/auth";
 import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
+import { takeRefundSnapshot } from "@/lib/observability/refundMetrics";
 import { geminiModel, API_KEY } from "./lib/config";
 import { getPeakHoursContext } from "@/lib/traffic";
 import { buildDetailedPrompt } from "./lib/contextBuilder";
@@ -149,6 +150,13 @@ async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
     } finally {
         if (session) {
             clearSession(session.id);
+        }
+        // Refund observability: emit the per-request counter snapshot so a
+        // spike of failed/noop refunds is visible in Vercel logs. Swallowed
+        // refund failures were previously invisible by construction.
+        const snapshot = takeRefundSnapshot();
+        if (snapshot.refunded > 0 || snapshot.failed > 0 || snapshot.noop > 0) {
+          console.log(`[refund-metrics] request=${session?.id ?? '?'} refunded=${snapshot.refunded} failed=${snapshot.failed} noop=${snapshot.noop}`);
         }
     }
 }
@@ -438,6 +446,10 @@ export async function POST(req: NextRequest) {
                     // best-effort; swallow refund errors
                 }
             }
+            const zeroSnapshot = takeRefundSnapshot();
+            if (zeroSnapshot.refunded > 0 || zeroSnapshot.failed > 0 || zeroSnapshot.noop > 0) {
+              console.log(`[refund-metrics] request=${userId || '?'} refunded=${zeroSnapshot.refunded} failed=${zeroSnapshot.failed} noop=${zeroSnapshot.noop} reason=zero-activity`);
+            }
             return NextResponse.json({
                 text: responseData?.text ?? "",
                 refunded: true,
@@ -462,6 +474,13 @@ export async function POST(req: NextRequest) {
             } catch {
                 // best-effort; swallow refund errors
             }
+        }
+        // Refund observability: per-request counter snapshot (see
+        // handleMultiAgentPost finally). Emitted on the failure path too so a
+        // charged-but-unrefunded request is visible even when processing died.
+        const snapshot = takeRefundSnapshot();
+        if (snapshot.refunded > 0 || snapshot.failed > 0 || snapshot.noop > 0) {
+          console.log(`[refund-metrics] request=${userId || '?'} refunded=${snapshot.refunded} failed=${snapshot.failed} noop=${snapshot.noop}`);
         }
         // req.body is a ReadableStream in the App Router (JSON.stringify() yields
         // "{}"), so never derive a correlation id from it. Use userId + URL.
