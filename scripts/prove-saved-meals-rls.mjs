@@ -49,22 +49,38 @@ const main = async () => {
   });
   check("anon INSERT saved_meals denied", !ins.ok, `HTTP ${ins.status} (want 4xx)`);
 
-  // 3) anon UPDATE: must be denied
-  const upd = await fetch(`${url}/rest/v1/saved_meals?id=eq.00000000-0000-0000-0000-000000000000`, {
-    method: "PATCH",
-    headers: h(anon),
-    body: JSON.stringify({ cafe_name: "rls-probe" }),
-  });
-  check("anon UPDATE saved_meals denied", !upd.ok, `HTTP ${upd.status} (want 4xx)`);
+  // 3) anon UPDATE on a REAL row: RLS must filter the write to 0 rows.
+  //    PostgREST returns 204 even for a RLS-emptied UPDATE (0 rows affected),
+  //    so the authoritative signal is the readback: value unchanged.
+  const real = await fetch(`${url}/rest/v1/saved_meals?select=id,meal_type&limit=1`, { headers: h(service) });
+  const realRows = await real.json().catch(() => []);
+  const realRow = Array.isArray(realRows) && realRows[0] ? realRows[0] : null;
+  const beforeMealType = realRow?.meal_type;
+  if (realRow) {
+    const upd = await fetch(`${url}/rest/v1/saved_meals?id=eq.${realRow.id}`, {
+      method: "PATCH",
+      headers: h(anon),
+      body: JSON.stringify({ meal_type: "rls-probe-write" }),
+    });
+    const after = await fetch(`${url}/rest/v1/saved_meals?select=meal_type&id=eq.${realRow.id}`, { headers: h(service) })
+      .then(r => r.json()).catch(() => []);
+    const afterMealType = Array.isArray(after) && after[0] ? after[0].meal_type : undefined;
+    check("anon UPDATE saved_meals no-effect", upd.status !== 500 && afterMealType === beforeMealType,
+      `HTTP ${upd.status}, meal_type ${JSON.stringify(beforeMealType)} -> ${JSON.stringify(afterMealType)} (want unchanged)`);
+  } else {
+    check("anon UPDATE saved_meals no-effect", false, "no service-role row available to probe");
+  }
 
-  // 4) anon DELETE: must affect 0 rows / be denied
-  const del = await fetch(`${url}/rest/v1/saved_meals?id=eq.00000000-0000-0000-0000-000000000000`, {
-    method: "DELETE",
-    headers: h(anon),
-  });
-  const delBody = await del.text().catch(() => "");
-  const delDenied = !del.ok || delBody.trim() === "[]" || delBody.trim() === "";
-  check("anon DELETE saved_meals no-effect", delDenied, `HTTP ${del.status} body=${delBody.slice(0, 60)}`);
+  // 4) anon DELETE on a REAL row: RLS must filter it; row must still exist.
+  if (realRow) {
+    const del = await fetch(`${url}/rest/v1/saved_meals?id=eq.${realRow.id}`, { method: "DELETE", headers: h(anon) });
+    const still = await fetch(`${url}/rest/v1/saved_meals?select=id&id=eq.${realRow.id}`, { headers: h(service) })
+      .then(r => r.json()).catch(() => []);
+    check("anon DELETE saved_meals no-effect", del.status !== 500 && Array.isArray(still) && still.length === 1,
+      `HTTP ${del.status}, row still exists: ${Array.isArray(still) && still.length === 1}`);
+  } else {
+    check("anon DELETE saved_meals no-effect", false, "no service-role row available to probe");
+  }
 
   // 5) service-role SELECT: must still work (server path intact)
   const svc = await fetch(`${url}/rest/v1/saved_meals?select=id&limit=1`, { headers: h(service) });
