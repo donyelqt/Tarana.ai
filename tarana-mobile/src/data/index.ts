@@ -17,7 +17,7 @@
  * before use. Every write binds `?` parameters (see ../db).
  */
 import { config } from '../config';
-import { exchangeForMobileToken, clearStoredToken } from '../auth';
+import { exchangeForMobileToken, clearStoredToken, withMobileAuth } from '../auth';
 import { createMobileSupabaseClient } from '../supabase';
 import { getCityCenter, getCityTimezone } from 'tarana-web/data/cityConfig';
 import * as Db from '../db';
@@ -150,21 +150,29 @@ function mealGoodFor(value: WebMealRow["good_for"]): string[] {
 /**
  * One-way web meals import (§7.4 twin of importWebTrips): same exchange,
  * same profile, same (source, source_id) idempotency — `saved_meals` rows
- * land in SQLite via upsertImportedMeal. Probes confirm the posture:
- * anon SELECT on saved_meals returns rows (count=43), while itineraries
- * returns zero — so the mobile token client copies meals directly like
- * trips. No new auth surface.
+ * land in SQLite via upsertImportedMeal.
+ *
+ * RLS remediation 2026-09-19: this no longer reads saved_meals directly with
+ * the anon key (prod had permissive USING(true) policies — any client could
+ * read/write all users' rows; strict auth.uid()=user_id policies are being
+ * re-applied, and an anon read would then return zero rows). Identity comes
+ * from the server-exchanged mobile token: the request hits
+ * GET /api/saved-meals with `Authorization: Bearer <mobile-token>`, the
+ * middleware validates the token and injects the session identity, and the
+ * route queries with the service-role admin client scoped to the session —
+ * the same pattern as the web app and importWebTrips.
  */
-export async function importWebMeals(userId: string, profileId: string): Promise<{ imported: number }> {
-  const client = await createMobileSupabaseClient();
-  const { data, error: qError } = await client
-    .from('saved_meals')
-    .select('id,cafe_name,meal_type,price,good_for,location,menu_items')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-  if (qError) throw new Error(qError.message);
-
-  const rows = (Array.isArray(data) ? data : []) as WebMealRow[];
+export async function importWebMeals(_userId: string, profileId: string): Promise<{ imported: number }> {
+  const baseUrl = config.webBaseUrl.replace(/\/$/, '');
+  const res = await fetch(`${baseUrl}/api/saved-meals`, {
+    method: 'GET',
+    headers: await withMobileAuth({ Accept: 'application/json' }),
+  });
+  if (!res.ok) {
+    throw new Error(`Web meals import failed (HTTP ${res.status})`);
+  }
+  const payload = (await res.json()) as { data?: WebMealRow[] };
+  const rows = (Array.isArray(payload?.data) ? payload.data : []) as WebMealRow[];
   let imported = 0;
   for (const row of rows) {
     if (!row || typeof row.id !== 'string') continue;
