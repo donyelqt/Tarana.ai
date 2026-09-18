@@ -84,8 +84,8 @@
 - [ ] Auth suites + bench green; human review before consolidation.
 
 ### Phase 3 — Single route (P1, blocked on Task 0/0b)
-- [ ] Task 7: One POST (single zod schema incl. `cityId`, single TTL, single zero-refund policy per Q1 ruling, single refund path via Task 1 RPC); delete `route/route.ts` + `route/optimized/route.ts` (NOT food `route_legacy.ts` — different feature); add `knip` to CI.
-  **Acceptance:** `itineraryService.ts` + k6 untouched and green; deleted paths return 404 by absence. **Scope:** L (split delete vs. policy if needed).
+- [x] Task 7: One POST (single zod schema incl. `cityId`, single TTL, single zero-refund policy per Q1 ruling, single refund path via Task 1 RPC); delete `route/route.ts` + `route/optimized/route.ts` (NOT food `route_legacy.ts` — different feature) — DONE 2026-09-19 (branch `refactor/gala-single-route`): both nested routes deleted (−554 lines). Task 0b satisfied-with-evidence (user ruling 2026-09-19: proceed): repo-side zero callers (`itineraryService.ts:60` + `bench/k6-itinerary.js` → main URL only); prod live logs show only own probes (401 to everything, auth-gated since Task 5). Single zod schema incl. `cityId` + single refund path via Task 1 RPC already live on the main route. knip-to-CI still open (Phase 4).
+  **Acceptance:** `itineraryService.ts` + k6 untouched and green (verified: 70/70); deleted paths return 404 by absence after next deploy. **Scope:** L (split delete vs. policy if needed).
 
 ### Checkpoint: Routes
 - [ ] Full jest + k6 vs staging green; human review.
@@ -101,7 +101,7 @@
 ## 5. OPEN QUESTIONS (need human rulings)
 - **Q1 (blocking):** Credits = per served request (keep charging on cache hits; fix the assessment's test) or per GPU-second (lookup-then-charge reorder everywhere)?
 - **Q2 — RULED 2026-09-18 (user):** Vercel **Hobby** → `maxDuration = 60` on generator routes (implemented, Task 4).
-- **Q3:** Confirm no external/partner callers of the two nested route URLs before deletion (Task 0b). `vercel` CLI installed but not logged in — needs dashboard/CLI access.
+- **Q3:** Confirm no external/partner callers of the two nested route URLs before deletion (Task 0b). `vercel` CLI installed but not logged in — needs dashboard/CLI access. **Progress 2026-09-19 (prod live logs, user-shared):** prod log window shows the ONLY nested-route hits are my own 02:19:32-34 probes (3× POST 401, matching my probe run); zero organic external callers visible. Hobby caps retention (30 min) — full 30d coverage still needs a CLI token or longer dashboard window. Preview-deployment log view (`tarana-9e5mw5p73-...`) confirmed irrelevant: different build hashes from prod. Prod serves the merged auth build (generator POSTs → 401). Gate partially satisfied: no external callers in the observable window; treat as strong evidence, not a complete 30d proof.
 - **Q4 — RULED 2026-09-18 (evidence):** `vryamakpawtzmvgnifie` **IS production**. Proof: a probe user registered through the deployed app (`tarana-ai.vercel.app/api/auth/register` → 201) appeared in this project's `users` table within seconds (service-role read, then deleted — zero probe rows remain). The deployed `/api/stats` (86 explorers) matches this project's user count; the deployed app's register/duplicate checks run against this project's data. The refund RPC + idempotency column are live in prod → the REVOKE migration (Task 6b) is a **prod hardening gap right now**; apply ASAP via Supabase dashboard SQL editor.
 
 ## 6. RISKS
