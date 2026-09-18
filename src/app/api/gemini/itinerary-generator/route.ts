@@ -280,6 +280,18 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // Hard 32KB body cap (Task 9 hardening): the schema validates shape
+        // but not raw size; an unbounded req.json() lets any client push an
+        // oversized payload through zod + downstream compute. k6 bench payload
+        // is ~350B; mobile does not call this route. Reject loud with 413.
+        const contentLength = Number(req.headers.get('content-length') ?? 0);
+        if (contentLength > 32 * 1024) {
+            return NextResponse.json({
+                text: "",
+                error: "Request body too large",
+            }, { status: 413 });
+        }
+
         const rawRequestBody = await req.json();
         const parsedRequestBody = itineraryRequestSchema.safeParse(rawRequestBody);
 

@@ -9,9 +9,6 @@
 import { createHash } from 'crypto';
 import { generateEmbedding } from '../ai/embeddings';
 import { supabaseAdmin } from '../data/supabaseAdmin';
-import { isCurrentlyPeakHours, getManilaTime } from '../traffic/peakHours';
-import { tomtomTrafficService } from '../traffic/tomtomTraffic';
-import { getActivityCoordinates } from '../data/baguioCoordinates';
 import type { Activity } from '../../app/itinerary-generator/data/itineraryData';
 import { sampleItineraryCombined } from '../../app/itinerary-generator/data/itineraryData';
 
@@ -25,7 +22,6 @@ export interface IntelligentSearchConfig {
   diversityWeight: number;
   enableFuzzyMatching: boolean;
   enableContextualAnalysis: boolean;
-  enableTemporalOptimization: boolean;
   enableDiversityBoost: boolean;
   maxResults: number;
   minSimilarityThreshold: number;
@@ -40,7 +36,6 @@ export const DEFAULT_SEARCH_CONFIG: IntelligentSearchConfig = {
   diversityWeight: 0.05,
   enableFuzzyMatching: true,
   enableContextualAnalysis: true,
-  enableTemporalOptimization: true,
   enableDiversityBoost: true,
   maxResults: 50,
   minSimilarityThreshold: 0.1
@@ -309,111 +304,6 @@ class ContextualAnalyzer {
   }
 }
 
-/**
- * Temporal optimization engine with real-time traffic integration
- */
-class TemporalOptimizer {
-  static async calculateTemporalScore(activity: Activity, context: SearchContext): Promise<{ score: number; factors: string[] }> {
-    const factors: string[] = [];
-    let score = 0;
-
-    // Get activity coordinates for traffic data
-    const coordinates = getActivityCoordinates(activity.title);
-    let realTimeTrafficScore = 0;
-    
-    if (coordinates) {
-      try {
-        // Fetch real-time traffic data
-        const trafficData = await tomtomTrafficService.getLocationTrafficData(coordinates.lat, coordinates.lon);
-        if (trafficData) {
-          const { trafficLevel, recommendationScore } = trafficData;
-          
-          // Convert traffic level to score bonus/penalty
-          switch (trafficLevel) {
-            case 'LOW':
-              realTimeTrafficScore = 0.3;
-              factors.push(`Real-time traffic: ${trafficLevel} (${Math.round(recommendationScore)}% optimal)`);
-              break;
-            case 'MODERATE':
-              realTimeTrafficScore = 0.1;
-              factors.push(`Real-time traffic: ${trafficLevel} (${Math.round(recommendationScore)}% optimal)`);
-              break;
-            case 'HIGH':
-              realTimeTrafficScore = -0.2;
-              factors.push(`Real-time traffic: ${trafficLevel} (${Math.round(recommendationScore)}% optimal)`);
-              break;
-            case 'SEVERE':
-              realTimeTrafficScore = -0.4;
-              factors.push(`Real-time traffic: ${trafficLevel} (${Math.round(recommendationScore)}% optimal)`);
-              break;
-          }
-        }
-      } catch (error) {
-        console.warn(`Traffic data unavailable for ${activity.title}:`, error);
-        factors.push('Traffic data unavailable - using peak hours only');
-      }
-    }
-
-    // Combine real-time traffic with peak hours data
-    if (activity.peakHours) {
-      const isCurrentlyPeak = isCurrentlyPeakHours(activity.peakHours);
-      if (!isCurrentlyPeak) {
-        score += 0.4;
-        factors.push('Currently outside peak hours');
-      } else {
-        score -= 0.3;
-        factors.push('Currently in peak hours');
-      }
-    } else {
-      score += 0.2;
-      factors.push('No peak hour restrictions');
-    }
-
-    // Add real-time traffic score
-    score += realTimeTrafficScore;
-
-    // Time of day alignment
-    const activityTime = activity.time.toLowerCase();
-    const timeAlignment = this.calculateTimeAlignment(activityTime, context.timeOfDay);
-    score += timeAlignment * 0.3;
-    if (timeAlignment > 0.5) {
-      factors.push(`Good time alignment: ${context.timeOfDay}`);
-    }
-
-    // Duration appropriateness
-    const durationScore = this.calculateDurationScore(activity, context.duration);
-    score += durationScore * 0.3;
-    if (durationScore > 0.5) {
-      factors.push(`Duration appropriate: ${context.duration} days`);
-    }
-
-    return { score: Math.max(0, Math.min(score, 1.0)), factors };
-  }
-
-  private static calculateTimeAlignment(activityTime: string, preferredTime: string): number {
-    const timeMap: Record<string, string[]> = {
-      morning: ['am', 'morning', '6:00', '7:00', '8:00', '9:00', '10:00', '11:00'],
-      afternoon: ['pm', 'afternoon', '12:00', '1:00', '2:00', '3:00', '4:00', '5:00'],
-      evening: ['evening', 'night', '6:00 pm', '7:00 pm', '8:00 pm', '9:00 pm'],
-      anytime: ['24 hours', 'anytime', 'flexible']
-    };
-
-    const preferredKeywords = timeMap[preferredTime] || [];
-    const matches = preferredKeywords.filter((keyword: string) =>
-      activityTime.includes(keyword)
-    ).length;
-    
-    return matches > 0 ? Math.min(matches / preferredKeywords.length * 2, 1.0) : 0.3;
-  }
-
-  private static calculateDurationScore(activity: Activity, duration: number): number {
-    // Longer trips can accommodate more diverse activities
-    if (duration === 1) return 0.8; // Prioritize must-see attractions
-    if (duration === 2) return 0.9; // Good balance
-    if (duration >= 3) return 1.0; // Can include everything
-    return 0.7;
-  }
-}
 
 /**
  * Diversity engine to ensure varied recommendations
@@ -607,8 +497,9 @@ export class IntelligentSearchEngine {
         }
       }
 
-      // Temporal optimization is deferred to the main pipeline to avoid excessive API calls.
-      scores.temporal = 0.5; // Assign a neutral score
+      // Temporal score is a fixed neutral constant (real-time traffic analysis
+      // was deferred to the main pipeline; TemporalOptimizer deleted 2026-09-19).
+      scores.temporal = 0.5; // Neutral score — keeps composite weights stable.
       metadata.temporalFactors.push('Real-time traffic analysis deferred');
 
       // Diversity scoring
