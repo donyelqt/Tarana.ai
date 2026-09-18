@@ -3,6 +3,7 @@
  */
 
 import { supabaseAdmin } from '../data/supabaseAdmin';
+import { recordRefund } from '../observability/refundMetrics';
 import {
   CreditBalance,
   ConsumeCreditsRequest,
@@ -264,6 +265,7 @@ export class CreditService {
 
     if (!supabaseAdmin) {
       console.warn(`[CreditService] refundCredits skipped: supabaseAdmin not available for ${request.userId}`);
+      recordRefund('failed');
       return false;
     }
 
@@ -282,6 +284,7 @@ export class CreditService {
 
       if (error) {
         console.error(`[CreditService] refund_credits RPC failed for ${userId}:`, error);
+        recordRefund('failed');
         return false;
       }
 
@@ -290,13 +293,16 @@ export class CreditService {
         // silent) with the key so replays vs missing users stay
         // distinguishable in logs.
         console.warn(`[CreditService] refund no-op for ${userId} (key ${idempotencyKey})`);
+        recordRefund('noop');
         return false;
       }
 
       console.log(`[CreditService] ✅ Refunded credits for ${userId}`);
+      recordRefund('refunded');
       return true;
     } catch (error: any) {
       console.error(`[CreditService] ❌ Exception during refundCredits for ${userId}:`, error?.message || error);
+      recordRefund('failed');
       return false;
     }
   }
