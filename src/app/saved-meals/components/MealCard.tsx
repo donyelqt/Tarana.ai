@@ -43,7 +43,7 @@ const MealCard = ({ meal }: MealCardProps) => {
   const handleConfirmDelete = async () => {
     if (!session?.user?.id) return;
     try {
-      const success = await deleteMeal(session.user.id, meal.id);
+      const success = await deleteMeal(meal.id);
       if (success) {
         // Invalidate React Query cache to trigger refetch
         await queryClient.invalidateQueries({ queryKey: ['saved-meals'] });

@@ -92,7 +92,7 @@ const SavedMealPage = () => {
   const handleDeleteMeal = async () => {
     if (!session?.user?.id) return;
     try {
-      const success = await deleteMeal(session.user.id, mealId);
+      const success = await deleteMeal(mealId);
       if (success) {
         // Invalidate cache
         await queryClient.invalidateQueries({ queryKey: ['saved-meals'] });
@@ -122,7 +122,7 @@ const SavedMealPage = () => {
   const handleDeleteIndividualMeal = async (individualMealId: string) => {
     if (!session?.user?.id) return;
     try {
-      const success = await deleteMeal(session.user.id, individualMealId);
+      const success = await deleteMeal(individualMealId);
       if (success) {
         // Invalidate cache to trigger refetch
         await queryClient.invalidateQueries({ queryKey: ['saved-meal', mealId] });
@@ -157,7 +157,7 @@ const SavedMealPage = () => {
 
     try {
       // Get existing saved meals to determine the next custom meal number
-      const existingMeals = await getSavedMeals(session.user.id);
+      const existingMeals = await getSavedMeals();
       
       // Filter meals from this specific restaurant to get accurate count
       const restaurantMeals = existingMeals.filter(meal => meal.cafeName === mealDetails.cafeName);
@@ -176,7 +176,7 @@ const SavedMealPage = () => {
         image: menuItem.image || mealDetails.image,
       };
 
-      const savedId = await saveMeal(session.user.id, newMeal, [{
+      const savedId = await saveMeal(newMeal, [{
         name: menuItem.name,
         price: menuItem.price,
         quantity: 1,
