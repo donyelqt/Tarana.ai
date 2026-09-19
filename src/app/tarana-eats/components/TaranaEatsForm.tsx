@@ -127,7 +127,12 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
 
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6">
-      <h2 className="text-2xl font-bold mb-2">Where to Eat? We Got You.</h2>
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-600">
+        Tarana Eats
+      </p>
+      <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-[1.75rem]">
+        Where to Eat? We Got You.
+      </h2>
       <p className="text-gray-500 mb-6">Enter your budget and group size. We&apos;ll show you cafés and meals that fit.</p>
       {showOutOfCredits && (
         <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
