@@ -3,9 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 import { z } from 'zod';
-import { logger } from '@/lib/observability/logger';
-import { getRequestId } from '@/middleware/requestId';
-
+import { handleApiError } from '@/lib/errors/handleApiError';
 // Zod validation schema for saved meals
 const SavedMealSchema = z.object({
   cafe_name: z.string().min(1, 'Cafe name is required').max(200),
@@ -56,11 +54,7 @@ export async function GET(request: NextRequest) {
       count: data?.length || 0
     });
   } catch (error) {
-    logger.error('Error fetching saved meals:', { error }, getRequestId(request));
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, request);
   }
 }
 
@@ -120,10 +114,6 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    logger.error('Error saving meal:', { error }, getRequestId(request));
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, request);
   }
 }

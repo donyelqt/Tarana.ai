@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
-import { logger } from '@/lib/observability/logger';
+import { handleApiError } from '@/lib/errors/handleApiError';
 import { mapRowToSavedItinerary, resolveItineraryImage, UpdateItinerarySchema } from '@/lib/data/itineraryMapper';
 import { z } from 'zod';
-import { getRequestId } from '@/middleware/requestId';
-
 function toDbPayload(validated: z.infer<typeof UpdateItinerarySchema>) {
   const payload: Record<string, unknown> = {};
   if (validated.title !== undefined) payload.title = validated.title;
@@ -57,11 +55,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
     return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) });
   } catch (error) {
-    logger.error('Error fetching itinerary:', { error }, getRequestId(request));
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, request);
   }
 }
 
@@ -105,11 +99,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
     return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) });
   } catch (error) {
-    logger.error('Error updating itinerary:', { error }, getRequestId(request));
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, request);
   }
 }
 
@@ -134,10 +124,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error('Error deleting itinerary:', { error }, getRequestId(request));
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, request);
   }
 }
