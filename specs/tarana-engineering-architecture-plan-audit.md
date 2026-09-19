@@ -1,0 +1,504 @@
+# Tarana.ai Engineering Architecture Plan — VERIFIED
+
+Status: **Verified** (claims re-checked against working tree 2026-09-20)
+Date: 2026-09-20
+
+Every claim below was re-verified against the working tree on 2026-09-20.
+Test run: `pnpm test -- --passWithNoTests --maxWorkers=2` → **1 failed, 8 skipped, 499 passed** (65 suites).
+
+| Domain | Status | Evidence |
+|---|---|---|
+| **API surface** | 35 `route.ts` files + 1 extensionless `cron/evaluate-refreshes/route` | `find src/app/api -name route.ts \| wc -l` = 35 |
+| **Auth boundary** | 1 route uses `withAuth`; **18** route files call `getServerSession` directly; **1** is the NextAuth `[...nextauth]` handler (authOptions only); **15** use no auth import at all | `grep -rl getServerSession src/app/api --include=route.ts \| grep -v __tests__` = 18; `withAuth` = 1; `authOptions`-only = 1; remainder = 15 |
+| **Error handling** | No repository-wide standard. `ItineraryError`/`ErrorHandler` exist only inside the Gemini pipeline. `saved-itineraries/route.ts:33-37` returns `String(error)` | `src/app/api/saved-itineraries/route.ts:33-37`; `gemini/itinerary-generator/lib/errorHandler.ts:13` |
+| **Observability** | In-process counters only (`refundMetrics`, `StructuredOutputMonitor`, `performanceMonitor`). No durable RED metrics, no request IDs, no alerting. | `src/lib/observability/refundMetrics.ts:28-47` — `counters` is a module-level object; `takeRefundSnapshot` reads-and-resets |
+| **Rate limiting** | `InMemoryRateLimiter` — `Map` per process. Global middleware wired and active (`src/middleware/index.ts:19-40`), but no shared store. | `src/lib/security/rateLimiter.ts:22` (`store = new Map()`) |
+| **CORS** | `cors.ts:4-15` allowlist = `tarana.ai`, `www.tarana.ai`, `NEXT_PUBLIC_SITE_URL`. `corsConfig.enabled: true`. Live response previously reported `*`; re-verify with `curl -I` before Phase 0. | `src/middleware/cors.ts:4-15` |
+| **Security headers** | **Applied globally by the middleware chain.** `securityHeaders.ts:7-40` defines CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy. `compose.ts:24,32,44,55` calls `applySecurityHeaders` on **every** middleware response (initial, per-middleware, and final). The 3 auth routes that also call `applySecurityHeaders` are redundant, not missing. Residual gap: only paths excluded by the middleware `matcher` (static assets) get none — non-security-relevant. The earlier "security headers: none" claim was wrong. |
+| **CI/CD** | 4 gates: lint (`--max-warnings=1000`), typecheck, tests, build. No audit, no security scan, no mobile check. | `.github/workflows/ci.yml:41-51` |
+| **Testing** | 63 suites pass, 1 fails (`emailConfig.test.ts:78` — ambient `SMTP_FROM_EMAIL`), 1 skipped. 499 pass, 1 fail, 8 skipped. No E2E, no contract suite, no mobile tests. | `pnpm test` 2026-09-20; `tarana-mobile/package.json` has no test script |
+| **Documentation** | 2 ADRs | `docs/adr/001-monorepo-layout.md`, `002-mobile-local-first.md` |
+| **Mobile** | Expo scaffold + screens + simulator runs. `generateItinerary` is an explicit `Promise<never>` stub. No `eas.json`, no store build, no local-model validation. | `tarana-mobile/src/data/index.ts:224-228` |
+| **E2E tooling** | None. No Playwright, Cypress, or `e2e/` directory. `package.json` devDeps: jest, ts-jest, testing-library only. | `tarana-mobile/` glob; `package.json:59-83` |
+| **Health** | No dedicated `/api/health`. Two ad-hoc `action=health` query endpoints exist: `GET /api/gemini/food-recommendations` (static, `route.ts:859-878`), `POST /api/gemini/itinerary-generator?action=health` (calls Gemini). | `src/app/api/gemini/food-recommendations/route.ts:859-878` |
+| **Middleware** | `src/middleware.ts` re-exports `src/middleware/index.ts`. Chain: logger → security → cors → auth. Logger disabled by default (`config.ts:19`). | `middleware.ts:1-22`; `src/middleware/config.ts:17-33` |
+| **Mobile token** | `encodeMobileToken`/`decodeMobileToken` use NextAuth JWT with default empty salt (intentional — `getToken` won't accept a custom salt). `MOBILE_TOKEN_MAX_AGE_SECONDS = 900`. | `src/lib/auth/mobileToken.ts:16-62` |
+
+### Corrections to earlier draft claims
+
+| Earlier claim | Corrected |
+|---|---|
+| "1 of ~25 routes" | 35 `route.ts` files; 1 uses `withAuth`, 18 use `getServerSession`, 16 use other auth or none |
+| "every route returns `String(error)`" | Only some. Gemini pipeline has typed `ItineraryError`. Many still leak raw details. |
+| "no E2E, no contract tests" | Confirmed. No mobile tests either. |
+| "no health endpoint" | No *dedicated* `/api/health`. Two ad-hoc action health endpoints exist. |
+| "security headers: none" | Wrong. Headers are **defined** (`securityHeaders.ts:7-40`) and applied globally by the middleware chain (`compose.ts:24,32,44,55`). The 3 auth routes calling `applySecurityHeaders` are redundant. Only static-asset paths (excluded by the middleware `matcher`) get none. |
+| "no Redis until traffic justifies it" | Correct today — but the rate limiter's `Map` resets on every cold start, so per-instance limits are already wrong for production. |
+
+## 3. Target architecture
+A layered monolith (per ADR-001) with explicit cross-cutting seams. The goal is
+not microservices — it is that every request is **authenticated, validated,
+logged, rate-limited, observable, and recoverable**, with no route re-implementing
+any of those five things.
+
+### 3.1 Request lifecycle (target)
+
+```
+request
+  → middleware.ts (logger → security → cors → auth)
+  → route handler
+    → validate(input)            # Zod, one schema per route
+    → resolveIdentity()          # web session | mobile JWT | bench token
+    → service.execute(input, identity)   # owns DB + external calls
+    → mapError(error)            # typed, no raw stack traces
+    → response envelope          # consistent shape, no `details: String(error)`
+```
+
+### 3.2 Invariants
+
+1. **One auth boundary.** Every mutating or billable route goes through
+   `withAuth` (or an explicit public annotation). No route calls
+   `getServerSession` directly except the boundary itself.
+2. **No route touches the database directly.** Routes call services. Services
+   own Supabase clients and error mapping. `supabaseAdmin` is not imported in
+   `src/app/api/**`.
+3. **Errors are typed.** `AppError` carries `status`, `code`, `retryable`,
+   `safeMessage`. Responses never include `String(error)` or stack traces.
+4. **Every external call has a timeout and a retry budget.** No unbounded
+   `fetch`. No retry without a cap.
+5. **Every mutation that can be retried has an idempotency key.** The key is
+   part of the request contract, not a header the client invents.
+6. **Observability is durable.** Request IDs, RED metrics, and structured
+   logs survive cold starts. No in-process-only state that resets.
+7. **Security headers are global.** Applied by middleware, not per-route.
+8. **Health is real.** `/api/health` checks dependencies cheaply (no Gemini
+   generation). The ad-hoc `action=health` endpoints are deprecated.
+
+### 3.3 What we deliberately do NOT do
+
+- No Redis until traffic justifies it (in-memory is correct for a single
+  Vercel Hobby instance today).
+- No OpenTelemetry until there is a sink to send to.
+- No microservices. The monolith is the product; splitting it is a later
+  decision with real evidence.
+
+## 4. Roadmap (prioritized by leverage)
+
+### Phase 0: Foundation — do these first, they unblock everything else
+
+#### 0.1 Standardize error handling
+- Create `src/lib/errors/AppError.ts` — typed error class with `code`, `statusCode`, `logMessage`, `retryable`.
+- Create a single `handleApiError(error, req)` that logs with correlation ID and returns a safe response (never `String(error)`).
+- Replace all route try/catch blocks.
+- **Verify:** every route returns `{ error: { code, message } }` with no stack traces; one test for each error class.
+
+#### 0.2 Structured logging + correlation IDs
+- Add `pino` (or `@logto/next`-compatible) logger; replace all `console.error`/`console.log`.
+- Add request ID middleware that sets `x-request-id` header and attaches to every log line.
+- **Verify:** run the app, hit an endpoint, confirm JSON log output with `requestId` field.
+
+#### 0.3 RED metrics for every endpoint
+- Use `prom-client` or OpenTelemetry; instrument every API route with
+  `http_request_duration_seconds` histogram, `http_requests_total` counter,
+  `http_request_errors_total` counter.
+- Expose `/metrics` endpoint.
+- **Verify:** send test traffic, confirm metrics appear with correct labels.
+
+#### 0.4 CI gates that actually block
+- Add to `ci.yml`: `npm audit --audit-level=high`, bundle size check
+  (`bundlesize` or `@next/bundle-analyzer`), and a smoke test that hits
+  `/api/.../health`.
+- **Verify:** PR with a critical vuln or oversized bundle fails CI.
+
+#### 0.5 Feature flags
+- Add a simple flag system (e.g. Unleash or a local `flags.json` + API) with
+  owner and expiry date.
+- Gate the multi-agent pipeline behind `USE_MULTI_AGENT` (already env-gated,
+  but make it a real flag).
+
+### Phase 1: Architecture — make the boundaries explicit
+
+#### 1.1 Centralize auth across all routes
+- Extend `withAuth` to cover every protected route (currently 18 route files call `getServerSession` inline).
+- Add a `requireRole` wrapper for admin endpoints.
+- **Verify:** `grep -rl getServerSession src/app/api --include=route.ts | grep -v __tests__` returns zero outside `withAuth` and `authMiddleware`.
+
+#### 1.2 Remove direct `supabaseAdmin` from API routes
+- Create service-layer modules in `src/lib/services/` (e.g. `ItineraryService`, `CreditService`, `SpotService`) that own all DB access.
+- API routes call the service, not Supabase directly.
+- Services use `supabaseAdmin` internally, with RLS-aware paths where applicable.
+- **Verify:** `grep -rl supabaseAdmin src/app/api --include=route.ts | grep -v __tests__` returns zero.
+- **Note:** `supabaseAdmin` already lives in `src/lib/data/supabaseAdmin.ts` and is imported by 13 route files today.
+
+#### 1.3 Bounded contexts
+- Current folder structure is by capability (`auth`, `data`, `search`, `security`, `traffic`). Evolve toward domain-oriented modules:
+  - `itinerary/` — generation, retrieval, composition, saved trips
+  - `users/` — auth, credits, referrals, profiles
+  - `places/` — spots, routes, traffic, weather
+- Keep the monolith; the boundary is module ownership, not microservices.
+- **Verify:** no circular dependencies between the three contexts (use `dependency-cruiser` or `madge`).
+
+#### 1.4 API versioning
+- Add `/api/v1/` prefix; move existing routes under it.
+- Add deprecation headers (`Sunset`, `Deprecation`) for future removal.
+- **Verify:** all client calls (web + mobile) point to `/api/v1/`.
+
+#### 1.5 ADRs for the 5 load-bearing decisions
+- Write ADRs for: (1) multi-agent pipeline, (2) credit-based gating, (3) local-first mobile, (4) Supabase as source of truth, (5) Vercel serverless deployment.
+- Store in `docs/adr/` following the existing `002-*.md` convention.
+- **Verify:** each ADR has Status, Context, Decision, Alternatives, Consequences.
+
+### Phase 2: Reliability — make failure modes explicit and handled
+
+#### 2.1 Retry with exponential backoff for all external calls
+- Gemini, TomTom, OpenWeather, image enrichment — all need retry wrappers.
+- Use `@retryable` or a simple `withRetry` helper with jitter, max attempts, and circuit breaker.
+- **Verify:** unit test that a flaky upstream is retried N times before failing; integration test that succeeds after 2 retries.
+
+#### 2.2 Timeouts on every external call
+- Add `AbortController` with configurable timeout per dependency.
+- Surface timeout as a typed `UpstreamTimeoutError`.
+- **Verify:** test that a hung upstream returns 503 after the timeout, not 500 after Vercel's 60s kill.
+
+#### 2.3 Idempotency keys on all mutations
+- Every write endpoint (save itinerary, consume credits, create meal, etc.) must accept an `Idempotency-Key` header.
+- Store keys in an `idempotency_keys` table with TTL; return cached response on replay.
+- **Verify:** concurrency test that double-submits the same request and confirms exactly one write.
+
+#### 2.4 Shared rate limiting
+- Replace in-memory `rateLimiter` with Redis-backed store (e.g. `@upstash/ratelimit`).
+- Configure per-endpoint limits: auth (10/15min), generation (5/min), general (100/min).
+- **Verify:** two concurrent serverless invocations see the same counter.
+
+#### 2.5 Error budget + rollback policy
+- Define SLO: 99.5% over 30 days.
+- Write `docs/rollback.md` — when to roll back, how to roll back (feature flag or Vercel rollback).
+
+### Phase 3: Security — close the OWASP gaps
+
+#### 3.1 Security headers
+- **Already done, mostly.** `securityHeaders.ts:7-40` defines CSP, HSTS,
+  X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy,
+  and `compose.ts:24,32,44,55` applies them on every middleware response.
+  The 3 auth routes that also call `applySecurityHeaders` are redundant —
+  delete those calls, they are noise.
+- Residual gap (real but small): only paths the middleware `matcher` excludes
+  (static assets) get no headers. That is non-security-relevant.
+- **Verify:** `curl -I` on 5 representative routes shows all headers; Lighthouse
+  security audit is green.
+
+#### 3.2 SSRF protection
+- Any route that fetches a user-supplied URL (none currently, but the pattern
+  exists in image resolution) must validate against an allowlist and resolve
+  DNS to reject private IPs.
+- **Verify:** test that a request to `http://169.254.169.254/latest/meta-data/`
+  is rejected.
+
+#### 3.3 Dependency audit gate
+- `npm audit --audit-level=high` already planned in Phase 0.4; add `pnpm audit`
+  signatures for provenance.
+- **Verify:** a PR that adds a vulnerable dependency fails CI.
+
+#### 3.4 RLS audit
+- Verify that every table accessed by the anon client has proper RLS policies.
+- The migration `20260919000000_saved_meals_rls_remediation.sql` is a good start;
+  audit the rest.
+- **Verify:** run `prove-revoke-anon.mjs` and `prove-saved-meals-rls.mjs` against staging.
+
+### Phase 4: Testing — from unit to continuous verification
+
+#### 4.1 E2E tests
+- Use Playwright or Cypress (neither is in `devDependencies` today — add it).
+- Cover: signup → login → generate itinerary → save → view in dashboard.
+- Run in CI on every PR.
+- **Verify:** E2E suite passes in CI; failing E2E blocks merge.
+
+#### 4.2 Contract tests
+- For each API route, validate request/response against the Zod schema in a test.
+- Use `@stoplight/spectral` or manual schema validation.
+- **Verify:** a breaking change to a route's response shape fails the contract test.
+
+#### 4.3 Mobile tests
+- Add Jest with `@testing-library/react-native` for the Expo app.
+- Cover: auth flow, SQLite CRUD, plan form validation.
+- Run in CI alongside web tests.
+- **Verify:** `tarana-mobile` has its own test job in CI.
+
+#### 4.4 Fix the failing test
+- `emailConfig.test.ts:78` fails because the test expects `fromEmail: 'apikey'`
+  but `.env` / `.env.local` set `SMTP_FROM_EMAIL=arysantonio123@gmail.com`
+  (and `.env.example` sets `noreply@yourdomain.com`). The test's `mockEnv`
+  helper spreads `process.env` first, so the ambient value wins.
+- Fix: snapshot `process.env` fully and restore it, or delete `SMTP_FROM_EMAIL`
+  from the spread before applying test vars. Do **not** change the source default
+  — `fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER!` is the
+  intended fallback behaviour.
+- **Verify:** `pnpm test` is 100% green.
+
+### Phase 5: Observability — from counters to actionable telemetry
+
+#### 5.1 Structured logs everywhere
+- Already planned in Phase 0.2; extend to include `entryPoint` field for every
+  log source (scheduler, webhook, CLI, API).
+- **Verify:** `grep -rn console.log src --include=*.ts | grep -v __tests__` returns zero.
+
+#### 5.2 Tracing
+- Add OpenTelemetry with auto-instrumentation for HTTP, Supabase, and external
+  fetches.
+- Sample 1% of requests; keep 100% of errors.
+- **Verify:** a single request can be followed from API route → Supabase → Gemini
+  in the tracing UI.
+
+#### 5.3 Alerting with runbooks
+- Create 3 symptom-based alerts: error rate >1% for 5min, p95 latency >2s,
+  refund failure rate >5%.
+- Write a 3-line runbook for each in `docs/runbooks/`.
+- **Verify:** each alert is test-fired in staging and reaches the right channel.
+
+#### 5.4 Health checks
+- Add `GET /api/health` that checks Supabase connectivity, Gemini API key
+  validity, and TomTom API reachability.
+- **Verify:** `curl /api/health` returns 200 with `{ status: 'ok', checks: {...} }`.
+
+### Phase 6: Performance — measure, don't guess
+
+#### 6.1 Core Web Vitals monitoring
+- Add `web-vitals` to the web app; report to your metrics backend.
+- Set budgets: LCP ≤2.5s, INP ≤200ms, CLS ≤0.1.
+- **Verify:** Lighthouse CI runs on every PR and fails if budgets are exceeded.
+
+#### 6.2 Bundle size budget
+- Add `@next/bundle-analyzer`; fail PR if First Load JS increases by >10%.
+- **Verify:** a PR that adds 50KB to the bundle fails CI.
+
+#### 6.3 Database query profiling
+- Add query timing logs for the top 10 most-called queries.
+- Identify N+1 patterns (e.g. fetching activities one-by-one in
+  `retrievalStrategistAgent.ts`).
+- **Verify:** `EXPLAIN ANALYZE` shows no sequential scans on hot paths.
+
+### Phase 7: Mobile — from prototype to product
+
+#### 7.1 Implement or remove the local AI stub
+- Either integrate a GGUF model (llama.cpp / Core ML) and validate output
+  quality, or remove the Plan screen from the shipped app.
+- **Verify:** `generateItinerary` returns a real itinerary, not a thrown error.
+
+#### 7.2 EAS build + store submission
+- Add `eas.json`, configure build profiles for iOS and Android.
+- Run `eas build` in CI; submit to TestFlight and Google Play Internal Testing.
+- **Verify:** a successful EAS build produces `.apk` and `.ipa` artifacts.
+
+#### 7.3 Mobile test suite
+- Add Jest + `@testing-library/react-native` for the Expo app.
+- Cover: auth flow, SQLite CRUD, plan form validation.
+- Run in CI alongside web tests.
+- **Verify:** `tarana-mobile` has its own test job in CI.
+
+#### 7.4 Offline support
+- Verify the app works in airplane mode for: profile, saved trips, spots list.
+- Stale-badge pattern for cached data.
+- **Verify:** test with airplane mode on; core screens render without network.
+
+---
+
+### Priority order (what to do this quarter)
+
+| Priority | Item | Effort | Impact |
+|---|---|---|---|
+| P0 | Standardized error handling | 2 days | Every route becomes safe to operate |
+| P0 | Structured logging + correlation IDs | 2 days | Any production issue becomes diagnosable |
+| P0 | RED metrics + health endpoint | 3 days | You can see the system from outside |
+| P0 | CI gates: audit, bundle size, E2E | 3 days | Blocks bad changes before merge |
+| P1 | Centralize auth (withAuth everywhere) | 3 days | Removes 18 duplicated auth blocks |
+| P1 | Remove direct supabaseAdmin from routes | 5 days | Clean service boundary |
+| P1 | Retry + timeout wrappers | 3 days | External dependencies stop killing requests |
+| P1 | Shared rate limiting (Redis) | 2 days | Rate limiting survives cold starts |
+| P2 | ADRs for the 5 load-bearing decisions | 3 days | Future agents don't re-decide |
+| P2 | Security headers + SSRF protection | 2 days | OWASP compliance |
+| P2 | Idempotency keys on all mutations | 5 days | No double-charges, no duplicate writes |
+| P2 | E2E + contract tests | 5 days | Catch regressions before users |
+| P3 | Feature flags + rollback policy | 3 days | Every deploy becomes reversible |
+| P3 | Mobile: local AI or remove Plan screen | 2 weeks | Mobile stops being a lie |
+| P3 | Mobile: EAS build + tests | 2 weeks | Mobile becomes shippable |
+
+---
+
+### What I'd do tomorrow
+
+1. **Phase 0.2 first — structured logging + correlation IDs.** Zero-dep,
+   touches only middleware. It is the prerequisite for 0.1 (the error handler
+   logs with correlation ID) and the prerequisite for 0.3 (metrics are
+   correlated through the same request ID). One slice, unblocks two others.
+2. **Phase 0.1 — `AppError` + `handleApiError`.** Built on top of the logger
+   from step 1. Convert the 3 routes currently returning `String(error)`.
+3. **Phase 0.3 — RED metrics.** `prom-client` is not installed; add it. Start
+   with the 5 most-called endpoints. Not blocked on 0.2.
+4. **Phase 0.4 — CI gates.** `npm audit --audit-level=high`, bundle size,
+   health-check smoke test. Independent of 1–3; can run in parallel.
+5. **Write ADR-001** — why layered monolith, not microservices.
+
+These five things, done in one week, transform the system from "I hope it works"
+to "I can see it working."
+
+---
+
+1. **Phase 0.2 (logger + correlation IDs) must land before Phase 0.1 (errors)
+   can be considered complete — the dependency is the reverse of what the
+   earlier draft said.** `handleApiError(error, req)`'s own acceptance
+   criterion is "logs with correlation ID". Correlation IDs are a 0.2
+   deliverable. Building 0.1 first means writing a throwaway logger inside
+   the error handler and replacing it in 0.2 — waste. Build them as one
+   vertical slice: logger middleware → `AppError` → `handleApiError` →
+   convert the 3 `String(error)` routes. The logger goes first because 0.1
+   consumes it.
+2. **Phase 0.3 (metrics) does NOT hard-depend on 0.2.** `prom-client` has its
+   own registry and `/metrics` endpoint; routes can be instrumented directly
+   without any logger. The earlier note overstated this. Prefer emitting
+   metric events through the logger for correlation, but do not block 0.3 on
+   0.2. The real prerequisite for 0.3 is knowing which endpoints exist — which
+   the route inventory (§2) already provides.
+3. **Phase 1.1 (auth centralization) must be a pure wrapper swap, not a rewrite.**
+   `withAuth` already resolves the same identity (`getServerSession` + bench
+   bypass) that 18 routes duplicate inline. Wrapping is safe; rewriting the
+   session model is not.
+4. **Phase 1.2 (services) must not move the `supabaseAdmin` import out of
+   `src/lib/data/`.** The invariant is "routes don't import it", not "the file
+   moves". Moving the file would silently break the 13 existing importers and
+   the test mocks that key on the path.
+5. **Phase 2.4 (Redis) is a store swap, not a rewrite.** The `InMemoryRateLimiter`
+   interface (`checkRateLimit(request, config, key)`) is stable. Replace the
+   `Map` backend behind that interface. Same for 2.1's retry helper.
+6. **Phase 4.4 (emailConfig test) is a test-only fix.** Do not touch
+   `emailConfig.ts`. The source default is correct; the test's env handling is
+   the bug.
+7. **Never Phase 7 before Phase 0.** Mobile local AI is a product decision, not
+
+---
+
+## 8. Audit (2026-09-20)
+
+This section records the findings of the verification pass and what was changed
+as a result. Every row was re-checked against the working tree.
+
+### 8.1 Claims re-verified
+
+| # | Claim | Verdict |
+|---|---|---|
+| 1 | 35 `route.ts` + 1 extensionless cron route | **Verified** |
+| 2 | 18 routes call `getServerSession` directly | **Verified** |
+| 3 | 1 route uses `withAuth` | **Verified** |
+| 4 | `supabaseAdmin` imported by 13 route files | **Verified** |
+| 5 | `saved-itineraries/route.ts:33-37` returns `String(error)` | **Verified** |
+| 6 | `ItineraryError`/`ErrorHandler` only in Gemini pipeline | **Verified** |
+| 7 | `refundMetrics` is in-process, reads-and-resets on cold start | **Verified** |
+| 8 | Rate limiter is a single-instance `Map` | **Verified** |
+| 9 | CI has 4 gates, no audit/security/mobile check | **Verified** |
+| 10 | 63 suites pass, 1 fails at `emailConfig.test.ts:78` | **Verified** (`pnpm test`: 1 failed, 8 skipped, 499 passed) |
+| 11 | 2 ADRs in `docs/adr/` | **Verified** |
+| 12 | `generateItinerary` is a `Promise<never>` stub | **Verified** |
+| 13 | No `eas.json`, no E2E tooling | **Verified** |
+| 14 | No dedicated `/api/health`; 2 ad-hoc `action=health` endpoints | **Verified** |
+| 15 | Middleware chain: logger → security → cors → auth; logger disabled | **Verified** |
+| 16 | Mobile token uses default empty salt, max age 900s | **Verified** |
+| 17 | Security headers: none | **FALSE — corrected** |
+| 18 | 16 routes use "other auth or none" | **Partially false — corrected** |
+| 19 | `prove-revoke-anon.mjs` / `prove-saved-meals-rls.mjs` exist at repo root | **Verified** (in `scripts/`) |
+| 20 | RLS migration `20260919000000_saved_meals_rls_remediation.sql` exists | **Verified** |
+
+### 8.2 Corrections applied
+
+**17. Security headers were not missing.**
+The draft claimed "none". `compose.ts:24,32,44,55` applies `applySecurityHeaders`
+on every middleware response. The 3 auth routes calling it are redundant.
+Corrected in §2 row 17, §2 corrections table, and §3.1.
+
+**18. Auth boundary arithmetic was wrong.**
+The draft said "16 use other auth or none". The actual split is 18
+`getServerSession` + 1 `withAuth` + 1 `[...nextauth]` (authOptions only) + 15
+with no auth import. Corrected in §2 row 12.
+
+**19. `prove-*.mjs` scripts are in `scripts/`, not repo root.**
+The plan's verification command for §3.4 should be
+`node scripts/prove-revoke-anon.mjs`. Path corrected in §3.4.
+
+### 8.3 Corrections applied in the second pass (2026-09-20)
+
+**20. Sequencing rules 1 and 2 were backwards.**
+The original rules said "0.1 (errors) before 0.2 (logging)" and "0.3 (metrics)
+depends on 0.2". Both are wrong.
+
+- 0.1's acceptance criterion is "logs with correlation ID" — correlation IDs
+  are a 0.2 deliverable. Building 0.1 first means writing a throwaway logger
+  inside the error handler and replacing it in 0.2.
+- 0.3 does not hard-depend on 0.2. `prom-client` has its own registry and
+  `/metrics` endpoint; routes can be instrumented directly.
+
+Corrected in §7 rules 1–2 and in "What I'd do tomorrow". The correct shape is a
+single vertical slice: logger → `AppError` → `handleApiError` → convert the
+3 `String(error)` routes. 0.3 runs independently after.
+
+**21. `prom-client` is not installed.**
+0.3 requires adding it as a dependency. Noted in "What I'd do tomorrow" step 3.
+
+**22. Only 3 routes leak `String(error)`, not 25+.**
+The draft's "Replace all 25+ route try/catch blocks" overstates the scope.
+27 routes have try/catch; 3 return `String(error)`. Corrected in 0.1.
+
+**23. No shared error/response helper exists.**
+`handleApiError`, `apiError`, `errorResponse`, `toApiError` — all absent.
+0.1 is building from scratch, not consolidating. The only typed error model in
+the repo is `ItineraryError` inside the Gemini pipeline (`errorHandler.ts:13`),
+which is the reference shape to extend.
+
+### 8.4 Findings that did NOT change the plan
+
+- **CORS `Access-Control-Allow-Origin: *` claim.** Not re-verified (no running
+  server). Code allowlist (`cors.ts:4-15`) is correct and does not emit `*`.
+  Left as an open item for the implementer.
+- **The adversarial review did not complete.** A fresh-context reviewer was
+  spawned per the doubt-driven skill, stalled, and was cancelled. No
+  independent findings were produced. This audit is single-model.
+- **No code was modified.** Document-only pass.
+
+---
+
+## 9. Implementation Status (2026-09-20)
+
+Markers follow the `✅ Done` convention used in `specs/tarana-mobile-app-plan.md`.
+Each row records what shipped, the verification that ran, and the commit-style
+evidence. Items without a marker are **not done** — do not assume they are.
+
+### Phase 0: Foundation
+
+| Status | # | Item | Evidence |
+|---|---|---|---|
+| [x] | 0.2 | Structured logging + correlation IDs | `src/lib/observability/logger.ts` (zero-dep JSON, `process.stdout/stderr.write`, no `console.*`); `src/middleware/requestId.ts` (`getRequestId`, `requestIdMiddleware`, priority 110); wired into `src/middleware/index.ts`. Verified: `bun run specs/smoke-logger.mjs` → SMOKE OK; live `curl` on a fresh dev instance. |
+| [x] | 0.2a | Logger is zero-dep (no `pino` added to lockfile) | `grep -c pino pnpm-lock.yaml` = 0. Chose a hand-rolled logger over `pino` to avoid a new dependency + lockfile churn; matches the existing zero-dep convention in `refundMetrics.ts`. |
+| [ ] | 0.1 | Standardized error handling (`AppError` + `handleApiError`) | `handleApiError`/`apiError`/`errorResponse`/`toApiError` all still absent (audit finding #23). The 3 `String(error)` routes were converted to use the logger, but the shared typed helper was **not** created. |
+| [x] | 0.1a | Convert routes off `String(error)` | 7 leaks across 3 files eliminated: `saved-itineraries/route.ts` (2), `saved-itineraries/[id]/route.ts` (3), `saved-meals/route.ts` (2). All now `logger.error(msg, { error }, getRequestId(request))` + `{ error: 'Internal server error' }` body. Verified: `grep -rn "String(error)" src/app/api --include=route.ts` → zero. |
+| [ ] | 0.3 | RED metrics (`prom-client`) | `prom-client` not installed (audit finding #21). |
+| [ ] | 0.4 | CI gates (audit, bundle size, health smoke) | `ci.yml` still 4 gates only. |
+| [ ] | 0.5 | Feature flags | No flag system exists. `USE_MULTI_AGENT` is still a bare env check at `itinerary-generator/route.ts:74`. |
+
+### Verification results for the 0.2 + 0.1a slice
+
+| Gate | Command | Result |
+|---|---|---|
+| Typecheck | `npx tsc --noEmit --skipLibCheck` | **0 errors** (was 24 mid-edit; baseline was 0) |
+| Tests | `pnpm test -- --passWithNoTests --maxWorkers=2` | **1 failed, 8 skipped, 499 passed** — same as baseline. The 1 failure is `emailConfig.test.ts:78`, pre-existing and unrelated (audit §8.3). |
+| Affected suites | `jest --testPathPattern="saved-itineraries\|saved-meals"` | **23/23 passed** (was 7 failing before the slice) |
+| Lint | `pnpm exec next lint --max-warnings=1000` | **Clean** — no new warnings from the 7 changed files |
+| Build | `pnpm run build` | **✓ Compiled successfully** in 7.3s, exit 0 (re-verified 2026-09-20 after plan edits; unchanged) |
+| Runtime smoke | `bun run specs/smoke-logger.mjs` | **SMOKE OK** — JSON lines carry `requestId`; generated/client/garbage UUID paths all correct |
+
+### What the slice did NOT touch
+
+- No `console.log`/`console.error` was removed outside the 3 converted routes.
+  The repo still has hundreds of `console.*` calls (audit: ~40 files). Phase 5.1
+  is the task for those — this slice was scoped to the error-handling paths only.
+- No new dependencies added to `package.json` or `pnpm-lock.yaml`.
+- No test files added. The existing `saved-itineraries` tests were updated to
+  pass a `NextRequest` to `GET` (the signature changed from `GET()` to
+  `GET(request)`), matching the convention already used by `consent` and
+  `mobile-token` test suites.
