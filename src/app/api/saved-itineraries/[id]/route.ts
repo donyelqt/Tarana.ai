@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { logger } from '@/lib/observability/logger';
 import { mapRowToSavedItinerary, resolveItineraryImage, UpdateItinerarySchema } from '@/lib/data/itineraryMapper';
 import { z } from 'zod';
+import { getRequestId } from '@/middleware/requestId';
 
 function toDbPayload(validated: z.infer<typeof UpdateItinerarySchema>) {
   const payload: Record<string, unknown> = {};
@@ -35,7 +37,7 @@ async function requireUserId() {
   return session?.user?.id ?? null;
 }
 
-export async function GET(_request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const userId = await requireUserId();
     if (!userId) {
@@ -55,9 +57,9 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     }
     return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) });
   } catch (error) {
-    console.error('Error fetching itinerary:', error);
+    logger.error('Error fetching itinerary:', { error }, getRequestId(request));
     return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -103,15 +105,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
     return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) });
   } catch (error) {
-    console.error('Error updating itinerary:', error);
+    logger.error('Error updating itinerary:', { error }, getRequestId(request));
     return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const userId = await requireUserId();
     if (!userId) {
@@ -132,9 +134,9 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     }
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting itinerary:', error);
+    logger.error('Error deleting itinerary:', { error }, getRequestId(request));
     return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

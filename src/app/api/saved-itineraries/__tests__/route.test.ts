@@ -33,6 +33,10 @@ jest.mock('@/lib/data/supabaseAdmin', () => ({
 const sessionMock = mockedGetServerSession as unknown as jest.Mock;
 const fromMock = (mockedSupabaseAdmin.from as unknown as jest.Mock);
 
+function makeRequest(): NextRequest {
+  return { headers: { get: () => null } } as unknown as NextRequest;
+}
+
 const validBody = {
   title: 'Your 1 Day Itinerary',
   date: 'June 13, 2026 - June 14, 2026',
@@ -72,7 +76,7 @@ describe('saved-itineraries collection route', () => {
 
   it('GET returns 401 when unauthenticated', async () => {
     sessionMock.mockResolvedValue(null);
-    const res = await GET();
+    const res = await GET(makeRequest());
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ error: 'Unauthorized' });
     expect(fromMock).not.toHaveBeenCalled();
@@ -85,7 +89,7 @@ describe('saved-itineraries collection route', () => {
     const select = jest.fn().mockReturnValue({ eq });
     fromMock.mockReturnValue({ select });
 
-    const res = await GET();
+    const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ success: true, data: [], count: 0 });
     expect(fromMock).toHaveBeenCalledWith('itineraries');
@@ -213,7 +217,7 @@ describe('saved-itineraries collection route', () => {
     const select = jest.fn().mockReturnValue({ eq });
     fromMock.mockReturnValue({ select });
 
-    const res = await GET();
+    const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ success: true, data: [], count: 0 });
   });
@@ -249,7 +253,7 @@ describe('saved-itineraries collection route', () => {
     const select = jest.fn().mockReturnValue({ eq });
     fromMock.mockReturnValue({ select });
 
-    const res = await GET();
+    const res = await GET(makeRequest());
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       data: Array<{ formData: { budget: string }; itineraryData: { items: unknown[] } }>;
