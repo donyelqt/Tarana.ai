@@ -475,13 +475,13 @@ evidence. Items without a marker are **not done** — do not assume they are.
 |---|---|---|---|
 | [x] | 0.2 | Structured logging + correlation IDs | `src/lib/observability/logger.ts` (zero-dep JSON, `process.stdout/stderr.write`, no `console.*`); `src/middleware/requestId.ts` (`getRequestId`, `requestIdMiddleware`, priority 110); wired into `src/middleware/index.ts`. Verified: `bun run specs/smoke-logger.mjs` → SMOKE OK; live `curl` on a fresh dev instance. |
 | [x] | 0.2a | Logger is zero-dep (no `pino` added to lockfile) | `grep -c pino pnpm-lock.yaml` = 0. Chose a hand-rolled logger over `pino` to avoid a new dependency + lockfile churn; matches the existing zero-dep convention in `refundMetrics.ts`. |
-| [ ] | 0.1 | Standardized error handling (`AppError` + `handleApiError`) | `handleApiError`/`apiError`/`errorResponse`/`toApiError` all still absent (audit finding #23). The 3 `String(error)` routes were converted to use the logger, but the shared typed helper was **not** created. |
-| [x] | 0.1a | Convert routes off `String(error)` | 7 leaks across 3 files eliminated: `saved-itineraries/route.ts` (2), `saved-itineraries/[id]/route.ts` (3), `saved-meals/route.ts` (2). All now `logger.error(msg, { error }, getRequestId(request))` + `{ error: 'Internal server error' }` body. Verified: `grep -rn "String(error)" src/app/api --include=route.ts` → zero. |
+| [x] | 0.1 | Standardized error handling (`AppError` + `handleApiError`) | **Implemented + verified** (PR #489, `f46ba51`). `src/lib/errors/AppError.ts` (code, status, safeMessage, retryable, logMessage + `fromUnknown()` classifier) and `src/lib/errors/handleApiError.ts` (logs via the 0.2 logger with correlation ID, classifies rate-limit→429 / timeout→503 / not-authorized→401 / not-found→404) are wired into the 3 logger-ready routes. Response envelope corrected to `{ error: string }` — the plan's original `{ error: { code, message } }` would have broken `savedItineraries.ts:91-92` and `supabaseMeals.ts:26`, both of which read `body.error` as a string. Verified: tsc clean, 23/23 affected suites, lint clean, build green, runtime smoke 21/21. |
+| [x] | 0.1a | Convert routes off `String(error)` | 7 leaks across 3 files eliminated: `saved-itineraries/route.ts` (2), `saved-itineraries/[id]/route.ts` (3), `saved-meals/route.ts` (2). All now route through `handleApiError` (PR #489), which logs with the correlation ID and returns `{ error: 'Internal server error' }`. Verified: `grep -rn "String(error)" src/app/api --include=route.ts` → zero. |
 | [ ] | 0.3 | RED metrics (`prom-client`) | `prom-client` not installed (audit finding #21). |
 | [ ] | 0.4 | CI gates (audit, bundle size, health smoke) | `ci.yml` still 4 gates only. |
 | [ ] | 0.5 | Feature flags | No flag system exists. `USE_MULTI_AGENT` is still a bare env check at `itinerary-generator/route.ts:74`. |
 
-### Verification results for the 0.2 + 0.1a slice
+### Verification results for the 0.2 + 0.1a + 0.1 slices
 
 | Gate | Command | Result |
 |---|---|---|
@@ -491,6 +491,14 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | Lint | `pnpm exec next lint --max-warnings=1000` | **Clean** — no new warnings from the 7 changed files |
 | Build | `pnpm run build` | **✓ Compiled successfully** in 7.3s, exit 0 (re-verified 2026-09-20 after plan edits; unchanged) |
 | Runtime smoke | `bun run specs/smoke-logger.mjs` | **SMOKE OK** — JSON lines carry `requestId`; generated/client/garbage UUID paths all correct |
+| Runtime smoke (0.1) | `bun run specs/smoke-handleapierror.mjs` | **21/21 OK** — every `AppError` type, unknown/null/string inputs, message classification (rate-limit→429, timeout→503, not-authorized→401, not-found→404), `x-request-id` echo. Two real bugs caught by this smoke test before commit: an incomplete regex (`you are not authorized` failed to match → 500 instead of 401) and `NextResponse.json` not inheriting request headers (correlation ID lost). Both fixed pre-merge. |
+
+### Shipped via
+
+| Slice | PR | Commit |
+|---|---|---|
+| 0.2 + 0.2a + 0.1a | [#488](https://github.com/donyelqt/Tarana.ai/pull/488) | `9a2b509` (merged `adb28a2`) |
+| 0.1 | [#489](https://github.com/donyelqt/Tarana.ai/pull/489) | `f46ba51` (merged `3cb7ba5`) |
 
 ### What the slice did NOT touch
 
