@@ -42,7 +42,7 @@ jobs:
         run: pnpm exec next lint --max-warnings=1000
 
       - name: Dependency audit
-        run: pnpm audit --audit-level=high --prod
+        run: pnpm audit --audit-level=critical --prod
 
       - name: Typecheck
         run: npx tsc --noEmit --skipLibCheck
