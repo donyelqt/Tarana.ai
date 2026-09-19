@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from './auth';
-import { loggerMiddleware, loggerConfig } from './logger';
+import { requestIdMiddleware } from './requestId';
 import { corsMiddleware, corsConfig } from './cors';
 import { composeMiddleware } from './compose';
 import { MiddlewareHandler } from './types';
+import { logger } from '@/lib/observability/logger';
 import { applySecurityHeaders } from '@/lib/security/securityHeaders';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 
@@ -48,10 +49,10 @@ const securityMiddleware = async (request: NextRequest): Promise<NextResponse> =
 const middlewareHandler: MiddlewareHandler = composeMiddleware({
   middlewares: [
     { 
-      handler: loggerMiddleware, 
-      name: 'logger', 
-      enabled: loggerConfig.enabled,
-      priority: 100 // Highest priority, runs first
+      handler: requestIdMiddleware, 
+      name: 'requestId', 
+      enabled: true,
+      priority: 110 // Runs before everything; downstream handlers need the id
     },
     { 
       handler: securityMiddleware, 
@@ -73,7 +74,7 @@ const middlewareHandler: MiddlewareHandler = composeMiddleware({
     },
   ],
   errorHandler: (error) => {
-    console.error('[Middleware Error]', error);
+    logger.error('[Middleware Error]', { error });
     // Return appropriate error response with security headers
     return applySecurityHeaders(new NextResponse('Internal Server Error', { status: 500 }));
   },

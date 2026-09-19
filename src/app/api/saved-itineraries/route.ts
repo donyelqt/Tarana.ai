@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { logger } from '@/lib/observability/logger';
 import { mapRowToSavedItinerary, resolveItineraryImage, SaveItinerarySchema } from '@/lib/data/itineraryMapper';
+import { getRequestId } from '@/middleware/requestId';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -31,9 +33,9 @@ export async function GET() {
       count: data?.length ?? 0,
     });
   } catch (error) {
-    console.error('Error fetching itineraries:', error);
+    logger.error('Error fetching itineraries:', { error }, getRequestId(request));
     return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -90,12 +92,11 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
     return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) }, { status: 201 });
   } catch (error) {
-    console.error('Error saving itinerary:', error);
+    logger.error('Error saving itinerary:', { error }, getRequestId(request));
     return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
