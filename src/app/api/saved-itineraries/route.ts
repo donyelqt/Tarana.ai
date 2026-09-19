@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
-import { logger } from '@/lib/observability/logger';
+import { handleApiError } from '@/lib/errors/handleApiError';
 import { mapRowToSavedItinerary, resolveItineraryImage, SaveItinerarySchema } from '@/lib/data/itineraryMapper';
-import { getRequestId } from '@/middleware/requestId';
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,11 +32,7 @@ export async function GET(request: NextRequest) {
       count: data?.length ?? 0,
     });
   } catch (error) {
-    logger.error('Error fetching itineraries:', { error }, getRequestId(request));
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, request);
   }
 }
 
@@ -94,10 +89,6 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) }, { status: 201 });
   } catch (error) {
-    logger.error('Error saving itinerary:', { error }, getRequestId(request));
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, request);
   }
 }
