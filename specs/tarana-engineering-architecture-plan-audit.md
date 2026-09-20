@@ -126,11 +126,13 @@ request
 - Verified: tsc 0 errors, 507 tests (1 pre-existing emailConfig failure), affected suites 36/36 + 23/23 + 9/9 + 32/32, lint 0 errors, build green, CI `verify` pass on every PR.
 
 #### 1.2 Remove direct `supabaseAdmin` from API routes
-- Create service-layer modules in `src/lib/services/` (e.g. `ItineraryService`, `CreditService`, `SpotService`) that own all DB access.
-- API routes call the service, not Supabase directly.
-- Services use `supabaseAdmin` internally, with RLS-aware paths where applicable.
-- **Verify:** `grep -rl supabaseAdmin src/app/api --include=route.ts | grep -v __tests__` returns zero.
-- **Note:** `supabaseAdmin` already lives in `src/lib/data/supabaseAdmin.ts` and is imported by 13 route files today.
+- **Slice 1 done** (PR #505). Two routes now go through services instead of calling `supabaseAdmin` directly:
+  - `auth/consent` -> `recordTosAcceptance(userId)` in `userService.ts`
+  - `stats` -> `getStats()` in `statsService.ts`
+  - Both new services are exported from `src/lib/services/index.ts`.
+  - Tests rewritten to mock the services; the `Response.json()` static patch is retained (jest.setup.js replaces global Response with a minimal mock lacking it, and both routes delegate to `NextResponse.json()`).
+  - Verified: tsc 0 errors, 8/8 slice tests, 507 suite (1 pre-existing emailConfig failure), build green, lint 0 errors. `supabaseAdmin` in routes: 13 -> 11.
+- Remaining: profile, credits (diagnostics, init-profile, test-consumption), saved-itineraries, saved-meals, auth (register, reset-password, forgot-password) — 9 routes.
 
 #### 1.3 Bounded contexts
 - Current folder structure is by capability (`auth`, `data`, `search`, `security`, `traffic`). Evolve toward domain-oriented modules:
