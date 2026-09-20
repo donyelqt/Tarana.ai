@@ -1,27 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth';
+import { withAuth } from '@/lib/auth/withAuth';
+import { handleApiError } from '@/lib/errors/handleApiError';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 
 /**
  * POST /api/credits/test-consumption
  * Test credit consumption with proper service name
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, userId: string) => {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
 
     if (!supabaseAdmin) {
       return NextResponse.json(
@@ -158,13 +148,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(testResult);
   } catch (error) {
-    console.error('Test consumption error:', error);
-    return NextResponse.json(
-      {
-        error: 'Test failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, req);
   }
-}
+});

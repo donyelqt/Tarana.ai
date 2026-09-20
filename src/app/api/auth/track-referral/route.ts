@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/auth";
+import { withAuth } from "@/lib/auth/withAuth";
+import { handleApiError } from "@/lib/errors/handleApiError";
 import { ReferralService } from "@/lib/referral-system/ReferralService";
 import { CreditService } from "@/lib/referral-system/CreditService";
 
@@ -8,16 +8,8 @@ import { CreditService } from "@/lib/referral-system/CreditService";
  * API endpoint to track referrals after user signup
  * Called from frontend after successful authentication
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, userId: string) => {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      console.error("❌ Unauthorized - no session");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = session.user.id;
     
     // Get referral code from request body
     const body = await req.json();
@@ -109,10 +101,6 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    return NextResponse.json({
-      success: false,
-      error: "Failed to track referral",
-      details: error.message
-    }, { status: 500 });
+    return handleApiError(error, req);
   }
-}
+});

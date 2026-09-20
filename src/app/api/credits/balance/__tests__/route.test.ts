@@ -32,7 +32,7 @@ const sessionMock = getServerSession as unknown as jest.Mock;
 const balanceMock = CreditService.getCurrentBalance as unknown as jest.Mock;
 
 function get() {
-  return GET({} as unknown as Parameters<typeof GET>[0]);
+  return GET({ headers: { get: () => null } } as unknown as Parameters<typeof GET>[0]);
 }
 
 describe('GET /api/credits/balance', () => {
@@ -45,7 +45,7 @@ describe('GET /api/credits/balance', () => {
     sessionMock.mockResolvedValue(null);
     const res = await get();
     expect(res.status).toBe(401);
-    expect(await res.json()).toMatchObject({ error: 'Unauthorized' });
+    expect(await res.json()).toMatchObject({ error: 'Authentication required' });
     expect(balanceMock).not.toHaveBeenCalled();
   });
 
@@ -80,7 +80,7 @@ describe('GET /api/credits/balance', () => {
     const res = await get();
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe('Failed to get credit balance');
-    expect(body.details).toBe('db down');
+    expect(body.error).toBe('Internal server error');
+    expect(body.details).toBeUndefined();
   });
 });

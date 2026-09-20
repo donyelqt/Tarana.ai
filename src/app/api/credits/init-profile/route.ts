@@ -1,26 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth';
+import { withAuth } from '@/lib/auth/withAuth';
+import { handleApiError } from '@/lib/errors/handleApiError';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 
 /**
  * POST /api/credits/init-profile
  * Initialize user profile for existing users (one-time fix)
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, userId: string) => {
   try {
-    // Get authenticated session
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
-
     if (!supabaseAdmin) {
       return NextResponse.json(
         { error: 'Database not available' },
@@ -56,9 +44,8 @@ export async function POST(req: NextRequest) {
       });
 
     if (error) {
-      console.error('Error creating profile:', error);
       return NextResponse.json(
-        { error: 'Failed to create profile', details: error.message },
+        { error: 'Failed to create profile' },
         { status: 500 }
       );
     }
@@ -69,13 +56,6 @@ export async function POST(req: NextRequest) {
       action: 'created',
     });
   } catch (error) {
-    console.error('Error in /api/credits/init-profile:', error);
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, req);
   }
-}
+});
