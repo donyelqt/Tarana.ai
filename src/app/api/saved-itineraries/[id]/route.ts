@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth';
+import { withAuth } from '@/lib/auth/withAuth';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { mapRowToSavedItinerary, resolveItineraryImage, UpdateItinerarySchema } from '@/lib/data/itineraryMapper';
@@ -30,17 +29,9 @@ function toDbPayload(validated: z.infer<typeof UpdateItinerarySchema>) {
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-async function requireUserId() {
-  const session = await getServerSession(authOptions);
-  return session?.user?.id ?? null;
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export const GET = withAuth(async (request: NextRequest, userId: string, ...args: unknown[]) => {
+  const { params } = (args[0] ?? {}) as RouteParams;
   try {
-    const userId = await requireUserId();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
     const { id } = await params;
 
     const { data, error } = await supabaseAdmin
@@ -57,14 +48,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     return handleApiError(error, request);
   }
-}
+});
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export const PATCH = withAuth(async (request: NextRequest, userId: string, ...args: unknown[]) => {
+  const { params } = (args[0] ?? {}) as RouteParams;
   try {
-    const userId = await requireUserId();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
     const { id } = await params;
 
     const body = await request.json();
@@ -101,14 +89,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     return handleApiError(error, request);
   }
-}
+});
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export const DELETE = withAuth(async (request: NextRequest, userId: string, ...args: unknown[]) => {
+  const { params } = (args[0] ?? {}) as RouteParams;
   try {
-    const userId = await requireUserId();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
     const { id } = await params;
 
     const { data, error } = await supabaseAdmin
@@ -126,4 +111,4 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     return handleApiError(error, request);
   }
-}
+});

@@ -25,19 +25,20 @@ export async function getUserId(req: NextRequest): Promise<string | null> {
 
 export type AuthedHandler = (
   req: NextRequest,
-  userId: string
+  userId: string,
+  ...ctx: unknown[]
 ) => Promise<NextResponse> | NextResponse;
 
 export function withAuth(handler: AuthedHandler) {
-  return async function (req: NextRequest): Promise<NextResponse> {
+  return async function (req: NextRequest, ctx?: unknown): Promise<NextResponse> {
     // Bench bypass for k6 (non-prod only): same HMAC proof as concierge.
     const benchUserId = resolveBenchUserId(req.headers.get(BENCH_TOKEN_HEADER));
     if (benchUserId !== null) {
-      return handler(req, benchUserId);
+      return handler(req, benchUserId, ctx);
     }
     const userId = await getUserId(req);
     if (!userId) return unauthorized();
-    return handler(req, userId);
+    return handler(req, userId, ctx);
   };
 }
 

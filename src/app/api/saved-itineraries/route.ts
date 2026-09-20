@@ -1,27 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth';
+import { withAuth } from '@/lib/auth/withAuth';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { mapRowToSavedItinerary, resolveItineraryImage, SaveItinerarySchema } from '@/lib/data/itineraryMapper';
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, userId: string) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { data, error } = await supabaseAdmin
       .from('itineraries')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Supabase error fetching itineraries:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch itineraries', details: error.message },
+        { error: 'Failed to fetch itineraries' },
         { status: 500 }
       );
     }
@@ -34,15 +27,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return handleApiError(error, request);
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, userId: string) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await request.json();
     const validation = SaveItinerarySchema.safeParse(body);
     if (!validation.success) {
@@ -67,7 +55,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('itineraries')
       .insert({
-        user_id: session.user.id,
+        user_id: userId,
         title: validated.title,
         date: validated.date,
         budget: validated.budget,
@@ -81,9 +69,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Supabase error saving itinerary:', error);
       return NextResponse.json(
-        { error: 'Failed to save itinerary', details: error.message },
+        { error: 'Failed to save itinerary' },
         { status: 500 }
       );
     }
@@ -91,4 +78,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return handleApiError(error, request);
   }
-}
+});
