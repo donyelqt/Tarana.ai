@@ -167,6 +167,7 @@ request
 - Add `AbortController` with configurable timeout per dependency.
 - Surface timeout as a typed `UpstreamTimeoutError`.
 - **Verify:** test that a hung upstream returns 503 after the timeout, not 500 after Vercel's 60s kill.
+- **Slice 1 done** (PR #515, `83bb797`, merged `389c2f5`; re-verified against `main` 2026-09-21). New `src/lib/upstream/withTimeout.ts`: `UpstreamTimeoutError` (AppError UPSTREAM, 503, retryable) + `withTimeout()` for SDK calls + `fetchWithTimeout()` for fetch calls. Wired 3 sites: `fetchWeatherData` (8s budget; caller already falls back), `tomtomTraffic.getTrafficIncidentsSimple` (the one TomTom fetch missing a signal; sibling `config.timeout` budget), `agent.ts` subquery race (same 25s, same `[]` fallback — zero behavior change). Deliberately NOT touched: food-route retry loop (already bounded 30s ×2), `tomtomRouting`/`imageService` (already budgeted). 8 new helper tests. Full suite 527 -> 535.
 
 #### 2.3 Idempotency keys on all mutations
 - Every write endpoint (save itinerary, consume credits, create meal, etc.) must accept an `Idempotency-Key` header.
@@ -513,6 +514,7 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | 1.2 slice 3a (meals + profile) | [#509](https://github.com/donyelqt/Tarana.ai/pull/509) | `6701be2` (merged `557c333`) |
 | 1.2 slice 3b (itineraries) | [#511](https://github.com/donyelqt/Tarana.ai/pull/511) | `72ed57b` (merged `429991c`) |
 | 1.2 slice 3c (credits, closes 1.2) | [#513](https://github.com/donyelqt/Tarana.ai/pull/513) | `133d5b9` (merged `6b542bf`) |
+| 2.2 slice 1 (timeout helper + 3 sites) | [#515](https://github.com/donyelqt/Tarana.ai/pull/515) | `83bb797` (merged `389c2f5`) |
 
 ### What the slice did NOT touch
 
@@ -587,3 +589,25 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | Build | `pnpm run build` | **green** (one transient worker exit 1; two subsequent identical runs exit 0) |
 | CI on PR #513 | `verify` + Vercel | **pass** (`verify` 2m48s) |
 | Invariants | `grep` over `src/app/api` | `getServerSession` → zero; `String(error)` → zero; `supabaseAdmin` → zero (invariant 2 holds; 1.2 closed) |
+
+### Phase 2: Reliability (status re-verified against `main` 2026-09-21)
+
+| Status | # | Item | Evidence |
+|---|---|---|---|
+| [x] | 2.2 slice 1 | Shared timeout helper + 3 call sites | PR #515 (merged `389c2f5`). `src/lib/upstream/withTimeout.ts` (`UpstreamTimeoutError`, `withTimeout`, `fetchWithTimeout`); wired `fetchWeatherData`, `tomtomTraffic.getTrafficIncidentsSimple`, `agent.ts` subqueries. 8 new tests. Remaining: other `generateContent` sites (`itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine`), then 2.1 retry. |
+| [ ] | 2.1 | Retry with exponential backoff | No `withRetry` helper; needs timeout semantics first (retry without a budget is a retry storm). |
+| [ ] | 2.3 | Idempotency keys | No `Idempotency-Key` handling; no `idempotency_keys` table. |
+| [ ] | 2.4 | Shared rate limiting | `InMemoryRateLimiter` still `Map`-backed (correct to defer per §3.3). |
+| [ ] | 2.5 | Error budget + rollback policy | No `docs/rollback.md`; no SLO recorded. |
+
+### Verification results for the 2.2 slice-1 merge (2026-09-21, on `main` @ `389c2f5`)
+
+| Gate | Command | Result |
+|---|---|---|
+| Typecheck | `npx tsc --noEmit --skipLibCheck` | **0 errors** |
+| Focused tests | `jest --testPathPattern="upstream"` | **8/8 passed** (typed 503/retryable on hang, passthrough when fast, abort mapping, budget timing) |
+| Related suite | `jest --testPathPattern="weatherFallback"` | **green** (fallback path preserved) |
+| Full suite | `jest --passWithNoTests --maxWorkers=2` | **535 passed, 6 skipped, 0 failed** (+8 net) |
+| Lint | `pnpm exec next lint --max-warnings=1000` | **0 errors** (pre-existing warnings only) |
+| Build | `pnpm run build` | **exit 0** |
+| CI on PR #515 | `verify` + Vercel | **pass** (`verify` 2m45s) |
