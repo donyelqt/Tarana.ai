@@ -135,7 +135,8 @@ request
 - **Slice 2 done** (PR #507, `63a2184`, merged `5879272`; re-verified against `main` 2026-09-21). `auth/register` -> `createUserProfile(userId)` in `userService.ts`; `auth/forgot-password` -> `storeResetToken(userId, token, expiry)` in new `passwordService.ts`; `auth/reset-password` -> `findUserByResetToken(token)` / `hashPassword(password)` / `resetPassword(userId, hash)` in `passwordService.ts`. Forgot/reset tests rewritten to mock the service boundary. In-slice fixes: all forgot/reset error paths wrapped with `applySecurityHeaders`; unused `bcrypt` import dropped from the reset route. `supabaseAdmin` in routes: 11 -> 8.
 - **Slice 3a done** (PR #509, `6701be2`, merged `557c333`; re-verified against `main` 2026-09-21). `saved-meals` -> `listMeals` / `createMeal`, `saved-meals/[id]` -> `getMealById` / `deleteMealById` (new `mealService.ts`, incl. `MealDbError` preserving the GET detailed-500 wire shape and the 404-indistinguishability on `[id]`); `profile` -> `getProfileByEmail` / `updateProfileByEmail` (new `profileService.ts`; sanitization/validation stays in the route). New route suites for saved-meals (6) and `[id]` (5) — meals had zero tests; profile's 9 no-op placeholder asserts rewritten as 7 real tests. Net +9 tests (504 -> 513). `supabaseAdmin` in routes: 8 -> 5.
 - **Slice 3b done** (PR #511, `72ed57b`, merged `429991c`; re-verified against `main` 2026-09-21). `saved-itineraries` -> `listItineraries` / `createItinerary`, `saved-itineraries/[id]` -> `getItineraryById` / `updateItineraryById` / `deleteItineraryById` (new `itineraryService.ts`). Zod validation, image resolution, `toDbPayload` mapping, and `mapRowToSavedItinerary` stay in the route/mapper (request-shape and presentation concerns). Both suites rewritten to mock the service boundary, all 18 behavior cases preserved (tampering guard, legacy JSON rows, null-clearing, empty-list regression) plus one new GET-500 case; revert-check proved the new tests fail 8/11 against the old routes. Net +1 test (513 -> 514). `supabaseAdmin` in routes: 5 -> 3.
-- Remaining: credits (diagnostics, init-profile, test-consumption) — 3 route files.
+- **Slice 3c done — 1.2 CLOSED** (PR #513, `133d5b9`, merged `6b542bf`; re-verified against `main` 2026-09-21). `credits/diagnostics`, `credits/init-profile`, `credits/test-consumption` -> new `creditDiagnostics.ts` probes (`checkTableExists`, `getUserProfileRow`, `checkConsumeCreditsFunction`, `getRecentTransactions`, `consumeTestCredit`) + `userProfileExists`/`createUserProfile` in `userService.ts` (kills the 3rd copy of the default-profile insert). Deliberately NOT extended: `referral-system/CreditService` money paths — debug routes need raw RPC outcomes incl. failure branches the domain layer throws on. 3 new route suites (13 tests; these routes had zero coverage); revert-check 9/13 fail against old routes. Net +13 tests (514 -> 527). `supabaseAdmin` in routes: 3 -> 0. **Invariant 2 now holds.**
+- Remaining: none. Follow-up (not in scope): unify `CreditService.ensureUserProfile` (4th copy of the default-profile insert) onto `userService.createUserProfile`.
 
 #### 1.3 Bounded contexts
 - Current folder structure is by capability (`auth`, `data`, `search`, `security`, `traffic`). Evolve toward domain-oriented modules:
@@ -511,6 +512,7 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | 1.2 slice 2 (register + forgot/reset) | [#507](https://github.com/donyelqt/Tarana.ai/pull/507) | `63a2184` (merged `5879272`) |
 | 1.2 slice 3a (meals + profile) | [#509](https://github.com/donyelqt/Tarana.ai/pull/509) | `6701be2` (merged `557c333`) |
 | 1.2 slice 3b (itineraries) | [#511](https://github.com/donyelqt/Tarana.ai/pull/511) | `72ed57b` (merged `429991c`) |
+| 1.2 slice 3c (credits, closes 1.2) | [#513](https://github.com/donyelqt/Tarana.ai/pull/513) | `133d5b9` (merged `6b542bf`) |
 
 ### What the slice did NOT touch
 
@@ -533,7 +535,8 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | [x] | 1.2 slice 2 | register + forgot/reset services extracted | PR #507 (merged `5879272`). `register` -> `createUserProfile`; `forgot-password` -> `storeResetToken`; `reset-password` -> `findUserByResetToken` / `hashPassword` / `resetPassword` (new `passwordService.ts`). Forgot/reset tests mock the service boundary. `supabaseAdmin` in routes: 11 -> 8 (remaining: profile, 3× credits, 2× saved-itineraries, 2× saved-meals). |
 | [x] | 1.2 slice 3a | saved-meals + profile services extracted | PR #509 (merged `557c333`). `saved-meals` -> `listMeals` / `createMeal`; `saved-meals/[id]` -> `getMealById` / `deleteMealById` (new `mealService.ts`); `profile` -> `getProfileByEmail` / `updateProfileByEmail` (new `profileService.ts`). New meals suites (11 tests); profile placeholder rewritten (9 no-ops -> 7 real). `supabaseAdmin` in routes: 8 -> 5. |
 | [x] | 1.2 slice 3b | saved-itineraries services extracted | PR #511 (merged `429991c`). `saved-itineraries` -> `listItineraries` / `createItinerary`; `[id]` -> `getItineraryById` / `updateItineraryById` / `deleteItineraryById` (new `itineraryService.ts`). Validation, image resolution, `toDbPayload`, and row mapping stay at the boundary. All 18 behavior cases preserved + 1 new GET-500 case. `supabaseAdmin` in routes: 5 -> 3. |
-| [ ] | 1.2 remainder | credits services | 3 route files still import `supabaseAdmin` directly (verified 2026-09-21): `credits/diagnostics`, `credits/init-profile`, `credits/test-consumption`. |
+| [x] | 1.2 slice 3c | credits services extracted — 1.2 CLOSED | PR #513 (merged `6b542bf`). 3 credits routes -> `creditDiagnostics.ts` probes + `userService.userProfileExists`/`createUserProfile`. `CreditService` money paths untouched by design. 3 new suites (13 tests). `supabaseAdmin` in routes: 3 -> 0. Invariant 2 holds. |
+| [x] | 1.2 remainder | — | Closed by slice 3c above. Zero route files import `supabaseAdmin` (verified 2026-09-21). |
 | [ ] | 1.3 | Bounded contexts | No `itinerary/` / `users/` / `places/` modules; no circular-dependency check. |
 | [ ] | 1.4 | API versioning | No `/api/v1/` prefix; no `Sunset`/`Deprecation` headers. |
 
@@ -572,3 +575,15 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | Build | `pnpm run build` | **green** |
 | CI on PR #511 | `verify` + Vercel | **pass** (`verify` 2m49s) |
 | Invariants | `grep` over `src/app/api` | `getServerSession` → zero; `String(error)` → zero; `supabaseAdmin` → 3 route files (`credits/diagnostics`, `credits/init-profile`, `credits/test-consumption`) |
+
+### Verification results for the 1.2 slice-3c merge (2026-09-21, on `main` @ `6b542bf`)
+
+| Gate | Command | Result |
+|---|---|---|
+| Typecheck | `npx tsc --noEmit --skipLibCheck` | **0 errors** |
+| Focused tests | `jest --testPathPattern="credits/(diagnostics\|init-profile\|test-consumption)"` | **13/13 passed** (revert-check: 9/13 fail against the old routes — only auth/prod-gate short-circuits pass — proving they cover the migration) |
+| Full suite | `jest --passWithNoTests --maxWorkers=2` | **527 passed, 6 skipped, 0 failed** (+13 net; these 3 routes had zero coverage) |
+| Lint | `pnpm exec next lint --max-warnings=1000` | **0 errors** (pre-existing warnings only) |
+| Build | `pnpm run build` | **green** (one transient worker exit 1; two subsequent identical runs exit 0) |
+| CI on PR #513 | `verify` + Vercel | **pass** (`verify` 2m48s) |
+| Invariants | `grep` over `src/app/api` | `getServerSession` → zero; `String(error)` → zero; `supabaseAdmin` → zero (invariant 2 holds; 1.2 closed) |
