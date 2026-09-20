@@ -1,25 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth';
+import { withAuthEmail } from '@/lib/auth/withAuth';
+import { handleApiError } from '@/lib/errors/handleApiError';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 import { sanitizeName, sanitizeText } from '@/lib/security/inputSanitizer';
 
 // GET - Fetch user profile
-export async function GET(req: NextRequest) {
+export const GET = withAuthEmail(async (req: NextRequest, { email }) => {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const { data: user, error } = await supabaseAdmin
       .from('users')
       .select('id, email, full_name, image, location, bio')
-      .eq('email', session.user.email.toLowerCase())
+      .eq('email', email.toLowerCase())
       .single();
 
     if (error) {
@@ -42,25 +33,13 @@ export async function GET(req: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Profile fetch error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, req);
   }
-}
+});
 
 // PATCH - Update user profile
-export async function PATCH(req: NextRequest) {
+export const PATCH = withAuthEmail(async (req: NextRequest, { email }) => {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     const body = await req.json();
     const { fullName, location, bio } = body;
@@ -107,7 +86,7 @@ export async function PATCH(req: NextRequest) {
         bio: sanitizedBio ?? null,
         updated_at: new Date().toISOString(),
       })
-      .eq('email', session.user.email.toLowerCase())
+      .eq('email', email.toLowerCase())
       .select('id, email, full_name, image, location, bio')
       .single();
 
@@ -132,10 +111,6 @@ export async function PATCH(req: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Profile update error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, req);
   }
-}
+});
