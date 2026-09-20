@@ -293,9 +293,15 @@ class TomTomTrafficService {
 
       console.log(`🌐 TomTom: Trying simplified incidents request: ${url}?${params.toString().replace(/key=[^&]*/, "key=***")}`);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+
       const response = await fetch(`${url}?${params.toString()}`, {
+        signal: controller.signal,
         headers: this.tomTomHeaders()
       });
+
+      clearTimeout(timeoutId);
 
       console.log(`📡 TomTom: Simple incidents API response status: ${response.status}`);
 
