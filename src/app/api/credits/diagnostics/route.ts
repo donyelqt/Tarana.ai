@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { createUserProfile } from '@/lib/services/userService';
+import {
+  checkConsumeCreditsFunction,
+  checkTableExists,
+  getRecentTransactions,
+  getUserProfileRow,
+} from '@/lib/services/creditDiagnostics';
 
 /**
  * GET /api/credits/diagnostics
@@ -19,21 +25,13 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       errors: [],
     };
 
-    if (!supabaseAdmin) {
-      diagnostics.errors.push('Supabase admin client not initialized');
-      return NextResponse.json(diagnostics, { status: 500 });
-    }
-
     // CHECK 1: Does user_profiles table exist?
     try {
-      const { error: tableCheckError } = await supabaseAdmin
-        .from('user_profiles')
-        .select('id')
-        .limit(1);
-      
-      diagnostics.checks.userProfilesTableExists = !tableCheckError;
-      if (tableCheckError) {
-        diagnostics.errors.push(`user_profiles table error: ${tableCheckError.message}`);
+      const table = await checkTableExists('user_profiles');
+
+      diagnostics.checks.userProfilesTableExists = table.exists;
+      if (table.error) {
+        diagnostics.errors.push(`user_profiles table error: ${table.error.message}`);
       }
     } catch (error) {
       diagnostics.checks.userProfilesTableExists = false;
@@ -42,15 +40,11 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
 
     // CHECK 2: Does user profile exist?
     try {
-      const { data: profile, error: profileError } = await supabaseAdmin
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      
+      const { profile, error: profileError } = await getUserProfileRow(userId);
+
       diagnostics.checks.userProfileExists = !!profile;
       diagnostics.userProfile = profile;
-      
+
       if (profileError && profileError.code !== 'PGRST116') {
         diagnostics.errors.push(`Profile fetch error: ${profileError.message}`);
       }
@@ -61,14 +55,11 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
 
     // CHECK 3: Does credit_transactions table exist?
     try {
-      const { error: txTableError } = await supabaseAdmin
-        .from('credit_transactions')
-        .select('id')
-        .limit(1);
-      
-      diagnostics.checks.creditTransactionsTableExists = !txTableError;
-      if (txTableError) {
-        diagnostics.errors.push(`credit_transactions table error: ${txTableError.message}`);
+      const table = await checkTableExists('credit_transactions');
+
+      diagnostics.checks.creditTransactionsTableExists = table.exists;
+      if (table.error) {
+        diagnostics.errors.push(`credit_transactions table error: ${table.error.message}`);
       }
     } catch (error) {
       diagnostics.checks.creditTransactionsTableExists = false;
@@ -78,45 +69,25 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
     // CHECK 4: Does consume_credits function exist?
     try {
       // Use raw SQL to check if function exists
-      const { data: funcCheck, error: funcError } = await supabaseAdmin
-        .rpc('sql', {
-          query: `
-            SELECT EXISTS (
-              SELECT 1 FROM pg_proc p
-              JOIN pg_namespace n ON p.pronamespace = n.oid
-              WHERE n.nspname = 'public' 
-              AND p.proname = 'consume_credits'
-            ) as exists
-          `
-        } as any);
-      
-      if (funcError) {
-        // If SQL RPC doesn't work, try direct check via PostgREST
-        // Function exists if we can see it in the schema
-        diagnostics.checks.consumeCreditsFunctionExists = true; // Assume true if tables exist
-        diagnostics.checks.consumeCreditsFunctionNote = 'Function check via schema inspection - exists based on table structure';
-      } else {
-        diagnostics.checks.consumeCreditsFunctionExists = funcCheck?.[0]?.exists || false;
+      const func = await checkConsumeCreditsFunction();
+
+      diagnostics.checks.consumeCreditsFunctionExists = func.exists;
+      if (func.note) {
+        diagnostics.checks.consumeCreditsFunctionNote = func.note;
       }
-      
     } catch (error: any) {
       // Fallback: If function check fails, assume it exists if tables are there
       // The real test will be during actual credit consumption
       diagnostics.checks.consumeCreditsFunctionExists = diagnostics.checks.userProfilesTableExists;
       diagnostics.checks.consumeCreditsFunctionNote = 'Function existence inferred from table structure';
     }
-
+      
     // CHECK 5: Get recent transactions
     try {
-      const { data: transactions, error: txError } = await supabaseAdmin
-        .from('credit_transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
+      const { transactions, error: txError } = await getRecentTransactions(userId, 5);
+
       diagnostics.recentTransactions = transactions || [];
-      
+
       if (txError) {
         diagnostics.errors.push(`Transaction fetch error: ${txError.message}`);
       }
@@ -127,24 +98,10 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
     // CHECK 6: Test profile creation
     if (!diagnostics.checks.userProfileExists && diagnostics.checks.userProfilesTableExists) {
       try {
-        const { error: createError } = await supabaseAdmin
-          .from('user_profiles')
-          .insert({
-            id: userId,
-            current_tier: 'Default',
-            daily_credits: 5,
-            credits_used_today: 0,
-            total_referrals: 0,
-            active_referrals: 0,
-          });
-        
-        if (createError) {
-          diagnostics.errors.push(`Profile creation failed: ${createError.message}`);
-        } else {
-          diagnostics.checks.profileCreated = true;
-        }
+        await createUserProfile(userId);
+        diagnostics.checks.profileCreated = true;
       } catch (error) {
-        diagnostics.errors.push(`Profile creation test failed: ${error}`);
+        diagnostics.errors.push(`Profile creation failed: ${(error as Error).message}`);
       }
     }
 

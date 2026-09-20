@@ -8,3 +8,4 @@ export * from './statsService';
 export * from './mealService';
 export * from './profileService';
 export * from './itineraryService';
+export * from './creditDiagnostics';

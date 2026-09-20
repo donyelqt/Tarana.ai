@@ -38,3 +38,23 @@ export async function createUserProfile(userId: string): Promise<void> {
     throw new Error(`Failed to create user profile: ${error.message}`);
   }
 }
+
+/**
+ * Check whether a user profile row exists. Lives next to
+ * `createUserProfile` (same table, same owner) so callers needing
+ * check-then-create (init-profile, diagnostics) don't reimplement the
+ * lookup — or a fourth copy of the insert.
+ */
+export async function userProfileExists(userId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from('user_profiles')
+    .select('id')
+    .eq('id', userId)
+    .single();
+
+  if (error || !data) {
+    return false;
+  }
+
+  return true;
+}
