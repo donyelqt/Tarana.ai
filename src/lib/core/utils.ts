@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { StaticImageData } from "next/image"
 import { twMerge } from "tailwind-merge"
+import { fetchWithTimeout } from "@/lib/upstream/withTimeout"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -48,7 +49,7 @@ export const BAGUIO_COORDINATES = {
 
 export async function fetchWeatherData(lat: number, lon: number, apiKey: string): Promise<WeatherData | null> {
   // NOTE: never log the request URL — it carries the OpenWeather appid.
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`,
     {
       method: 'GET',
@@ -56,7 +57,9 @@ export async function fetchWeatherData(lat: number, lon: number, apiKey: string)
         'Accept': 'application/json',
       },
       cache: 'no-store' // Disable caching to ensure fresh data
-    }
+    },
+    8000,
+    'openweather'
   )
 
   if (!response.ok) {

@@ -3,6 +3,7 @@ import type { WeatherCondition } from "../types/types";
 import { getManilaTime, getPeakHoursContext } from "@/lib/traffic";
 import { tomtomTrafficService } from "@/lib/traffic";
 import { getActivityCoordinates } from "@/lib/data";
+import { withTimeout } from "@/lib/upstream/withTimeout";
 
 // Lightweight agentic helper: ask the model to propose up to N targeted sub-queries
 // to improve retrieval coverage (e.g., fill gaps for weather, interests, or time slots).
@@ -93,9 +94,10 @@ export async function proposeSubqueries(params: {
       Existing titles: ${existingTitles.slice(0, 60).join(" | ")}
       Output a JSON array of strings only, e.g.: ["low traffic morning hike", "evening market less crowded", "indoor museum avoid peak hours", "activities near low traffic areas"].
     `;
-    // The race can only resolve with the generateContent result (the timeout
-    // branch rejects); type it as the awaited call for typed .response access.
-    const resp = await Promise.race([
+    // Bounded under the 60s Vercel Hobby kill (see structuredOutputEngine.ts);
+    // subquery generation is best-effort coverage, so a timeout returns [].
+    const resp = await withTimeout(
+      'gemini-subqueries',
       model.generateContent({
         contents: [{ role: "user", parts: [{ text: guidance + "\n\nUser prompt: " + userPrompt }] }],
         generationConfig: {
@@ -103,12 +105,8 @@ export async function proposeSubqueries(params: {
           maxOutputTokens: 1092
         }
       }),
-      // Bounded under the 60s Vercel Hobby kill (see structuredOutputEngine.ts);
-      // subquery generation is best-effort coverage, so a timeout returns [].
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Subquery generation timeout")), 25000)
-      ),
-    ]);
+      25000
+    );
     const text = resp && typeof resp === "object" && "response" in resp
       ? resp.response?.text() ?? ""
       : "";
