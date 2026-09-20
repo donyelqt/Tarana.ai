@@ -5,7 +5,7 @@ import { sanitizeUserRegistration } from '@/lib/security/inputSanitizer';
 import { applySecurityHeaders } from '@/lib/security/securityHeaders';
 import { checkRequiredEnvVars } from '@/lib/security/environmentValidator';
 import { ReferralService } from '@/lib/referral-system';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { createUserProfile } from '@/lib/services/userService';
 
 // Rate limiter for registration attempts
 const registerRateLimit = createRateLimitMiddleware(rateLimitConfigs.auth);
@@ -75,21 +75,12 @@ export async function POST(request: NextRequest) {
       const newUser = await createUserInSupabase(sanitized.fullName, sanitized.email, sanitized.password, new Date().toISOString());
 
       // ✅ REFERRAL SYSTEM: Create user profile and handle referral
-      if (supabaseAdmin && newUser?.id) {
+      if (newUser?.id) {
         try {
-          // Create user profile with default tier
-          const { error: profileError } = await supabaseAdmin
-            .from('user_profiles')
-            .insert({
-              id: newUser.id,
-              current_tier: 'Default',
-              daily_credits: 5,
-              credits_used_today: 0,
-              total_referrals: 0,
-              active_referrals: 0,
-            });
-
-          if (profileError) {
+          // Create user profile with default tier (non-fatal)
+          try {
+            await createUserProfile(newUser.id);
+          } catch (profileError) {
             console.error('Error creating user profile:', profileError);
           }
 
