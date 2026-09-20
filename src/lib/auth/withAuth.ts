@@ -42,3 +42,33 @@ export function withAuth(handler: AuthedHandler) {
   };
 }
 
+
+/**
+ * Variant for routes that key on the user's EMAIL, not id.
+ *
+ * Only 2 routes need email (profile; saved-itineraries/[id]/refresh logs it):
+ * `withAuth` resolves id-only, so they would each re-call `getServerSession`
+ * inline — the exact duplication this boundary exists to remove.
+ *
+ * Bench requests get a synthetic identity: the bench user id plus a
+ * non-email sentinel, so a bench request can never accidentally match a real
+ * user's email row.
+ */
+export type AuthedEmailHandler = (
+  req: NextRequest,
+  identity: { userId: string; email: string }
+) => Promise<NextResponse> | NextResponse;
+
+export function withAuthEmail(handler: AuthedEmailHandler) {
+  return async function (req: NextRequest): Promise<NextResponse> {
+    const benchUserId = resolveBenchUserId(req.headers.get(BENCH_TOKEN_HEADER));
+    if (benchUserId !== null) {
+      return handler(req, { userId: benchUserId, email: `bench+${benchUserId}@tarana.local` });
+    }
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id ?? null;
+    const email = session?.user?.email ?? null;
+    if (!userId || !email) return unauthorized();
+    return handler(req, { userId, email });
+  };
+}
