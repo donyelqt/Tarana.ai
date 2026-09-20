@@ -119,9 +119,11 @@ request
 ### Phase 1: Architecture — make the boundaries explicit
 
 #### 1.1 Centralize auth across all routes
-- Extend `withAuth` to cover every protected route (currently 18 route files call `getServerSession` inline).
-- Add a `requireRole` wrapper for admin endpoints.
-- **Verify:** `grep -rl getServerSession src/app/api --include=route.ts | grep -v __tests__` returns zero outside `withAuth` and `authMiddleware`.
+- **Done** (PRs #501, #502, #503 — branch `feat/centralize-auth-11` + follow-ups). All 18 route files that called `getServerSession` inline now go through `withAuth` (or `withAuthEmail` for the 2 email-keyed routes: `profile`; the refresh route's email log line dropped). **Invariant 1 is now true:** `grep -rl getServerSession src/app/api --include=route.ts | grep -v __tests__` returns **ZERO** — no route calls it directly except the boundary itself.
+- Signature decisions (recorded per the ADR slice): `withAuth` handler is `(req, userId, ...ctx)` — dynamic-route handlers receive `{ params }` through the wrapper (Next.js passes it positionally); `withAuthEmail` (new, PR #502) is `(req, { userId, email })` — bench requests get a synthetic non-email sentinel so a bench request can never match a real user's email row.
+- `requireRole` wrapper: **not done** — no admin endpoints exist today (verified: no route checks a role). Adding it would be code for a nonexistent consumer.
+- One fix beyond the swap: `src/middleware/requestId.ts` `crypto.randomUUID()` → `randomUUID()` from `node:crypto` — jsdom has no `globalThis.crypto`, so any test reaching `getRequestId` without a client id threw (caught by the balance test's 500 path).
+- Verified: tsc 0 errors, 507 tests (1 pre-existing emailConfig failure), affected suites 36/36 + 23/23 + 9/9 + 32/32, lint 0 errors, build green, CI `verify` pass on every PR.
 
 #### 1.2 Remove direct `supabaseAdmin` from API routes
 - Create service-layer modules in `src/lib/services/` (e.g. `ItineraryService`, `CreditService`, `SpotService`) that own all DB access.
