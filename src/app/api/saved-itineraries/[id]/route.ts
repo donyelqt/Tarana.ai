@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { deleteItineraryById, getItineraryById, updateItineraryById } from '@/lib/services/itineraryService';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { mapRowToSavedItinerary, resolveItineraryImage, UpdateItinerarySchema } from '@/lib/data/itineraryMapper';
 import { z } from 'zod';
@@ -34,14 +34,9 @@ export const GET = withAuth(async (request: NextRequest, userId: string, ...args
   try {
     const { id } = await params;
 
-    const { data, error } = await supabaseAdmin
-      .from('itineraries')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single();
+    const data = await getItineraryById(id, userId);
 
-    if (error || !data) {
+    if (!data) {
       return NextResponse.json({ error: 'Itinerary not found' }, { status: 404 });
     }
     return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) });
@@ -74,15 +69,9 @@ export const PATCH = withAuth(async (request: NextRequest, userId: string, ...ar
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('itineraries')
-      .update(payload)
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select()
-      .single();
+    const data = await updateItineraryById(id, userId, payload);
 
-    if (error || !data) {
+    if (!data) {
       return NextResponse.json({ error: 'Itinerary not found' }, { status: 404 });
     }
     return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) });
@@ -96,15 +85,9 @@ export const DELETE = withAuth(async (request: NextRequest, userId: string, ...a
   try {
     const { id } = await params;
 
-    const { data, error } = await supabaseAdmin
-      .from('itineraries')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select('id')
-      .single();
+    const deleted = await deleteItineraryById(id, userId);
 
-    if (error || !data) {
+    if (!deleted) {
       return NextResponse.json({ error: 'Itinerary not found' }, { status: 404 });
     }
     return NextResponse.json({ success: true });

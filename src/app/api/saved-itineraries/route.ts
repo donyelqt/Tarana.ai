@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { createItinerary, listItineraries } from '@/lib/services/itineraryService';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { mapRowToSavedItinerary, resolveItineraryImage, SaveItinerarySchema } from '@/lib/data/itineraryMapper';
 
 export const GET = withAuth(async (request: NextRequest, userId: string) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('itineraries')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    let data;
+    try {
+      data = await listItineraries(userId);
+    } catch {
       return NextResponse.json(
         { error: 'Failed to fetch itineraries' },
         { status: 500 }
@@ -52,23 +49,10 @@ export const POST = withAuth(async (request: NextRequest, userId: string) => {
       validated.tags
     );
 
-    const { data, error } = await supabaseAdmin
-      .from('itineraries')
-      .insert({
-        user_id: userId,
-        title: validated.title,
-        date: validated.date,
-        budget: validated.budget,
-        image,
-        tags: validated.tags,
-        form_data: validated.formData,
-        itinerary_data: validated.itineraryData,
-        weather_data: validated.weatherData ?? null,
-      })
-      .select()
-      .single();
-
-    if (error) {
+    let data;
+    try {
+      data = await createItinerary(userId, validated, image);
+    } catch {
       return NextResponse.json(
         { error: 'Failed to save itinerary' },
         { status: 500 }

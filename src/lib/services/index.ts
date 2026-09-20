@@ -7,3 +7,4 @@ export * from './passwordService';
 export * from './statsService';
 export * from './mealService';
 export * from './profileService';
+export * from './itineraryService';
