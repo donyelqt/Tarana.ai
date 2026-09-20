@@ -131,6 +131,9 @@ request
 - Services use `supabaseAdmin` internally, with RLS-aware paths where applicable.
 - **Verify:** `grep -rl supabaseAdmin src/app/api --include=route.ts | grep -v __tests__` returns zero.
 - **Note:** `supabaseAdmin` already lives in `src/lib/data/supabaseAdmin.ts` and is imported by 13 route files today.
+- **Slice 1 done** (PR #505, `d0f28e0`). `auth/consent` -> `recordTosAcceptance(userId)` in `userService.ts`; `stats` -> `getStats()` in `statsService.ts`. Both services exported from `src/lib/services/index.ts`. `supabaseAdmin` in routes: 13 -> 11.
+- **Slice 2 done** (PR #507, `63a2184`, merged `5879272`; re-verified against `main` 2026-09-21). `auth/register` -> `createUserProfile(userId)` in `userService.ts`; `auth/forgot-password` -> `storeResetToken(userId, token, expiry)` in new `passwordService.ts`; `auth/reset-password` -> `findUserByResetToken(token)` / `hashPassword(password)` / `resetPassword(userId, hash)` in `passwordService.ts`. Forgot/reset tests rewritten to mock the service boundary. In-slice fixes: all forgot/reset error paths wrapped with `applySecurityHeaders`; unused `bcrypt` import dropped from the reset route. `supabaseAdmin` in routes: 11 -> 8.
+- Remaining: profile, credits (diagnostics, init-profile, test-consumption), saved-itineraries (+`[id]`), saved-meals (+`[id]`) — 8 route files.
 
 #### 1.3 Bounded contexts
 - Current folder structure is by capability (`auth`, `data`, `search`, `security`, `traffic`). Evolve toward domain-oriented modules:
@@ -502,6 +505,8 @@ evidence. Items without a marker are **not done** — do not assume they are.
 |---|---|---|
 | 0.2 + 0.2a + 0.1a | [#488](https://github.com/donyelqt/Tarana.ai/pull/488) | `9a2b509` (merged `adb28a2`) |
 | 0.1 | [#489](https://github.com/donyelqt/Tarana.ai/pull/489) | `f46ba51` (merged `3cb7ba5`) |
+| 1.2 slice 1 (consent + stats) | [#505](https://github.com/donyelqt/Tarana.ai/pull/505) | `d0f28e0` (merged `2b12d57`) |
+| 1.2 slice 2 (register + forgot/reset) | [#507](https://github.com/donyelqt/Tarana.ai/pull/507) | `63a2184` (merged `5879272`) |
 
 ### What the slice did NOT touch
 
@@ -513,3 +518,27 @@ evidence. Items without a marker are **not done** — do not assume they are.
   pass a `NextRequest` to `GET` (the signature changed from `GET()` to
   `GET(request)`), matching the convention already used by `consent` and
   `mobile-token` test suites.
+
+### Phase 1: Architecture (status re-verified against `main` 2026-09-21)
+
+| Status | # | Item | Evidence |
+|---|---|---|---|
+| [x] | 1.1 | Centralize auth across all routes | PRs #501, #502, #503. `grep getServerSession` in `route.ts` → zero (re-verified 2026-09-21); 19 route files go through `withAuth`/`withAuthEmail`. See §4 ¶1.1 for signature decisions. |
+| [x] | 1.5 | ADRs for the 5 load-bearing decisions | PR #498. `docs/adr/` holds 7 files (001, 002 + 003–007, re-verified 2026-09-21). |
+| [x] | 1.2 slice 1 | consent + stats services extracted | PR #505. `consent` -> `recordTosAcceptance`, `stats` -> `getStats`. `supabaseAdmin` in routes: 13 -> 11. |
+| [x] | 1.2 slice 2 | register + forgot/reset services extracted | PR #507 (merged `5879272`). `register` -> `createUserProfile`; `forgot-password` -> `storeResetToken`; `reset-password` -> `findUserByResetToken` / `hashPassword` / `resetPassword` (new `passwordService.ts`). Forgot/reset tests mock the service boundary. `supabaseAdmin` in routes: 11 -> 8 (remaining: profile, 3× credits, 2× saved-itineraries, 2× saved-meals). |
+| [ ] | 1.2 remainder | profile, credits, saved-itineraries, saved-meals services | 8 route files still import `supabaseAdmin` directly (verified 2026-09-21). |
+| [ ] | 1.3 | Bounded contexts | No `itinerary/` / `users/` / `places/` modules; no circular-dependency check. |
+| [ ] | 1.4 | API versioning | No `/api/v1/` prefix; no `Sunset`/`Deprecation` headers. |
+
+### Verification results for the 1.2 slice-2 merge (2026-09-21, on `main` @ `5879272`)
+
+| Gate | Command | Result |
+|---|---|---|
+| Typecheck | `npx tsc --noEmit --skipLibCheck` | **0 errors** |
+| Focused tests | `jest --testPathPattern="register\|forgot-password\|reset-password"` | **42/42 passed** |
+| Full suite | `jest --passWithNoTests --maxWorkers=2` | **504 passed, 6 skipped, 0 failed** |
+| Lint | `pnpm exec next lint --max-warnings=1000` | **0 errors** (pre-existing warnings only) |
+| Build | `pnpm run build` | **green** |
+| CI on PR #507 | `verify` + Vercel | **pass** (`verify` 2m39s) |
+| Invariants | `grep` over `src/app/api` | `getServerSession` → zero; `String(error)` → zero; `supabaseAdmin` → 8 route files (all pre-existing, none new) |
