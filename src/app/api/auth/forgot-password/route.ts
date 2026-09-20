@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as supabaseAdminModule from '@/lib/data/supabaseAdmin';
+import { storeResetToken } from '@/lib/services/passwordService';
 import { findUserByEmailFromSupabase } from '@/lib/auth';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import { sanitizeEmail } from '@/lib/security/inputSanitizer';
@@ -62,29 +62,14 @@ export async function POST(request: NextRequest) {
     const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
 
     // Store reset token in database
-    const supabaseAdmin = (supabaseAdminModule as any).supabaseAdmin;
-    if (!supabaseAdmin) {
-      console.error('Supabase admin client is not initialized.');
-      return NextResponse.json(
-        { error: 'Database connection error' },
-        { status: 500 }
-      );
-    }
-
-    const { error: updateError } = await supabaseAdmin
-      .from('users')
-      .update({
-        reset_token: resetToken,
-        reset_token_expiry: resetTokenExpiry.toISOString(),
-      })
-      .eq('id', user.id);
-
-    if (updateError) {
+    try {
+      await storeResetToken(user.id, resetToken, resetTokenExpiry);
+    } catch (updateError) {
       console.error('Error storing reset token:', updateError);
-      return NextResponse.json(
+      return applySecurityHeaders(NextResponse.json(
         { error: 'Failed to process reset request' },
         { status: 500 }
-      );
+      ));
     }
 
     // Send password reset email

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as supabaseAdminModule from '@/lib/data/supabaseAdmin';
+import { findUserByResetToken, hashPassword, resetPassword } from '@/lib/services/passwordService';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import { validatePasswordStrength } from '@/lib/security/inputSanitizer';
 import { applySecurityHeaders } from '@/lib/security/securityHeaders';
 import { checkRequiredEnvVars } from '@/lib/security/environmentValidator';
-import bcrypt from 'bcryptjs';
 
 // Rate limiter for password reset attempts
 const resetPasswordRateLimit = createRateLimitMiddleware(rateLimitConfigs.auth);
@@ -47,58 +46,39 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by reset token and check if it's still valid
-    const supabaseAdmin = (supabaseAdminModule as any).supabaseAdmin;
-    if (!supabaseAdmin) {
-      console.error('Supabase admin client is not initialized.');
-      return NextResponse.json(
-        { error: 'Database connection error' },
-        { status: 500 }
-      );
-    }
+    const user = await findUserByResetToken(token);
 
-    const { data: user, error: fetchError } = await supabaseAdmin
-      .from('users')
-      .select('id, reset_token, reset_token_expiry')
-      .eq('reset_token', token)
-      .single();
-
-    if (fetchError || !user) {
-      return NextResponse.json(
+    if (!user) {
+      return applySecurityHeaders(NextResponse.json(
         { error: 'Invalid or expired reset token' },
         { status: 400 }
-      );
+      ));
     }
 
     // Check if token has expired
-    const now = new Date();
-    const tokenExpiry = new Date(user.reset_token_expiry);
-    
-    if (now > tokenExpiry) {
-      return NextResponse.json(
-        { error: 'Reset token has expired' },
-        { status: 400 }
-      );
+    if (user.reset_token_expiry) {
+      const now = new Date();
+      const tokenExpiry = new Date(user.reset_token_expiry);
+      if (now > tokenExpiry) {
+        return applySecurityHeaders(NextResponse.json(
+          { error: 'Reset token has expired' },
+          { status: 400 }
+        ));
+      }
     }
 
     // Hash the new password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await hashPassword(password);
 
     // Update user's password and clear reset token
-    const { error: updateError } = await supabaseAdmin
-      .from('users')
-      .update({
-        hashed_password: hashedPassword,
-        reset_token: null,
-        reset_token_expiry: null,
-      })
-      .eq('id', user.id);
-
-    if (updateError) {
+    try {
+      await resetPassword(user.id, hashedPassword);
+    } catch (updateError) {
       console.error('Error updating password:', updateError);
-      return NextResponse.json(
+      return applySecurityHeaders(NextResponse.json(
         { error: 'Failed to reset password' },
         { status: 500 }
-      );
+      ));
     }
 
     return applySecurityHeaders(NextResponse.json({
