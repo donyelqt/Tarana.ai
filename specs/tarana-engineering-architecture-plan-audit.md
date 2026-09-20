@@ -144,9 +144,9 @@ request
 - **Verify:** all client calls (web + mobile) point to `/api/v1/`.
 
 #### 1.5 ADRs for the 5 load-bearing decisions
-- Write ADRs for: (1) multi-agent pipeline, (2) credit-based gating, (3) local-first mobile, (4) Supabase as source of truth, (5) Vercel serverless deployment.
-- Store in `docs/adr/` following the existing `002-*.md` convention.
-- **Verify:** each ADR has Status, Context, Decision, Alternatives, Consequences.
+- **Done** (PR #498, `0ad1c6d`): 5 ADRs in `docs/adr/` (003–007) — 003 multi-agent pipeline behind a flag, 004 credit-based gating, 005 mobile local-first kill-gate, 006 Supabase as source of truth, 007 Vercel serverless (Hobby).
+- Continuing the existing `002-*.md` convention: heading style, Deciders field, Status/Context/Decision/Alternatives/Consequences, revisit triggers, related records. All 5 verified present.
+- These record the decisions 1.1–1.4 depend on (which routes need email vs id, where the service layer lives when `CreditService` already exists in `referral-system/`, how mobile migrates to `/api/v1/`) so those become mechanical execution, not judgment calls made mid-refactor.
 
 ### Phase 2: Reliability — make failure modes explicit and handled
 
