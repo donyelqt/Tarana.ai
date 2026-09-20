@@ -1,27 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth';
+import { withAuth } from '@/lib/auth/withAuth';
+import { handleApiError } from '@/lib/errors/handleApiError';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 
 /**
  * GET /api/credits/diagnostics
  * Comprehensive diagnostic check for credit system
  */
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, userId: string) => {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
     const diagnostics: any = {
       timestamp: new Date().toISOString(),
       userId,
@@ -171,13 +161,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(diagnostics);
   } catch (error) {
-    console.error('Diagnostics error:', error);
-    return NextResponse.json(
-      {
-        error: 'Diagnostic check failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, req);
   }
-}
+});

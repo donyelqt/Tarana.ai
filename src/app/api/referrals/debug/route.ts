@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/auth";
+import { withAuth } from "@/lib/auth/withAuth";
+import { handleApiError } from "@/lib/errors/handleApiError";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, userId: string) => {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = session.user.id;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 1. Get user profile
@@ -106,26 +100,16 @@ export async function GET(req: NextRequest) {
       }
     });
 
-  } catch (error: any) {
-    console.error("Error in referral debug:", error);
-    return NextResponse.json({
-      error: "Internal server error",
-      message: error.message
-    }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error, req);
   }
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, userId: string) => {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = session.user.id;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log(`🔧 Fixing referral tier for user ${userId}...`);
@@ -186,11 +170,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-  } catch (error: any) {
-    console.error("Error fixing referral tier:", error);
-    return NextResponse.json({
-      error: "Internal server error",
-      message: error.message
-    }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error, req);
   }
-}
+});

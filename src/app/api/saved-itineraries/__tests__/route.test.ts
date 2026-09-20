@@ -65,7 +65,7 @@ const validBody = {
 };
 
 function post(body: unknown) {
-  return POST({ json: async () => body } as unknown as NextRequest);
+  return POST({ headers: { get: () => null }, json: async () => body } as unknown as NextRequest);
 }
 
 describe('saved-itineraries collection route', () => {
@@ -78,7 +78,7 @@ describe('saved-itineraries collection route', () => {
     sessionMock.mockResolvedValue(null);
     const res = await GET(makeRequest());
     expect(res.status).toBe(401);
-    expect(await res.json()).toMatchObject({ error: 'Unauthorized' });
+    expect(await res.json()).toMatchObject({ error: 'Authentication required' });
     expect(fromMock).not.toHaveBeenCalled();
   });
 

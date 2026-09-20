@@ -31,7 +31,7 @@ const fromMock = (mockedSupabaseAdmin.from as unknown as jest.Mock);
 
 const params = (id = 'itin-1') => ({ params: Promise.resolve({ id }) });
 const req = (body?: unknown) =>
-  ({ json: async () => body }) as unknown as NextRequest;
+  ({ headers: { get: () => null }, json: async () => body }) as unknown as NextRequest;
 
 const row = {
   id: 'itin-1',

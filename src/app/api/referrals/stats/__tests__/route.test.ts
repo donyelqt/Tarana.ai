@@ -38,7 +38,7 @@ const tierMock = TierService.getTierProgress as unknown as jest.Mock;
 const codeMock = ReferralService.getUserReferralCode as unknown as jest.Mock;
 
 function get() {
-  return GET({} as unknown as Parameters<typeof GET>[0]);
+  return GET({ headers: { get: () => null } } as unknown as Parameters<typeof GET>[0]);
 }
 
 describe('GET /api/referrals/stats', () => {
@@ -53,7 +53,7 @@ describe('GET /api/referrals/stats', () => {
     sessionMock.mockResolvedValue(null);
     const res = await get();
     expect(res.status).toBe(401);
-    expect(await res.json()).toMatchObject({ error: 'Unauthorized' });
+    expect(await res.json()).toMatchObject({ error: 'Authentication required' });
     expect(statsMock).not.toHaveBeenCalled();
     expect(tierMock).not.toHaveBeenCalled();
     expect(codeMock).not.toHaveBeenCalled();
@@ -97,7 +97,7 @@ describe('GET /api/referrals/stats', () => {
     const res = await get();
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe('Failed to get referral stats');
-    expect(body.details).toBe('db down');
+    expect(body.error).toBe('Internal server error');
+    expect(body.details).toBeUndefined();
   });
 });

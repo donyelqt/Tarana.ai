@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth';
+import { withAuth } from '@/lib/auth/withAuth';
+import { handleApiError } from '@/lib/errors/handleApiError';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 
 /**
@@ -13,23 +13,20 @@ import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
  * never read or delete another user's meal by guessing an id.
  */
 
-export async function GET(
+export const GET = withAuth(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  userId: string,
+  ...args: unknown[]
+) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
     const { id } = await params;
 
     const { data, error } = await supabaseAdmin
       .from('saved_meals')
       .select('*')
       .eq('id', id)
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .single();
 
     if (error) {
@@ -39,21 +36,17 @@ export async function GET(
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    console.error('Error fetching meal:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, request);
   }
-}
+});
 
-export async function DELETE(
+export const DELETE = withAuth(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  userId: string,
+  ...args: unknown[]
+) => {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
     const { id } = await params;
 
     // Scope by user_id so a client cannot delete another user's meal.
@@ -61,7 +54,7 @@ export async function DELETE(
       .from('saved_meals')
       .delete()
       .eq('id', id)
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .select('id')
       .single();
 
@@ -71,7 +64,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting meal:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, request);
   }
-}
+});

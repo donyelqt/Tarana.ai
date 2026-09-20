@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/auth";
+import { withAuth } from "@/lib/auth/withAuth";
 import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
 import { FullMenu, RestaurantData } from "@/app/tarana-eats/data/taranaEatsData";
 import { ResultMatch } from "@/types/tarana-eats";
@@ -73,18 +72,8 @@ const DEFAULT_PLACEHOLDER_IMAGE = "/images/placeholders/hero-placeholder.svg";
 const MIN_RECOMMENDATIONS = 3;
 const MAX_RECOMMENDATIONS = 5;
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, userId: string) => {
   try {
-    // ✅ CREDIT SYSTEM: Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
 
     // ✅ CREDIT SYSTEM: Check available credits
     try {
@@ -397,7 +386,7 @@ export async function POST(req: NextRequest) {
     const errorResponse = FoodRecommendationErrorHandler.createErrorResponse(foodError);
     return NextResponse.json(errorResponse, { status: 500 });
   }
-}
+});
 
 // Validation and enhancement helper
 function validateAndEnhanceRecommendations(

@@ -1,26 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth';
+import { withAuth } from '@/lib/auth/withAuth';
+import { handleApiError } from '@/lib/errors/handleApiError';
 import { CreditService } from '@/lib/referral-system';
 
 /**
  * GET /api/credits/history
  * Get credit transaction history for the authenticated user
  */
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, userId: string) => {
   try {
-    // Get authenticated session
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
-
     // Get limit from query params (default: 20, max: 100)
     const url = new URL(req.url);
     const limitParam = url.searchParams.get('limit');
@@ -35,13 +23,6 @@ export async function GET(req: NextRequest) {
       count: history.length,
     });
   } catch (error) {
-    console.error('Error in /api/credits/history:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to get credit history',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, req);
   }
-}
+});

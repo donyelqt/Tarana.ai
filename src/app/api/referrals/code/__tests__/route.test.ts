@@ -33,7 +33,7 @@ const sessionMock = getServerSession as unknown as jest.Mock;
 const codeMock = ReferralService.getUserReferralCode as unknown as jest.Mock;
 
 function get() {
-  return GET({} as unknown as Parameters<typeof GET>[0]);
+  return GET({ headers: { get: () => null } } as unknown as Parameters<typeof GET>[0]);
 }
 
 describe('GET /api/referrals/code', () => {
@@ -46,7 +46,7 @@ describe('GET /api/referrals/code', () => {
     sessionMock.mockResolvedValue(null);
     const res = await get();
     expect(res.status).toBe(401);
-    expect(await res.json()).toMatchObject({ error: 'Unauthorized' });
+    expect(await res.json()).toMatchObject({ error: 'Authentication required' });
     expect(codeMock).not.toHaveBeenCalled();
   });
 
@@ -74,7 +74,7 @@ describe('GET /api/referrals/code', () => {
     const res = await get();
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe('Failed to get referral code');
-    expect(body.details).toBe('db down');
+    expect(body.error).toBe('Internal server error');
+    expect(body.details).toBeUndefined();
   });
 });

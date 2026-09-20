@@ -19,6 +19,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { logger } from '@/lib/observability/logger';
 
 const UUID_RE =
@@ -29,7 +30,7 @@ export function getRequestId(request: NextRequest): string {
   if (incoming && UUID_RE.test(incoming)) {
     return incoming;
   }
-  return crypto.randomUUID();
+  return randomUUID();
 }
 
 export function requestIdMiddleware(request: NextRequest): NextResponse {
