@@ -6,8 +6,7 @@
  * @author Tarana.ai Engineering Team
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth';
+import { withAuth } from '@/lib/auth/withAuth';
 import { getSavedItineraries, updateItinerary, SavedItinerary } from '@/lib/data/savedItineraries';
 import { fetchWeatherFromAPI } from '@/lib/core/utils';
 import { 
@@ -44,23 +43,16 @@ interface RefreshResponse {
 // GET /api/saved-itineraries/[id]/refresh (Evaluation Only)
 // ============================================================================
 
-export async function GET(
+export const GET = withAuth(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<RefreshResponse>> {
+  userId: string,
+  ...args: unknown[]
+): Promise<NextResponse<RefreshResponse>> => {
+  const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
   const { id } = await params;
   console.log(`\n🔍 REFRESH EVALUATION REQUEST - ID: ${id}\n`);
 
   try {
-    // Authentication
-    const session = await getServerSession(authOptions);
-    
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized', error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
 
     // Fetch itinerary
     const allItineraries = await getSavedItineraries();
@@ -108,16 +100,18 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});
 
 // ============================================================================
 // POST /api/saved-itineraries/[id]/refresh
 // ============================================================================
 
-export async function POST(
+export const POST = withAuth(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<RefreshResponse>> {
+  userId: string,
+  ...args: unknown[]
+): Promise<NextResponse<RefreshResponse>> => {
+  const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
   const { id } = await params;
   const startTime = Date.now();
   console.log(`\n${'='.repeat(80)}`);
@@ -126,23 +120,8 @@ export async function POST(
 
   try {
     // ========================================================================
-    // 1. AUTHENTICATION
+    // 1. AUTHENTICATION (withAuth resolved the session identity)
     // ========================================================================
-    const session = await getServerSession(authOptions);
-    
-    if (!session || !session.user) {
-      console.log('❌ Unauthorized: No valid session');
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Unauthorized', 
-          error: 'You must be logged in to refresh itineraries' 
-        },
-        { status: 401 }
-      );
-    }
-
-    console.log(`✅ Authenticated user: ${session.user.email}`);
 
     // ========================================================================
     // 2. PARSE REQUEST BODY
@@ -443,7 +422,7 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});
 
 // ============================================================================
 // HELPER FUNCTIONS

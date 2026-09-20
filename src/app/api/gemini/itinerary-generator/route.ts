@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { createHash, randomUUID } from "crypto";
-import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/auth";
 import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
 import { takeRefundSnapshot } from "@/lib/observability/refundMetrics";
