@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth';
+import { withAuth } from '@/lib/auth/withAuth';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 import { z } from 'zod';
 import { handleApiError } from '@/lib/errors/handleApiError';
@@ -16,22 +15,14 @@ const SavedMealSchema = z.object({
   menu_items: z.array(z.any()).optional().default([])
 });
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, userId: string) => {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized - No session found' },
-        { status: 401 }
-      );
-    }
 
     // Use admin client and filter by user_id manually
     const { data, error } = await supabaseAdmin
       .from('saved_meals')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -50,24 +41,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data,
-      userId: session.user.id,
+      userId,
       count: data?.length || 0
     });
   } catch (error) {
     return handleApiError(error, request);
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, userId: string) => {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     const body = await request.json();
 
@@ -93,7 +76,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('saved_meals')
       .insert({
-        user_id: session.user.id,
+        user_id: userId,
         cafe_name: validatedData.cafe_name,
         meal_type: validatedData.meal_type,
         price: validatedData.price,
@@ -107,13 +90,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Supabase error:', error);
       return NextResponse.json(
-        { error: 'Failed to save meal', details: error.message },
+        { error: 'Failed to save meal' },
         { status: 500 }
       );
     }
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     return handleApiError(error, request);
   }
-}
+});
