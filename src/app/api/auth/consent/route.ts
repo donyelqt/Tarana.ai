@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { recordTosAcceptance } from '@/lib/services/userService';
 
 /**
  * Records ToS/Privacy acceptance for the signed-in user.
@@ -9,12 +9,9 @@ import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 export const POST = withAuth(async (_req: NextRequest, userId: string) => {
   const now = new Date().toISOString();
 
-  const { error } = await supabaseAdmin
-    .from('users')
-    .update({ tos_accepted_at: now })
-    .eq('id', userId);
-
-  if (error) {
+  try {
+    await recordTosAcceptance(userId);
+  } catch (error) {
     console.error('Error recording ToS acceptance:', error);
     return NextResponse.json(
       { error: 'Could not record acceptance. Please try again.' },
