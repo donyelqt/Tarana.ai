@@ -3,12 +3,8 @@
  * Public aggregates: exact-count head queries + static cafes length.
  */
 import { GET } from '../route';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { getStats } from '@/lib/services/statsService';
 import { restaurants } from '@/app/tarana-eats/data/taranaEatsData';
-
-jest.mock('@/lib/data/supabaseAdmin', () => ({
-  supabaseAdmin: { from: jest.fn() },
-}));
 
 // jest.setup.js replaces global Response with a minimal mock lacking the
 // static json() NextResponse.json() delegates to. Restore just that static.
@@ -24,20 +20,21 @@ if (typeof MockedResponse.json !== 'function') {
     });
 }
 
-const fromMock = supabaseAdmin.from as unknown as jest.Mock;
-const COUNTS: Record<string, number> = { itineraries: 12, saved_meals: 34, users: 56 };
+jest.mock('@/lib/services/statsService', () => ({
+  getStats: jest.fn(),
+}));
 
-function mockCounts(counts: Record<string, number> = COUNTS, failingTable?: string) {
-  fromMock.mockImplementation((table: string) => ({
-    select: async () =>
-      table === failingTable
-        ? { count: null, error: { message: 'db down' } }
-        : { count: counts[table] ?? 0, error: null },
-  }));
-}
+const mockedGetStats = getStats as unknown as jest.Mock;
 
 describe('GET /api/stats', () => {
-  beforeEach(() => mockCounts());
+  beforeEach(() => {
+    mockedGetStats.mockResolvedValue({
+      itineraries: 12,
+      cafes: restaurants.length,
+      meals: 34,
+      explorers: 56,
+    });
+  });
 
   it('returns exact counts plus the static cafes length', async () => {
     const res = await GET();
@@ -50,7 +47,7 @@ describe('GET /api/stats', () => {
   });
 
   it('returns 500 when any count query fails', async () => {
-    mockCounts(COUNTS, 'saved_meals');
+    mockedGetStats.mockRejectedValue(new Error('db down'));
     const res = await GET();
     expect(res.status).toBe(500);
   });

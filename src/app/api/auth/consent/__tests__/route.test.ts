@@ -7,7 +7,7 @@ if (typeof MockedResponseConsent.json !== 'function') {
 import { NextRequest } from 'next/server';
 import { POST } from '../route';
 import { getServerSession } from 'next-auth';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { recordTosAcceptance } from '@/lib/services/userService';
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -17,28 +17,21 @@ jest.mock('@/lib/auth/auth', () => ({
   authOptions: {},
 }));
 
-jest.mock('@/lib/data/supabaseAdmin', () => ({
-  supabaseAdmin: {
-    from: jest.fn(),
-  },
+jest.mock('@/lib/services/userService', () => ({
+  recordTosAcceptance: jest.fn(),
 }));
 
 const mockedGetServerSession = getServerSession as unknown as jest.Mock;
-const mockedFrom = supabaseAdmin.from as unknown as jest.Mock;
+const mockedRecordTosAcceptance = recordTosAcceptance as unknown as jest.Mock;
 
 function makeRequest(): NextRequest {
   return { headers: { get: () => null } } as unknown as NextRequest;
 }
 
 describe('Consent API Route Tests', () => {
-  const mockEq = jest.fn();
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockEq.mockResolvedValue({ error: null });
-    mockedFrom.mockReturnValue({
-      update: jest.fn(() => ({ eq: mockEq })),
-    });
+    mockedRecordTosAcceptance.mockResolvedValue(undefined);
   });
 
   test('rejects unauthenticated requests with 401', async () => {
@@ -49,7 +42,7 @@ describe('Consent API Route Tests', () => {
     expect(response.status).toBe(401);
     const body = await response.json();
     expect(body.error).toBeDefined();
-    expect(mockedFrom).not.toHaveBeenCalled();
+    expect(mockedRecordTosAcceptance).not.toHaveBeenCalled();
   });
 
   test('sets tos_accepted_at for the session user', async () => {
@@ -62,17 +55,12 @@ describe('Consent API Route Tests', () => {
     expect(body.success).toBe(true);
     expect(typeof body.tos_accepted_at).toBe('string');
 
-    expect(mockedFrom).toHaveBeenCalledWith('users');
-    const updateMock = mockedFrom.mock.results[0].value.update;
-    expect(updateMock).toHaveBeenCalledWith({
-      tos_accepted_at: expect.any(String),
-    });
-    expect(mockEq).toHaveBeenCalledWith('id', 'user-1');
+    expect(mockedRecordTosAcceptance).toHaveBeenCalledWith('user-1');
   });
 
   test('returns 500 when the timestamp update fails', async () => {
     mockedGetServerSession.mockResolvedValue({ user: { id: 'user-1' } });
-    mockEq.mockResolvedValue({ error: { message: 'db down' } });
+    mockedRecordTosAcceptance.mockRejectedValue(new Error('db down'));
 
     const response = await POST(makeRequest());
 
