@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import {
+  consumeTestCredit,
+  getRecentTransactions,
+  getUserProfileRow,
+} from '@/lib/services/creditDiagnostics';
 
 /**
  * POST /api/credits/test-consumption
@@ -12,14 +16,6 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
   try {
-
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Database not available' },
-        { status: 500 }
-      );
-    }
-
     const testResult: any = {
       timestamp: new Date().toISOString(),
       userId,
@@ -27,11 +23,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     };
 
     // STEP 1: Check if profile exists
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    const { profile, error: profileError } = await getUserProfileRow(userId);
 
     testResult.steps.push({
       step: 'Check Profile',
@@ -47,8 +39,10 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       });
     }
 
+    const profileRow = profile as { daily_credits: number; credits_used_today: number };
+
     // STEP 2: Check current balance
-    const balanceBefore = profile.daily_credits - profile.credits_used_today;
+    const balanceBefore = profileRow.daily_credits - profileRow.credits_used_today;
     testResult.steps.push({
       step: 'Check Balance Before',
       success: true,
@@ -61,14 +55,8 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
 
     // STEP 3: Try to call consume_credits function
     console.log(`[TEST] Attempting to consume 1 credit for user ${userId}`);
-    
-    const { data: consumeResult, error: consumeError } = await supabaseAdmin
-      .rpc('consume_credits', {
-        p_user_id: userId,
-        p_amount: 1,
-        p_service: 'tarana_gala', // Use valid service name
-        p_description: 'TEST - Credit consumption test',
-      });
+
+    const { data: consumeResult, error: consumeError } = await consumeTestCredit(userId);
 
     testResult.steps.push({
       step: 'Call consume_credits Function',
@@ -93,35 +81,30 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
 
     // STEP 4: Check balance after
-    const { data: profileAfter, error: afterError } = await supabaseAdmin
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    const { profile: profileAfter, error: afterError } = await getUserProfileRow(userId);
+    const afterRow = profileAfter as { daily_credits: number; credits_used_today: number } | null;
 
-    const balanceAfter = profileAfter 
-      ? profileAfter.daily_credits - profileAfter.credits_used_today
+    const balanceAfter = afterRow
+      ? afterRow.daily_credits - afterRow.credits_used_today
       : 0;
 
     testResult.steps.push({
       step: 'Check Balance After',
       success: !!profileAfter,
       data: {
-        dailyCredits: profileAfter?.daily_credits,
-        usedToday: profileAfter?.credits_used_today,
+        dailyCredits: afterRow?.daily_credits,
+        usedToday: afterRow?.credits_used_today,
         remaining: balanceAfter
       },
       error: afterError?.message
     });
 
     // STEP 5: Check transaction was logged
-    const { data: transactions, error: txError } = await supabaseAdmin
-      .from('credit_transactions')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('description', 'TEST - Credit consumption test')
-      .order('created_at', { ascending: false })
-      .limit(1);
+    const { transactions, error: txError } = await getRecentTransactions(
+      userId,
+      1,
+      'TEST - Credit consumption test'
+    );
 
     testResult.steps.push({
       step: 'Check Transaction Logged',

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { createUserProfile, userProfileExists } from '@/lib/services/userService';
 
 /**
  * POST /api/credits/init-profile
@@ -9,21 +9,10 @@ import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
  */
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   try {
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Database not available' },
-        { status: 500 }
-      );
-    }
-
     // Check if profile already exists
-    const { data: existing } = await supabaseAdmin
-      .from('user_profiles')
-      .select('id')
-      .eq('id', userId)
-      .single();
+    const exists = await userProfileExists(userId);
 
-    if (existing) {
+    if (exists) {
       return NextResponse.json({
         success: true,
         message: 'Profile already exists',
@@ -31,19 +20,10 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       });
     }
 
-    // Create user profile
-    const { error } = await supabaseAdmin
-      .from('user_profiles')
-      .insert({
-        id: userId,
-        current_tier: 'Default',
-        daily_credits: 5,
-        credits_used_today: 0,
-        total_referrals: 0,
-        active_referrals: 0,
-      });
-
-    if (error) {
+    // Create user profile (same default row as registration)
+    try {
+      await createUserProfile(userId);
+    } catch {
       return NextResponse.json(
         { error: 'Failed to create profile' },
         { status: 500 }
