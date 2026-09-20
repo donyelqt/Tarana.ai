@@ -1,120 +1,141 @@
-/**
- * Tests for Profile API endpoints
- * These are example tests - adjust based on your testing framework
- */
+const MockedResponseProfile = globalThis.Response as unknown as { new(body?: unknown, init?: any): any; json(body: unknown, init?: any): any; };
+if (typeof MockedResponseProfile.json !== 'function') {
+  MockedResponseProfile.json = (body: unknown, init?: { status?: number }) =>
+    new MockedResponseProfile(JSON.stringify(body), { status: init?.status ?? 200, headers: { 'content-type': 'application/json' } });
+}
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { NextRequest } from 'next/server';
+import { GET, PATCH } from '../route';
+import { getServerSession } from 'next-auth';
+import { getProfileByEmail, updateProfileByEmail } from '@/lib/services/profileService';
 
-// Mock NextAuth
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
 }));
 
-// Mock Supabase
-jest.mock('@/lib/data/supabaseAdmin', () => ({
-  supabaseAdmin: {
-    from: jest.fn(() => ({
-      select: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          single: jest.fn(),
-        })),
-      })),
-      update: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          select: jest.fn(() => ({
-            single: jest.fn(),
-          })),
-        })),
-      })),
-    })),
-  },
+jest.mock('@/lib/auth/auth', () => ({
+  authOptions: {},
 }));
 
-describe('Profile API', () => {
-  describe('GET /api/profile', () => {
-    it('should return 401 if not authenticated', async () => {
-      // Test implementation
-      expect(true).toBe(true);
-    });
+jest.mock('@/lib/services/profileService', () => ({
+  getProfileByEmail: jest.fn(),
+  updateProfileByEmail: jest.fn(),
+}));
 
-    it('should return user profile if authenticated', async () => {
-      // Test implementation
-      expect(true).toBe(true);
-    });
+const mockedGetServerSession = getServerSession as unknown as jest.Mock;
+const mockedGetProfileByEmail = getProfileByEmail as unknown as jest.Mock;
+const mockedUpdateProfileByEmail = updateProfileByEmail as unknown as jest.Mock;
 
-    it('should handle database errors gracefully', async () => {
-      // Test implementation
-      expect(true).toBe(true);
-    });
+function authedRequest(body?: unknown): NextRequest {
+  mockedGetServerSession.mockResolvedValue({
+    user: { id: 'user-1', email: 'Test@Example.com' },
+  });
+  return {
+    headers: { get: () => null },
+    json: jest.fn().mockResolvedValue(body),
+  } as unknown as NextRequest;
+}
+
+const dbRow = {
+  id: 'user-1',
+  email: 'test@example.com',
+  full_name: 'John Doe',
+  image: 'img.png',
+  location: 'Baguio',
+  bio: 'hello',
+};
+
+describe('Profile API Route Tests', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('PATCH /api/profile', () => {
-    it('should return 401 if not authenticated', async () => {
-      // Test implementation
-      expect(true).toBe(true);
-    });
+  test('rejects unauthenticated requests with 401', async () => {
+    mockedGetServerSession.mockResolvedValue(null);
 
-    it('should validate required fields', async () => {
-      // Test implementation
-      expect(true).toBe(true);
-    });
+    const req = {
+      headers: { get: () => null },
+    } as unknown as NextRequest;
+    const response = await GET(req);
+    expect(response.status).toBe(401);
+    expect(mockedGetProfileByEmail).not.toHaveBeenCalled();
+  });
 
-    it('should validate field lengths', async () => {
-      // Test implementation
-      expect(true).toBe(true);
-    });
+  test('GET returns the mapped profile', async () => {
+    mockedGetProfileByEmail.mockResolvedValue(dbRow);
 
-    it('should update profile successfully', async () => {
-      // Test implementation
-      expect(true).toBe(true);
-    });
+    const response = await GET(authedRequest());
+    expect(response.status).toBe(200);
 
-    it('should trim whitespace from inputs', async () => {
-      // Test implementation
-      expect(true).toBe(true);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.profile).toEqual({
+      id: 'user-1',
+      email: 'test@example.com',
+      fullName: 'John Doe',
+      image: 'img.png',
+      location: 'Baguio',
+      bio: 'hello',
     });
+    expect(mockedGetProfileByEmail).toHaveBeenCalledWith('Test@Example.com');
+  });
 
-    it('should handle database errors gracefully', async () => {
-      // Test implementation
-      expect(true).toBe(true);
-    });
+  test('GET returns 500 when the service throws', async () => {
+    mockedGetProfileByEmail.mockRejectedValue(new Error('db down'));
+
+    const response = await GET(authedRequest());
+    expect(response.status).toBe(500);
+
+    const body = await response.json();
+    expect(body.error).toBe('Failed to fetch profile');
+  });
+
+  test('PATCH returns 400 when full name is missing', async () => {
+    const response = await PATCH(authedRequest({ fullName: '   ' }));
+    expect(response.status).toBe(400);
+
+    const body = await response.json();
+    expect(body.error).toBe('Full name is required');
+    expect(mockedUpdateProfileByEmail).not.toHaveBeenCalled();
+  });
+
+  test('PATCH truncates an over-long name to 100 characters via sanitizeName', async () => {
+    mockedUpdateProfileByEmail.mockResolvedValue(dbRow);
+
+    const response = await PATCH(authedRequest({ fullName: 'a'.repeat(150) }));
+    expect(response.status).toBe(200);
+    // sanitizeName caps at 100 chars, so the route-level >100 branch is
+    // unreachable — the service receives the truncated name.
+    expect(mockedUpdateProfileByEmail).toHaveBeenCalledWith(
+      'Test@Example.com',
+      { fullName: 'a'.repeat(100), location: undefined, bio: undefined }
+    );
+  });
+
+  test('PATCH updates and returns the mapped profile', async () => {
+    mockedUpdateProfileByEmail.mockResolvedValue({ ...dbRow, location: 'Manila' });
+
+    const response = await PATCH(
+      authedRequest({ fullName: 'John Doe', location: 'Manila', bio: 'hi' })
+    );
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.profile.location).toBe('Manila');
+    expect(mockedUpdateProfileByEmail).toHaveBeenCalledWith(
+      'Test@Example.com',
+      { fullName: 'John Doe', location: 'Manila', bio: 'hi' }
+    );
+  });
+
+  test('PATCH returns 500 when the service throws', async () => {
+    mockedUpdateProfileByEmail.mockRejectedValue(new Error('db down'));
+
+    const response = await PATCH(authedRequest({ fullName: 'John Doe' }));
+    expect(response.status).toBe(500);
+
+    const body = await response.json();
+    expect(body.error).toBe('Failed to update profile');
   });
 });
-
-/**
- * Manual Testing Checklist:
- * 
- * 1. Authentication:
- *    - [ ] Unauthenticated users are redirected to login
- *    - [ ] Authenticated users can access settings
- * 
- * 2. Profile Loading:
- *    - [ ] Profile data loads on page mount
- *    - [ ] Loading spinner shows while fetching
- *    - [ ] Error message shows if fetch fails
- * 
- * 3. Form Validation:
- *    - [ ] Full name is required
- *    - [ ] Character limits are enforced
- *    - [ ] Character counters update in real-time
- *    - [ ] Email field is disabled
- * 
- * 4. Save Functionality:
- *    - [ ] Save button is disabled when no changes
- *    - [ ] Save button is disabled while saving
- *    - [ ] Success toast shows on successful save
- *    - [ ] Error toast shows on failed save
- *    - [ ] Form resets hasChanges after successful save
- * 
- * 5. Edge Cases:
- *    - [ ] Empty full name shows validation error
- *    - [ ] Exceeding character limits shows error
- *    - [ ] Network errors are handled gracefully
- *    - [ ] Rapid clicking save button doesn't cause issues
- * 
- * 6. UI/UX:
- *    - [ ] Responsive on mobile devices
- *    - [ ] Hover effects work correctly
- *    - [ ] Loading states are clear
- *    - [ ] Toast notifications are readable
- */

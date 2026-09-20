@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { createMeal, listMeals, MealDbError, SavedMealInput } from '@/lib/services/mealService';
 import { z } from 'zod';
 import { handleApiError } from '@/lib/errors/handleApiError';
 // Zod validation schema for saved meals
@@ -17,26 +17,7 @@ const SavedMealSchema = z.object({
 
 export const GET = withAuth(async (request: NextRequest, userId: string) => {
   try {
-
-    // Use admin client and filter by user_id manually
-    const { data, error } = await supabaseAdmin
-      .from('saved_meals')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Supabase error:', error);
-      return NextResponse.json(
-        {
-          error: 'Failed to fetch saved meals',
-          details: error.message,
-          hint: error.hint,
-          code: error.code
-        },
-        { status: 500 }
-      );
-    }
+    const data = await listMeals(userId);
 
     return NextResponse.json({
       success: true,
@@ -45,6 +26,18 @@ export const GET = withAuth(async (request: NextRequest, userId: string) => {
       count: data?.length || 0
     });
   } catch (error) {
+    if (error instanceof MealDbError) {
+      console.error('Supabase error:', error);
+      return NextResponse.json(
+        {
+          error: 'Failed to fetch saved meals',
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        },
+        { status: 500 }
+      );
+    }
     return handleApiError(error, request);
   }
 });
@@ -70,26 +63,12 @@ export const POST = withAuth(async (request: NextRequest, userId: string) => {
       );
     }
 
-    const validatedData = validation.data;
+    const validatedData: SavedMealInput = validation.data;
 
-    // Use admin client to insert
-    const { data, error } = await supabaseAdmin
-      .from('saved_meals')
-      .insert({
-        user_id: userId,
-        cafe_name: validatedData.cafe_name,
-        meal_type: validatedData.meal_type,
-        price: validatedData.price,
-        good_for: validatedData.good_for,
-        location: validatedData.location,
-        image: validatedData.image,
-        tags: validatedData.tags,
-        menu_items: validatedData.menu_items
-      })
-      .select()
-      .single();
-
-    if (error) {
+    let data;
+    try {
+      data = await createMeal(userId, validatedData);
+    } catch {
       return NextResponse.json(
         { error: 'Failed to save meal' },
         { status: 500 }

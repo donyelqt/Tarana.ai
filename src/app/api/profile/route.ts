@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuthEmail } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { getProfileByEmail, updateProfileByEmail } from '@/lib/services/profileService';
 import { sanitizeName, sanitizeText } from '@/lib/security/inputSanitizer';
 
 // GET - Fetch user profile
 export const GET = withAuthEmail(async (req: NextRequest, { email }) => {
   try {
-    const { data: user, error } = await supabaseAdmin
-      .from('users')
-      .select('id, email, full_name, image, location, bio')
-      .eq('email', email.toLowerCase())
-      .single();
-
-    if (error) {
+    let user;
+    try {
+      user = await getProfileByEmail(email);
+    } catch (error) {
       console.error('Error fetching user profile:', error);
       return NextResponse.json(
         { error: 'Failed to fetch profile' },
@@ -78,19 +75,14 @@ export const PATCH = withAuthEmail(async (req: NextRequest, { email }) => {
     }
 
     // Update user profile
-    const { data: updatedUser, error } = await supabaseAdmin
-      .from('users')
-      .update({
-        full_name: sanitizedFullName,
-        location: sanitizedLocation ?? null,
-        bio: sanitizedBio ?? null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('email', email.toLowerCase())
-      .select('id, email, full_name, image, location, bio')
-      .single();
-
-    if (error) {
+    let updatedUser;
+    try {
+      updatedUser = await updateProfileByEmail(email, {
+        fullName: sanitizedFullName,
+        location: sanitizedLocation,
+        bio: sanitizedBio,
+      });
+    } catch (error) {
       console.error('Error updating user profile:', error);
       return NextResponse.json(
         { error: 'Failed to update profile' },
