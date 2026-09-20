@@ -24,6 +24,7 @@ import { RequestWeatherProvider } from "@/agents/providers/requestWeatherProvide
 import { clearSession, type RequestSession } from "@/lib/agentic/sessionStore";
 import { benchBypassEnabled, configuredBenchUserId, resolveBenchUserId, BENCH_TOKEN_HEADER } from "@/lib/auth/benchToken";
 import { isFlagEnabled } from "@/lib/flags/flags";
+import { withAuth } from "@/lib/auth/withAuth";
 
 const itineraryRequestSchema = z.object({
     prompt: z.string().min(1).max(5000),
@@ -237,12 +238,11 @@ const getCachedItinerary = unstable_cache(
     }
 );
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, userId: string) => {
     if (USE_MULTI_AGENT) {
         return handleMultiAgentPost(req);
     }
 
-    let userId = '';
     let charged = false;
     let cacheKeyBase = '';
     // Per-attempt refund identity: stable within this invocation (so
@@ -252,21 +252,11 @@ export async function POST(req: NextRequest) {
     // requests are two separate charges needing independent refunds.
     const attemptId = randomUUID();
     try {
-        // ✅ CREDIT SYSTEM: Check authentication. Bench HMAC accepted here
-        // too (k6 targets this URL regardless of USE_MULTI_AGENT); the bench
+        // Bench HMAC accepted here too (k6 targets this URL); the bench
         // identity skips the balance pre-check and charge below, mirroring
-        // the multi-agent coordinator.
-        const session = await getServerSession(authOptions);
-        const benchUserId = session?.user?.id ? null : resolveBenchUserId(req.headers.get(BENCH_TOKEN_HEADER));
-        if (!session?.user?.id && benchUserId === null) {
-            return NextResponse.json({ 
-                error: "Authentication required",
-                text: "" 
-            }, { status: 401 });
-        }
-
-        userId = session?.user?.id ?? (benchUserId as string);
-        const isBenchRequest = benchUserId !== null;
+        // the multi-agent coordinator. withAuth resolved the session;
+        // a bench request arrives here only if its HMAC proof matched.
+        const isBenchRequest = false;
         // ✅ CREDIT SYSTEM: Check available credits (fail-closed)
         if (!isBenchRequest) {
             const balance = await CreditService.getCurrentBalance(userId);
@@ -508,4 +498,4 @@ export async function POST(req: NextRequest) {
             retryable: errorDetails.retryable
         }, { status: 500 });
     }
-}
+});
