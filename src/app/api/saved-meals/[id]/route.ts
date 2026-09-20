@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
-import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { deleteMealById, getMealById } from '@/lib/services/mealService';
 
 /**
  * Single saved-meal access — session-scoped.
@@ -22,14 +22,9 @@ export const GET = withAuth(async (
     const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
     const { id } = await params;
 
-    const { data, error } = await supabaseAdmin
-      .from('saved_meals')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single();
+    const data = await getMealById(id, userId);
 
-    if (error) {
+    if (!data) {
       // Not found OR belongs to another user — indistinguishable on purpose.
       return NextResponse.json({ error: 'Meal not found' }, { status: 404 });
     }
@@ -50,15 +45,9 @@ export const DELETE = withAuth(async (
     const { id } = await params;
 
     // Scope by user_id so a client cannot delete another user's meal.
-    const { data: deleted, error } = await supabaseAdmin
-      .from('saved_meals')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select('id')
-      .single();
+    const deleted = await deleteMealById(id, userId);
 
-    if (error || !deleted) {
+    if (!deleted) {
       return NextResponse.json({ error: 'Meal not found' }, { status: 404 });
     }
 
