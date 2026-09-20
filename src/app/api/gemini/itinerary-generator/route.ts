@@ -23,6 +23,7 @@ import { ItineraryComposerAgent } from "@/agents/itineraryComposerAgent";
 import { RequestWeatherProvider } from "@/agents/providers/requestWeatherProvider";
 import { clearSession, type RequestSession } from "@/lib/agentic/sessionStore";
 import { benchBypassEnabled, configuredBenchUserId, resolveBenchUserId, BENCH_TOKEN_HEADER } from "@/lib/auth/benchToken";
+import { isFlagEnabled } from "@/lib/flags/flags";
 
 const itineraryRequestSchema = z.object({
     prompt: z.string().min(1).max(5000),
@@ -71,7 +72,7 @@ const pipelineCoordinator = new PipelineCoordinator({
 // limit is charged with no possible refund (refund-after-death is impossible).
 export const maxDuration = 60;
 
-const USE_MULTI_AGENT = process.env.USE_MULTI_AGENT === "true";
+const USE_MULTI_AGENT = isFlagEnabled('USE_MULTI_AGENT');
 
 async function consumeCredit(userId: string, prompt: string) {
     // Fail-closed: propagate so the caller can refuse to serve output it could not charge for.
