@@ -163,7 +163,7 @@ request
 - Zero-dep `withRetry` helper created at `src/lib/upstream/withRetry.ts`: exponential backoff + full jitter, composes with `withTimeout`, `AppError.retryable` drives skip/no-retry decisions, wraps raw errors to `AppError(UPSTREAM)` on exhaustion. 15 tests in `__tests__/withRetry.test.ts`.
 - **Slice 1 done:** `food-recommendations/route.ts` inline retry loop replaced with `withRetry` call (2 attempts, 30s timeout, 1s fixed delay preserved). Uses `AppError.retryable` classification instead of the old `maxRetries` constant.
 - **Slice 2 done:** `ErrorHandler.withRetry` (Gemini pipeline, `itinerary-generator/lib/errorHandler.ts`) — the hand-rolled backoff loop replaced with a delegation to the shared helper; classification/stats/`ItineraryError` contract preserved (see §9 Phase 2 table for the full record).
-- **Remaining:** `generateContent` sites in `itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine` (timeout composition — §2.2).
+- **Live Gemini sites complete:** all live `generateContent` call sites now compose `withRetry` with dependency budgets; `itineraryUtils.ensureFullItinerary` is dead code and was deliberately not touched.
 - **Verify:** unit test that a flaky upstream is retried N times before failing; integration test that succeeds after 2 retries.
 
 #### 2.2 Timeouts on every external call
@@ -524,10 +524,10 @@ Confirmed unchanged: `refundMetrics.ts:28-47` counters are still module-level,
 `takeRefundSnapshot` still reads-and-resets on cold start. Phase 5.3 (durable
 metrics) is still needed.
 
-**32. §2 row 18 — `emailConfig.test.ts:78` still fails as of 2026-09-21.**
-Full suite: 549 passed, 6 skipped, 1 failed (the same ambient `SMTP_FROM_EMAIL`
-test pollution described in §4.4). The plan explicitly says this is a test-only
-fix and should not touch the source default.
+**32. §2 row 18 — `emailConfig.test.ts:78` failure is fixed as of 2026-09-22.**
+PR #518 (`6fef869`) makes `mockEnv` strip `SMTP_FROM_EMAIL` before applying
+test variables, without changing the source default. Full suite: 550 passed,
+6 skipped, 0 failed — the first 100% green run.
 
 ### 8.4 Findings that do NOT change the plan (2026-09-20)
 
@@ -540,7 +540,7 @@ fix and should not touch the source default.
 - **No code was modified during the 2026-09-20 audit.** Document-only pass.
   The 2026-09-21 pass implemented Phase 2.1 (§8.5).
 
-## 9. Implementation Status (2026-09-20)
+## 9. Implementation Status (re-verified 2026-09-22)
 
 Markers follow the `✅ Done` convention used in `specs/tarana-mobile-app-plan.md`.
 Each row records what shipped, the verification that ran, and the commit-style
@@ -583,6 +583,11 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | 1.2 slice 3b (itineraries) | [#511](https://github.com/donyelqt/Tarana.ai/pull/511) | `72ed57b` (merged `429991c`) |
 | 1.2 slice 3c (credits, closes 1.2) | [#513](https://github.com/donyelqt/Tarana.ai/pull/513) | `133d5b9` (merged `6b542bf`) |
 | 2.2 slice 1 (timeout helper + 3 sites) | [#515](https://github.com/donyelqt/Tarana.ai/pull/515) | `83bb797` (merged `389c2f5`) |
+| 2.1 slice 1 (shared retry helper + food route) | [#517](https://github.com/donyelqt/Tarana.ai/pull/517) | `6e1b8ea` |
+| 4.4 (emailConfig test isolation) | [#518](https://github.com/donyelqt/Tarana.ai/pull/518) | `6fef869` |
+| 2.1 slice 2 (ErrorHandler retry migration) | [#519](https://github.com/donyelqt/Tarana.ai/pull/519) | `a9b9df2` |
+| 2.2 slice 2b (remaining Gemini timeout sites) | [#520](https://github.com/donyelqt/Tarana.ai/pull/520) | `304affc` |
+| 3.1 (redundant security-header calls) | [#521](https://github.com/donyelqt/Tarana.ai/pull/521) | `b508146` |
 
 ### What the slice did NOT touch
 
@@ -658,16 +663,35 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | CI on PR #513 | `verify` + Vercel | **pass** (`verify` 2m48s) |
 | Invariants | `grep` over `src/app/api` | `getServerSession` → zero; `String(error)` → zero; `supabaseAdmin` → zero (invariant 2 holds; 1.2 closed) |
 
-### Phase 2: Reliability (status re-verified against `main` 2026-09-21)
+### Phase 2: Reliability (status re-verified against `main` 2026-09-22)
 
 | Status | # | Item | Evidence |
 |---|---|---|---|
-| [x] | 2.2 slice 1 | Shared timeout helper + 3 call sites | PR #515 (merged `389c2f5`). `src/lib/upstream/withTimeout.ts` (`UpstreamTimeoutError`, `withTimeout`, `fetchWithTimeout`); wired `fetchWeatherData`, `tomtomTraffic.getTrafficIncidentsSimple`, `agent.ts` subqueries. 8 new tests. Remaining: other `generateContent` sites (`itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine`). 2.1 retry now done (§8.5).
-| [x] | 2.1 slice 1 | Shared retry helper + first call site | New `src/lib/upstream/withRetry.ts` (zero-dep, exponential backoff + full jitter, composes with `withTimeout` from 2.2 slice 1); `AppError.retryable` drives skip/no-retry decisions; raw Error wrapped to `AppError` (UPSTREAM) on exhaustion. 15 new tests in `__tests__/withRetry.test.ts`. Wired `food-recommendations/route.ts` (replaced 30-line inline retry loop with `withRetry` call, preserving 2 attempts + 30s timeout + 1s fixed delay). Remaining: `itinerary-generator/route.ts` inline retry loop, `generateContent` sites in `itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine`. |
-| [x] | 2.1 slice 2 | Gemini pipeline retry migrated onto shared helper | `ErrorHandler.withRetry` (`itinerary-generator/lib/errorHandler.ts`) — the hand-rolled backoff loop (no jitter, `console.warn`, `throw lastError` exhaustion) replaced with a delegation to the shared `withRetry` (slice 1). Classification, stats, and the `ItineraryError` throw contract stay in `ErrorHandler`: each failure is classified via `handleError` (stats increment preserved), thrown as a classified `ItineraryError`, and re-thrown from a closure on exhaustion so the route's `handleError(e)` sees the original type (TIMEOUT/VALIDATION do not round-trip through the message-matching classifier). `shouldRetry` bridge reads `ItineraryError.retryable` — API_KEY fails immediately, as before. `jitter: 'none'` + `baseDelayMs`/`factor` preserve the previous fixed exponential delay; no `timeoutMs` (timeouts are §2.2/P0-3, not this slice). Verified: `npx tsx specs/smoke-errorhandler-retry.mjs` → SMOKE OK (22 checks: success, retry-then-succeed, fixed backoff timing, API_KEY immediate fail, exhaustion classified TIMEOUT, route re-classification parity, stats increment-per-failure, PARSING round-trip); tsc 0 errors; full suite 550 passed / 6 skipped / 0 failed; lint clean; itinerary-generator suites 12/12. |
+| [x] | 2.1 slice 1 | Shared retry helper + first call site | New `src/lib/upstream/withRetry.ts` (zero-dep, exponential backoff + full jitter, composes with `withTimeout` from 2.2 slice 1); `AppError.retryable` drives skip/no-retry decisions; raw Error wrapped to `AppError` (UPSTREAM) on exhaustion. 15 tests in `__tests__/withRetry.test.ts`. Wired `food-recommendations/route.ts` (replaced the 30-line inline retry loop while preserving 2 attempts, 30s timeout, and 1s fixed delay). Remaining live Gemini sites completed by 2.1 slice 2 / 2.2 slice 2b. |
+| [x] | 2.1 slice 2 | Gemini pipeline retry migrated onto shared helper | `ErrorHandler.withRetry` (`itinerary-generator/lib/errorHandler.ts`) — the hand-rolled backoff loop replaced with delegation to the shared helper. Classification, stats, and the `ItineraryError` throw contract stay in `ErrorHandler`; exhaustion re-throws the classified object so route handling sees TIMEOUT/VALIDATION correctly. Verified: `smoke-errorhandler-retry.mjs` 22/22, itinerary suites 12/12, tsc clean, full suite 550/0/6, lint clean. |
+| [x] | 2.2 slice 1 | Shared timeout helper + 3 call sites | PR #515 (merged `389c2f5`). `src/lib/upstream/withTimeout.ts` (`UpstreamTimeoutError`, `withTimeout`, `fetchWithTimeout`); wired `fetchWeatherData`, `tomtomTraffic.getTrafficIncidentsSimple`, and `agent.ts` subqueries. 8 tests; no remaining live Gemini sites after 2.2 slice 2b. |
+| [x] | 2.2 slice 2b | Remaining Gemini generateContent sites + timeout composition | PR #520 (`304affc`). `responseHandler`, `structuredOutputEngine`, and `guaranteedJsonEngine` now use `withRetry` + `timeoutMs`; fixed a response-handler timer leak, an abort-listener leak, and a post-success stale abort. `ensureFullItinerary` verified dead and intentionally untouched. Smoke suites 14/14 + fallback/retry/abort checks, tsc clean, full suite 550/0/6, lint clean, CI green. |
 | [ ] | 2.3 | Idempotency keys | No `Idempotency-Key` handling; no `idempotency_keys` table. |
 | [ ] | 2.4 | Shared rate limiting | `InMemoryRateLimiter` still `Map`-backed (correct to defer per §3.3). |
 | [ ] | 2.5 | Error budget + rollback policy | No `docs/rollback.md`; no SLO recorded. |
+
+### Phase 3: Security
+
+| Status | # | Item | Evidence |
+|---|---|---|---|
+| [x] | 3.1 | Security headers | `securityHeaders.ts` defines the headers and `compose.ts` applies them on every middleware response via idempotent `headers.set()`. PR #521 removed 24 redundant route-level calls + 3 imports from the auth routes; zero route-level calls remain, auth suites 52/52, full suite 550/0/6, lint clean, CI green. |
+| [ ] | 3.2 | SSRF protection | No current user-supplied URL fetch; allowlist + private-IP/DNS rejection test still absent. |
+| [ ] | 3.3 | Dependency audit provenance | Critical production audit gate shipped in 0.4a; `pnpm audit` provenance/signature extension remains absent. |
+| [ ] | 3.4 | RLS audit | Saved-meals RLS remediation exists; full anon-client table audit and staging proof scripts remain pending. |
+
+### Phase 4: Testing
+
+| Status | # | Item | Evidence |
+|---|---|---|---|
+| [ ] | 4.1 | E2E tests | No Playwright/Cypress flow in CI. |
+| [ ] | 4.2 | Contract tests | API request/response contract suite not implemented. |
+| [ ] | 4.3 | Mobile tests | `tarana-mobile` has no Jest test job in CI. |
+| [x] | 4.4 | Fix the failing test | PR #518 (`6fef869`) isolates `SMTP_FROM_EMAIL` in `mockEnv` without changing the source default. emailConfig 9/9; full suite **550 passed, 6 skipped, 0 failed** — first 100% green run. |
 
 ### Verification results for the 2.2 slice-1 merge (2026-09-21, on `main` @ `389c2f5`)
 
