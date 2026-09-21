@@ -160,14 +160,16 @@ request
 
 #### 2.1 Retry with exponential backoff for all external calls
 - Gemini, TomTom, OpenWeather, image enrichment — all need retry wrappers.
-- Use `@retryable` or a simple `withRetry` helper with jitter, max attempts, and circuit breaker.
+- Zero-dep `withRetry` helper created at `src/lib/upstream/withRetry.ts`: exponential backoff + full jitter, composes with `withTimeout`, `AppError.retryable` drives skip/no-retry decisions, wraps raw errors to `AppError(UPSTREAM)` on exhaustion. 15 tests in `__tests__/withRetry.test.ts`.
+- **Slice 1 done:** `food-recommendations/route.ts` inline retry loop replaced with `withRetry` call (2 attempts, 30s timeout, 1s fixed delay preserved). Uses `AppError.retryable` classification instead of the old `maxRetries` constant.
+- **Remaining:** `itinerary-generator/route.ts` inline retry loop, `generateContent` sites in `itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine`.
 - **Verify:** unit test that a flaky upstream is retried N times before failing; integration test that succeeds after 2 retries.
 
 #### 2.2 Timeouts on every external call
 - Add `AbortController` with configurable timeout per dependency.
 - Surface timeout as a typed `UpstreamTimeoutError`.
 - **Verify:** test that a hung upstream returns 503 after the timeout, not 500 after Vercel's 60s kill.
-- **Slice 1 done** (PR #515, `83bb797`, merged `389c2f5`; re-verified against `main` 2026-09-21). New `src/lib/upstream/withTimeout.ts`: `UpstreamTimeoutError` (AppError UPSTREAM, 503, retryable) + `withTimeout()` for SDK calls + `fetchWithTimeout()` for fetch calls. Wired 3 sites: `fetchWeatherData` (8s budget; caller already falls back), `tomtomTraffic.getTrafficIncidentsSimple` (the one TomTom fetch missing a signal; sibling `config.timeout` budget), `agent.ts` subquery race (same 25s, same `[]` fallback — zero behavior change). Deliberately NOT touched: food-route retry loop (already bounded 30s ×2), `tomtomRouting`/`imageService` (already budgeted). 8 new helper tests. Full suite 527 -> 535.
+- **Slice 1 done** (PR #515, `83bb797`, merged `389c2f5`; re-verified against `main` 2026-09-21). New `src/lib/upstream/withTimeout.ts`: `UpstreamTimeoutError` (AppError UPSTREAM, 503, retryable) + `withTimeout()` for SDK calls + `fetchWithTimeout()` for fetch calls. Wired 3 sites: `fetchWeatherData` (8s budget; caller already falls back), `tomtomTraffic.getTrafficIncidentsSimple` (the one TomTom fetch missing a signal; sibling `config.timeout` budget), `agent.ts` subquery race (same 25s, same `[]` fallback — zero behavior change). Deliberately NOT touched: `tomtomRouting`/`imageService` (already budgeted). 8 new helper tests. Full suite 527 -> 535. **Subsequently replaced by `withRetry` (2.1 slice 1):** the food-route inline retry loop (30 lines) was refactored to use `withRetry` with `timeoutMs: 30000` — see §8.5 correction #24.
 
 #### 2.3 Idempotency keys on all mutations
 - Every write endpoint (save itinerary, consume credits, create meal, etc.) must accept an `Idempotency-Key` header.
@@ -460,7 +462,65 @@ The draft's "Replace all 25+ route try/catch blocks" overstates the scope.
 the repo is `ItineraryError` inside the Gemini pipeline (`errorHandler.ts:13`),
 which is the reference shape to extend.
 
-### 8.4 Findings that did NOT change the plan
+### 8.5 Corrections applied in the third pass (2026-09-21)
+
+**24. Phase 2.1 retry helper is now implemented.**
+The plan's §9 Phase 2 table listed 2.1 as `[ ]` ("No `withRetry` helper; needs timeout
+semantics first"). The timeout semantics (2.2 slice 1) were already done, so the
+sequence was correct — retry was built on top of `withTimeout`. New file
+`src/lib/upstream/withRetry.ts` provides a zero-dep exponential-backoff retry with
+full jitter; composes with `withTimeout` via `timeoutMs`/`upstream` options. 15
+tests in `__tests__/withRetry.test.ts`. The `food-recommendations/route.ts` inline
+retry loop (30 lines) was replaced with a single `withRetry` call. Raw errors are
+wrapped in `AppError` (UPSTREAM) on exhaustion for consistent downstream handling.
+Verification: tsc 0 errors, 15/15 focused tests pass, 8/8 timeout tests still pass,
+full suite 549 passed (was 535; +14 net new tests), lint clean, runtime smoke OK.
+
+**25. §2 row 4 (`supabaseAdmin` imported by 13 route files) is still the historical
+baseline snapshot** — the count is now 0 as of 2.1 slice 3c (line 541), but §2
+records the state at audit time (2026-09-20), not current state.
+
+**26. §2 row 18 (`getServerSession` arithmetic was wrong) — corrected.**
+The original draft said "16 use other auth or none". The actual split at audit time
+was 18 `getServerSession` + 1 `withAuth` + 1 `[...nextauth]` (authOptions only) +
+15 with no auth import. This is now moot: all 18 were migrated to `withAuth` in
+Phase 1.1, and `grep -rl getServerSession src/app/api --include=route.ts | grep -v
+__tests__` returns zero on `main` 2026-09-21.
+
+**27. §2 row 4 (`supabaseAdmin` imported by 13 route files) — now 0.**
+Phase 1.2 slice 3c completed the migration: `supabaseAdmin` in route files: 3 → 0.
+Invariant 2 holds. Remaining 4th copy of default-profile insert lives in
+`CreditService.ensureUserProfile` (referral-system) — out of scope per the plan's
+explicit note.
+
+**28. §8.4 item 3 ("No code was modified") is now superseded.**
+The 2026-09-20 audit was document-only. On 2026-09-21, the Phase 2.1 retry helper
+was implemented (§8.5 correction #24 above).
+
+**29. §2 row 12 — auth boundary arithmetic update for 2026-09-21.**
+`grep -rl getServerSession src/app/api --include=route.ts | grep -v __tests__` =
+**0** (was 18 at audit). 19 route files now go through `withAuth`/`withAuthEmail`.
+`String(error)` in `route.ts` files = **0** (was 3 at audit).
+`supabaseAdmin` in route files = **0** (was 13 at audit).
+
+**30. §2 row 13 — error handling status update.**
+`String(error)` response-body leaks: **0** in route files (was 3 at audit, in
+`saved-itineraries` and `saved-meals`). The 2 remaining `String(error)` instances
+in `gemini/itinerary-generator/lib/*.ts` are `console.warn` calls inside template
+literals (logging, not response bodies) — not in scope for Phase 0.1 which targeted
+route response bodies only.
+
+**31. §2 row 7 — refundMetrics still in-process.**
+Confirmed unchanged: `refundMetrics.ts:28-47` counters are still module-level,
+`takeRefundSnapshot` still reads-and-resets on cold start. Phase 5.3 (durable
+metrics) is still needed.
+
+**32. §2 row 18 — `emailConfig.test.ts:78` still fails as of 2026-09-21.**
+Full suite: 549 passed, 6 skipped, 1 failed (the same ambient `SMTP_FROM_EMAIL`
+test pollution described in §4.4). The plan explicitly says this is a test-only
+fix and should not touch the source default.
+
+### 8.4 Findings that do NOT change the plan (2026-09-20)
 
 - **CORS `Access-Control-Allow-Origin: *` claim.** Not re-verified (no running
   server). Code allowlist (`cors.ts:4-15`) is correct and does not emit `*`.
@@ -468,9 +528,8 @@ which is the reference shape to extend.
 - **The adversarial review did not complete.** A fresh-context reviewer was
   spawned per the doubt-driven skill, stalled, and was cancelled. No
   independent findings were produced. This audit is single-model.
-- **No code was modified.** Document-only pass.
-
----
+- **No code was modified during the 2026-09-20 audit.** Document-only pass.
+  The 2026-09-21 pass implemented Phase 2.1 (§8.5).
 
 ## 9. Implementation Status (2026-09-20)
 
@@ -594,8 +653,8 @@ evidence. Items without a marker are **not done** — do not assume they are.
 
 | Status | # | Item | Evidence |
 |---|---|---|---|
-| [x] | 2.2 slice 1 | Shared timeout helper + 3 call sites | PR #515 (merged `389c2f5`). `src/lib/upstream/withTimeout.ts` (`UpstreamTimeoutError`, `withTimeout`, `fetchWithTimeout`); wired `fetchWeatherData`, `tomtomTraffic.getTrafficIncidentsSimple`, `agent.ts` subqueries. 8 new tests. Remaining: other `generateContent` sites (`itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine`), then 2.1 retry. |
-| [ ] | 2.1 | Retry with exponential backoff | No `withRetry` helper; needs timeout semantics first (retry without a budget is a retry storm). |
+| [x] | 2.2 slice 1 | Shared timeout helper + 3 call sites | PR #515 (merged `389c2f5`). `src/lib/upstream/withTimeout.ts` (`UpstreamTimeoutError`, `withTimeout`, `fetchWithTimeout`); wired `fetchWeatherData`, `tomtomTraffic.getTrafficIncidentsSimple`, `agent.ts` subqueries. 8 new tests. Remaining: other `generateContent` sites (`itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine`). 2.1 retry now done (§8.5).
+| [x] | 2.1 slice 1 | Shared retry helper + first call site | New `src/lib/upstream/withRetry.ts` (zero-dep, exponential backoff + full jitter, composes with `withTimeout` from 2.2 slice 1); `AppError.retryable` drives skip/no-retry decisions; raw Error wrapped to `AppError` (UPSTREAM) on exhaustion. 15 new tests in `__tests__/withRetry.test.ts`. Wired `food-recommendations/route.ts` (replaced 30-line inline retry loop with `withRetry` call, preserving 2 attempts + 30s timeout + 1s fixed delay). Remaining: `itinerary-generator/route.ts` inline retry loop, `generateContent` sites in `itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine`. |
 | [ ] | 2.3 | Idempotency keys | No `Idempotency-Key` handling; no `idempotency_keys` table. |
 | [ ] | 2.4 | Shared rate limiting | `InMemoryRateLimiter` still `Map`-backed (correct to defer per §3.3). |
 | [ ] | 2.5 | Error budget + rollback policy | No `docs/rollback.md`; no SLO recorded. |
@@ -611,3 +670,14 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | Lint | `pnpm exec next lint --max-warnings=1000` | **0 errors** (pre-existing warnings only) |
 | Build | `pnpm run build` | **exit 0** |
 | CI on PR #515 | `verify` + Vercel | **pass** (`verify` 2m45s) |
+
+### Verification results for the 2.1 slice-1 (2026-09-21, on `main`)
+
+| Gate | Command | Result |
+||---|---|---|
+| Typecheck | `npx tsc --noEmit --skipLibCheck` | **0 errors** |
+| Focused tests | `jest --testPathPattern="upstream/withRetry"` | **15/15 passed** (success, retry-then-success, backoff timing, jitter bounds, non-retryable 401/404, retryable 503/429, exhaustion + AppError wrapping, timeout integration, custom shouldRetry) |
+| Timeout tests | `jest --testPathPattern="upstream/withTimeout"` | **8/8 passed** (unchanged, no regressions) |
+| Full suite | `npx jest --passWithNoTests --maxWorkers=2` | **549 passed, 6 skipped, 1 failed** (+16 net; failure is pre-existing `emailConfig.test.ts:78` ambient env issue) |
+| Lint | `npx eslint src/lib/upstream/withRetry.ts src/lib/upstream/__tests__/withRetry.test.ts src/app/api/gemini/food-recommendations/route.ts` | **0 errors** |
+| Runtime smoke | 4-case smoke test (first try, retry-then-succeed, non-retryable, exhaustion) | **SMOKE OK** |
