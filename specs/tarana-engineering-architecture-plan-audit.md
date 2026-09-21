@@ -198,12 +198,20 @@ request
 - **Already done, mostly.** `securityHeaders.ts:7-40` defines CSP, HSTS,
   X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy,
   and `compose.ts:24,32,44,55` applies them on every middleware response.
-  The 3 auth routes that also call `applySecurityHeaders` are redundant —
-  delete those calls, they are noise.
+- The 3 auth routes that also call `applySecurityHeaders` are redundant —
+  **removed** (2026-09-22): 24 wrapper calls + 3 now-unused imports deleted
+  from `forgot-password`, `register`, `reset-password` (mechanical
+  `applySecurityHeaders(X)` → `X` via ast_edit). `applySecurityHeaders` uses
+  `headers.set()` (idempotent — no duplicate-header risk), and the root
+  `middleware.ts` matcher covers `/api/*`, so every API response still gets
+  headers from the middleware chain. `grep -rn applySecurityHeaders
+  src/app/api --include=route.ts | grep -v __tests__` → zero.
 - Residual gap (real but small): only paths the middleware `matcher` excludes
   (static assets) get no headers. That is non-security-relevant.
 - **Verify:** `curl -I` on 5 representative routes shows all headers; Lighthouse
   security audit is green.
+- **Verified (this slice):** tsc 0 errors; auth suites 52/52; full suite 550
+  passed / 6 skipped / 0 failed; lint clean.
 
 #### 3.2 SSRF protection
 - Any route that fetches a user-supplied URL (none currently, but the pattern

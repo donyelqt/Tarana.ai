@@ -3,7 +3,6 @@ import { storeResetToken } from '@/lib/services/passwordService';
 import { findUserByEmailFromSupabase } from '@/lib/auth';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import { sanitizeEmail } from '@/lib/security/inputSanitizer';
-import { applySecurityHeaders } from '@/lib/security/securityHeaders';
 import { checkRequiredEnvVars } from '@/lib/security/environmentValidator';
 import crypto from 'crypto';
 
@@ -26,25 +25,25 @@ export async function POST(request: NextRequest) {
         { status: 429 }
       );
       response.headers.set('Retry-After', rateLimitResult.retryAfter?.toString() || '7200');
-      return applySecurityHeaders(response);
+      return response;
     }
 
     const { email } = await request.json();
 
     if (!email) {
-      return applySecurityHeaders(NextResponse.json(
+      return NextResponse.json(
         { error: 'Email is required' },
         { status: 400 }
-      ));
+      );
     }
 
     // Sanitize email input
     const sanitizedEmail = sanitizeEmail(email);
     if (!sanitizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
-      return applySecurityHeaders(NextResponse.json(
+      return NextResponse.json(
         { error: 'Invalid email format' },
         { status: 400 }
-      ));
+      );
     }
 
     // Check if user exists
@@ -52,9 +51,9 @@ export async function POST(request: NextRequest) {
     
     // Always return success to prevent email enumeration attacks
     if (!user) {
-      return applySecurityHeaders(NextResponse.json({
+      return NextResponse.json({
         message: 'If an account with that email exists, we have sent a password reset link.'
-      }));
+      });
     }
 
     // Generate secure reset token
@@ -66,10 +65,10 @@ export async function POST(request: NextRequest) {
       await storeResetToken(user.id, resetToken, resetTokenExpiry);
     } catch (updateError) {
       console.error('Error storing reset token:', updateError);
-      return applySecurityHeaders(NextResponse.json(
+      return NextResponse.json(
         { error: 'Failed to process reset request' },
         { status: 500 }
-      ));
+      );
     }
 
     // Send password reset email
@@ -83,15 +82,15 @@ export async function POST(request: NextRequest) {
       console.warn('Failed to send password reset email, but continuing for security');
     }
 
-    return applySecurityHeaders(NextResponse.json({
+    return NextResponse.json({
       message: 'If an account with that email exists, we have sent a password reset link.'
-    }));
+    });
 
   } catch (error) {
     console.error('Forgot password error:', error);
-    return applySecurityHeaders(NextResponse.json(
+    return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
-    ));
+    );
   }
 }
