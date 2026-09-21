@@ -3,6 +3,8 @@
  * Provides structured error handling with retry logic and fallback mechanisms
  */
 
+import { withRetry as sharedWithRetry } from '../../../../../lib/upstream/withRetry';
+
 export enum ErrorType {
   VALIDATION = 'VALIDATION',
   API_KEY = 'API_KEY', 
@@ -104,37 +106,60 @@ export class ErrorHandler {
   }
 
   /**
-   * Retry logic with exponential backoff
+   * Retry logic with exponential backoff.
+   *
+   * Delegates the backoff machinery to the shared `withRetry` helper
+   * (src/lib/upstream/withRetry.ts) instead of a hand-rolled loop — §2.1.
+   * Classification, stats, and the ItineraryError throw contract stay here:
+   * the route's catch calls handleError() on whatever we throw and reads
+   * type/message/retryable into the response, and TIMEOUT/VALIDATION do not
+   * round-trip through the message-matching classifier, so the classified
+   * object is re-thrown directly (kept in a closure) rather than re-derived
+   * from the exhaustion wrapper.
    */
   static async withRetry<T>(
     operation: () => Promise<T>,
     maxRetries: number = 3,
     baseDelay: number = 1000
   ): Promise<T> {
-    let lastError: any;
+    let lastClassified: ItineraryError | null = null;
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        return await operation();
-      } catch (error) {
-        lastError = error;
-        const errorDetails = this.handleError(error);
-
-        if (!errorDetails.retryable || attempt === maxRetries) {
-          throw new ItineraryError(
-            errorDetails.type,
-            errorDetails.message,
-            errorDetails.retryable
-          );
+    try {
+      return await sharedWithRetry(
+        async () => {
+          try {
+            return await operation();
+          } catch (error) {
+            // Classify once per failure: stats increment, the classified
+            // object is kept for the exhaustion path below.
+            const errorDetails = ErrorHandler.handleError(error);
+            lastClassified = new ItineraryError(
+              errorDetails.type,
+              errorDetails.message,
+              errorDetails.retryable
+            );
+            throw lastClassified;
+          }
+        },
+        {
+          maxAttempts: maxRetries,
+          baseDelayMs: baseDelay,
+          factor: 2,
+          jitter: 'none', // preserves the previous fixed exponential delay
+          upstream: 'gemini-itinerary',
+          shouldRetry: (error) => {
+            // Every failure arrives here as a classified ItineraryError
+            // (wrapped by the operation wrapper above).
+            return error instanceof ItineraryError ? error.retryable : true;
+          },
         }
-
-        const delay = baseDelay * Math.pow(2, attempt - 1);
-        console.warn(`[ErrorHandler] Retry ${attempt}/${maxRetries} after ${delay}ms`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
+      );
+    } catch {
+      // Exhaustion (or a non-classified throw): re-throw the classified
+      // error so the route's handleError sees the original type.
+      if (lastClassified) throw lastClassified;
+      throw new ItineraryError(ErrorType.UNKNOWN, 'Unknown error occurred', true);
     }
-
-    throw lastError;
   }
 
   /**
