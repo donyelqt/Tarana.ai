@@ -162,7 +162,8 @@ request
 - Gemini, TomTom, OpenWeather, image enrichment — all need retry wrappers.
 - Zero-dep `withRetry` helper created at `src/lib/upstream/withRetry.ts`: exponential backoff + full jitter, composes with `withTimeout`, `AppError.retryable` drives skip/no-retry decisions, wraps raw errors to `AppError(UPSTREAM)` on exhaustion. 15 tests in `__tests__/withRetry.test.ts`.
 - **Slice 1 done:** `food-recommendations/route.ts` inline retry loop replaced with `withRetry` call (2 attempts, 30s timeout, 1s fixed delay preserved). Uses `AppError.retryable` classification instead of the old `maxRetries` constant.
-- **Remaining:** `itinerary-generator/route.ts` inline retry loop, `generateContent` sites in `itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine`.
+- **Slice 2 done:** `ErrorHandler.withRetry` (Gemini pipeline, `itinerary-generator/lib/errorHandler.ts`) — the hand-rolled backoff loop replaced with a delegation to the shared helper; classification/stats/`ItineraryError` contract preserved (see §9 Phase 2 table for the full record).
+- **Remaining:** `generateContent` sites in `itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine` (timeout composition — §2.2).
 - **Verify:** unit test that a flaky upstream is retried N times before failing; integration test that succeeds after 2 retries.
 
 #### 2.2 Timeouts on every external call
@@ -236,15 +237,9 @@ request
 - **Verify:** `tarana-mobile` has its own test job in CI.
 
 #### 4.4 Fix the failing test
-- `emailConfig.test.ts:78` fails because the test expects `fromEmail: 'apikey'`
-  but `.env` / `.env.local` set `SMTP_FROM_EMAIL=arysantonio123@gmail.com`
-  (and `.env.example` sets `noreply@yourdomain.com`). The test's `mockEnv`
-  helper spreads `process.env` first, so the ambient value wins.
-- Fix: snapshot `process.env` fully and restore it, or delete `SMTP_FROM_EMAIL`
-  from the spread before applying test vars. Do **not** change the source default
-  — `fromEmail: process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER!` is the
-  intended fallback behaviour.
+- **Done** (2026-09-21). `emailConfig.test.ts` `mockEnv` helper spread `process.env` first, so the ambient `SMTP_FROM_EMAIL` (set in `.env`/`.env.local`) won over the test's expectation of the `fromEmail -> SMTP_USER` fallback. Fix: strip `SMTP_FROM_EMAIL` in the spread before applying test vars. Source default untouched, per this section's original instruction.
 - **Verify:** `pnpm test` is 100% green.
+- **Verified:** emailConfig 9/9; full suite **550 passed, 6 skipped, 0 failed** — first 100% green run (was 549 passed, 1 failed).
 
 ### Phase 5: Observability — from counters to actionable telemetry
 
@@ -655,6 +650,7 @@ evidence. Items without a marker are **not done** — do not assume they are.
 |---|---|---|---|
 | [x] | 2.2 slice 1 | Shared timeout helper + 3 call sites | PR #515 (merged `389c2f5`). `src/lib/upstream/withTimeout.ts` (`UpstreamTimeoutError`, `withTimeout`, `fetchWithTimeout`); wired `fetchWeatherData`, `tomtomTraffic.getTrafficIncidentsSimple`, `agent.ts` subqueries. 8 new tests. Remaining: other `generateContent` sites (`itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine`). 2.1 retry now done (§8.5).
 | [x] | 2.1 slice 1 | Shared retry helper + first call site | New `src/lib/upstream/withRetry.ts` (zero-dep, exponential backoff + full jitter, composes with `withTimeout` from 2.2 slice 1); `AppError.retryable` drives skip/no-retry decisions; raw Error wrapped to `AppError` (UPSTREAM) on exhaustion. 15 new tests in `__tests__/withRetry.test.ts`. Wired `food-recommendations/route.ts` (replaced 30-line inline retry loop with `withRetry` call, preserving 2 attempts + 30s timeout + 1s fixed delay). Remaining: `itinerary-generator/route.ts` inline retry loop, `generateContent` sites in `itineraryUtils`, `guaranteedJsonEngine`, `responseHandler`, `structuredOutputEngine`. |
+| [x] | 2.1 slice 2 | Gemini pipeline retry migrated onto shared helper | `ErrorHandler.withRetry` (`itinerary-generator/lib/errorHandler.ts`) — the hand-rolled backoff loop (no jitter, `console.warn`, `throw lastError` exhaustion) replaced with a delegation to the shared `withRetry` (slice 1). Classification, stats, and the `ItineraryError` throw contract stay in `ErrorHandler`: each failure is classified via `handleError` (stats increment preserved), thrown as a classified `ItineraryError`, and re-thrown from a closure on exhaustion so the route's `handleError(e)` sees the original type (TIMEOUT/VALIDATION do not round-trip through the message-matching classifier). `shouldRetry` bridge reads `ItineraryError.retryable` — API_KEY fails immediately, as before. `jitter: 'none'` + `baseDelayMs`/`factor` preserve the previous fixed exponential delay; no `timeoutMs` (timeouts are §2.2/P0-3, not this slice). Verified: `npx tsx specs/smoke-errorhandler-retry.mjs` → SMOKE OK (22 checks: success, retry-then-succeed, fixed backoff timing, API_KEY immediate fail, exhaustion classified TIMEOUT, route re-classification parity, stats increment-per-failure, PARSING round-trip); tsc 0 errors; full suite 550 passed / 6 skipped / 0 failed; lint clean; itinerary-generator suites 12/12. |
 | [ ] | 2.3 | Idempotency keys | No `Idempotency-Key` handling; no `idempotency_keys` table. |
 | [ ] | 2.4 | Shared rate limiting | `InMemoryRateLimiter` still `Map`-backed (correct to defer per §3.3). |
 | [ ] | 2.5 | Error budget + rollback policy | No `docs/rollback.md`; no SLO recorded. |
