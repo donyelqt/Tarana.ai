@@ -3,6 +3,8 @@ import { processItinerary } from "../utils/itineraryUtils";
 import { geminiModel } from "./config";
 import { ItinerarySchema } from "../types/schemas";
 import type { EnhancedGenerateContentResponse, GenerateContentResult } from "@google/generative-ai";
+import { withRetry } from "@/lib/upstream/withRetry";
+import { UpstreamTimeoutError } from "@/lib/upstream/withTimeout";
 
 const MAX_RETRIES = 2;
 // Hard per-call deadline bounded under the 60s Vercel Hobby kill (see
@@ -10,7 +12,6 @@ const MAX_RETRIES = 2;
 // without this a hung 503/429 retry loop can exceed the platform limit and
 // the charge is lost with no possible refund.
 const CALL_TIMEOUT_MS = 25000;
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Returns the awaited GenerateContentResponse (callers invoke .text() on it);
 // typed via the guard below.
@@ -20,48 +21,58 @@ export async function generateItinerary(detailedPrompt: string, prompt: string, 
         temperature: 0.7, // Further lowered for more predictable JSON output
         topK: 1,
         topP: 0.9,
-        maxOutputTokens: 8192, 
+        maxOutputTokens: 8192,
         // Ensure single response
     };
 
-    let result: GenerateContentResult | null = null;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-            result = await Promise.race([
-                geminiModel!.generateContent({
-                    contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
-                    generationConfig,
-                }),
-                new Promise<never>((_, reject) =>
-                    setTimeout(() => reject(new Error("Generation timeout")), CALL_TIMEOUT_MS)
-                ),
-            ]);
-            break; // Success
-        } catch (err) {
-            let status: unknown;
-            if (err && typeof err === "object" && "status" in err) {
-                status = err.status;
-            } else if (
-                err && typeof err === "object" && "response" in err &&
-                err.response && typeof err.response === "object" && "status" in err.response
-            ) {
-                status = err.response.status;
-            }
-            if (attempt < MAX_RETRIES && (status === 503 || status === 429)) {
-                const delay = 1000 * Math.pow(2, attempt - 1);
-                console.warn(`Gemini transient error (status ${String(status)}). Retry ${attempt} of ${MAX_RETRIES} after ${delay}ms`);
-                await sleep(delay);
-                continue;
-            }
-            throw err;
-        }
-    }
+    // Raw-error capture: the shared helper wraps non-AppError failures in
+    // AppError(UPSTREAM) on exhaustion, which erases the .status shapes the
+    // route's handleError classifies on (a 503 → TIMEOUT/503 becomes a
+    // 500 → UNKNOWN). Keep the raw error and re-throw it below.
+    let lastRaw: unknown = null;
 
-    if (!result) {
+    try {
+        const result = await withRetry(
+            async () => {
+                try {
+                    return await geminiModel!.generateContent({
+                        contents: [{ role: "user", parts: [{ text: detailedPrompt }] }],
+                        generationConfig,
+                    });
+                } catch (err) {
+                    lastRaw = err;
+                    throw err;
+                }
+            },
+            {
+                maxAttempts: MAX_RETRIES,
+                baseDelayMs: 1000,
+                factor: 2,
+                jitter: 'none', // preserves the previous fixed 1s/2s delay
+                timeoutMs: CALL_TIMEOUT_MS,
+                upstream: 'gemini-itinerary',
+                shouldRetry: (error) => {
+                    // Preserves the previous gate: only Gemini transient
+                    // statuses (503/429) are retried; a timeout fires once —
+                    // the previous race rejected a raw 'Generation timeout'
+                    // Error, which also was not retried. Timeouts throw as-is
+                    // (UpstreamTimeoutError is an AppError) so the route's
+                    // handleError still sees .status === 503 → TIMEOUT.
+                    if (error instanceof UpstreamTimeoutError) return false;
+                    const s = (error as any)?.status ?? (error as any)?.response?.status;
+                    return s === 503 || s === 429;
+                },
+            }
+        );
+        return result.response;
+    } catch (error) {
+        // Preserve the wire contract: re-throw the raw error when one was
+        // captured. Timeouts arrive as UpstreamTimeoutError (AppError) and
+        // re-throw untouched — same classification as the pre-migration race.
+        if (error instanceof UpstreamTimeoutError) throw error;
+        if (lastRaw) throw lastRaw;
         throw new Error("Failed to generate content after multiple retries due to service unavailability.");
     }
-
-    return result.response;
 }
 
 export async function handleItineraryProcessing(parsed: any, prompt: string, durationDays: number | null, peakHoursContext: string) {

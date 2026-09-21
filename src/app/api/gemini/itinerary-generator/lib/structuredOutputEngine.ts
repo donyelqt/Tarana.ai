@@ -9,6 +9,7 @@ import { jsonrepair } from 'jsonrepair';
 import { z } from 'zod';
 import { geminiModel } from './config';
 import { JsonSyntaxValidator } from './enhancedPromptEngine';
+import { withRetry } from '../../../../../lib/upstream/withRetry';
 
 // Strict Zod schemas for guaranteed structure
 export const ActivitySchema = z.object({
@@ -57,13 +58,13 @@ export class StructuredOutputEngine {
     signal?: AbortSignal
   ): Promise<StructuredItinerary> {
     console.log(`🏗️ STRUCTURED ENGINE: Starting generation for request ${requestId}`);
-    
+
     const startTime = Date.now();
-    
+
     try {
       // Enhanced prompt for structured JSON
       const structuredPrompt = this.buildStructuredPrompt(prompt);
-      
+
       // Generation config optimized for JSON output
       const generationConfig = {
         responseMimeType: "application/json",
@@ -74,95 +75,52 @@ export class StructuredOutputEngine {
         candidateCount: 1
       };
 
-      let lastError: Error | null = null;
-      
-      for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
-        try {
-          console.log(`🔄 STRUCTURED ENGINE: Attempt ${attempt}/${this.MAX_RETRIES}`);
-          
-          // Use JSON mode for guaranteed structure
-          let timeoutId: NodeJS.Timeout | null = null;
-          let abortHandler: (() => void) | null = null;
-
-          const timeoutPromise = new Promise((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error('Generation timeout')), this.TIMEOUT_MS);
-          });
-
-          const abortPromise = signal
-            ? new Promise((_, reject) => {
-                if (signal.aborted) {
-                  const abortError = new Error('Aborted');
-                  abortError.name = 'AbortError';
-                  reject(abortError);
-                  return;
-                }
-                abortHandler = () => {
-                  const abortError = new Error('Aborted');
-                  abortError.name = 'AbortError';
-                  reject(abortError);
-                };
-                signal.addEventListener('abort', abortHandler, { once: true });
-              })
-            : null;
-
-          const racePromises: Promise<any>[] = [
-            geminiModel!.generateContent({
-              contents: [{ role: "user", parts: [{ text: structuredPrompt }] }],
-              generationConfig
-            }),
-            timeoutPromise
-          ];
-
-          if (abortPromise) {
-            racePromises.push(abortPromise);
+      try {
+        const result = await withRetry(
+          () => geminiModel!.generateContent({
+            contents: [{ role: "user", parts: [{ text: structuredPrompt }] }],
+            generationConfig
+          }),
+          {
+            maxAttempts: this.MAX_RETRIES,
+            baseDelayMs: 1000,
+            factor: 2,
+            maxDelayMs: 5000, // preserves the previous min(1000 * 2^(n-1), 5000) cap
+            jitter: 'none',   // preserves the previous fixed exponential delay
+            timeoutMs: this.TIMEOUT_MS,
+            upstream: 'gemini-structured',
+            shouldRetry: () => {
+              // Preserves the previous catch-all retry: every failure is
+              // retried unless the request signal has aborted (the old
+              // `finally { if (signal?.aborted) break; }`).
+              return !signal?.aborted;
+            },
           }
+        );
 
-          const result = await Promise.race(racePromises) as any;
+        // Extract JSON response
+        const text = extractResponseText(result);
 
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-          }
-          if (abortHandler && signal) {
-            signal.removeEventListener('abort', abortHandler);
-          }
-
-          // Extract JSON response
-          const text = extractResponseText(result);
-
-          if (!text) {
-            throw new Error('No valid response text');
-          }
-
-          // Parse JSON response with recovery strategies
-          const rawData = this.parseStructuredJson(text, requestId);
-          console.log(`✅ STRUCTURED ENGINE: Raw JSON received in ${Date.now() - startTime}ms`);
-
-          // Validate and clean the structured data
-          const validatedItinerary = this.validateAndCleanStructure(rawData, requestId);
-          
-          console.log(`🎯 STRUCTURED ENGINE: Successfully generated valid itinerary in ${Date.now() - startTime}ms`);
-          return validatedItinerary;
-
-        } catch (error: any) {
-          lastError = error;
-          console.warn(`⚠️ STRUCTURED ENGINE: Attempt ${attempt} failed. Error: ${error instanceof Error ? error.message : String(error)}`);
-          
-          if (attempt < this.MAX_RETRIES) {
-            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-            console.log(`🔄 STRUCTURED ENGINE: Retrying in ${delay}ms...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-          }
-        } finally {
-          if (signal?.aborted) {
-            break;
-          }
+        if (!text) {
+          throw new Error('No valid response text');
         }
+
+        // Parse JSON response with recovery strategies
+        const rawData = this.parseStructuredJson(text, requestId);
+        console.log(`✅ STRUCTURED ENGINE: Raw JSON received in ${Date.now() - startTime}ms`);
+
+        // Validate and clean the structured data
+        const validatedItinerary = this.validateAndCleanStructure(rawData, requestId);
+
+        console.log(`🎯 STRUCTURED ENGINE: Successfully generated valid itinerary in ${Date.now() - startTime}ms`);
+        return validatedItinerary;
+      } catch (error: any) {
+        // All attempts failed - return fallback structure. The shared helper
+        // wraps raw errors into AppError(UPSTREAM) on exhaustion; the
+        // original message survives in logMessage, so log that when present.
+        console.error(`❌ STRUCTURED ENGINE: All attempts failed for request ${requestId}:`, error?.logMessage ?? error);
+        return this.createFallbackItinerary(requestId);
       }
-
-      // All retries failed - return fallback structure
-      console.error(`❌ STRUCTURED ENGINE: All attempts failed for request ${requestId}:`, lastError);
-      return this.createFallbackItinerary(requestId);
-
     } catch (error: any) {
       console.error(`💥 STRUCTURED ENGINE: Critical error for request ${requestId}:`, error);
       return this.createFallbackItinerary(requestId);

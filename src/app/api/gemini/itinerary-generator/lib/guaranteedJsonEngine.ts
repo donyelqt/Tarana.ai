@@ -464,18 +464,23 @@ export class GuaranteedJsonEngine {
     try {
       const requestOptions = controls?.signal ? { signal: controls.signal } : undefined;
 
+      // Timer handle captured so the race's timeout is cleared on success —
+      // a pending setTimeout kept the serverless invocation alive past the
+      // budget (§2.2).
+      let timeoutId: NodeJS.Timeout | undefined;
       const result = await Promise.race([
         geminiModel!.generateContent({
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig
         }, requestOptions),
-        new Promise((_, reject) => 
-          setTimeout(() => {
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
             controls?.abort?.();
             reject(new Error('Generation timeout'));
           }, this.TIMEOUT_MS)
-        )
+        })
       ]) as any;
+      clearTimeout(timeoutId);
 
       if (controls?.shouldAbort?.()) {
         controls?.abort?.();
