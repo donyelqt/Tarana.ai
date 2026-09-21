@@ -1,9 +1,11 @@
 import { validateEmailConfig, getEmailTransportConfig } from '../email/emailConfig';
 
-// Mock environment variables
+// Mock environment variables. Strips SMTP_FROM_EMAIL so the ambient machine
+// env (set in .env/.env.local) cannot leak into tests that exercise the
+// fromEmail fallback chain — see specs audit §4.4.
 const mockEnv = (vars: Record<string, string | undefined>) => {
   const originalEnv = process.env;
-  process.env = { ...originalEnv, ...vars };
+  process.env = { ...originalEnv, SMTP_FROM_EMAIL: undefined, ...vars };
   return () => {
     process.env = originalEnv;
   };
