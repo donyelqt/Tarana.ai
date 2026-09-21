@@ -9,6 +9,7 @@ import { FoodRecommendationErrorHandler, FoodErrorType } from "@/lib/foodRecomme
 import { recommendationEngine } from "@/app/tarana-eats/services/recommendationEngine";
 import { menuIndexingService } from "@/app/tarana-eats/services/menuIndexingService";
 import { budgetAllocator } from "@/app/tarana-eats/services/budgetAllocator";
+import { withRetry } from "@/lib/upstream/withRetry";
 
 interface EnhancedResultMatch extends ResultMatch {
   fullMenu?: FullMenu;
@@ -250,40 +251,20 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     `;
 
     try {
-      // Retry logic for better reliability
-      let result: any;
-      let lastError: Error | null = null;
-      const maxRetries = 2;
-      
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          console.log(`🚀 Gemini API attempt ${attempt + 1}/${maxRetries} for food recommendations`);
-          console.log(`📝 Prompt length: ${enhancedPrompt.length} characters`);
-          
-          result = await Promise.race([
-            model.generateContent(enhancedPrompt),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Gemini API timeout after 30s')), 30000)
-            )
-          ]) as any;
-          
-          console.log(`✅ Gemini API responded on attempt ${attempt + 1}`);
-          break; // Success, exit retry loop
-        } catch (err: any) {
-          lastError = err;
-          console.error(`❌ Gemini API attempt ${attempt + 1} failed:`, err.message);
-          if (attempt < maxRetries - 1) {
-            console.log(`🔄 Retrying in 1 second...`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        }
-      }
-      
-      if (!result) {
-        console.error(`❌ All Gemini API attempts failed`);
-        throw lastError || new Error('Gemini API failed after retries');
-      }
-      
+      // Retry Gemini API calls with exponential backoff + timeout per attempt.
+      // maxAttempts=2: one initial call + one retry (matching the previous
+      // maxRetries=2 behavior). 30s timeout per attempt. 1s fixed delay
+      // between retries via jitter:'none'.
+      const result = await withRetry(() => model.generateContent(enhancedPrompt), {
+        maxAttempts: 2,
+        baseDelayMs: 1000,
+        factor: 2,
+        maxDelayMs: 5000,
+        jitter: 'none',
+        timeoutMs: 30000,
+        upstream: 'gemini-food-recommendations',
+      });
+
       const response = await result.response;
       
       // Debug: Check prompt feedback and safety ratings
