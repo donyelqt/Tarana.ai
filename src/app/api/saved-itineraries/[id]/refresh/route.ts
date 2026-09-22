@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getSavedItineraries, updateItinerary, SavedItinerary } from '@/lib/data/savedItineraries';
 import { fetchWeatherFromAPI } from '@/lib/core/utils';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 import { 
   itineraryRefreshService, 
   ChangeDetectionResult 
@@ -52,6 +53,7 @@ export const GET = withAuth(async (
   const { id } = await params;
   console.log(`\n🔍 REFRESH EVALUATION REQUEST - ID: ${id}\n`);
 
+  return timedHttp('/api/saved-itineraries/[id]/refresh', 'GET', async () => {
   try {
 
     // Fetch itinerary
@@ -100,6 +102,7 @@ export const GET = withAuth(async (
       { status: 500 }
     );
   }
+  }, (res) => res.status);
 });
 
 // ============================================================================
@@ -118,6 +121,7 @@ export const POST = withAuth(async (
   console.log(`🔄 ITINERARY REFRESH REQUEST - ID: ${id}`);
   console.log(`${'='.repeat(80)}\n`);
 
+  return timedHttp('/api/saved-itineraries/[id]/refresh', 'POST', async () => {
   try {
     // ========================================================================
     // 1. AUTHENTICATION (withAuth resolved the session identity)
@@ -422,6 +426,7 @@ export const POST = withAuth(async (
       { status: 500 }
     );
   }
+  }, (res) => res.status);
 });
 
 // ============================================================================

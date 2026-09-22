@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { upsertActivityEmbedding } from "@/lib/search";
 import { sampleItinerary } from "@/app/itinerary-generator/data/itineraryData";
 import { timingSafeEqual } from "crypto";
+import { timedHttp } from "@/lib/observability/httpMetrics";
 
 // Simple auth via header X-ADMIN-TOKEN that must match env.REINDEX_SECRET
 const ADMIN_TOKEN = process.env.REINDEX_SECRET || "";
 
 export async function POST(req: NextRequest) {
-  const providedToken = req.headers.get("x-admin-token") || "";
+  return timedHttp('/api/reindex', 'POST', async () => {
+  const providedToken = req.headers.get("x-admin-token") || ""; 
 
   // Ensure the secret is configured on the server and is not an empty string.
   if (!ADMIN_TOKEN) {
@@ -60,4 +62,5 @@ export async function POST(req: NextRequest) {
     indexed: successfulUpserts,
     failed: activities.length - successfulUpserts,
   });
+  }, (res) => res.status);
 }

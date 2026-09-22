@@ -17,8 +17,10 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { runMobileTokenExchange } from '@/lib/auth/mobileTokenExchange';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 
 export async function GET(request: NextRequest) {
+  return timedHttp('/api/auth/mobile-token/exchange-redirect', 'GET', async () => {
   // The mobile app's custom URL scheme, e.g. tarana-mobile://auth/exchange.
   // Must match app.json "scheme".
   const redirectUrl =
@@ -33,4 +35,5 @@ export async function GET(request: NextRequest) {
     { error: 'Exchange did not produce a redirect' },
     { status: 500 }
   );
+  }, (res) => res.status);
 }

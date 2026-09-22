@@ -4,6 +4,8 @@ import { deleteItineraryById, getItineraryById, updateItineraryById } from '@/li
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { mapRowToSavedItinerary, resolveItineraryImage, UpdateItinerarySchema } from '@/lib/data/itineraryMapper';
 import { z } from 'zod';
+import { timedHttp } from '@/lib/observability/httpMetrics';
+
 function toDbPayload(validated: z.infer<typeof UpdateItinerarySchema>) {
   const payload: Record<string, unknown> = {};
   if (validated.title !== undefined) payload.title = validated.title;
@@ -30,68 +32,74 @@ function toDbPayload(validated: z.infer<typeof UpdateItinerarySchema>) {
 type RouteParams = { params: Promise<{ id: string }> };
 
 export const GET = withAuth(async (request: NextRequest, userId: string, ...args: unknown[]) => {
-  const { params } = (args[0] ?? {}) as RouteParams;
-  try {
-    const { id } = await params;
+  return timedHttp('/api/saved-itineraries/[id]', 'GET', async () => {
+    try {
+      const { params } = (args[0] ?? {}) as RouteParams;
+      const { id } = await params;
 
-    const data = await getItineraryById(id, userId);
+      const data = await getItineraryById(id, userId);
 
-    if (!data) {
-      return NextResponse.json({ error: 'Itinerary not found' }, { status: 404 });
+      if (!data) {
+        return NextResponse.json({ error: 'Itinerary not found' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) });
+    } catch (error) {
+      return handleApiError(error, request);
     }
-    return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) });
-  } catch (error) {
-    return handleApiError(error, request);
-  }
+  }, (res) => res.status);
 });
 
 export const PATCH = withAuth(async (request: NextRequest, userId: string, ...args: unknown[]) => {
-  const { params } = (args[0] ?? {}) as RouteParams;
-  try {
-    const { id } = await params;
+  return timedHttp('/api/saved-itineraries/[id]', 'PATCH', async () => {
+    try {
+      const { params } = (args[0] ?? {}) as RouteParams;
+      const { id } = await params;
 
-    const body = await request.json();
-    const validation = UpdateItinerarySchema.safeParse(body);
-    if (!validation.success) {
-      return NextResponse.json(
-        {
-          error: 'Invalid input',
-          details: validation.error.issues.map((issue) => ({
-            field: issue.path.join('.'),
-            message: issue.message,
-          })),
-        },
-        { status: 400 }
-      );
-    }
-    const payload = toDbPayload(validation.data);
-    if (Object.keys(payload).length === 0) {
-      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
-    }
+      const body = await request.json();
+      const validation = UpdateItinerarySchema.safeParse(body);
+      if (!validation.success) {
+        return NextResponse.json(
+          {
+            error: 'Invalid input',
+            details: validation.error.issues.map((issue) => ({
+              field: issue.path.join('.'),
+              message: issue.message,
+            })),
+          },
+          { status: 400 }
+        );
+      }
+      const payload = toDbPayload(validation.data);
+      if (Object.keys(payload).length === 0) {
+        return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+      }
 
-    const data = await updateItineraryById(id, userId, payload);
+      const data = await updateItineraryById(id, userId, payload);
 
-    if (!data) {
-      return NextResponse.json({ error: 'Itinerary not found' }, { status: 404 });
+      if (!data) {
+        return NextResponse.json({ error: 'Itinerary not found' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) });
+    } catch (error) {
+      return handleApiError(error, request);
     }
-    return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) });
-  } catch (error) {
-    return handleApiError(error, request);
-  }
+  }, (res) => res.status);
 });
 
 export const DELETE = withAuth(async (request: NextRequest, userId: string, ...args: unknown[]) => {
-  const { params } = (args[0] ?? {}) as RouteParams;
-  try {
-    const { id } = await params;
+  return timedHttp('/api/saved-itineraries/[id]', 'DELETE', async () => {
+    try {
+      const { params } = (args[0] ?? {}) as RouteParams;
+      const { id } = await params;
 
-    const deleted = await deleteItineraryById(id, userId);
+      const deleted = await deleteItineraryById(id, userId);
 
-    if (!deleted) {
-      return NextResponse.json({ error: 'Itinerary not found' }, { status: 404 });
+      if (!deleted) {
+        return NextResponse.json({ error: 'Itinerary not found' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true });
+    } catch (error) {
+      return handleApiError(error, request);
     }
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return handleApiError(error, request);
-  }
+  }, (res) => res.status);
 });

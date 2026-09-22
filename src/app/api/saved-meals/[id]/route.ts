@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { deleteMealById, getMealById } from '@/lib/services/mealService';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 
 /**
  * Single saved-meal access — session-scoped.
@@ -18,21 +19,23 @@ export const GET = withAuth(async (
   userId: string,
   ...args: unknown[]
 ) => {
-  try {
-    const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
-    const { id } = await params;
+  return timedHttp('/api/saved-meals/[id]', 'GET', async () => {
+    try {
+      const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
+      const { id } = await params;
 
-    const data = await getMealById(id, userId);
+      const data = await getMealById(id, userId);
 
-    if (!data) {
-      // Not found OR belongs to another user — indistinguishable on purpose.
-      return NextResponse.json({ error: 'Meal not found' }, { status: 404 });
+      if (!data) {
+        // Not found OR belongs to another user — indistinguishable on purpose.
+        return NextResponse.json({ error: 'Meal not found' }, { status: 404 });
+      }
+
+      return NextResponse.json({ success: true, data });
+    } catch (error) {
+      return handleApiError(error, request);
     }
-
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
-    return handleApiError(error, request);
-  }
+  }, (res) => res.status);
 });
 
 export const DELETE = withAuth(async (
@@ -40,19 +43,21 @@ export const DELETE = withAuth(async (
   userId: string,
   ...args: unknown[]
 ) => {
-  try {
-    const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
-    const { id } = await params;
+  return timedHttp('/api/saved-meals/[id]', 'DELETE', async () => {
+    try {
+      const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
+      const { id } = await params;
 
-    // Scope by user_id so a client cannot delete another user's meal.
-    const deleted = await deleteMealById(id, userId);
+      // Scope by user_id so a client cannot delete another user's meal.
+      const deleted = await deleteMealById(id, userId);
 
-    if (!deleted) {
-      return NextResponse.json({ error: 'Meal not found' }, { status: 404 });
+      if (!deleted) {
+        return NextResponse.json({ error: 'Meal not found' }, { status: 404 });
+      }
+
+      return NextResponse.json({ success: true });
+    } catch (error) {
+      return handleApiError(error, request);
     }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return handleApiError(error, request);
-  }
+  }, (res) => res.status);
 });

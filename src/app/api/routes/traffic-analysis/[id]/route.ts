@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RouteTrafficAnalysis } from '@/types/route-optimization';
 import { routeTrafficAnalyzer } from '@/lib/services/routeTrafficAnalysis';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 
 /**
  * GET /api/routes/traffic-analysis/[id]
@@ -10,6 +11,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  return timedHttp('/api/routes/traffic-analysis/[id]', 'GET', async () => {
   try {
     const routeId = params.id;
 
@@ -114,4 +116,5 @@ export async function GET(
       { status: 500 }
     );
   }
+  }, (res) => res.status);
 }

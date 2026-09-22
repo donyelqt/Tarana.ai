@@ -10,7 +10,7 @@ import { recommendationEngine } from "@/app/tarana-eats/services/recommendationE
 import { menuIndexingService } from "@/app/tarana-eats/services/menuIndexingService";
 import { budgetAllocator } from "@/app/tarana-eats/services/budgetAllocator";
 import { withRetry } from "@/lib/upstream/withRetry";
-
+import { timedHttp } from "@/lib/observability/httpMetrics";
 interface EnhancedResultMatch extends ResultMatch {
   fullMenu?: FullMenu;
   reason?: string;
@@ -74,6 +74,7 @@ const MIN_RECOMMENDATIONS = 3;
 const MAX_RECOMMENDATIONS = 5;
 
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
+  return timedHttp('/api/gemini/food-recommendations', 'POST', async () => {
   try {
 
     // ✅ CREDIT SYSTEM: Check available credits
@@ -363,10 +364,11 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
   } catch (error) {
     const foodError = FoodRecommendationErrorHandler.createError(error, 'food_recommendations_api');
     FoodRecommendationErrorHandler.logError(foodError);
-    
+
     const errorResponse = FoodRecommendationErrorHandler.createErrorResponse(foodError);
     return NextResponse.json(errorResponse, { status: 500 });
   }
+  }, (res) => res.status);
 });
 
 // Validation and enhancement helper
@@ -828,6 +830,8 @@ function generateQuickReason(restaurant: any, preferences: any): string {
 
 // Health check endpoint for monitoring
 export async function GET(req: NextRequest) {
+  return timedHttp('/api/gemini/food-recommendations', 'GET', async () => {
+  try {
   const url = new URL(req.url);
   const action = url.searchParams.get('action');
   
@@ -845,4 +849,8 @@ export async function GET(req: NextRequest) {
   }
   
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+  }, (res) => res.status);
 }

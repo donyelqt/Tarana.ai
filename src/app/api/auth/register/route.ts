@@ -5,11 +5,12 @@ import { sanitizeUserRegistration } from '@/lib/security/inputSanitizer';
 import { checkRequiredEnvVars } from '@/lib/security/environmentValidator';
 import { ReferralService } from '@/lib/referral-system';
 import { createUserProfile } from '@/lib/services/userService';
-
+import { timedHttp } from '@/lib/observability/httpMetrics';
 // Rate limiter for registration attempts
 const registerRateLimit = createRateLimitMiddleware(rateLimitConfigs.auth);
 
 export async function POST(request: NextRequest) {
+  return timedHttp('/api/auth/register', 'POST', async () => {
   try {
     // Check required environment variables
     checkRequiredEnvVars(['NEXTAUTH_SECRET', 'SUPABASE_SERVICE_ROLE_KEY']);
@@ -132,4 +133,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  }, (res) => res.status);
 }

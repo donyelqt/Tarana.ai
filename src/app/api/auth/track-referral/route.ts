@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
-import { handleApiError } from "@/lib/errors/handleApiError";
-import { ReferralService } from "@/lib/referral-system/ReferralService";
-import { CreditService } from "@/lib/referral-system/CreditService";
+import { handleApiError } from '@/lib/errors/handleApiError';
+import { timedHttp } from '@/lib/observability/httpMetrics';
+import { ReferralService } from '@/lib/referral-system/ReferralService';
 
 /**
  * API endpoint to track referrals after user signup
  * Called from frontend after successful authentication
  */
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
+  return timedHttp('/api/auth/track-referral', 'POST', async () => {
   try {
     
     // Get referral code from request body
@@ -77,30 +78,31 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
 
   } catch (error: any) {
-    console.error("Error tracking referral:", error);
-    
+    console.error('Error tracking referral:', error);
+
     // Handle known error types
     if (error.message?.includes('Invalid referral code')) {
-      return NextResponse.json({
-        success: false,
-        error: "Invalid referral code"
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid referral code' },
+        { status: 400 }
+      );
     }
-    
+
     if (error.message?.includes('self-referral')) {
-      return NextResponse.json({
-        success: false,
-        error: "You cannot use your own referral code"
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: 'You cannot refer yourself' },
+        { status: 400 }
+      );
     }
-    
+
     if (error.message?.includes('already exists')) {
-      return NextResponse.json({
-        success: false,
-        error: "Referral already recorded"
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Referral already exists' },
+        { status: 400 }
+      );
     }
 
     return handleApiError(error, req);
   }
+  }, (res) => res.status);
 });

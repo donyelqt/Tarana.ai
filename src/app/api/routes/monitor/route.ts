@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RouteMonitoringResponse } from '@/types/route-optimization';
+import { timedHttp } from '@/lib/observability/httpMetrics';
+
 
 interface RouteMonitorRequest {
   routeId: string;
@@ -30,6 +32,7 @@ const monitoringSessions = new Map<string, MonitoringSession>();
  * Start real-time route monitoring
  */
 export async function POST(request: NextRequest) {
+  return timedHttp('/api/routes/monitor', 'POST', async () => {
   try {
     console.log('🔍 API: Starting route monitoring');
     
@@ -114,13 +117,14 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  }, (res) => res.status);
 }
-
 /**
  * GET /api/routes/monitor/[id]
  * Get monitoring session status
  */
 export async function GET(request: NextRequest) {
+  return timedHttp('/api/routes/monitor', 'GET', async () => {
   try {
     const url = new URL(request.url);
     const pathSegments = url.pathname.split('/');
@@ -187,6 +191,7 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+  }, (res) => res.status);
 }
 
 /**
@@ -194,6 +199,7 @@ export async function GET(request: NextRequest) {
  * Stop route monitoring
  */
 export async function DELETE(request: NextRequest) {
+  return timedHttp('/api/routes/monitor', 'DELETE', async () => {
   try {
     const url = new URL(request.url);
     const pathSegments = url.pathname.split('/');
@@ -235,6 +241,7 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
+  }, (res) => res.status);
 }
 
 /**
