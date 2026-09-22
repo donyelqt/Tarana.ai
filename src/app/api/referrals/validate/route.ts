@@ -3,7 +3,7 @@ import { ReferralService } from '@/lib/referral-system';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import { sanitizeText } from '@/lib/security/inputSanitizer';
 import { z } from 'zod';
-
+import { handleApiError } from '@/lib/errors/handleApiError';
 const referralValidationRateLimit = createRateLimitMiddleware(rateLimitConfigs.referralValidation);
 
 const payloadSchema = z.object({
@@ -58,13 +58,6 @@ export async function POST(req: NextRequest) {
       code: sanitizedCode,
     });
   } catch (error) {
-    console.error('Error in /api/referrals/validate:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to validate referral code',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, req);
   }
 }
