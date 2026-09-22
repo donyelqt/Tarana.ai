@@ -3,7 +3,6 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { createMeal, listMeals, MealDbError, SavedMealInput } from '@/lib/services/mealService';
 import { z } from 'zod';
 import { handleApiError } from '@/lib/errors/handleApiError';
-// Zod validation schema for saved meals
 const SavedMealSchema = z.object({
   cafe_name: z.string().min(1, 'Cafe name is required').max(200),
   meal_type: z.string().min(1, 'Meal type is required'),
@@ -26,18 +25,6 @@ export const GET = withAuth(async (request: NextRequest, userId: string) => {
       count: data?.length || 0
     });
   } catch (error) {
-    if (error instanceof MealDbError) {
-      console.error('Supabase error:', error);
-      return NextResponse.json(
-        {
-          error: 'Failed to fetch saved meals',
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        },
-        { status: 500 }
-      );
-    }
     return handleApiError(error, request);
   }
 });

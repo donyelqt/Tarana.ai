@@ -80,15 +80,17 @@ describe('Saved Meals API Route Tests', () => {
     expect(mockedListMeals).toHaveBeenCalledWith('user-1');
   });
 
-  test('GET preserves the detailed 500 shape on DB error', async () => {
-    mockedListMeals.mockRejectedValue(new MealDbError('db boom', 'h', 'c'));
+  test('GET returns safe 500 on DB error without leaking details', async () => {
+    mockedListMeals.mockRejectedValue(new MealDbError('db boom', 'private hint', 'PGRST001'));
 
     const response = await GET(authedRequest());
     expect(response.status).toBe(500);
 
     const body = await response.json();
-    expect(body.error).toBe('Failed to fetch saved meals');
-    expect(body.details).toBe('db boom');
+    expect(body.error).toBe('Internal server error');
+    expect(body.details).toBeUndefined();
+    expect(body.hint).toBeUndefined();
+    expect(body.code).toBeUndefined();
   });
 
   test('POST returns 200 with the saved meal', async () => {
