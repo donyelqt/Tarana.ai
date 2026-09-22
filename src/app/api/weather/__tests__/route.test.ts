@@ -8,7 +8,7 @@
  * - missing key → 500 (our config bug)
  * - upstream failure → 502 with upstreamStatus + sanitized upstreamMessage
  *   class (raw OpenWeather bytes stay server-side in the structured log —
- *   safe-error boundary; sentinel tests in slice 2 pin this)
+ *   safe-error boundary; sentinel tests below pin this)
  */
 import { GET } from '../route';
 
@@ -90,6 +90,28 @@ describe('GET /api/weather', () => {
     expect(String(body.upstreamStatus)).toContain('400');
     expect(String(body.upstreamMessage)).toBe('Upstream rejected the request');
     expect(JSON.stringify(body)).not.toContain('wrong latitude');
+  });
+
+  it('never leaks raw upstream bytes into the response body (sentinel)', async () => {
+    const SENTINEL = 'SENTINEL_WEATHER_LEAK_xyz789';
+    mockFetchOnce(() => ({
+      ok: false,
+      status: 400,
+      text: async () => `{"cod":"400","message":"${SENTINEL}"}`,
+    }));
+    const res = await get('http://localhost:3000/api/weather?lat=16.4&lon=120.6');
+    const body = await res.json();
+    expect(JSON.stringify(body)).not.toContain(SENTINEL);
+  });
+
+  it('never leaks thrown upstream errors into the response body (sentinel)', async () => {
+    const SENTINEL = 'SENTINEL_WEATHER_THROW_xyz789';
+    mockFetchOnce(() => {
+      throw new Error(`Weather API error: 503 — ${SENTINEL}`);
+    });
+    const res = await get('http://localhost:3000/api/weather?lat=16.4&lon=120.6');
+    const body = await res.json();
+    expect(JSON.stringify(body)).not.toContain(SENTINEL);
   });
 
   it('passes upstream weather data through on 200', async () => {
