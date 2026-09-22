@@ -6,13 +6,13 @@
 import { fetchWeatherFromAPI, summariseProxyFailure } from '../utils';
 
 describe('summariseProxyFailure', () => {
-  it('extracts upstream detail from the route error shape', () => {
+  it('extracts the sanitized class from the route error shape', () => {
     expect(
       summariseProxyFailure(
         502,
-        '{"error":"Weather upstream error","upstreamStatus":400,"upstreamMessage":"wrong latitude"}'
+        '{"error":"Weather upstream error","upstreamStatus":400,"upstreamMessage":"Upstream rejected the request"}'
       )
-    ).toBe('proxy 502 (upstream 400): wrong latitude');
+    ).toBe('proxy 502 (upstream 400): Upstream rejected the request');
   });
 
   it('falls back to the route error when no upstream detail exists', () => {
@@ -35,12 +35,12 @@ describe('fetchWeatherFromAPI fallback reason', () => {
       ok: false,
       status: 502,
       text: async () =>
-        '{"error":"Weather upstream error","upstreamStatus":400,"upstreamMessage":"wrong latitude"}',
+        '{"error":"Weather upstream error","upstreamStatus":400,"upstreamMessage":"Upstream rejected the request"}',
     })) as unknown as typeof fetch;
 
     const data = await fetchWeatherFromAPI();
     expect(data?.isFallback).toBe(true);
-    expect(data?.fallbackReason).toBe('proxy 502 (upstream 400): wrong latitude');
+    expect(data?.fallbackReason).toBe('proxy 502 (upstream 400): Upstream rejected the request');
   });
 
   it('tags network-level failures as network', async () => {
