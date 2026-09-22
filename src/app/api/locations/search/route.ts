@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LocationSearchResponse, SearchResult, BoundingBox } from '@/types/route-optimization';
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
+import { handleApiError } from '@/lib/errors/handleApiError';
 
 /**
  * GET /api/locations/search
@@ -62,33 +63,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
 
   } catch (error) {
-    console.error('❌ API: Location search failed:', error);
-    
-    if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        return NextResponse.json(
-          { error: 'Location search service unavailable' },
-          { status: 503 }
-        );
-      }
-      
-      if (error.message.includes('rate limit')) {
-        return NextResponse.json(
-          { error: 'Rate limit exceeded. Please try again later.' },
-          { status: 429 }
-        );
-      }
-      
-      return NextResponse.json(
-        { error: 'Location search failed', details: error.message },
-        { status: 500 }
-      );
-    }
-    
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, request);
   }
 }
 
