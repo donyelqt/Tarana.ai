@@ -147,7 +147,7 @@ async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
         }
 
         console.error("Multi-agent pipeline error:", err);
-        return NextResponse.json({ text: "", error: err?.message ?? "Internal Server Error", refunded: true }, { status: 500 });
+        return NextResponse.json({ text: "", error: "Internal server error", refunded: true }, { status: 500 });
     } finally {
         if (session) {
             clearSession(session.id);
@@ -491,10 +491,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         console.error("Error in itinerary generation pipeline:", errorDetails);
         return NextResponse.json({
             text: "",
-            error: errorDetails.message,
-            errorType: errorDetails.type,
-            requestId: errorDetails.requestId,
-            retryable: errorDetails.retryable
+            error: "Internal server error"
         }, { status: 500 });
     }
 });
