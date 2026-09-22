@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { LocationSearchResponse, SearchResult, BoundingBox } from '@/types/route-optimization';
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import { handleApiError } from '@/lib/errors/handleApiError';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 
 /**
  * GET /api/locations/search
  * Search for locations with autocomplete functionality
  */
 export async function GET(request: NextRequest) {
-  try {
+  return timedHttp('/api/locations/search', 'GET', async () => {
+    try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
     const boundsParam = searchParams.get('bounds');
@@ -65,6 +67,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return handleApiError(error, request);
   }
+  }, (res) => res.status);
 }
 
 /**
