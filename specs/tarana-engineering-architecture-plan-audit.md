@@ -512,13 +512,20 @@ was implemented (§8.5 correction #24 above).
 `String(error)` in `route.ts` files = **0** (was 3 at audit).
 `supabaseAdmin` in route files = **0** (was 13 at audit).
 
-**30. §2 row 13 — error handling status update.**
+**30. §2 row 13 — error handling status update (2026-09-23).**
 `String(error)` response-body leaks: **0** in route files (was 3 at audit, in
 `saved-itineraries` and `saved-meals`). The 2 remaining `String(error)` instances
 in `gemini/itinerary-generator/lib/*.ts` are `console.warn` calls inside template
 literals (logging, not response bodies) — not in scope for Phase 0.1 which targeted
-route response bodies only.
-
+route response bodies only. **Additional fix (2026-09-23):** 6 routes that leaked
+`error.message`/`.details`/`.hint`/`.code` into response bodies were converted to
+`handleApiError`: `locations/search`, `referrals/validate`, `routes/calculate`,
+`tiers/all`, `saved-meals` (GET MealDbError path), `gemini/itinerary-generator`
+(POST catch + multi-agent catch). Response envelope stays `{ error: string }`.
+`itinerary-generator` preserves 401 auth and 402 InsufficientCreditsError handlers.
+New regression test `src/app/api/safeError.boundary.test.ts` (3 tests) injects a
+sentinel string into mock rejections and asserts it never appears in the response.
+Full suite: 553 passed, 6 skipped, 0 failed. tsc 0 errors. Build green.
 **31. §2 row 7 — refundMetrics still in-process.**
 Confirmed unchanged: `refundMetrics.ts:28-47` counters are still module-level,
 `takeRefundSnapshot` still reads-and-resets on cold start. Phase 5.3 (durable
@@ -538,10 +545,11 @@ test variables, without changing the source default. Full suite: 550 passed,
   spawned per the doubt-driven skill, stalled, and was cancelled. No
   independent findings were produced. This audit is single-model.
 - **No code was modified during the 2026-09-20 audit.** Document-only pass.
-  The 2026-09-21 pass implemented Phase 2.1 (§8.5).
+  The 2026-09-21 pass implemented Phase 2.1 (§8.5). The 2026-09-23 pass implemented
+  Phase 0.1a-2 (6 routes converted off `error.message`/`details` leakage + regression test).
 
-## 9. Implementation Status (re-verified 2026-09-22)
 
+## 9. Implementation Status (re-verified 2026-09-23)
 Markers follow the `✅ Done` convention used in `specs/tarana-mobile-app-plan.md`.
 Each row records what shipped, the verification that ran, and the commit-style
 evidence. Items without a marker are **not done** — do not assume they are.
@@ -552,8 +560,9 @@ evidence. Items without a marker are **not done** — do not assume they are.
 |---|---|---|---|
 | [x] | 0.2 | Structured logging + correlation IDs | `src/lib/observability/logger.ts` (zero-dep JSON, `process.stdout/stderr.write`, no `console.*`); `src/middleware/requestId.ts` (`getRequestId`, `requestIdMiddleware`, priority 110); wired into `src/middleware/index.ts`. Verified: `bun run specs/smoke-logger.mjs` → SMOKE OK; live `curl` on a fresh dev instance. |
 | [x] | 0.2a | Logger is zero-dep (no `pino` added to lockfile) | `grep -c pino pnpm-lock.yaml` = 0. Chose a hand-rolled logger over `pino` to avoid a new dependency + lockfile churn; matches the existing zero-dep convention in `refundMetrics.ts`. |
-| [x] | 0.1 | Standardized error handling (`AppError` + `handleApiError`) | **Implemented + verified** (PR #489, `f46ba51`). `src/lib/errors/AppError.ts` (code, status, safeMessage, retryable, logMessage + `fromUnknown()` classifier) and `src/lib/errors/handleApiError.ts` (logs via the 0.2 logger with correlation ID, classifies rate-limit→429 / timeout→503 / not-authorized→401 / not-found→404) are wired into the 3 logger-ready routes. Response envelope corrected to `{ error: string }` — the plan's original `{ error: { code, message } }` would have broken `savedItineraries.ts:91-92` and `supabaseMeals.ts:26`, both of which read `body.error` as a string. Verified: tsc clean, 23/23 affected suites, lint clean, build green, runtime smoke 21/21. |
-| [x] | 0.1a | Convert routes off `String(error)` | 7 leaks across 3 files eliminated: `saved-itineraries/route.ts` (2), `saved-itineraries/[id]/route.ts` (3), `saved-meals/route.ts` (2). All now route through `handleApiError` (PR #489), which logs with the correlation ID and returns `{ error: 'Internal server error' }`. Verified: `grep -rn "String(error)" src/app/api --include=route.ts` → zero. |
+| [x] | 0.1 | Standardized error handling (`AppError` + `handleApiError`) | **Implemented + verified** (PR #489, `f46ba51`). `src/lib/errors/AppError.ts` (code, status, safeMessage, retryable, logMessage + `fromUnknown()` classifier) and `src/lib/errors/handleApiError.ts` (logs via the 0.2 logger with correlation ID, classifies rate-limit→429 / timeout→503 / not-authorized→401 / not-found→404) are wired into all converted routes. Response envelope stays `{ error: string }` — the plan's original `{ error: { code, message } }` would break `savedItineraries.ts:91-92` and `supabaseMeals.ts:26`, both of which read `body.error` as a string. Verified: tsc clean, full suite green, lint clean, build green, runtime smoke 21/21. |
+| [x] | 0.1a | Convert routes off `String(error)` — initial 3 files | 7 leaks across 3 files eliminated: `saved-itineraries/route.ts` (2), `saved-itineraries/[id]/route.ts` (3), `saved-meals/route.ts` (2). All now route through `handleApiError` (PR #489), which logs with the correlation ID and returns `{ error: 'Internal server error' }`. Verified: `grep -rn "String(error)" src/app/api --include=route.ts` → zero. |
+| [x] | 0.1a-2 | Convert routes off `error.message`/`details` leakage — additional 6 files | 6 more routes had raw `error.message` / `error.details` / `error.stack` in response bodies (the original audit found `String(error)` literal gone, but `error.message`/`.details`/`.hint`/`.code` remained). Converted: `locations/search`, `referrals/validate`, `routes/calculate`, `tiers/all`, `saved-meals` (GET MealDbError path), `gemini/itinerary-generator` (POST catch + multi-agent catch). All now use `handleApiError` or safe hardcoded messages. `itinerary-generator` preserves 401 auth and 402 InsufficientCreditsError handlers. New regression test `src/app/api/safeError.boundary.test.ts` injects a sentinel string into mock rejections and asserts it never appears in the response body. Verified: `grep -rn "\.message\|\.details\|\.stack\|\.hint\|\.code" src/app/api/**/route.ts | grep -v handleApiError` returns only intentional Zod validation `details` fields; full suite 553 passed / 6 skipped / 0 failed; tsc 0 errors; build green. |
 | [x] | 0.4a | Dependency audit gate (critical level) | **Implemented + verified** (PR #491, `64138d8` + `ad6ad4d`). `pnpm audit --audit-level=critical --prod` added to `ci.yml` as a blocking step. Sequencing correction: the gate landed **after** the 3 criticals were patched, because adding it first would have made main unmergeable on every PR. The criticals — `next-auth` 4.24.14→4.24.15 (homoglyph `@` bypass), `next` 15.5.15→15.5.25 (2× unauthenticated RCE: Windows-hosted + Image Optimization/AVIF) — are gone; `nodemailer` 7.0.13→9.1.1 (quadratic `addressparser` DoS) also patched. Verified: tsc 0 errors, 499 tests, build green, gate passes in CI (`verify` 2m45s). Scoped to critical, not high: pnpm scans all workspace prod trees and reports 20 transitive highs (`sharp` via `next`, `js-yaml` via expo/jest) I don't directly control — a high-level gate would fail every PR. The highs are a follow-up backlog. |
 | [ ] | 0.3 | RED metrics (`prom-client`) | `prom-client` not installed (audit finding #21). |
 | [x] | 0.4 | CI gates (audit, bundle size, health smoke) | **Implemented + verified** (PR #493, `82c9d08`). Audit gate shipped in 0.4a (PR #491). Bundle budget gate: `scripts/check-bundle-budget.mjs` parses the real build output (`.next/app-build-manifest.json`, not the locale-dependent terminal table) and fails >10% First Load JS regression against `scripts/bundle-baseline.json` (62 routes, recorded fresh). Health smoke: boots the built app in CI and hits `/api/health` (10-attempt retry) — CI now proves the build serves, closing the gap where a build that compiles but crashes on boot would pass. `/api/health/route.ts` per §3.2 invariant 8: Supabase REST + Gemini key-presence (not generation — a probe that calls the model costs money) + TomTom flow probe, each with its own 3s timeout; unhealthy dependency returns 200 with `status: 'degraded'` (a state, not a request failure). Verified live: `{ status: 'ok', checks: { supabase: ok, geminiKey: ok, tomtom: ok } }` in 2.9s; budget gate both paths (unchanged → OK exit 0; stale baseline 100 kB below actual → FAIL). |
