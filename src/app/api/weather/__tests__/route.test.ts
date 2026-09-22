@@ -6,7 +6,9 @@
  * with no actionable detail. Contract now:
  * - garbage coordinates → 400, never proxied upstream
  * - missing key → 500 (our config bug)
- * - upstream failure → 502 with upstreamStatus + upstreamMessage passthrough
+ * - upstream failure → 502 with upstreamStatus + sanitized upstreamMessage
+ *   class (raw OpenWeather bytes stay server-side in the structured log —
+ *   safe-error boundary; sentinel tests in slice 2 pin this)
  */
 import { GET } from '../route';
 
@@ -75,7 +77,7 @@ describe('GET /api/weather', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('maps an upstream 400 to 502 with upstream detail (the incident)', async () => {
+  it('maps an upstream 400 to 502 with sanitized upstream detail (the incident)', async () => {
     mockFetchOnce(() => ({
       ok: false,
       status: 400,
@@ -86,7 +88,8 @@ describe('GET /api/weather', () => {
     const body = await res.json();
     expect(body.error).toBe('Weather upstream error');
     expect(String(body.upstreamStatus)).toContain('400');
-    expect(String(body.upstreamMessage)).toContain('wrong latitude');
+    expect(String(body.upstreamMessage)).toBe('Upstream rejected the request');
+    expect(JSON.stringify(body)).not.toContain('wrong latitude');
   });
 
   it('passes upstream weather data through on 200', async () => {
