@@ -682,7 +682,8 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | [x] | 2.2 slice 2b | Remaining Gemini generateContent sites + timeout composition | PR #520 (`304affc`). `responseHandler`, `structuredOutputEngine`, and `guaranteedJsonEngine` now use `withRetry` + `timeoutMs`; fixed a response-handler timer leak, an abort-listener leak, and a post-success stale abort. `ensureFullItinerary` verified dead and intentionally untouched. Smoke suites 14/14 + fallback/retry/abort checks, tsc clean, full suite 550/0/6, lint clean, CI green. |
 | [ ] | 2.3 | Idempotency keys | No `Idempotency-Key` handling; no `idempotency_keys` table. |
 | [ ] | 2.4 | Shared rate limiting | `InMemoryRateLimiter` still `Map`-backed (correct to defer per §3.3). |
-| [ ] | 2.5 | Error budget + rollback policy | No `docs/rollback.md`; no SLO recorded. |
+| [x] | 2.5 | Error budget + rollback policy | **Done** (PRs #531 + #532). `docs/rollback.md`: two levers in order (flag env flip < 1 min; Vercel promote < 5 min), `USE_MULTI_AGENT` prod state + never-set-`true` warning, trigger thresholds matching the rollout table. `docs/slo.md`: 99.5% over rolling 30 days on `/api/*` non-5xx, error-budget policy (>20% ship / 0–20% slow / 0% freeze). Runbooks (`docs/runbooks/`) remain Phase 5.3. |
+| [x] | 0.1a-3 | Weather route safe-error closeout | **Done** (PRs #528, #529, #530). Last route leaking raw upstream text: 502 path echoed OpenWeather bytes as `upstreamMessage`, outer catch interpolated thrown text into 500 body. Now fixed class per status server-side detail in structured log with `requestId`, outer catch → `handleApiError`. 2 sentinel regression tests (proved RED pre-fix); fallback fixtures carry sanitized class. Envelope unchanged. Full suite 555/6/0. |
 
 ### Phase 3: Security
 
