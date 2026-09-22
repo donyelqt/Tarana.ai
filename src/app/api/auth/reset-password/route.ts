@@ -3,11 +3,12 @@ import { findUserByResetToken, hashPassword, resetPassword } from '@/lib/service
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import { validatePasswordStrength } from '@/lib/security/inputSanitizer';
 import { checkRequiredEnvVars } from '@/lib/security/environmentValidator';
-
+import { timedHttp } from '@/lib/observability/httpMetrics';
 // Rate limiter for password reset attempts
 const resetPasswordRateLimit = createRateLimitMiddleware(rateLimitConfigs.auth);
 
 export async function POST(request: NextRequest) {
+  return timedHttp('/api/auth/reset-password', 'POST', async () => {
   try {
     // Check required environment variables
     checkRequiredEnvVars(['NEXTAUTH_SECRET', 'SUPABASE_SERVICE_ROLE_KEY']);
@@ -91,4 +92,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  }, (res) => res.status);
 }

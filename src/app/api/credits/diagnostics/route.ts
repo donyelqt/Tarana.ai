@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 import { createUserProfile } from '@/lib/services/userService';
+
 import {
   checkConsumeCreditsFunction,
   checkTableExists,
@@ -14,10 +16,11 @@ import {
  * Comprehensive diagnostic check for credit system
  */
 export const GET = withAuth(async (req: NextRequest, userId: string) => {
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
-  try {
+  return timedHttp('/api/credits/diagnostics', 'GET', async () => {
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    try {
     const diagnostics: any = {
       timestamp: new Date().toISOString(),
       userId,
@@ -120,4 +123,5 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
   } catch (error) {
     return handleApiError(error, req);
   }
+  }, (res) => res.status);
 });

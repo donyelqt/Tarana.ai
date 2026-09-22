@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuthEmail } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 import { getProfileByEmail, updateProfileByEmail } from '@/lib/services/profileService';
 import { sanitizeName, sanitizeText } from '@/lib/security/inputSanitizer';
 
 // GET - Fetch user profile
 export const GET = withAuthEmail(async (req: NextRequest, { email }) => {
+  return timedHttp('/api/profile', 'GET', async () => {
   try {
     let user;
     try {
@@ -32,10 +34,11 @@ export const GET = withAuthEmail(async (req: NextRequest, { email }) => {
   } catch (error) {
     return handleApiError(error, req);
   }
+  }, (res) => res.status);
 });
-
 // PATCH - Update user profile
 export const PATCH = withAuthEmail(async (req: NextRequest, { email }) => {
+  return timedHttp('/api/profile', 'PATCH', async () => {
   try {
 
     const body = await req.json();
@@ -105,4 +108,5 @@ export const PATCH = withAuthEmail(async (req: NextRequest, { email }) => {
   } catch (error) {
     return handleApiError(error, req);
   }
+  }, (res) => res.status);
 });

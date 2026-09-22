@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
-import { handleApiError } from "@/lib/errors/handleApiError";
-import { createClient } from "@supabase/supabase-js";
+import { handleApiError } from '@/lib/errors/handleApiError';
+import { timedHttp } from '@/lib/observability/httpMetrics';
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export const GET = withAuth(async (req: NextRequest, userId: string) => {
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  return timedHttp('/api/referrals/debug', 'GET', async () => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 1. Get user profile
@@ -103,8 +105,8 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
   } catch (error) {
     return handleApiError(error, req);
   }
+  }, (res) => res.status);
 });
-
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 import { createUserProfile, userProfileExists } from '@/lib/services/userService';
 
 /**
- * POST /api/credits/init-profile
  * Initialize user profile for existing users (one-time fix)
  */
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
+  return timedHttp('/api/credits/init-profile', 'POST', async () => {
   try {
     // Check if profile already exists
     const exists = await userProfileExists(userId);
@@ -38,4 +39,5 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
   } catch (error) {
     return handleApiError(error, req);
   }
+  }, (res) => res.status);
 });

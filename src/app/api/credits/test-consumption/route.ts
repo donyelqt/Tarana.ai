@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 import {
   consumeTestCredit,
   getRecentTransactions,
@@ -12,10 +13,11 @@ import {
  * Test credit consumption with proper service name
  */
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  return timedHttp('/api/credits/test-consumption', 'POST', async () => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
     const testResult: any = {
       timestamp: new Date().toISOString(),
       userId,
@@ -133,4 +135,5 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
   } catch (error) {
     return handleApiError(error, req);
   }
+  }, (res) => res.status);
 });

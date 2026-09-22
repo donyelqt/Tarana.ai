@@ -16,6 +16,7 @@ import type { WeatherCondition } from "./types/types";
 import { z } from "zod";
 import { PipelineCoordinator } from "@/agents/pipelineCoordinator";
 import { ConciergeAgent } from "@/agents/conciergeAgent";
+import { timedHttp } from "@/lib/observability/httpMetrics";
 import { ContextScoutAgent } from "@/agents/contextScoutAgent";
 import { RetrievalStrategistAgent } from "@/agents/retrievalStrategistAgent";
 import { ItineraryComposerAgent } from "@/agents/itineraryComposerAgent";
@@ -236,8 +237,8 @@ const getCachedItinerary = unstable_cache(
         tags: ['itineraries'],
     }
 );
-
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
+  return timedHttp('/api/gemini/itinerary-generator', 'POST', async () => {
     if (USE_MULTI_AGENT) {
         return handleMultiAgentPost(req);
     }
@@ -494,4 +495,5 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
             error: "Internal server error"
         }, { status: 500 });
     }
+  }, (res) => res.status);
 });

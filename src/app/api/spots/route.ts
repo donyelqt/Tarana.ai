@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 import { getCityConfig, isWithinCityBounds } from '@/lib/data/cityConfig';
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import type { BoundingBox } from '@/types/route-optimization';
@@ -56,6 +57,7 @@ function isRealPhoto(image: unknown): boolean {
  * Ranking stays client-side (rankSpots) for every city.
  */
 export async function GET(request: Request) {
+  return timedHttp('/api/spots', 'GET', async () => {
   const city = new URL(request.url).searchParams.get('city') ?? 'baguio';
 
   if (!isSpotScopeId(city) || !SUPPORTED.includes(city)) {
@@ -227,4 +229,5 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
+  }, (res) => res.status);
 }
