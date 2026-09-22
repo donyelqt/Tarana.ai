@@ -3,6 +3,7 @@ import { fetchWeatherData } from '@/lib/core/utils';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 
 /**
  * Map an upstream status to a fixed client-safe class message.
@@ -34,6 +35,7 @@ function safeUpstreamMessage(upstreamStatus: string): string {
 // This protects the API key by keeping it server-side only
 export async function GET(request: NextRequest) {
   const requestId = getRequestId(request);
+  return timedHttp('/api/weather', 'GET', async () => {
   try {
     // Get coordinates from query parameters or use defaults
     const url = new URL(request.url);
@@ -100,8 +102,8 @@ export async function GET(request: NextRequest) {
         { status: 502 }
       );
     }
-
   } catch (error) {
     return handleApiError(error, request);
   }
+  }, (res) => res.status);
 }
