@@ -3,8 +3,10 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { createItinerary, listItineraries } from '@/lib/services/itineraryService';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { mapRowToSavedItinerary, resolveItineraryImage, SaveItinerarySchema } from '@/lib/data/itineraryMapper';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 
 export const GET = withAuth(async (request: NextRequest, userId: string) => {
+  return timedHttp('/api/saved-itineraries', 'GET', async () => {
   try {
     let data;
     try {
@@ -24,9 +26,11 @@ export const GET = withAuth(async (request: NextRequest, userId: string) => {
   } catch (error) {
     return handleApiError(error, request);
   }
+  }, (res) => res.status);
 });
 
 export const POST = withAuth(async (request: NextRequest, userId: string) => {
+  return timedHttp('/api/saved-itineraries', 'POST', async () => {
   try {
     const body = await request.json();
     const validation = SaveItinerarySchema.safeParse(body);
@@ -62,4 +66,5 @@ export const POST = withAuth(async (request: NextRequest, userId: string) => {
   } catch (error) {
     return handleApiError(error, request);
   }
+  }, (res) => res.status);
 });

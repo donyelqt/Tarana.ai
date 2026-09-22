@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { createMeal, listMeals, MealDbError, SavedMealInput } from '@/lib/services/mealService';
 import { z } from 'zod';
 import { handleApiError } from '@/lib/errors/handleApiError';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 const SavedMealSchema = z.object({
   cafe_name: z.string().min(1, 'Cafe name is required').max(200),
   meal_type: z.string().min(1, 'Meal type is required'),
@@ -15,23 +16,25 @@ const SavedMealSchema = z.object({
 });
 
 export const GET = withAuth(async (request: NextRequest, userId: string) => {
-  try {
-    const data = await listMeals(userId);
+  return timedHttp('/api/saved-meals', 'GET', async () => {
+    try {
+      const data = await listMeals(userId);
 
-    return NextResponse.json({
-      success: true,
-      data,
-      userId,
-      count: data?.length || 0
-    });
-  } catch (error) {
-    return handleApiError(error, request);
-  }
+      return NextResponse.json({
+        success: true,
+        data,
+        userId,
+        count: data?.length || 0
+      });
+    } catch (error) {
+      return handleApiError(error, request);
+    }
+  }, (res) => res.status);
 });
 
 export const POST = withAuth(async (request: NextRequest, userId: string) => {
+  return timedHttp('/api/saved-meals', 'POST', async () => {
   try {
-
     const body = await request.json();
 
     // Validate input with Zod
@@ -65,4 +68,5 @@ export const POST = withAuth(async (request: NextRequest, userId: string) => {
   } catch (error) {
     return handleApiError(error, request);
   }
+  }, (res) => res.status);
 });
