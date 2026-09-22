@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/observability/logger';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 
 /**
  * Dedicated health endpoint.
@@ -75,15 +76,17 @@ async function checkTomTom(): Promise<CheckStatus> {
 }
 
 export async function GET(): Promise<NextResponse> {
-  const [supabase, tomtom] = await Promise.all([checkSupabase(), checkTomTom()]);
-  const checks: HealthChecks = {
-    supabase,
-    geminiKey: checkGeminiKey(),
-    tomtom,
-  };
-  const allOk = Object.values(checks).every((s) => s === 'ok');
-  return NextResponse.json(
-    { status: allOk ? 'ok' : 'degraded', checks, timestamp: new Date().toISOString() },
-    { status: 200 }
-  );
+  return timedHttp('/api/health', 'GET', async () => {
+    const [supabase, tomtom] = await Promise.all([checkSupabase(), checkTomTom()]);
+    const checks: HealthChecks = {
+      supabase,
+      geminiKey: checkGeminiKey(),
+      tomtom,
+    };
+    const allOk = Object.values(checks).every((s) => s === 'ok');
+    return NextResponse.json(
+      { status: allOk ? 'ok' : 'degraded', checks, timestamp: new Date().toISOString() },
+      { status: 200 }
+    );
+  }, (res) => res.status);
 }

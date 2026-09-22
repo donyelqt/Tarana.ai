@@ -9,9 +9,11 @@ Owner: engineering
 - Numerator: HTTP responses with status < 500 on all `/api/*` routes.
 - Denominator: all HTTP responses on all `/api/*` routes.
 - Window: rolling 30 days. Error budget: 0.5% of requests (~3.6h/month).
-- Source of truth once 0.3 ships: RED metrics (`http_requests_total`
-  with `status_class` label). Until then: Vercel analytics + `/api/health`
-  probe history. No manual spreadsheet counts.
+- Source of truth: RED metrics (`http_requests_total` with `status_class`
+  label, `http_request_duration_seconds` histogram) scraped from
+  `GET /api/metrics` (Prometheus text exposition). Before 0.3 shipped,
+  the fallback was Vercel analytics + `/api/health` probe history.
+  No manual spreadsheet counts.
 
 ## Error-budget policy
 
