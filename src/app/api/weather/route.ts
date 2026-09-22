@@ -1,9 +1,39 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { fetchWeatherData } from '@/lib/core/utils';
+import { handleApiError } from '@/lib/errors/handleApiError';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
+
+/**
+ * Map an upstream status to a fixed client-safe class message.
+ *
+ * Raw OpenWeather bytes must never reach the response body (safe-error
+ * boundary): the detail stays server-side in the structured log. The field
+ * name `upstreamMessage` is kept so the `summariseProxyFailure` contract
+ * (route JSON shape) is unchanged — only the value is now a class, not a
+ * passthrough. Tradeoff: clients lose the verbatim upstream text (e.g.
+ * "wrong latitude"); the class + upstreamStatus is enough for the UI badge.
+ */
+function safeUpstreamMessage(upstreamStatus: string): string {
+  switch (upstreamStatus) {
+    case '400':
+      return 'Upstream rejected the request';
+    case '401':
+      return 'Upstream rejected the credentials';
+    case '404':
+      return 'Upstream found no matching data';
+    case '429':
+      return 'Upstream rate-limited the request';
+    default:
+      if (/^5\d\d$/.test(upstreamStatus)) return 'Upstream service unavailable';
+      return 'Upstream request failed';
+  }
+}
 
 // Server-side API route to fetch weather data
 // This protects the API key by keeping it server-side only
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  const requestId = getRequestId(request);
   try {
     // Get coordinates from query parameters or use defaults
     const url = new URL(request.url);
@@ -26,7 +56,7 @@ export async function GET(request: Request) {
     const apiKey = process.env.OPENWEATHER_API_KEY;
 
     if (!apiKey) {
-      console.error('Weather API key not configured');
+      logger.error('[weather] API key not configured', {}, requestId);
       return NextResponse.json(
         { error: 'Weather service not configured' },
         { status: 500 }
@@ -38,7 +68,7 @@ export async function GET(request: Request) {
       const weatherData = await fetchWeatherData(lat, lon, apiKey);
 
       if (!weatherData) {
-        console.error('Weather data returned null');
+        logger.error('[weather] data returned null', { lat, lon }, requestId);
         return NextResponse.json(
           { error: 'Failed to fetch weather data' },
           { status: 500 }
@@ -48,33 +78,30 @@ export async function GET(request: Request) {
       // Return the weather data to the client (without exposing the API key)
       return NextResponse.json(weatherData);
     } catch (fetchError) {
-      // Upstream failure, not our bug: 502 (was 500) + upstream message so the
-      // single client log line says WHY (e.g. "Invalid API key", rate limit).
-      const upstreamMessage = fetchError instanceof Error
-        ? fetchError.message
-        : 'Unknown error occurred';
-      const upstreamStatus = /error:\s*(\d{3})/.exec(upstreamMessage)?.[1] ?? 'unknown';
-      console.error(`Weather upstream error (OpenWeather ${upstreamStatus}) for ${lat},${lon}: ${upstreamMessage}`);
+      // Upstream failure, not our bug: 502 with a sanitized class message.
+      // Raw upstream bytes stay server-side (structured log only) — response
+      // bodies must never carry raw upstream text (safe-error boundary).
+      const rawMessage =
+        fetchError instanceof Error ? fetchError.message : 'Unknown error occurred';
+      const upstreamStatus = /error:\s*(\d{3})/.exec(rawMessage)?.[1] ?? 'unknown';
+      logger.error(`[weather] upstream error (OpenWeather ${upstreamStatus})`, {
+        upstreamStatus,
+        upstreamDetail: rawMessage.slice(0, 300),
+        lat,
+        lon,
+      }, requestId);
 
       return NextResponse.json(
         {
           error: 'Weather upstream error',
           upstreamStatus,
-          upstreamMessage,
+          upstreamMessage: safeUpstreamMessage(upstreamStatus),
         },
         { status: 502 }
       );
     }
 
   } catch (error) {
-    console.error('Weather API route error:', error);
-    const errorMessage = error instanceof Error
-      ? error.message
-      : 'Unknown error occurred';
-
-    return NextResponse.json(
-      { error: `Failed to fetch weather data: ${errorMessage}` },
-      { status: 500 }
-    );
+    return handleApiError(error, request);
   }
 }
