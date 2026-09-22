@@ -9,16 +9,17 @@ import {
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import { routeTrafficAnalyzer } from '@/lib/services/routeTrafficAnalysis';
 import { handleApiError } from '@/lib/errors/handleApiError';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 
 /**
  * POST /api/routes/calculate
  * Calculate optimal route with traffic analysis
  */
 export async function POST(request: NextRequest) {
+  return timedHttp('/api/routes/calculate', 'POST', async () => {
   try {
     const body = await request.json();
     const routeRequest: RouteRequest = body;
-
     // Validate required fields
     if (!routeRequest.origin || !routeRequest.destination) {
       return NextResponse.json(
@@ -133,6 +134,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return handleApiError(error, request);
   }
+  }, (res) => res.status);
 }
 
 /**
