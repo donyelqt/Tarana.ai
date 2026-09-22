@@ -4,6 +4,7 @@ import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rate
 import { sanitizeText } from '@/lib/security/inputSanitizer';
 import { z } from 'zod';
 import { handleApiError } from '@/lib/errors/handleApiError';
+import { timedHttp } from '@/lib/observability/httpMetrics';
 const referralValidationRateLimit = createRateLimitMiddleware(rateLimitConfigs.referralValidation);
 
 const payloadSchema = z.object({
@@ -15,6 +16,7 @@ const payloadSchema = z.object({
  * Validate a referral code (no authentication required)
  */
 export async function POST(req: NextRequest) {
+  return timedHttp('/api/referrals/validate', 'POST', async () => {
   try {
     const rateLimitResult = referralValidationRateLimit(req);
     if (!rateLimitResult.allowed) {
@@ -60,4 +62,5 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     return handleApiError(error, req);
   }
+  }, (res) => res.status);
 }
