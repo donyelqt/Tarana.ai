@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
+import {
   RouteRequest,
   RouteCalculationResponse,
   RouteData,
@@ -8,6 +8,7 @@ import {
 } from '@/types/route-optimization';
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import { routeTrafficAnalyzer } from '@/lib/services/routeTrafficAnalysis';
+import { handleApiError } from '@/lib/errors/handleApiError';
 
 /**
  * POST /api/routes/calculate
@@ -15,9 +16,6 @@ import { routeTrafficAnalyzer } from '@/lib/services/routeTrafficAnalysis';
  */
 export async function POST(request: NextRequest) {
   try {
-    console.log('🚀 API: Starting route calculation');
-    
-    // Parse and validate request body
     const body = await request.json();
     const routeRequest: RouteRequest = body;
 
@@ -133,34 +131,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response);
 
   } catch (error) {
-    console.error('❌ API: Route analyzation failed:', error);
-    
-    // Return appropriate error response
-    if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        return NextResponse.json(
-          { error: 'Route analyzation service unavailable' },
-          { status: 503 }
-        );
-      }
-      
-      if (error.message.includes('rate limit')) {
-        return NextResponse.json(
-          { error: 'Rate limit exceeded. Please try again later.' },
-          { status: 429 }
-        );
-      }
-      
-      return NextResponse.json(
-        { error: 'Failed to calculate route', details: error.message },
-        { status: 500 }
-      );
-    }
-    
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, request);
   }
 }
 
