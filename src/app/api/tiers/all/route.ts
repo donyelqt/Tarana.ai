@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TierService } from '@/lib/referral-system';
-
+import { handleApiError } from '@/lib/errors/handleApiError';
 /**
  * GET /api/tiers/all
  * Get all available tier configurations (no authentication required)
@@ -15,13 +15,6 @@ export async function GET(req: NextRequest) {
       tiers,
     });
   } catch (error) {
-    console.error('Error in /api/tiers/all:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to get tier configurations',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(error, req);
   }
 }
