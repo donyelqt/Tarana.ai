@@ -11,6 +11,7 @@ import { SchemaType, type Schema } from "@google/generative-ai";
 import { geminiModel } from './config';
 import { StructuredOutputEngine, ItinerarySchema, PeriodSchema, type StructuredItinerary } from './structuredOutputEngine';
 import { EnhancedPromptEngine, JsonSyntaxValidator } from './enhancedPromptEngine';
+import { logger } from '../../../../../lib/observability/logger';
 
 interface StrategyControls {
   signal?: AbortSignal;
@@ -139,7 +140,7 @@ export class GuaranteedJsonEngine {
     // Check cache first - simplified approach
     // Note: This is a complex caching scenario that would require more sophisticated implementation
     
-    console.log(`🛡️ GUARANTEED ENGINE: Starting generation for request ${requestId}`);
+    logger.info(`🛡️ GUARANTEED ENGINE: Starting generation for request ${requestId}`, { requestId }, 'guaranteedJsonEngine');
     const startTime = Date.now();
     this.metrics.totalRequests++;
 
@@ -147,7 +148,7 @@ export class GuaranteedJsonEngine {
     
     try {
       // WEEK 1 OPTIMIZATION: Race both strategies in parallel - use first success!
-      console.log(`🏁 GUARANTEED ENGINE: Racing strategies in parallel for ${requestId}`);
+      logger.info(`🏁 GUARANTEED ENGINE: Racing strategies in parallel for ${requestId}`, { requestId }, 'guaranteedJsonEngine');
       
       // CRITICAL FIX: Race for first success, don't wait for all
       const raceForFirstSuccess = new Promise<{ result: StructuredItinerary | null; strategyIndex: number }>((resolve) => {
@@ -213,7 +214,7 @@ export class GuaranteedJsonEngine {
             .then((result) => {
               if (settled) return;
               if (result) {
-                console.log(`🏆 ${strategy.name} succeeded first!`);
+                logger.info(`🏆 ${strategy.name} succeeded first!`, { name: strategy.name }, 'guaranteedJsonEngine');
                 finish({ result, strategyIndex: index });
               } else {
                 completed++;
@@ -230,12 +231,12 @@ export class GuaranteedJsonEngine {
               } else {
                 completed++;
                 errors.push(`${strategy.name}: ${err?.message || 'unknown error'}`);
-                console.log(`⚠️ ${strategy.name} failed: ${err?.message || err}`);
+                logger.info(`⚠️ ${strategy.name} failed: ${err?.message || err}`, { name: strategy.name }, 'guaranteedJsonEngine');
               }
 
               if (completed === strategies.length) {
                 if (errors.length) {
-                  console.log(`🆘 All strategies failed:`, errors);
+                  logger.info(`🆘 All strategies failed:`, { errors }, 'guaranteedJsonEngine');
                 }
                 finish({ result: null, strategyIndex: -1 });
               }
@@ -247,7 +248,7 @@ export class GuaranteedJsonEngine {
 
       if (result) {
         const elapsed = Date.now() - startTime;
-        console.log(`🏆 GUARANTEED ENGINE: Strategy ${strategyIndex + 1} won the race in ${elapsed}ms`);
+        logger.info(`🏆 GUARANTEED ENGINE: Strategy ${strategyIndex + 1} won the race in ${elapsed}ms`, { elapsed }, 'guaranteedJsonEngine');
         
         if (strategyIndex === 0) this.metrics.structuredSuccess++;
         else this.metrics.promptEngineeredSuccess++;
@@ -256,12 +257,12 @@ export class GuaranteedJsonEngine {
       }
       
       // All strategies failed - use guaranteed fallback
-      console.log(`🆘 GUARANTEED ENGINE: All strategies failed, using fallback`);
+      logger.info(`🆘 GUARANTEED ENGINE: All strategies failed, using fallback`, {}, 'guaranteedJsonEngine');
       this.metrics.fallbackUsed++;
       return this.createIntelligentFallback(sampleItinerary, requestId, prompt);
 
     } catch (error: any) {
-      console.error(`💥 GUARANTEED ENGINE: Critical error for ${requestId}:`, error);
+      logger.error(`💥 GUARANTEED ENGINE: Critical error for ${requestId}:`, { requestId, error }, 'guaranteedJsonEngine');
       this.metrics.fallbackUsed++;
       return this.createIntelligentFallback(sampleItinerary, requestId, prompt);
     }
@@ -311,13 +312,13 @@ export class GuaranteedJsonEngine {
           0
         );
         if (totalActivities === 0) {
-          console.warn(`⚠️ GUARANTEED ENGINE: Structured result contains 0 activities — rejecting as poisoned fallback`);
+          logger.warn(`⚠️ GUARANTEED ENGINE: Structured result contains 0 activities — rejecting as poisoned fallback`, {}, 'guaranteedJsonEngine');
           return null;
         }
-        console.log(`🎯 GUARANTEED ENGINE: Structured output validation passed`);
+        logger.info(`🎯 GUARANTEED ENGINE: Structured output validation passed`, {}, 'guaranteedJsonEngine');
         return validation.data;
       } else {
-        console.warn(`⚠️ GUARANTEED ENGINE: Structured output validation failed:`, validation.error.message);
+        logger.warn(`⚠️ GUARANTEED ENGINE: Structured output validation failed:`, { message: validation.error.message }, 'guaranteedJsonEngine');
         return null;
       }
       
@@ -326,7 +327,7 @@ export class GuaranteedJsonEngine {
         controls?.abort?.();
         return null;
       }
-      console.warn(`⚠️ GUARANTEED ENGINE: Structured output failed:`, error.message);
+      logger.warn(`⚠️ GUARANTEED ENGINE: Structured output failed:`, { error: error.message }, 'guaranteedJsonEngine');
       return null;
     }
   }
@@ -360,7 +361,7 @@ export class GuaranteedJsonEngine {
           return null;
         }
 
-        console.log(`🔧 GUARANTEED ENGINE: Prompt engineering attempt ${attempt}/${this.MAX_ATTEMPTS}`);
+        logger.info(`🔧 GUARANTEED ENGINE: Prompt engineering attempt ${attempt}/${this.MAX_ATTEMPTS}`, { attempt, maxAttempts: this.MAX_ATTEMPTS }, 'guaranteedJsonEngine');
         
         // Build progressive prompt (gets simpler with each attempt)
         const enhancedPrompt = EnhancedPromptEngine.buildProgressivePrompt(
@@ -380,7 +381,7 @@ export class GuaranteedJsonEngine {
         }
 
         if (result) {
-          console.log(`✅ GUARANTEED ENGINE: Prompt engineering succeeded on attempt ${attempt}`);
+          logger.info(`✅ GUARANTEED ENGINE: Prompt engineering succeeded on attempt ${attempt}`, { attempt }, 'guaranteedJsonEngine');
           return result;
         }
 
@@ -389,7 +390,7 @@ export class GuaranteedJsonEngine {
           controls?.abort?.();
           return null;
         }
-        console.warn(`⚠️ GUARANTEED ENGINE: Prompt engineering attempt ${attempt} failed:`, error.message);
+        logger.warn(`⚠️ GUARANTEED ENGINE: Prompt engineering attempt ${attempt} failed:`, { attempt, error: error.message }, 'guaranteedJsonEngine');
 
         if (attempt < this.MAX_ATTEMPTS && !controls?.shouldAbort?.()) {
           const delay = Math.min(1000 * attempt, 3000);
@@ -489,10 +490,9 @@ export class GuaranteedJsonEngine {
 
       const text = extractResponseText(result);
       if (!text) {
-        console.warn(`⚠️ GUARANTEED ENGINE: Empty response payload on attempt ${attempt}`,
-          typeof result?.response !== 'undefined'
+        logger.warn(`⚠️ GUARANTEED ENGINE: Empty response payload on attempt ${attempt}`, { attempt, data: typeof result?.response !== 'undefined'
             ? JSON.stringify(result.response).slice(0, 400)
-            : 'no response payload');
+            : 'no response payload' }, 'guaranteedJsonEngine');
         return null;
       }
 
@@ -503,7 +503,7 @@ export class GuaranteedJsonEngine {
         controls?.abort?.();
         return null;
       }
-      console.warn(`⚠️ GUARANTEED ENGINE: Generation failed on attempt ${attempt}:`, error.message);
+      logger.warn(`⚠️ GUARANTEED ENGINE: Generation failed on attempt ${attempt}:`, { attempt, error: error.message }, 'guaranteedJsonEngine');
       return null;
     }
   }
@@ -520,7 +520,7 @@ export class GuaranteedJsonEngine {
       const normalized = this.decodeNestedJson(payload);
       const validation = ItinerarySchema.safeParse(normalized);
       if (validation.success) {
-        console.log(`✅ GUARANTEED ENGINE: ${label} succeeded`);
+        logger.info(`✅ GUARANTEED ENGINE: ${label} succeeded`, { label }, 'guaranteedJsonEngine');
         return validation.data;
       }
       return null;
@@ -534,7 +534,7 @@ export class GuaranteedJsonEngine {
         return direct;
       }
     } catch (error) {
-      console.log(`🔄 GUARANTEED ENGINE: Direct parsing failed, trying recovery...`);
+      logger.info(`🔄 GUARANTEED ENGINE: Direct parsing failed, trying recovery...`, {}, 'guaranteedJsonEngine');
     }
 
     // Strategy 2: Syntax validation and fixing
@@ -547,7 +547,7 @@ export class GuaranteedJsonEngine {
           return cleaned;
         }
       } catch (error) {
-        console.log(`🔄 GUARANTEED ENGINE: Syntax fixing failed, trying aggressive recovery...`);
+        logger.info(`🔄 GUARANTEED ENGINE: Syntax fixing failed, trying aggressive recovery...`, {}, 'guaranteedJsonEngine');
       }
     }
 
@@ -560,7 +560,7 @@ export class GuaranteedJsonEngine {
         return aggressive;
       }
     } catch (error) {
-      console.log(`❌ GUARANTEED ENGINE: All JSON recovery strategies failed`);
+      logger.info(`❌ GUARANTEED ENGINE: All JSON recovery strategies failed`, {}, 'guaranteedJsonEngine');
     }
 
     // Strategy 4: jsonrepair rescue
@@ -572,7 +572,7 @@ export class GuaranteedJsonEngine {
         return repairedResult;
       }
     } catch (error) {
-      console.log(`❌ GUARANTEED ENGINE: jsonrepair recovery failed:`, error instanceof Error ? error.message : error);
+      logger.info(`❌ GUARANTEED ENGINE: jsonrepair recovery failed:`, { error: error instanceof Error ? error.message : error }, 'guaranteedJsonEngine');
     }
 
     return null;
@@ -615,7 +615,7 @@ export class GuaranteedJsonEngine {
     prompt: string = ""
   ): StructuredItinerary {
     
-    console.log(`🆘 GUARANTEED ENGINE: Creating intelligent fallback for ${requestId}`);
+    logger.info(`🆘 GUARANTEED ENGINE: Creating intelligent fallback for ${requestId}`, { requestId }, 'guaranteedJsonEngine');
 
     // Try to extract activities from sample itinerary
     const activities = this.extractActivitiesFromSample(sampleItinerary);
