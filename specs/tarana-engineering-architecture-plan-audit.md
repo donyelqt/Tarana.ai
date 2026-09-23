@@ -597,6 +597,10 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | 2.1 slice 2 (ErrorHandler retry migration) | [#519](https://github.com/donyelqt/Tarana.ai/pull/519) | `a9b9df2` |
 | 2.2 slice 2b (remaining Gemini timeout sites) | [#520](https://github.com/donyelqt/Tarana.ai/pull/520) | `304affc` |
 | 3.1 (redundant security-header calls) | [#521](https://github.com/donyelqt/Tarana.ai/pull/521) | `b508146` |
+| 2.3 slice 1 (idempotency infrastructure + saved-itineraries POST) | [#539](https://github.com/donyelqt/Tarana.ai/pull/539) | `db72985` (merged `0f75f5d`) |
+| 2.3 slice 1b (atomic claims, concurrency-safe) | [#540](https://github.com/donyelqt/Tarana.ai/pull/540) | `0b15efd` |
+| 2.3 slice 2 (saved-meals POST, R2) | [#541](https://github.com/donyelqt/Tarana.ai/pull/541) | `b352660` (merged `532e8f6`) |
+| 5.1-R1 narrow (track-referral withRetry + logger) | [#542](https://github.com/donyelqt/Tarana.ai/pull/542) | `2eee7c0` (merged `75aa447`) |
 
 ### What the slice did NOT touch
 
@@ -680,7 +684,7 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | [x] | 2.1 slice 2 | Gemini pipeline retry migrated onto shared helper | `ErrorHandler.withRetry` (`itinerary-generator/lib/errorHandler.ts`) — the hand-rolled backoff loop replaced with delegation to the shared helper. Classification, stats, and the `ItineraryError` throw contract stay in `ErrorHandler`; exhaustion re-throws the classified object so route handling sees TIMEOUT/VALIDATION correctly. Verified: `smoke-errorhandler-retry.mjs` 22/22, itinerary suites 12/12, tsc clean, full suite 550/0/6, lint clean. |
 | [x] | 2.2 slice 1 | Shared timeout helper + 3 call sites | PR #515 (merged `389c2f5`). `src/lib/upstream/withTimeout.ts` (`UpstreamTimeoutError`, `withTimeout`, `fetchWithTimeout`); wired `fetchWeatherData`, `tomtomTraffic.getTrafficIncidentsSimple`, and `agent.ts` subqueries. 8 tests; no remaining live Gemini sites after 2.2 slice 2b. |
 | [x] | 2.2 slice 2b | Remaining Gemini generateContent sites + timeout composition | PR #520 (`304affc`). `responseHandler`, `structuredOutputEngine`, and `guaranteedJsonEngine` now use `withRetry` + `timeoutMs`; fixed a response-handler timer leak, an abort-listener leak, and a post-success stale abort. `ensureFullItinerary` verified dead and intentionally untouched. Smoke suites 14/14 + fallback/retry/abort checks, tsc clean, full suite 550/0/6, lint clean, CI green. |
-| [ ] | 2.3 | Idempotency keys | No `Idempotency-Key` handling; no `idempotency_keys` table. |
+| [x] | 2.3 slices 1–1b–2 | Idempotency keys (saved-itineraries + saved-meals POST) | **Partial — 2 of N write endpoints.** Slice 1 (PR #539, `db72985`, merged `0f75f5d`): `supabase/migrations/20260923000000_create_idempotency_keys.sql` (`idempotency_keys` scoped by `(user_id, route, idempotency_key)`, unique + lookup indexes, 30d TTL cleanup fn) + `src/lib/services/idempotencyService.ts` (`getIdempotencyKey` reads `Idempotency-Key`/`X-Idempotency-Key`, trims, rejects empty/>256; claim/complete/replay). Proving ground: saved-itineraries POST (no key → unchanged; replay → cached body+status verbatim, no mutation). Slice 1b (PR #540, `0b15efd`): atomic claim via unique-index insert (`status 0` in-flight, 409 conflict, 422 payload-mismatch, SHA-256 `request_hash`, failure caching; `20260923020000_idempotency_keys_atomic_claims.sql` + `20260923010000_idempotency_keys_enable_rls.sql` deny-all RLS). Slice 2 / R2 (PR #541, `b352660`, merged `532e8f6`): same pattern mirrored onto saved-meals POST (status stays 200, existing wire shape); 6 new idempotency tests (replay, owner-complete, no-key, conflict, payload-mismatch, failure-cached). Verified: idempotency suites 40/40 (service + saved-itineraries), meals 12/12, tsc 0 errors, CI `verify` pass on every PR. Remaining: other write endpoints (profile PATCH, referrals, credits, itinerary-generator/food credit paths) still lack keys — 2.3 stays open until all retryable mutations honor the contract. |
 | [ ] | 2.4 | Shared rate limiting | `InMemoryRateLimiter` still `Map`-backed (correct to defer per §3.3). |
 | [x] | 2.5 | Error budget + rollback policy | **Done** (PRs #531 + #532). `docs/rollback.md`: two levers in order (flag env flip < 1 min; Vercel promote < 5 min), `USE_MULTI_AGENT` prod state + never-set-`true` warning, trigger thresholds matching the rollout table. `docs/slo.md`: 99.5% over rolling 30 days on `/api/*` non-5xx, error-budget policy (>20% ship / 0–20% slow / 0% freeze). Runbooks (`docs/runbooks/`) remain Phase 5.3. |
 | [x] | 0.1a-3 | Weather route safe-error closeout | **Done** (PRs #528, #529, #530). Last route leaking raw upstream text: 502 path echoed OpenWeather bytes as `upstreamMessage`, outer catch interpolated thrown text into 500 body. Now fixed class per status server-side detail in structured log with `requestId`, outer catch → `handleApiError`. 2 sentinel regression tests (proved RED pre-fix); fallback fixtures carry sanitized class. Envelope unchanged. Full suite 555/6/0. |
@@ -692,7 +696,7 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | [x] | 3.1 | Security headers | `securityHeaders.ts` defines the headers and `compose.ts` applies them on every middleware response via idempotent `headers.set()`. PR #521 removed 24 redundant route-level calls + 3 imports from the auth routes; zero route-level calls remain, auth suites 52/52, full suite 550/0/6, lint clean, CI green. |
 | [ ] | 3.2 | SSRF protection | No current user-supplied URL fetch; allowlist + private-IP/DNS rejection test still absent. |
 | [ ] | 3.3 | Dependency audit provenance | Critical production audit gate shipped in 0.4a; `pnpm audit` provenance/signature extension remains absent. |
-| [ ] | 3.4 | RLS audit | Saved-meals RLS remediation exists; full anon-client table audit and staging proof scripts remain pending. |
+| [x] | 3.4 RLS audit (read-only, this pass) | Table + RPC surface inventory, no policy change | **Done — audit only, no SQL applied.** Tables: `itineraries` (RLS + strict `auth.uid()=user_id`), `saved_meals` (remediated strict, `20260919000000`), `user_profiles`/`referrals`/`credit_transactions`/`daily_credit_allocations` (RLS + strict, `20250129`), `idempotency_keys` (RLS deny-all, service-role only, `20260923000000` + `20260923010000`). RPCs: `refund_credits`/`consume_credits`/`get_available_credits` anon-revoked (`20260918000000`); `match_activity_embeddings` anon-revoked, authenticated kept. **Gaps (no RLS in repo migrations):** `places` (`20260901`, server-only via `supabaseAdmin` upsert in `activitySearch.ts:309`), `itinerary_embeddings` (`20240730`, server-only reads `itineraryUtils.ts:529,556` + RPC `intelligentSearch.ts:416`/`vectorSearch.ts:86`), `public.users` (no RLS policy file; service-role only + reset-token index). `places` backfill is public POI data — low sensitivity, but enable RLS deny-all to match `idempotency_keys` posture. Probes `scripts/prove-revoke-anon.mjs` + `scripts/prove-saved-meals-rls.mjs` require live `SUPABASE_URL/ANON/SERVICE` keys — **not run** (no staging creds in tree); run commands recorded in scripts. Full anon-client table audit + staging proof remain the Phase 3.4 closeout — this row records the inventory. |
 
 ### Phase 4: Testing
 
@@ -702,6 +706,7 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | [ ] | 4.2 | Contract tests | API request/response contract suite not implemented. |
 | [ ] | 4.3 | Mobile tests | `tarana-mobile` has no Jest test job in CI. |
 | [x] | 4.4 | Fix the failing test | PR #518 (`6fef869`) isolates `SMTP_FROM_EMAIL` in `mockEnv` without changing the source default. emailConfig 9/9; full suite **550 passed, 6 skipped, 0 failed** — first 100% green run. |
+| [x] | 5.1-R1 narrow | track-referral via withRetry + structured logger | **Done — 1 route, not repo-wide 5.1.** PR #542 (`2eee7c0`, merged `75aa447`): hand-rolled 3-attempt loop (re-ran business failures, inline sleep, 9 `console.*`) → `withRetry` (3 attempts, 1s fixed, `jitter: 'none'`); business `{success:false}` outcomes (invalid/self/duplicate) return without retry; transient throws retry; exhaustion → `handleApiError` safe 500. `console.*` → `logger.info/warn` + `getRequestId`; known-error branches byte-identical; catch typed `unknown`; wire shape unchanged for `referralTracking.ts`. New `__tests__/route.test.ts` (6: 401, blank-400, normalization, no-retry-on-business, retry-then-succeed, sentinel-leak 500). Verified: focused 6/6, `console.` in route → zero, tsc 0 errors, CI `verify` 2m16s + Vercel pass. Repo-wide `console.*` elimination (Phase 5.1 full) remains open. |
 
 ### Verification results for the 2.2 slice-1 merge (2026-09-21, on `main` @ `389c2f5`)
 
@@ -725,3 +730,18 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | Full suite | `npx jest --passWithNoTests --maxWorkers=2` | **549 passed, 6 skipped, 1 failed** (+16 net; failure is pre-existing `emailConfig.test.ts:78` ambient env issue) |
 | Lint | `npx eslint src/lib/upstream/withRetry.ts src/lib/upstream/__tests__/withRetry.test.ts src/app/api/gemini/food-recommendations/route.ts` | **0 errors** |
 | Runtime smoke | 4-case smoke test (first try, retry-then-succeed, non-retryable, exhaustion) | **SMOKE OK** |
+
+### Verification results for the 2.3-R2 + 5.1-R1 merges (2026-09-24, on `main` @ `75aa447`)
+
+| Gate | Command | Result |
+|---|---|---|
+| Typecheck | `npx tsc --noEmit --skipLibCheck` | **0 errors** |
+| Focused (meals) | `jest src/app/api/saved-meals/__tests__/route.test.ts` | **12/12 passed** (6 existing + 6 new: replay, owner-complete, no-key, conflict 409+Retry-After, payload-mismatch 422, failure-cached) |
+| Focused (referral) | `jest src/app/api/auth/track-referral/__tests__/route.test.ts` | **6/6 passed** (401, blank-400, normalization, no-retry-on-business, retry-then-succeed, sentinel-leak 500) |
+| Focused (idempotency) | `jest idempotencyService + saved-itineraries` | **40/40 passed** |
+| Full suite | `pnpm test -- --passWithNoTests --maxWorkers=2` | **605 passed, 6 skipped, 0 failed** (77 suites; +50 net over the 555 recorded for 0.1a-3) |
+| Lint | `pnpm exec next lint --max-warnings=1000` | **0 errors** (pre-existing warnings only) |
+| Build | `pnpm run build` | **green** |
+| CI on PR #541 | `verify` + Vercel | **pass** (`verify` 2m18s) → merged `532e8f6` |
+| CI on PR #542 | `verify` + Vercel | **pass** (`verify` 2m16s) → merged `75aa447` |
+| Invariants | `grep` over `src/app/api/**/route.ts` | `getServerSession` → zero; `supabaseAdmin` → zero; `String(error)` response leak → zero (`track-referral:63` is a catch-narrow `String(error)`, never serialized); `applySecurityHeaders` → zero |
