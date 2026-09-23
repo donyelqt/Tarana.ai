@@ -88,13 +88,11 @@ export class ErrorHandler {
     this.errorStats.set(errorType, (this.errorStats.get(errorType) || 0) + 1);
 
     // Log error details
-    logger.error(`[ErrorHandler] ${errorType}:`, {
-      message,
+    logger.error(`[ErrorHandler] ${errorType}:`, { entryPoint: 'errorHandler', message,
       requestId,
       timestamp,
       retryable,
-      originalError: error.message
-    }, 'errorHandler');
+      originalError: error.message });
 
     return {
       type: errorType,

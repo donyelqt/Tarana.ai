@@ -11,7 +11,7 @@ const configuredModelId = process.env.GOOGLE_GEMINI_MODEL?.trim();
 const MODEL_ID = configuredModelId && configuredModelId.length > 0 ? configuredModelId : DEFAULT_MODEL_ID;
 
 if (!configuredModelId && API_KEY) {
-  logger.info(`[Itinerary Generator] Using Gemini model: ${DEFAULT_MODEL_ID}`, { model: DEFAULT_MODEL_ID }, 'config');
+  logger.info(`[Itinerary Generator] Using Gemini model: ${DEFAULT_MODEL_ID}`, { entryPoint: 'config', model: DEFAULT_MODEL_ID });
 }
 
 export const geminiModel = genAI ? genAI.getGenerativeModel({ 

@@ -62,7 +62,7 @@ export class PipelineCoordinator {
       try {
         this.deps.concierge.failSession(session.id, (error as Error).message, error);
       } catch (bookkeepingError) {
-        logger.error(`Bookkeeping failed for session ${session.id} (refund still attempted)`, { error: bookkeepingError, sessionId: session.id }, "pipelineCoordinator");
+        logger.error(`Bookkeeping failed for session ${session.id} (refund still attempted)`, { entryPoint: "pipelineCoordinator", error: bookkeepingError, sessionId: session.id });
       }
       if (charged && !isBenchUser) {
         try {
@@ -77,7 +77,7 @@ export class PipelineCoordinator {
             description: `Refund: multi-agent failed ${session.id}`,
             idempotencyKey: `refund:${session.id}`,
           });
-          logger.info(`Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`, { userId: session.userId, sessionId: session.id }, "pipelineCoordinator");
+          logger.info(`Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`, { entryPoint: "pipelineCoordinator", userId: session.userId, sessionId: session.id });
         } catch {
           // best-effort; swallow refund errors
         }

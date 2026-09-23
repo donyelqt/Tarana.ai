@@ -523,7 +523,7 @@ export function organizeItineraryByDays(it: any, days: number | null) {
 export async function getActivityImage(title: string, fallbackImage?: string): Promise<any> {
   // Check if we can find the activity in Supabase vector database
   if (!supabaseAdmin) {
-    logger.error("Supabase admin client is not initialized for getActivityImage.", {}, 'itineraryUtils');
+    logger.error("Supabase admin client is not initialized for getActivityImage.", { entryPoint: 'itineraryUtils' });
     return fallbackImage || taranaai; // Use taranaai as final fallback
   }
 
@@ -550,7 +550,7 @@ export async function getActivityImage(title: string, fallbackImage?: string): P
 export async function validateAndEnrichActivity(activity: any): Promise<any | null> {
   // Check if the activity exists in our Supabase vector database
   if (!supabaseAdmin) {
-    logger.error("Supabase admin client is not initialized for validateAndEnrichActivity.", {}, 'itineraryUtils');
+    logger.error("Supabase admin client is not initialized for validateAndEnrichActivity.", { entryPoint: 'itineraryUtils' });
     return null;
   }
 
@@ -561,7 +561,7 @@ export async function validateAndEnrichActivity(activity: any): Promise<any | nu
     .single();
 
   if (error || !data) {
-    logger.warn(`Activity "${activity.title}" not found in Supabase vector database, excluding from itinerary`, { title: activity.title }, 'itineraryUtils');
+    logger.warn(`Activity "${activity.title}" not found in Supabase vector database, excluding from itinerary`, { entryPoint: 'itineraryUtils', title: activity.title });
     return null;
   }
 
@@ -569,7 +569,7 @@ export async function validateAndEnrichActivity(activity: any): Promise<any | nu
 
   // Check if activity is currently in peak hours
   if (canonicalActivity.peakHours && isCurrentlyPeakHours(canonicalActivity.peakHours)) {
-    logger.warn(`Activity "${activity.title}" is currently in peak hours (${canonicalActivity.peakHours}), excluding from itinerary`, { title: activity.title, peakHours: canonicalActivity.peakHours }, 'itineraryUtils');
+    logger.warn(`Activity "${activity.title}" is currently in peak hours (${canonicalActivity.peakHours}), excluding from itinerary`, { entryPoint: 'itineraryUtils', title: activity.title, peakHours: canonicalActivity.peakHours });
     return null;
   }
   
@@ -647,14 +647,14 @@ export async function ensureFullItinerary(
               );
 
               if (!allowedTitleSet.has(title.toLowerCase())) {
-                logger.info(`Filtering out ${title} - not present in allowedActivities allowlist`, { title }, 'itineraryUtils');
+                logger.info(`Filtering out ${title} - not present in allowedActivities allowlist`, { entryPoint: 'itineraryUtils', title });
                 return false;
               }
 
               if (!activity.peakHours) return true; // No peak hours data, assume it's fine
               const isPeakNow = isCurrentlyPeakHours(activity.peakHours);
               if (isPeakNow) {
-                logger.info(`Filtering out ${activity.title} - currently in peak hours: ${activity.peakHours}`, { title: activity.title, peakHours: activity.peakHours }, 'itineraryUtils');
+                logger.info(`Filtering out ${activity.title} - currently in peak hours: ${activity.peakHours}`, { entryPoint: 'itineraryUtils', title: activity.title, peakHours: activity.peakHours });
               }
               return !isPeakNow;
             });
@@ -670,7 +670,7 @@ export async function ensureFullItinerary(
         // If the AI returns an empty or invalid plan, we do nothing,
         // allowing the original empty placeholders to proceed to the reason-generation step.
       } catch (e) {
-            logger.error("Failed to parse generated itinerary for missing days:", { error: e }, 'itineraryUtils');
+            logger.error("Failed to parse generated itinerary for missing days:", { entryPoint: 'itineraryUtils', error: e });
           }
         }
   }
@@ -709,7 +709,7 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
         totalActivities += period.activities.length;
         period.activities.forEach((activity: any) => {
           if (activity.peakHours && isCurrentlyPeakHours(activity.peakHours)) {
-            logger.info(`WARNING: ${activity.title} is currently in peak hours but wasn't filtered!`, { title: activity.title }, 'itineraryUtils');
+            logger.info(`WARNING: ${activity.title} is currently in peak hours but wasn't filtered!`, { entryPoint: 'itineraryUtils', title: activity.title });
             filteredActivities++;
           }
         });
@@ -717,7 +717,7 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
     });
   }
   
-  logger.info(`=== PEAK HOURS FILTERING SUMMARY ===\nTotal activities: ${totalActivities}\nActivities in peak hours: ${filteredActivities}\n=======================================`, { totalActivities, filteredActivities }, 'itineraryUtils');
+  logger.info(`=== PEAK HOURS FILTERING SUMMARY ===\nTotal activities: ${totalActivities}\nActivities in peak hours: ${filteredActivities}\n=======================================`, { entryPoint: 'itineraryUtils', totalActivities, filteredActivities });
 
   // Final cleanup pass - only remove duplicates, preserve reasons and activities as-is
   if (processed && typeof processed === "object" && Array.isArray((processed as any).items)) {
