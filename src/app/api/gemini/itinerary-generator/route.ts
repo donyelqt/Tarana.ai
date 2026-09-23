@@ -25,6 +25,8 @@ import { clearSession, type RequestSession } from "@/lib/agentic/sessionStore";
 import { benchBypassEnabled, configuredBenchUserId, resolveBenchUserId, BENCH_TOKEN_HEADER } from "@/lib/auth/benchToken";
 import { isFlagEnabled } from "@/lib/flags/flags";
 import { withAuth } from "@/lib/auth/withAuth";
+import { logger } from "@/lib/observability/logger";
+import { getRequestId } from "@/middleware/requestId";
 
 const itineraryRequestSchema = z.object({
     prompt: z.string().min(1).max(5000),
@@ -91,7 +93,7 @@ async function consumeCredit(userId: string, prompt: string) {
 
 async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
     if (!API_KEY) {
-        console.error("GOOGLE_GEMINI_API_KEY is missing!");
+        logger.error("GOOGLE_GEMINI_API_KEY is missing!", {}, getRequestId(req));
         return NextResponse.json({ text: "", error: "GOOGLE_GEMINI_API_KEY is missing on the server." }, { status: 500 });
     }
 
@@ -141,13 +143,13 @@ async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
                     description: `Refund: multi-agent failed ${session.id}`,
                     idempotencyKey: `refund:${session.id}`,
                 });
-                console.log(`💸 Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`);
+                logger.info(`💸 Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`, { userId: session.userId, sessionId: session.id }, getRequestId(req));
             } catch (refundErr) {
-                console.error("Multi-agent refund failed (best-effort):", refundErr);
+                logger.error("Multi-agent refund failed (best-effort):", { error: refundErr }, getRequestId(req));
             }
         }
 
-        console.error("Multi-agent pipeline error:", err);
+        logger.error("Multi-agent pipeline error:", { error: err }, getRequestId(req));
         return NextResponse.json({ text: "", error: "Internal server error", refunded: true }, { status: 500 });
     } finally {
         if (session) {
@@ -158,7 +160,7 @@ async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
         // refund failures were previously invisible by construction.
         const snapshot = takeRefundSnapshot();
         if (snapshot.refunded > 0 || snapshot.failed > 0 || snapshot.noop > 0) {
-          console.log(`[refund-metrics] request=${session?.id ?? '?'} refunded=${snapshot.refunded} failed=${snapshot.failed} noop=${snapshot.noop}`);
+          logger.info(`[refund-metrics] request=${session?.id ?? '?'} refunded=${snapshot.refunded} failed=${snapshot.failed} noop=${snapshot.noop}`, { refunded: snapshot.refunded, failed: snapshot.failed, noop: snapshot.noop }, getRequestId(req));
         }
     }
 }
@@ -216,7 +218,7 @@ const getCachedItinerary = unstable_cache(
             const weatherContext = `Weather: ${weatherData?.weather?.[0]?.description || 'clear'}, ${weatherData?.main?.temp || 20}°C`;
             const trafficContext = "Real-time traffic analysis integrated with peak hours filtering";
             
-            console.log(`🛡️ MAIN ROUTE: Using GuaranteedJsonEngine for request ${requestId}`);
+            logger.info(`🛡️ MAIN ROUTE: Using GuaranteedJsonEngine for request ${requestId}`, {}, requestId);
             const guaranteedItinerary = await GuaranteedJsonEngine.generateGuaranteedJson(
                 detailedPrompt,
                 effectiveSampleItinerary,
@@ -298,7 +300,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         const { prompt } = requestBody;
 
         if (!API_KEY) {
-            console.error("GOOGLE_GEMINI_API_KEY is missing!");
+            logger.error("GOOGLE_GEMINI_API_KEY is missing!", {}, getRequestId(req));
             return NextResponse.json({ text: "", error: "GOOGLE_GEMINI_API_KEY is missing on the server." }, { status: 500 });
         }
 
@@ -311,7 +313,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
                                  req.headers.get('x-bypass-cache') === 'true';
         
         if (isRefreshRequest) {
-            console.log('🔄 REFRESH REQUEST DETECTED - Bypassing cache for fresh generation');
+            logger.info('🔄 REFRESH REQUEST DETECTED - Bypassing cache for fresh generation', {}, getRequestId(req));
         }
 
         // Handle health check endpoint
@@ -359,7 +361,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         
         // ✅ CACHE BYPASS: For refresh requests, skip cache and generate fresh
         if (isRefreshRequest) {
-            console.log('⏩ Executing fresh generation (cache bypassed)');
+            logger.info('⏩ Executing fresh generation (cache bypassed)', {}, getRequestId(req));
             const requestId = cacheKeyBase.substring(0, 8);
             
             // Generate fresh itinerary without cache
@@ -410,7 +412,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
                 const weatherContext = `Weather: ${weatherData?.weather?.[0]?.description || 'clear'}, ${weatherData?.main?.temp || 20}°C`;
                 const trafficContext = "Real-time traffic analysis integrated with peak hours filtering";
                 
-                console.log(`🛡️ REFRESH MODE: Using GuaranteedJsonEngine for request ${requestId}`);
+                logger.info(`🛡️ REFRESH MODE: Using GuaranteedJsonEngine for request ${requestId}`, { requestId }, getRequestId(req));
                 const guaranteedItinerary = await GuaranteedJsonEngine.generateGuaranteedJson(
                     detailedPrompt,
                     effectiveSampleItinerary,
@@ -424,7 +426,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
                 return { text: JSON.stringify(finalItinerary) };
             }, 3, 1000);
             
-            console.log('✅ Fresh generation completed (refresh mode)');
+            logger.info('✅ Fresh generation completed (refresh mode)', {}, getRequestId(req));
         } else {
             // Normal flow: Use cached function
             responseData = await getCachedItinerary(requestBody, cacheKeyBase);
@@ -451,7 +453,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
             }
             const zeroSnapshot = takeRefundSnapshot();
             if (zeroSnapshot.refunded > 0 || zeroSnapshot.failed > 0 || zeroSnapshot.noop > 0) {
-              console.log(`[refund-metrics] request=${userId || '?'} refunded=${zeroSnapshot.refunded} failed=${zeroSnapshot.failed} noop=${zeroSnapshot.noop} reason=zero-activity`);
+              logger.info(`[refund-metrics] request=${userId || '?'} refunded=${zeroSnapshot.refunded} failed=${zeroSnapshot.failed} noop=${zeroSnapshot.noop} reason=zero-activity`, { refunded: zeroSnapshot.refunded, failed: zeroSnapshot.failed, noop: zeroSnapshot.noop }, getRequestId(req));
             }
             return NextResponse.json({
                 text: responseData?.text ?? "",
@@ -483,13 +485,13 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         // charged-but-unrefunded request is visible even when processing died.
         const snapshot = takeRefundSnapshot();
         if (snapshot.refunded > 0 || snapshot.failed > 0 || snapshot.noop > 0) {
-          console.log(`[refund-metrics] request=${userId || '?'} refunded=${snapshot.refunded} failed=${snapshot.failed} noop=${snapshot.noop}`);
+          logger.info(`[refund-metrics] request=${userId || '?'} refunded=${snapshot.refunded} failed=${snapshot.failed} noop=${snapshot.noop}`, { refunded: snapshot.refunded, failed: snapshot.failed, noop: snapshot.noop }, getRequestId(req));
         }
         // req.body is a ReadableStream in the App Router (JSON.stringify() yields
         // "{}"), so never derive a correlation id from it. Use userId + URL.
         const requestId = createHash('sha256').update(`${userId || 'anon'}:${req.url}`).digest('hex').substring(0, 8);
         const errorDetails = ErrorHandler.handleError(e, requestId);
-        console.error("Error in itinerary generation pipeline:", errorDetails);
+        logger.error("Error in itinerary generation pipeline:", { errorDetails }, getRequestId(req));
         return NextResponse.json({
             text: "",
             error: "Internal server error"
