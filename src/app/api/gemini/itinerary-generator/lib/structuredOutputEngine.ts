@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { geminiModel } from './config';
 import { JsonSyntaxValidator } from './enhancedPromptEngine';
 import { withRetry } from '../../../../../lib/upstream/withRetry';
+import { logger } from '../../../../../lib/observability/logger';
 
 // Strict Zod schemas for guaranteed structure
 export const ActivitySchema = z.object({
@@ -57,7 +58,7 @@ export class StructuredOutputEngine {
     requestId: string = 'unknown',
     signal?: AbortSignal
   ): Promise<StructuredItinerary> {
-    console.log(`🏗️ STRUCTURED ENGINE: Starting generation for request ${requestId}`);
+    logger.info(`🏗️ STRUCTURED ENGINE: Starting generation for request ${requestId}`, { requestId }, 'structuredOutputEngine');
 
     const startTime = Date.now();
 
@@ -107,22 +108,22 @@ export class StructuredOutputEngine {
 
         // Parse JSON response with recovery strategies
         const rawData = this.parseStructuredJson(text, requestId);
-        console.log(`✅ STRUCTURED ENGINE: Raw JSON received in ${Date.now() - startTime}ms`);
+        logger.info(`✅ STRUCTURED ENGINE: Raw JSON received in ${Date.now() - startTime}ms`, {}, 'structuredOutputEngine');
 
         // Validate and clean the structured data
         const validatedItinerary = this.validateAndCleanStructure(rawData, requestId);
 
-        console.log(`🎯 STRUCTURED ENGINE: Successfully generated valid itinerary in ${Date.now() - startTime}ms`);
+        logger.info(`🎯 STRUCTURED ENGINE: Successfully generated valid itinerary in ${Date.now() - startTime}ms`, {}, 'structuredOutputEngine');
         return validatedItinerary;
       } catch (error: any) {
         // All attempts failed - return fallback structure. The shared helper
         // wraps raw errors into AppError(UPSTREAM) on exhaustion; the
         // original message survives in logMessage, so log that when present.
-        console.error(`❌ STRUCTURED ENGINE: All attempts failed for request ${requestId}:`, error?.logMessage ?? error);
+        logger.error(`❌ STRUCTURED ENGINE: All attempts failed for request ${requestId}:`, { requestId, error: error?.logMessage ?? error }, 'structuredOutputEngine');
         return this.createFallbackItinerary(requestId);
       }
     } catch (error: any) {
-      console.error(`💥 STRUCTURED ENGINE: Critical error for request ${requestId}:`, error);
+      logger.error(`💥 STRUCTURED ENGINE: Critical error for request ${requestId}:`, { requestId, error }, 'structuredOutputEngine');
       return this.createFallbackItinerary(requestId);
     }
   }
@@ -132,7 +133,7 @@ export class StructuredOutputEngine {
       const parsed = JSON.parse(text);
       return this.decodeNestedJson(parsed, requestId);
     } catch (error) {
-      console.warn(`🔄 STRUCTURED ENGINE: Direct parse failed for ${requestId}, attempting recovery...`);
+      logger.warn(`🔄 STRUCTURED ENGINE: Direct parse failed for ${requestId}, attempting recovery...`, { requestId }, 'structuredOutputEngine');
     }
 
     const syntaxCheck = JsonSyntaxValidator.validateSyntax(text);
@@ -141,7 +142,7 @@ export class StructuredOutputEngine {
         const parsed = JSON.parse(syntaxCheck.cleanedJson);
         return this.decodeNestedJson(parsed, requestId);
       } catch (error) {
-        console.warn(`🔄 STRUCTURED ENGINE: Syntax cleaning failed for ${requestId}, attempting aggressive fix...`);
+        logger.warn(`🔄 STRUCTURED ENGINE: Syntax cleaning failed for ${requestId}, attempting aggressive fix...`, { requestId }, 'structuredOutputEngine');
       }
     }
 
@@ -150,7 +151,7 @@ export class StructuredOutputEngine {
       const parsed = JSON.parse(fixed);
       return this.decodeNestedJson(parsed, requestId);
     } catch (error) {
-      console.warn(`🔄 STRUCTURED ENGINE: Custom fixer failed for ${requestId}, invoking jsonrepair...`);
+      logger.warn(`🔄 STRUCTURED ENGINE: Custom fixer failed for ${requestId}, invoking jsonrepair...`, { requestId }, 'structuredOutputEngine');
     }
 
     try {
@@ -158,7 +159,7 @@ export class StructuredOutputEngine {
       const parsed = typeof repaired === 'string' ? JSON.parse(repaired) : repaired;
       return this.decodeNestedJson(parsed, requestId);
     } catch (error) {
-      console.error(`❌ STRUCTURED ENGINE: jsonrepair failed for ${requestId}:`, error instanceof Error ? error.message : error);
+      logger.error(`❌ STRUCTURED ENGINE: jsonrepair failed for ${requestId}:`, { requestId, error: error instanceof Error ? error.message : error }, 'structuredOutputEngine');
       throw new Error('Unable to recover structured JSON response');
     }
   }
@@ -169,11 +170,11 @@ export class StructuredOutputEngine {
 
       if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
         try {
-          console.warn(`🔁 STRUCTURED ENGINE: Detected stringified JSON for ${requestId}, parsing again.`);
+          logger.warn(`🔁 STRUCTURED ENGINE: Detected stringified JSON for ${requestId}, parsing again.`, { requestId }, 'structuredOutputEngine');
           const reparsed = JSON.parse(trimmed);
           return this.decodeNestedJson(reparsed, requestId);
         } catch (error) {
-          console.warn(`⚠️ STRUCTURED ENGINE: Nested JSON parse failed for ${requestId}:`, error instanceof Error ? error.message : error);
+          logger.warn(`⚠️ STRUCTURED ENGINE: Nested JSON parse failed for ${requestId}:`, { requestId, error: error instanceof Error ? error.message : error }, 'structuredOutputEngine');
           return trimmed;
         }
       }
@@ -222,21 +223,21 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
     try {
       // First pass validation
       const validated = ItinerarySchema.parse(rawData);
-      console.log(`✅ STRUCTURED ENGINE: Schema validation passed for ${requestId}`);
+      logger.info(`✅ STRUCTURED ENGINE: Schema validation passed for ${requestId}`, { requestId }, 'structuredOutputEngine');
       return validated;
       
     } catch (zodError: any) {
-      console.warn(`🔧 STRUCTURED ENGINE: Schema validation failed, attempting fixes for ${requestId}:`, zodError.message);
+      logger.warn(`🔧 STRUCTURED ENGINE: Schema validation failed, attempting fixes for ${requestId}:`, { requestId, error: zodError.message }, 'structuredOutputEngine');
       
       // Attempt to fix common issues
       const fixed = this.fixStructuralIssues(rawData);
       
       try {
         const revalidated = ItinerarySchema.parse(fixed);
-        console.log(`✅ STRUCTURED ENGINE: Schema validation passed after fixes for ${requestId}`);
+        logger.info(`✅ STRUCTURED ENGINE: Schema validation passed after fixes for ${requestId}`, { requestId }, 'structuredOutputEngine');
         return revalidated;
       } catch (secondError: any) {
-        console.error(`❌ STRUCTURED ENGINE: Unable to fix schema issues for ${requestId}:`, secondError.message);
+        logger.error(`❌ STRUCTURED ENGINE: Unable to fix schema issues for ${requestId}:`, { requestId, error: secondError.message }, 'structuredOutputEngine');
         return this.createFallbackItinerary(requestId);
       }
     }
@@ -347,7 +348,7 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
    * Create fallback itinerary structure
    */
   private static createFallbackItinerary(requestId: string): StructuredItinerary {
-    console.log(`🆘 STRUCTURED ENGINE: Creating fallback itinerary for ${requestId}`);
+    logger.info(`🆘 STRUCTURED ENGINE: Creating fallback itinerary for ${requestId}`, { requestId }, 'structuredOutputEngine');
     
     return {
       title: "Baguio City Itinerary",
@@ -513,6 +514,6 @@ export class StructuredOutputMonitor {
   static async performHealthCheck(): Promise<void> {
     const health = await StructuredOutputEngine.healthCheck();
     this.metrics.lastHealthCheck = health.timestamp;
-    console.log(`🏥 STRUCTURED ENGINE: Health check - ${health.status}`);
+    logger.info(`🏥 STRUCTURED ENGINE: Health check - ${health.status}`, { status: health.status }, 'structuredOutputEngine');
   }
 }
