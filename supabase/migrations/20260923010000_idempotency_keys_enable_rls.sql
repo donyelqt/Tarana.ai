@@ -1,0 +1,26 @@
+-- Migration: enable RLS on the already-applied idempotency_keys table.
+-- Date: 2026-09-23
+--
+-- WHY:
+--   20260923000000_create_idempotency_keys.sql created the table, but was
+--   applied from the Supabase dashboard with RLS off (the prompt was
+--   answered "Run without RLS"). The repo file now carries
+--   `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`, so fresh environments are
+--   correct — but this project's existing table is not.
+--
+--   This migration closes that gap on the existing table. It is
+--   idempotent: `ENABLE ROW LEVEL SECURITY` is a no-op when RLS is already
+--   on, so it can be re-applied safely.
+--
+--   No policies are written. The default posture under RLS is deny-all,
+--   which is the intended posture for a server-only table: the app reaches
+--   idempotency_keys only through supabaseAdmin (service role), which
+--   bypasses RLS entirely, so enabling it changes zero runtime behavior and
+--   only closes the hole for anon/authenticated-key access.
+--
+-- DEPLOY ORDER:
+--   Apply this migration to the project that ran 20260923000000 without
+--   RLS. Projects applying 20260923000000 fresh already get RLS from that
+--   file and can skip this one (it is a harmless no-op).
+
+ALTER TABLE public.idempotency_keys ENABLE ROW LEVEL SECURITY;

@@ -18,6 +18,7 @@ if (typeof MockedResponse.json !== 'function') {
 import { GET, POST } from '../route';
 import { getServerSession as mockedGetServerSession } from 'next-auth';
 import { createItinerary, listItineraries } from '@/lib/services/itineraryService';
+import { checkIdempotency, recordIdempotency } from '@/lib/services/idempotencyService';
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -30,6 +31,15 @@ jest.mock('@/lib/auth/auth', () => ({
 jest.mock('@/lib/services/itineraryService', () => ({
   createItinerary: jest.fn(),
   listItineraries: jest.fn(),
+}));
+
+jest.mock('@/lib/services/idempotencyService', () => ({
+  checkIdempotency: jest.fn(),
+  // Reads the Idempotency-Key header directly — the real implementation's
+  // behavior, so a request carrying the header is treated as idempotent.
+  getIdempotencyKey: (request: { headers: { get: (k: string) => string | null } }) =>
+    request.headers.get('Idempotency-Key') ?? request.headers.get('X-Idempotency-Key'),
+  recordIdempotency: jest.fn(),
 }));
 
 const sessionMock = mockedGetServerSession as unknown as jest.Mock;
@@ -237,5 +247,86 @@ describe('saved-itineraries collection route', () => {
     };
     expect(body.data[0].formData.budget).toBe('Budget');
     expect(body.data[0].itineraryData.items).toHaveLength(1);
+  });
+});
+
+describe('saved-itineraries POST idempotency (Phase 2.3)', () => {
+  function postWithKey(body: unknown, key: string) {
+    return {
+      headers: { get: (name: string) => (name === 'Idempotency-Key' ? key : null) },
+      json: async () => body,
+    } as unknown as NextRequest;
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    sessionMock.mockResolvedValue({ user: { id: 'user-1' } });
+  });
+
+  it('returns a cached replay instead of running the mutation', async () => {
+    checkIdempotency.mockResolvedValue({
+      status: 201,
+      body: { success: true, data: { id: 'itin-cached' } },
+    });
+
+    const res = await POST(postWithKey(validBody, 'key-1'));
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toMatchObject({ data: { id: 'itin-cached' } });
+    expect(mockedCreateItinerary).not.toHaveBeenCalled();
+    expect(recordIdempotency).not.toHaveBeenCalled();
+  });
+
+  it('runs the mutation and records the key on a first request', async () => {
+    checkIdempotency.mockResolvedValue(null);
+    mockedCreateItinerary.mockResolvedValue({
+      id: 'itin-1',
+      title: validBody.title,
+      form_data: validBody.formData,
+      itinerary_data: validBody.itineraryData,
+      created_at: '2026-09-15T00:00:00.000Z',
+    });
+    recordIdempotency.mockResolvedValue(undefined);
+
+    const res = await POST(postWithKey(validBody, 'key-1'));
+
+    expect(res.status).toBe(201);
+    expect(mockedCreateItinerary).toHaveBeenCalledTimes(1);
+    expect(recordIdempotency).toHaveBeenCalledWith(
+      'user-1',
+      '/api/saved-itineraries',
+      'key-1',
+      201,
+      expect.objectContaining({ success: true })
+    );
+  });
+
+  it('does not consult idempotency when no key is sent', async () => {
+    mockedCreateItinerary.mockResolvedValue({
+      id: 'itin-1',
+      title: validBody.title,
+      form_data: validBody.formData,
+      itinerary_data: validBody.itineraryData,
+      created_at: '2026-09-15T00:00:00.000Z',
+    });
+
+    const res = await post(validBody);
+
+    expect(res.status).toBe(201);
+    expect(checkIdempotency).not.toHaveBeenCalled();
+    expect(recordIdempotency).not.toHaveBeenCalled();
+  });
+
+  it('returns the cached status, not a blanket 200, on replay', async () => {
+    checkIdempotency.mockResolvedValue({
+      status: 500,
+      body: { error: 'Failed to save itinerary' },
+    });
+
+    const res = await POST(postWithKey(validBody, 'key-1'));
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toMatchObject({ error: 'Failed to save itinerary' });
+    expect(mockedCreateItinerary).not.toHaveBeenCalled();
   });
 });
