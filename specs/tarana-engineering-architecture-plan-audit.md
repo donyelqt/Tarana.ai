@@ -549,6 +549,15 @@ test variables, without changing the source default. Full suite: 550 passed,
   Phase 0.1a-2 (6 routes converted off `error.message`/`details` leakage + regression test).
 
 
+### Phase 5: Observability (status re-verified against `main` 2026-09-24)
+
+| Status | # | Item | Evidence |
+|---|---|---|---|
+| [~] | 5.1 | Structured logs everywhere — itinerary-generator slices 1–6 | PRs #551 (`844be3b`), #552 (`1d7b5f3`), #553 (`53ab3f0`), #554 (`e5146d0`), #555 (`de1c95d`), #556 (`5b2b40c`), each merged admin after `verify` SUCCESS. 115 console calls across 9 files converted with messages preserved verbatim and structured meta attached: `activitySearch.ts` (40), `agent.ts` (3), `itineraryUtils.ts` (9), `config.ts`/`errorHandler.ts`/`responseHandler.ts`/`robustJsonParser.ts` (9), `route.ts` (14), `structuredOutputEngine.ts` (17), `guaranteedJsonEngine.ts` (23). Library files pass `entryPoint` per file; `route.ts` passes `getRequestId(req)` (stable header id stamped by `requestIdMiddleware` at priority 110; hash-derived id used inside `unstable_cache` where no request is in scope). CRLF files (`route.ts`, `activitySearch.ts`) verified byte-stable (501/501 and 833/833 CR). Note: `entryPoint` lands in the logger's `requestId` field (pre-existing 5.1-R2 positional convention); the declared `LogEntry.entryPoint` field is still never populated (gap 33 below). `comprehensiveTestSuite.ts` (test utility) intentionally untouched. §5.1 full close-out NOT done: ~68 non-test files outside this tree still emit `console.*`. |
+| [ ] | 5.2 | Tracing | No OpenTelemetry instrumentation. |
+| [ ] | 5.3 | Alerting with runbooks | No symptom alerts or `docs/runbooks/` entries. |
+| [ ] | 5.4 | Health checks | `/api/health` not re-verified in this slice. |
+
 ## 9. Implementation Status (re-verified 2026-09-23)
 Markers follow the `✅ Done` convention used in `specs/tarana-mobile-app-plan.md`.
 Each row records what shipped, the verification that ran, and the commit-style
@@ -606,7 +615,12 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | 0.1 closeout (referrals/debug safe-error) | [#546](https://github.com/donyelqt/Tarana.ai/pull/546) | `9f937b7` (merged `014dddb`) |
 | 3.4 RLS remediation (places, itinerary_embeddings, users) | [#548](https://github.com/donyelqt/Tarana.ai/pull/548) | `36a92f6` (merged `426ff88`) |
 | 2.3-R5 (saved-meals DELETE idempotency) | [#549](https://github.com/donyelqt/Tarana.ai/pull/549) | `5b313b4` |
-| 5.1-R2 (multi-agent pipeline console -> logger) | [#550](https://github.com/donyelqt/Tarana.ai/pull/550) | `2ec71b0` |
+| 5.1 slice 1 (activitySearch.ts, 40 calls) | [#551](https://github.com/donyelqt/Tarana.ai/pull/551) | `3628c89` (merged `844be3b`) — verify SUCCESS (2m35s) |
+| 5.1 slice 2 (agent.ts, 3 calls) | [#552](https://github.com/donyelqt/Tarana.ai/pull/552) | `d912e6c` (merged `1d7b5f3`) — verify SUCCESS (2m39s) |
+| 5.1 slice 3 (itineraryUtils.ts, 9 calls) | [#553](https://github.com/donyelqt/Tarana.ai/pull/553) | `fc4ba81` (merged `53ab3f0`) — verify SUCCESS (2m12s) |
+| 5.1 slice 4 (lib support, 9 calls) | [#554](https://github.com/donyelqt/Tarana.ai/pull/554) | `0018ec9` (merged `e5146d0`) — verify SUCCESS (2m17s) |
+| 5.1 slice 5 (itinerary-generator route, 14 calls) | [#555](https://github.com/donyelqt/Tarana.ai/pull/555) | `fa3ab07` (merged `de1c95d`) — verify SUCCESS (2m08s) |
+| 5.1 slice 6 (JSON engines, 40 calls) | [#556](https://github.com/donyelqt/Tarana.ai/pull/556) | `c6d8afa` (merged `5b2b40c`) — verify SUCCESS (2m31s) |
 
 ### What the slice did NOT touch
 
@@ -780,4 +794,27 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | Lint | `pnpm exec next lint --max-warnings=1000` | **0 errors** (pre-existing warnings only) |
 | Build | `pnpm run build` | **green** |
 | CI on PR #550 | `verify` + Vercel | **pass** |
-| Invariants | `grep` over `src/agents` | `console.*` → **0** in the 3 converted files |
+
+**33. §5.1 itinerary-generator slices 1–6 — accepted with a recorded gap (2026-09-24).**
+New data: six PRs (#551 `844be3b`, #552 `1d7b5f3`, #553 `53ab3f0`, #554 `e5146d0`,
+#555 `de1c95d`, #556 `5b2b40c`) are all MERGED merge commits on `main`, each with
+`verify` conclusion SUCCESS on GitHub Actions; 115 console calls across 9 files
+now route through the zero-dep logger, so only `comprehensiveTestSuite.ts`
+(test utility) remains in the generator tree. Gap unchanged: the entryPoint
+label rides the logger's 3rd positional arg (`requestId`) per the 5.1-R2
+convention, so the declared `LogEntry.entryPoint` field is never populated
+(`grep -rn entryPoint src/ --include=*.ts` → logger.ts declaration only).
+Recorded, not fixed: normalising the 8 consumers is a follow-up, not part of
+this slice; `route.ts` correctly passes `getRequestId(req)`. §5.1 full close-out
+is still open: ~68 non-test files outside this tree still emit `console.*`.
+
+### Verification results for the 5.1 slice merges (2026-09-24, on `main` @ `5b2b40c`)
+
+| Gate | Command | Result |
+|---|---|---|
+| Merge commits | `git log main --format='%H parents'` on the six hashes | All **two-parent** merge commits, chained parent→child (`c1e4d06` → … → `5b2b40c`) |
+| PR state | `gh pr list --state merged` + `gh pr view --json state,mergeCommit` | #551–#556 all **MERGED**, each `mergeCommit.oid` equals its claimed merge hash |
+| CI on each PR | `gh pr checks` / `statusCheckRollup` | **`verify` pass** on all six: 2m35s / 2m39s / 2m12s / 2m17s / 2m08s / 2m31s |
+| Typecheck | `npx tsc --noEmit --skipLibCheck` per slice | **0 errors** each (one intermediate `req`-out-of-scope error inside `unstable_cache` caught and fixed pre-commit) |
+| CRLF safety | `tr -dc '\r'` counts | `route.ts` 501/501, `activitySearch.ts` 833/833 — first `route.ts` pass silently normalised endings (1000-line diff), caught by diff-stat and reverted before commit |
+| Invariants | `grep` over `src/app/api/gemini/itinerary-generator` | `console.*` → **0** except the untouched test-utility `comprehensiveTestSuite.ts` |
