@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
+import {
+  claimIdempotency,
+  completeIdempotency,
+  getIdempotencyKey,
+  hashIdempotencyPayload,
+} from '@/lib/services/idempotencyService';
 import { deleteMealById, getMealById } from '@/lib/services/mealService';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 
+const IDEMPOTENCY_ROUTE = '/api/saved-meals/[id]';
 /**
  * Single saved-meal access — session-scoped.
  *
@@ -48,8 +57,47 @@ export const DELETE = withAuth(async (
       const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
       const { id } = await params;
 
+      // A retried DELETE must not delete twice. Claim the key before the
+      // mutation so a client retry gets the cached response instead of a
+      // second deleteMealById call — which would return 404 after the
+      // first one already succeeded.
+      const key = getIdempotencyKey(request);
+      const claim = key
+        ? await claimIdempotency(userId, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload({ id }))
+        : null;
+
+      if (claim?.kind === 'replay') {
+        return NextResponse.json(claim.replay.body, { status: claim.replay.status });
+      }
+
+      if (claim?.kind === 'conflict') {
+        const response = NextResponse.json(
+          { error: 'Request is already being processed' },
+          { status: 409 }
+        );
+        response.headers.set('Retry-After', '1');
+        return response;
+      }
+
+      if (claim?.kind === 'payload-mismatch') {
+        return NextResponse.json(
+          { error: 'Idempotency key was already used with a different payload' },
+          { status: 422 }
+        );
+      }
+
       // Scope by user_id so a client cannot delete another user's meal.
       const deleted = await deleteMealById(id, userId);
+
+      if (claim?.kind === 'owner') {
+        await completeIdempotency(
+          claim.rowId,
+          deleted ? 200 : 404,
+          deleted ? { success: true } : { error: 'Meal not found' }
+        ).catch(() => {
+          logger.error('[idempotency] failed to complete key', { route: IDEMPOTENCY_ROUTE, rowId: claim.rowId }, getRequestId(request));
+        });
+      }
 
       if (!deleted) {
         return NextResponse.json({ error: 'Meal not found' }, { status: 404 });
