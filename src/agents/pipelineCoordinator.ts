@@ -6,6 +6,7 @@ import { ItineraryComposerAgent } from "./itineraryComposerAgent";
 import { CreditService } from "@/lib/referral-system";
 import { benchBypassEnabled, configuredBenchUserId } from "@/lib/auth/benchToken";
 import type { RequestSession } from "@/lib/agentic/sessionStore";
+import { logger } from "@/lib/observability/logger";
 
 export interface PipelineCoordinatorDeps {
   concierge: ConciergeAgent;
@@ -61,7 +62,7 @@ export class PipelineCoordinator {
       try {
         this.deps.concierge.failSession(session.id, (error as Error).message, error);
       } catch (bookkeepingError) {
-        console.error(`Bookkeeping failed for session ${session.id} (refund still attempted):`, bookkeepingError);
+        logger.error(`Bookkeeping failed for session ${session.id} (refund still attempted)`, { error: bookkeepingError, sessionId: session.id }, "pipelineCoordinator");
       }
       if (charged && !isBenchUser) {
         try {
@@ -76,7 +77,7 @@ export class PipelineCoordinator {
             description: `Refund: multi-agent failed ${session.id}`,
             idempotencyKey: `refund:${session.id}`,
           });
-          console.log(`💸 Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`);
+          logger.info(`Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`, { userId: session.userId, sessionId: session.id }, "pipelineCoordinator");
         } catch {
           // best-effort; swallow refund errors
         }
