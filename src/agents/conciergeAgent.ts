@@ -6,6 +6,7 @@ import { CreditService, InsufficientCreditsError, type CreditBalance } from "@/l
 import { createSession, updateSession, appendError, type RequestSession, type RequestPreferences, type GeneratedItinerary } from "@/lib/agentic/sessionStore";
 import { resolveBenchUserId, BENCH_TOKEN_HEADER } from "@/lib/auth/benchToken";
 import { z } from "zod";
+import { logger } from "@/lib/observability/logger";
 
 export type ConciergePayload = {
   prompt: string;
@@ -113,7 +114,7 @@ export class ConciergeAgent {
     try {
       return await CreditService.getCurrentBalance(userId);
     } catch (error) {
-      console.warn("[ConciergeAgent] credit check failed", error);
+      logger.warn("[ConciergeAgent] credit check failed", { error }, "conciergeAgent");
       return undefined;
     }
   }

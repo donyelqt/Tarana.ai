@@ -2,6 +2,7 @@ import { updateSession, appendError, type RequestSession, type ContextPayload, t
 import { getPeakHoursContext, tomtomTrafficService } from "@/lib/traffic";
 import { getActivityCoordinates } from "@/lib/data";
 import type { ConciergePayload } from "./conciergeAgent";
+import { logger } from "@/lib/observability/logger";
 
 export interface WeatherProvider {
   getWeather(prompt: ConciergePayload): Promise<RawWeatherData | null>;
@@ -86,7 +87,7 @@ export class ContextScoutAgent {
             raw: traffic,
           } as TrafficSnapshot;
         } catch (error) {
-          console.warn(`[ContextScoutAgent] traffic fetch failed for ${name}`, error);
+          logger.warn(`[ContextScoutAgent] traffic fetch failed for ${name}`, { error, area: name }, "contextScoutAgent");
           return {
             area: name,
             trafficLevel: "UNKNOWN",

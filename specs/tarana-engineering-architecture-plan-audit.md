@@ -606,6 +606,7 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | 0.1 closeout (referrals/debug safe-error) | [#546](https://github.com/donyelqt/Tarana.ai/pull/546) | `9f937b7` (merged `014dddb`) |
 | 3.4 RLS remediation (places, itinerary_embeddings, users) | [#548](https://github.com/donyelqt/Tarana.ai/pull/548) | `36a92f6` (merged `426ff88`) |
 | 2.3-R5 (saved-meals DELETE idempotency) | [#549](https://github.com/donyelqt/Tarana.ai/pull/549) | `5b313b4` |
+| 5.1-R2 (multi-agent pipeline console -> logger) | [#550](https://github.com/donyelqt/Tarana.ai/pull/550) | `2ec71b0` |
 
 ### What the slice did NOT touch
 
@@ -716,6 +717,7 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | [ ] | 4.3 | Mobile tests | `tarana-mobile` has no Jest test job in CI. |
 | [x] | 4.4 | Fix the failing test | PR #518 (`6fef869`) isolates `SMTP_FROM_EMAIL` in `mockEnv` without changing the source default. emailConfig 9/9; full suite **550 passed, 6 skipped, 0 failed** — first 100% green run. |
 | [x] | 5.1-R1 narrow | track-referral via withRetry + structured logger | **Done — 1 route, not repo-wide 5.1.** PR #542 (`2eee7c0`, merged `75aa447`): hand-rolled 3-attempt loop (re-ran business failures, inline sleep, 9 `console.*`) → `withRetry` (3 attempts, 1s fixed, `jitter: 'none'`); business `{success:false}` outcomes (invalid/self/duplicate) return without retry; transient throws retry; exhaustion → `handleApiError` safe 500. `console.*` → `logger.info/warn` + `getRequestId`; known-error branches byte-identical; catch typed `unknown`; wire shape unchanged for `referralTracking.ts`. New `__tests__/route.test.ts` (6: 401, blank-400, normalization, no-retry-on-business, retry-then-succeed, sentinel-leak 500). Verified: focused 6/6, `console.` in route → zero, tsc 0 errors, CI `verify` 2m16s + Vercel pass. Repo-wide `console.*` elimination (Phase 5.1 full) remains open. |
+| [x] | 5.1-R2 narrow | multi-agent pipeline console -> structured logger | **Done — 3 files, not repo-wide 5.1.** PR #550 (`2ec71b0`): the multi-agent path is the production path (`USE_MULTI_AGENT=true` since 11/18/25, ~10 months) and it emitted 4 `console.*` calls with no `requestId`/`entryPoint`, so a failed generation was uncorrelatable. Replaced with the zero-dep `logger` (entryPoint set per file; no `requestId` since these are library functions, not request handlers): `conciergeAgent.ts:116` `console.warn` → `logger.warn` (credit check), `contextScoutAgent.ts:90` `console.warn` → `logger.warn` (traffic fetch), `pipelineCoordinator.ts:65` `console.error` → `logger.error` (bookkeeping), `pipelineCoordinator.ts:80` `console.log` → `logger.info` (refund). Also fixed a latent bug: the old `getCreditBalance` returned inside the try, so its `console.warn` was dead code. Verified: agents suites 20/20, full suite 627 passed / 6 skipped / 0 failed (+1 net over the 555 recorded for 0.1a-3), tsc 0 errors. The 2 remaining `console.log` calls in the refresh POST stay: banner UX output, not error handling. |
 
 ### Verification results for the 2.2 slice-1 merge (2026-09-21, on `main` @ `389c2f5`)
 
@@ -767,4 +769,15 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | CI on PR #544 | `verify` + Vercel | **pass** (`verify` 2m37s) → merged `1abf2aa` |
 | CI on PR #545 | `verify` + Vercel | **pass** (`verify` 1m54s) → merged `174c9b9` |
 | CI on PR #546 | `verify` + Vercel | **pass** (`verify` 2m14s) → merged `014dddb` |
-| Branch retention | `git branch` after merges | All slice branches kept locally and on origin per user instruction — no `--delete-branch` used |
+
+### Verification results for the 5.1-R2 merge (2026-09-24, on `main` @ `2ed9935`)
+
+| Gate | Command | Result |
+|---|---|---|
+| Typecheck | `npx tsc --noEmit --skipLibCheck` | **0 errors** |
+| Focused (agents) | `jest --testPathPattern="agents/"` | **20/20 passed** (6 suites) |
+| Full suite | `npx jest --passWithNoTests --maxWorkers=2` | **627 passed, 6 skipped, 0 failed** (77 suites; +1 net over the 555 recorded for 0.1a-3) |
+| Lint | `pnpm exec next lint --max-warnings=1000` | **0 errors** (pre-existing warnings only) |
+| Build | `pnpm run build` | **green** |
+| CI on PR #550 | `verify` + Vercel | **pass** |
+| Invariants | `grep` over `src/agents` | `console.*` → **0** in the 3 converted files |
