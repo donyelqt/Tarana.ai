@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuthEmail } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
+import { claimIdempotency, completeIdempotency, getIdempotencyKey, hashIdempotencyPayload } from '@/lib/services/idempotencyService';
 import { getProfileByEmail, updateProfileByEmail } from '@/lib/services/profileService';
 import { sanitizeName, sanitizeText } from '@/lib/security/inputSanitizer';
+
+const IDEMPOTENCY_ROUTE = '/api/profile';
 
 // GET - Fetch user profile
 export const GET = withAuthEmail(async (req: NextRequest, { email }) => {
@@ -13,7 +18,7 @@ export const GET = withAuthEmail(async (req: NextRequest, { email }) => {
     try {
       user = await getProfileByEmail(email);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      logger.error('Error fetching user profile', { error }, getRequestId(req));
       return NextResponse.json(
         { error: 'Failed to fetch profile' },
         { status: 500 }
@@ -77,23 +82,55 @@ export const PATCH = withAuthEmail(async (req: NextRequest, { email }) => {
       );
     }
 
+    const sanitizedUpdate = {
+      fullName: sanitizedFullName,
+      location: sanitizedLocation,
+      bio: sanitizedBio,
+    };
+
+    const key = getIdempotencyKey(req);
+    const claim = key
+      ? await claimIdempotency(email, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload(sanitizedUpdate))
+      : null;
+
+    if (claim?.kind === 'replay') {
+      return NextResponse.json(claim.replay.body, { status: claim.replay.status });
+    }
+
+    if (claim?.kind === 'conflict') {
+      const response = NextResponse.json(
+        { error: 'Request is already being processed' },
+        { status: 409 }
+      );
+      response.headers.set('Retry-After', '1');
+      return response;
+    }
+
+    if (claim?.kind === 'payload-mismatch') {
+      return NextResponse.json(
+        { error: 'Idempotency key was already used with a different payload' },
+        { status: 422 }
+      );
+    }
+
     // Update user profile
     let updatedUser;
     try {
-      updatedUser = await updateProfileByEmail(email, {
-        fullName: sanitizedFullName,
-        location: sanitizedLocation,
-        bio: sanitizedBio,
-      });
+      updatedUser = await updateProfileByEmail(email, sanitizedUpdate);
     } catch (error) {
-      console.error('Error updating user profile:', error);
+      logger.error('Error updating user profile', { error }, getRequestId(req));
+      if (claim?.kind === 'owner') {
+        await completeIdempotency(claim.rowId, 500, { error: 'Failed to update profile' }).catch(() => {
+          logger.error('[idempotency] failed to cache mutation failure', { route: IDEMPOTENCY_ROUTE, rowId: claim.rowId }, getRequestId(req));
+        });
+      }
       return NextResponse.json(
         { error: 'Failed to update profile' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
+    const responseBody = {
       success: true,
       message: 'Profile updated successfully',
       profile: {
@@ -104,7 +141,15 @@ export const PATCH = withAuthEmail(async (req: NextRequest, { email }) => {
         location: updatedUser.location || '',
         bio: updatedUser.bio || '',
       }
-    });
+    };
+    const response = NextResponse.json(responseBody);
+
+    if (claim?.kind === 'owner') {
+      await completeIdempotency(claim.rowId, 200, responseBody).catch(() => {
+        logger.error('[idempotency] failed to complete key', { route: IDEMPOTENCY_ROUTE, rowId: claim.rowId }, getRequestId(req));
+      });
+    }
+    return response;
   } catch (error) {
     return handleApiError(error, req);
   }
