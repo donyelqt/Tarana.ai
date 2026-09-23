@@ -51,6 +51,22 @@ jest.mock('@/lib/services/mealService', () => ({
     }
   },
 }));
+jest.mock('@supabase/supabase-js', () => ({
+  createClient: jest.fn(() => mockSupabaseClient),
+}));
+
+ 
+const mockSupabaseQuery: any = {
+  select: jest.fn().mockReturnThis(),
+  eq: jest.fn().mockReturnThis(),
+  update: jest.fn().mockReturnThis(),
+  single: jest.fn(),
+};
+
+ 
+const mockSupabaseClient: any = {
+  from: jest.fn(() => mockSupabaseQuery),
+};
 
 import { ReferralService, TierService } from '@/lib/referral-system';
 import { getServerSession } from 'next-auth';
@@ -58,6 +74,7 @@ import { listMeals, MealDbError } from '@/lib/services/mealService';
 import { POST as ValidatePOST } from './referrals/validate/route';
 import { GET as TiersGET } from './tiers/all/route';
 import { GET as SavedMealsGET } from './saved-meals/route';
+import { GET as DebugGET, POST as DebugPOST } from './referrals/debug/route';
 
 // ── referrals/validate ────────────────────────────────────────────────
 describe('referrals/validate: no raw error leakage', () => {
@@ -113,5 +130,49 @@ describe('saved-meals: no MealDbError field leakage', () => {
     expect(text).not.toContain(SENTINEL);
     expect(text).not.toContain('secret-hint');
     expect(text).not.toContain('PGRST999');
+  });
+});
+
+// ── referrals/debug ───────────────────────────────────────────────────
+describe('referrals/debug: no raw error leakage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getServerSession as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
+  });
+
+  it('GET does not leak error details on profile fetch failure', async () => {
+    // Chain: from() -> select() -> eq() -> single() rejects with sentinel.
+    mockSupabaseQuery.single.mockRejectedValue(new Error(`profile ${SENTINEL}`));
+
+    const res = await DebugGET(makeRequest());
+    const text = await bodyText(res);
+    expect(text).not.toContain(SENTINEL);
+    expect(text).not.toContain('details');
+    expect(text).not.toContain('stack');
+  });
+
+  it('POST does not leak error details on referrals fetch failure', async () => {
+    // Chain: from('referrals') -> select() -> eq() resolves with a PostgREST error.
+    mockSupabaseQuery.eq.mockResolvedValueOnce({ data: null, error: { message: `referrals ${SENTINEL}`, code: 'PGRST999' } });
+
+    const res = await DebugPOST(makeRequest());
+    const text = await bodyText(res);
+    expect(res.status).toBe(500);
+    expect(text).not.toContain(SENTINEL);
+    expect(text).not.toContain('PGRST999');
+    expect(text).not.toContain('details');
+  });
+
+  it('POST does not leak error details on update failure', async () => {
+    // First chain (referrals count) succeeds; second chain (update) fails.
+    mockSupabaseQuery.eq.mockResolvedValueOnce({ data: [{ status: 'active' }], error: null });
+    mockSupabaseQuery.single.mockRejectedValueOnce(new Error(`update ${SENTINEL}`));
+
+    const res = await DebugPOST(makeRequest());
+    const text = await bodyText(res);
+    expect(res.status).toBe(500);
+    expect(text).not.toContain(SENTINEL);
+    expect(text).not.toContain('details');
+    expect(text).not.toContain('stack');
   });
 });
