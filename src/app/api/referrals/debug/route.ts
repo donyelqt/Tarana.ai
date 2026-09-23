@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -23,7 +25,8 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       .single();
 
     if (profileError) {
-      return NextResponse.json({ error: "Profile not found", details: profileError }, { status: 404 });
+      logger.error('Referrals debug: profile fetch failed', { error: profileError }, getRequestId(req));
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
     // 2. Get all referrals where user is referrer
@@ -46,7 +49,7 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       .eq('referrer_id', userId);
 
     if (referralsError) {
-      console.error("Error fetching referrals:", referralsError);
+      logger.error("Error fetching referrals", { error: referralsError }, getRequestId(req));
     }
 
     // 3. Count active referrals manually
@@ -123,7 +126,8 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       .eq('referrer_id', userId);
 
     if (referralsError) {
-      return NextResponse.json({ error: "Failed to fetch referrals", details: referralsError }, { status: 500 });
+      logger.error('Referrals debug: referrals fetch failed', { error: referralsError }, getRequestId(req));
+      return NextResponse.json({ error: "Failed to fetch referrals" }, { status: 500 });
     }
 
     const activeCount = referrals?.filter(r => r.status === 'active').length || 0;
@@ -153,7 +157,8 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       .single();
 
     if (updateError) {
-      return NextResponse.json({ error: "Failed to update profile", details: updateError }, { status: 500 });
+      logger.error('Referrals debug: tier fix failed', { error: updateError }, getRequestId(req));
+      return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
     }
 
     console.log(`✅ Tier fixed: ${updated.current_tier} with ${updated.daily_credits} credits`);
