@@ -553,10 +553,10 @@ test variables, without changing the source default. Full suite: 550 passed,
 
 | Status | # | Item | Evidence |
 |---|---|---|---|
-| [~] | 5.1 | Structured logs everywhere — itinerary-generator slices 1–6 | PRs #551 (`844be3b`), #552 (`1d7b5f3`), #553 (`53ab3f0`), #554 (`e5146d0`), #555 (`de1c95d`), #556 (`5b2b40c`), each merged admin after `verify` SUCCESS. 115 console calls across 9 files converted with messages preserved verbatim and structured meta attached: `activitySearch.ts` (40), `agent.ts` (3), `itineraryUtils.ts` (9), `config.ts`/`errorHandler.ts`/`responseHandler.ts`/`robustJsonParser.ts` (9), `route.ts` (14), `structuredOutputEngine.ts` (17), `guaranteedJsonEngine.ts` (23). Library files pass `entryPoint` per file; `route.ts` passes `getRequestId(req)` (stable header id stamped by `requestIdMiddleware` at priority 110; hash-derived id used inside `unstable_cache` where no request is in scope). CRLF files (`route.ts`, `activitySearch.ts`) verified byte-stable (501/501 and 833/833 CR). Note: `entryPoint` lands in the logger's `requestId` field (pre-existing 5.1-R2 positional convention); the declared `LogEntry.entryPoint` field is still never populated (gap 33 below). `comprehensiveTestSuite.ts` (test utility) intentionally untouched. §5.1 full close-out NOT done: ~68 non-test files outside this tree still emit `console.*`. |
+| [~] | 5.1 | Structured logs everywhere — itinerary-generator slices 1–7 | PRs #551 (`844be3b`), #552 (`1d7b5f3`), #553 (`53ab3f0`), #554 (`e5146d0`), #555 (`de1c95d`), #556 (`5b2b40c`), #559 (`5641ae7`), each merged admin after `verify` SUCCESS. 115 console calls across 9 files converted with messages preserved verbatim and structured meta attached: `activitySearch.ts` (40), `agent.ts` (3), `itineraryUtils.ts` (9), `config.ts`/`errorHandler.ts`/`responseHandler.ts`/`robustJsonParser.ts` (9), `route.ts` (14), `structuredOutputEngine.ts` (17), `guaranteedJsonEngine.ts` (23). Slice 7 (#559) closed the recorded gap 33: the 101 library call sites that passed their source label as the logger's 3rd positional arg (typed `requestId`) now put it in meta as `entryPoint`, so the declared `LogEntry.entryPoint` field is finally populated (`grep -rn "entryPoint:" src --include=*.ts` = 101, was 0) and no line carries a source label in `requestId`. Route handlers pass `getRequestId(req)` and were untouched. `comprehensiveTestSuite.ts` (test utility) intentionally untouched. §5.1 full close-out NOT done: 68 non-test `.ts` files outside this tree still emit `console.*` (23 `.tsx` client files are outside §5.1's `grep --include=*.ts` verify). |
 | [ ] | 5.2 | Tracing | No OpenTelemetry instrumentation. |
 | [ ] | 5.3 | Alerting with runbooks | No symptom alerts or `docs/runbooks/` entries. |
-| [ ] | 5.4 | Health checks | `/api/health` not re-verified in this slice. |
+| [x] | 5.4 | Health checks | **Done — verified live 2026-09-24** (no code change this slice). `src/app/api/health/route.ts` per §3.2 invariant 8: connection-level checks only, 3s per-dependency timeout, unhealthy dependency returns 200 with `status: 'degraded'` rather than failing the request. Live probe on a fresh `next dev` (`:3111`): cold 200 in 5.6s (3.7s of that is first-hit route compile), warm 1014ms then 419ms; body `{"status":"ok","checks":{"supabase":"ok","geminiKey":"ok","tomtom":"ok"}}` on all three calls. Gemini check is key-presence, not generation — a monitoring probe must not cost money. |
 
 ## 9. Implementation Status (re-verified 2026-09-23)
 Markers follow the `✅ Done` convention used in `specs/tarana-mobile-app-plan.md`.
@@ -818,3 +818,39 @@ is still open: ~68 non-test files outside this tree still emit `console.*`.
 | Typecheck | `npx tsc --noEmit --skipLibCheck` per slice | **0 errors** each (one intermediate `req`-out-of-scope error inside `unstable_cache` caught and fixed pre-commit) |
 | CRLF safety | `tr -dc '\r'` counts | `route.ts` 501/501, `activitySearch.ts` 833/833 — first `route.ts` pass silently normalised endings (1000-line diff), caught by diff-stat and reverted before commit |
 | Invariants | `grep` over `src/app/api/gemini/itinerary-generator` | `console.*` → **0** except the untouched test-utility `comprehensiveTestSuite.ts` |
+
+**34. §5.1 gap 33 is closed (2026-09-24).** PR #559 (`4d84149`, merged `5641ae7`,
+`verify` SUCCESS 1m53s) moved the 101 library `entryPoint` labels out of the
+logger's 3rd positional arg into meta. Before: every line from these files
+carried `requestId: 'agent'` (etc.) and `LogEntry.entryPoint` was declared but
+never written. After: `logger.x(msg, { entryPoint: '<name>', ...meta })`; the
+label rides the JSON line next to `requestId` because `emit()` spreads meta.
+Verified on merged `main`: tsc 0 errors, 101 meta writers, zero remaining
+positional string 3rd args, `route.ts` byte-identical, CRLF/LF preserved
+(`activitySearch.ts` 833/833 CR). Message text and all other meta fields
+unchanged. Spec text in the 5.1 row updated accordingly.
+
+**35. Two Phase-0.2 evidence claims in this document are NOT reproducible.**
+Recorded, not fixed — neither blocks 5.4.
+(a) §0.2 cites `bun run specs/smoke-logger.mjs` → SMOKE OK, but the file was
+never committed (`git log --all -- specs/smoke-logger.mjs` is empty; `specs/`
+tracks only the errorhandler-retry / responsehandler-timeout /
+structured-engine smokes). The claim cannot be re-run or audited.
+(b) Live during the 5.4 probe, `requestIdMiddleware`'s `logger.info('request', …)`
+line did not appear in `next dev` stdout — expected, since middleware runs on
+the Edge runtime and the logger writes through `process.stdout.write`, which
+does not surface in the dev server log. Consequence: the 0.2 acceptance
+criterion "confirm JSON log output with `requestId` field" is evidenced only
+for route/server-runtime callers; the middleware per-request line is currently
+unverifiable. The health probe's response also carried no `x-request-id` header
+(the route builds its own `NextResponse`), so header echo is route-dependent,
+not a middleware guarantee.
+
+### Verification results for the 5.4 live probe (2026-09-24, on `main` @ `5641ae7`)
+
+| Gate | Command | Result |
+|---|---|---|
+| Runtime | `next dev -p 3111` + `fetch http://127.0.0.1:3111/api/health` ×3 | Cold **200** in 5.6s (first-hit compile 3.7s); warm **200** in 1014ms; warm **200** in 419ms |
+| Body | same | `{"status":"ok","checks":{"supabase":"ok","geminiKey":"ok","tomtom":"ok"}}` on all three calls |
+| Design | `src/app/api/health/route.ts` | Connection-level only; 3s per-dependency timeout; no Gemini generation (key-presence only); degraded state returns 200 |
+| Caveat | response headers | `x-request-id` absent (route-owned `NextResponse`); see correction 35(b) |
