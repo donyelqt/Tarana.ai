@@ -4,6 +4,7 @@ import { getManilaTime, getPeakHoursContext } from "@/lib/traffic";
 import { tomtomTrafficService } from "@/lib/traffic";
 import { getActivityCoordinates } from "@/lib/data";
 import { withTimeout } from "@/lib/upstream/withTimeout";
+import { logger } from "../../../../../lib/observability/logger";
 
 // Lightweight agentic helper: ask the model to propose up to N targeted sub-queries
 // to improve retrieval coverage (e.g., fill gaps for weather, interests, or time slots).
@@ -34,7 +35,7 @@ export async function proposeSubqueries(params: {
   // Get real-time traffic context for major Baguio locations
   let trafficContext = "";
   if (includeTrafficData) {
-    console.log(`🚦 AGENT: Fetching real-time traffic data for subquery optimization`);
+    logger.info(`🚦 AGENT: Fetching real-time traffic data for subquery optimization`, {}, 'agent');
     try {
       // Sample key Baguio locations for traffic assessment
       const keyLocations = [
@@ -69,9 +70,9 @@ export async function proposeSubqueries(params: {
     - AVOID HIGH TRAFFIC: ${highTrafficAreas.length > 0 ? highTrafficAreas.map(t => t.area).join(', ') : 'No major congestion'}
     - Prioritize activities near low-traffic areas or suggest alternative timing for congested locations.`;
       
-      console.log(`✅ AGENT: Traffic context generated for ${trafficData.length} locations`);
+      logger.info(`✅ AGENT: Traffic context generated for ${trafficData.length} locations`, {}, 'agent');
     } catch (error) {
-      console.warn(`⚠️ AGENT: Failed to fetch traffic data for subqueries:`, error);
+      logger.warn(`⚠️ AGENT: Failed to fetch traffic data for subqueries:`, { error }, 'agent');
       trafficContext = `
     - TRAFFIC DATA: Real-time traffic data unavailable, using peak hours guidance only.`;
     }
