@@ -35,7 +35,7 @@ export async function proposeSubqueries(params: {
   // Get real-time traffic context for major Baguio locations
   let trafficContext = "";
   if (includeTrafficData) {
-    logger.info(`🚦 AGENT: Fetching real-time traffic data for subquery optimization`, {}, 'agent');
+    logger.info(`🚦 AGENT: Fetching real-time traffic data for subquery optimization`, { entryPoint: 'agent' });
     try {
       // Sample key Baguio locations for traffic assessment
       const keyLocations = [
@@ -70,9 +70,9 @@ export async function proposeSubqueries(params: {
     - AVOID HIGH TRAFFIC: ${highTrafficAreas.length > 0 ? highTrafficAreas.map(t => t.area).join(', ') : 'No major congestion'}
     - Prioritize activities near low-traffic areas or suggest alternative timing for congested locations.`;
       
-      logger.info(`✅ AGENT: Traffic context generated for ${trafficData.length} locations`, {}, 'agent');
+      logger.info(`✅ AGENT: Traffic context generated for ${trafficData.length} locations`, { entryPoint: 'agent' });
     } catch (error) {
-      logger.warn(`⚠️ AGENT: Failed to fetch traffic data for subqueries:`, { error }, 'agent');
+      logger.warn(`⚠️ AGENT: Failed to fetch traffic data for subqueries:`, { entryPoint: 'agent', error });
       trafficContext = `
     - TRAFFIC DATA: Real-time traffic data unavailable, using peak hours guidance only.`;
     }

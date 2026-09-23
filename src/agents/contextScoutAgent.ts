@@ -87,7 +87,7 @@ export class ContextScoutAgent {
             raw: traffic,
           } as TrafficSnapshot;
         } catch (error) {
-          logger.warn(`[ContextScoutAgent] traffic fetch failed for ${name}`, { error, area: name }, "contextScoutAgent");
+          logger.warn(`[ContextScoutAgent] traffic fetch failed for ${name}`, { entryPoint: "contextScoutAgent", error, area: name });
           return {
             area: name,
             trafficLevel: "UNKNOWN",

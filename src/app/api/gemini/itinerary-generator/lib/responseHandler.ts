@@ -104,7 +104,7 @@ export function parseAndCleanJson(text: string) {
         const validation = ResponseValidator.validateResponse(text);
         
         if (!validation.isValid) {
-            logger.warn("Response validation issues:", { issues: validation.issues }, 'responseHandler');
+            logger.warn("Response validation issues:", { entryPoint: 'responseHandler', issues: validation.issues });
         }
         
         // Use cleaned text if available, otherwise original
@@ -113,7 +113,7 @@ export function parseAndCleanJson(text: string) {
         // Use the robust parser with multiple recovery strategies
         return RobustJsonParser.parseResponse(textToProcess);
     } catch (error) {
-        logger.error("RobustJsonParser failed:", { error }, 'responseHandler');
+        logger.error("RobustJsonParser failed:", { entryPoint: 'responseHandler', error });
         
         // Ultimate fallback - return minimal valid structure
         return {

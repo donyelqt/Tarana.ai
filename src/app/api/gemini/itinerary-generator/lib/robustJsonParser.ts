@@ -30,7 +30,7 @@ export class RobustJsonParser {
    */
   static parseResponse(text: string): any {
     if (!text || typeof text !== 'string') {
-      logger.warn("RobustJsonParser: Empty or invalid text provided", {}, 'robustJsonParser');
+      logger.warn("RobustJsonParser: Empty or invalid text provided", { entryPoint: 'robustJsonParser' });
       return this.FALLBACK_ITINERARY;
     }
 
@@ -49,16 +49,16 @@ export class RobustJsonParser {
         if (result) {
           const validated = this.validateAndFix(result);
           if (validated) {
-            logger.info(`RobustJsonParser: Success with strategy ${i + 1}`, {}, 'robustJsonParser');
+            logger.info(`RobustJsonParser: Success with strategy ${i + 1}`, { entryPoint: 'robustJsonParser' });
             return validated;
           }
         }
       } catch (error) {
-        logger.warn(`RobustJsonParser: Strategy ${i + 1} failed:`, { error: error instanceof Error ? error.message : String(error) }, 'robustJsonParser');
+        logger.warn(`RobustJsonParser: Strategy ${i + 1} failed:`, { entryPoint: 'robustJsonParser', error: error instanceof Error ? error.message : String(error) });
       }
     }
 
-    logger.error("RobustJsonParser: All strategies failed, returning fallback", {}, 'robustJsonParser');
+    logger.error("RobustJsonParser: All strategies failed, returning fallback", { entryPoint: 'robustJsonParser' });
     return this.FALLBACK_ITINERARY;
   }
 
@@ -200,7 +200,7 @@ export class RobustJsonParser {
     if (validationResult.success) {
       return validationResult.data;
     } else {
-      logger.warn("RobustJsonParser: Schema validation failed, attempting fixes", {}, 'robustJsonParser');
+      logger.warn("RobustJsonParser: Schema validation failed, attempting fixes", { entryPoint: 'robustJsonParser' });
       
       // Try to fix common schema issues
       if (fixed.items.length > 0) {

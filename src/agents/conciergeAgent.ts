@@ -114,7 +114,7 @@ export class ConciergeAgent {
     try {
       return await CreditService.getCurrentBalance(userId);
     } catch (error) {
-      logger.warn("[ConciergeAgent] credit check failed", { error }, "conciergeAgent");
+      logger.warn("[ConciergeAgent] credit check failed", { entryPoint: "conciergeAgent", error });
       return undefined;
     }
   }
