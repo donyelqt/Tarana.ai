@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import type { WeatherCondition } from "../types/types";
+import { logger } from "../../../../../lib/observability/logger";
 
 // Global initialization for Gemini model to avoid re-creating the client on every request.
 export const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
@@ -10,7 +11,7 @@ const configuredModelId = process.env.GOOGLE_GEMINI_MODEL?.trim();
 const MODEL_ID = configuredModelId && configuredModelId.length > 0 ? configuredModelId : DEFAULT_MODEL_ID;
 
 if (!configuredModelId && API_KEY) {
-  console.log(`[Itinerary Generator] Using Gemini model: ${DEFAULT_MODEL_ID}`);
+  logger.info(`[Itinerary Generator] Using Gemini model: ${DEFAULT_MODEL_ID}`, { model: DEFAULT_MODEL_ID }, 'config');
 }
 
 export const geminiModel = genAI ? genAI.getGenerativeModel({ 

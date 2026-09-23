@@ -4,6 +4,7 @@
  */
 
 import { withRetry as sharedWithRetry } from '../../../../../lib/upstream/withRetry';
+import { logger } from "../../../../../lib/observability/logger";
 
 export enum ErrorType {
   VALIDATION = 'VALIDATION',
@@ -87,13 +88,13 @@ export class ErrorHandler {
     this.errorStats.set(errorType, (this.errorStats.get(errorType) || 0) + 1);
 
     // Log error details
-    console.error(`[ErrorHandler] ${errorType}:`, {
+    logger.error(`[ErrorHandler] ${errorType}:`, {
       message,
       requestId,
       timestamp,
       retryable,
       originalError: error.message
-    });
+    }, 'errorHandler');
 
     return {
       type: errorType,
