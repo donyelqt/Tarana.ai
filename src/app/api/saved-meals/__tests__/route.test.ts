@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '../route';
 import { getServerSession } from 'next-auth';
 import { createMeal, listMeals, MealDbError } from '@/lib/services/mealService';
+import { claimIdempotency, completeIdempotency, hashIdempotencyPayload } from '@/lib/services/idempotencyService';
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -33,10 +34,23 @@ jest.mock('@/lib/services/mealService', () => ({
     }
   },
 }));
-
+jest.mock('@/lib/services/idempotencyService', () => ({
+  claimIdempotency: jest.fn(),
+  completeIdempotency: jest.fn(),
+  hashIdempotencyPayload: jest.fn(() => 'hash-1'),
+  getIdempotencyKey: (request: { headers: { get: (k: string) => string | null } }) => {
+    const raw = request.headers.get('Idempotency-Key') ?? request.headers.get('X-Idempotency-Key');
+    if (!raw) return null;
+    const trimmed = raw.trim();
+    return trimmed.length > 0 && trimmed.length <= 256 ? trimmed : null;
+  },
+}));
 const mockedGetServerSession = getServerSession as unknown as jest.Mock;
 const mockedListMeals = listMeals as unknown as jest.Mock;
 const mockedCreateMeal = createMeal as unknown as jest.Mock;
+const mockedClaimIdempotency = claimIdempotency as unknown as jest.Mock;
+const mockedCompleteIdempotency = completeIdempotency as unknown as jest.Mock;
+const mockedHashIdempotencyPayload = hashIdempotencyPayload as unknown as jest.Mock;
 
 function authedRequest(body?: unknown): NextRequest {
   return {
@@ -123,5 +137,92 @@ describe('Saved Meals API Route Tests', () => {
 
     const body = await response.json();
     expect(body.error).toBe('Failed to save meal');
+  });
+});
+
+describe('saved-meals POST idempotency (Phase 2.3-R2)', () => {
+  function postWithKey(body: unknown, key: string) {
+    return {
+      headers: { get: (name: string) => (name === 'Idempotency-Key' ? key : null) },
+      json: async () => body,
+    } as unknown as NextRequest;
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedGetServerSession.mockResolvedValue({ user: { id: 'user-1' } });
+    mockedHashIdempotencyPayload.mockReturnValue('hash-1');
+  });
+
+  test('returns a cached replay instead of running the mutation', async () => {
+    mockedClaimIdempotency.mockResolvedValue({
+      kind: 'replay',
+      replay: { status: 200, body: { success: true, data: { id: 'meal-cached' } } },
+    });
+
+    const res = await POST(postWithKey(validMeal, 'key-1'));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ data: { id: 'meal-cached' } });
+    expect(mockedCreateMeal).not.toHaveBeenCalled();
+    expect(mockedCompleteIdempotency).not.toHaveBeenCalled();
+  });
+
+  test('claims, runs, and completes a first request with the exact response', async () => {
+    mockedClaimIdempotency.mockResolvedValue({ kind: 'owner', rowId: 7 });
+    mockedCreateMeal.mockResolvedValue({ id: 'm1', ...validMeal });
+    mockedCompleteIdempotency.mockResolvedValue(undefined);
+
+    const res = await POST(postWithKey(validMeal, 'key-1'));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(mockedClaimIdempotency).toHaveBeenCalledWith('user-1', '/api/saved-meals', 'key-1', expect.any(String));
+    expect(mockedCreateMeal).toHaveBeenCalledTimes(1);
+    expect(mockedCompleteIdempotency).toHaveBeenCalledWith(7, 200, body);
+  });
+
+  test('does not consult idempotency when no key is sent', async () => {
+    mockedCreateMeal.mockResolvedValue({ id: 'm1', ...validMeal });
+
+    const res = await POST(authedRequest(validMeal));
+
+    expect(res.status).toBe(200);
+    expect(mockedClaimIdempotency).not.toHaveBeenCalled();
+    expect(mockedCompleteIdempotency).not.toHaveBeenCalled();
+  });
+
+  test('rejects a concurrent duplicate without running the mutation', async () => {
+    mockedClaimIdempotency.mockResolvedValue({ kind: 'conflict' });
+
+    const res = await POST(postWithKey(validMeal, 'key-1'));
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: 'Request is already being processed' });
+    expect(res.headers.get('Retry-After')).toBe('1');
+    expect(mockedCreateMeal).not.toHaveBeenCalled();
+    expect(mockedCompleteIdempotency).not.toHaveBeenCalled();
+  });
+
+  test('rejects a reused key with a different payload without running the mutation', async () => {
+    mockedClaimIdempotency.mockResolvedValue({ kind: 'payload-mismatch' });
+
+    const res = await POST(postWithKey({ ...validMeal, cafe_name: 'Different cafe' }, 'key-1'));
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ error: 'Idempotency key was already used with a different payload' });
+    expect(mockedCreateMeal).not.toHaveBeenCalled();
+    expect(mockedCompleteIdempotency).not.toHaveBeenCalled();
+  });
+
+  test('caches a mutation failure so a replay cannot double-write', async () => {
+    mockedClaimIdempotency.mockResolvedValue({ kind: 'owner', rowId: 7 });
+    mockedCreateMeal.mockRejectedValue(new Error('db down'));
+    mockedCompleteIdempotency.mockResolvedValue(undefined);
+
+    const res = await POST(postWithKey(validMeal, 'key-1'));
+
+    expect(res.status).toBe(500);
+    expect(mockedCompleteIdempotency).toHaveBeenCalledWith(7, 500, { error: 'Failed to save meal' });
   });
 });
