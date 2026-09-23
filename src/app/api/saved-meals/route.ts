@@ -4,6 +4,11 @@ import { createMeal, listMeals, MealDbError, SavedMealInput } from '@/lib/servic
 import { z } from 'zod';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { claimIdempotency, completeIdempotency, getIdempotencyKey, hashIdempotencyPayload } from '@/lib/services/idempotencyService';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
+
+const IDEMPOTENCY_ROUTE = '/api/saved-meals';
 const SavedMealSchema = z.object({
   cafe_name: z.string().min(1, 'Cafe name is required').max(200),
   meal_type: z.string().min(1, 'Meal type is required'),
@@ -55,16 +60,54 @@ export const POST = withAuth(async (request: NextRequest, userId: string) => {
 
     const validatedData: SavedMealInput = validation.data;
 
+    const key = getIdempotencyKey(request);
+    const claim = key
+      ? await claimIdempotency(userId, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload(validatedData))
+      : null;
+
+    if (claim?.kind === 'replay') {
+      return NextResponse.json(claim.replay.body, { status: claim.replay.status });
+    }
+
+    if (claim?.kind === 'conflict') {
+      const response = NextResponse.json(
+        { error: 'Request is already being processed' },
+        { status: 409 }
+      );
+      response.headers.set('Retry-After', '1');
+      return response;
+    }
+
+    if (claim?.kind === 'payload-mismatch') {
+      return NextResponse.json(
+        { error: 'Idempotency key was already used with a different payload' },
+        { status: 422 }
+      );
+    }
+
     let data;
     try {
       data = await createMeal(userId, validatedData);
     } catch {
+      if (claim?.kind === 'owner') {
+        await completeIdempotency(claim.rowId, 500, { error: 'Failed to save meal' }).catch(() => {
+          logger.error('[idempotency] failed to cache mutation failure', { route: IDEMPOTENCY_ROUTE, rowId: claim.rowId }, getRequestId(request));
+        });
+      }
       return NextResponse.json(
         { error: 'Failed to save meal' },
         { status: 500 }
       );
     }
-    return NextResponse.json({ success: true, data });
+    const responseBody = { success: true, data };
+    const response = NextResponse.json(responseBody, { status: 200 });
+
+    if (claim?.kind === 'owner') {
+      await completeIdempotency(claim.rowId, 200, responseBody).catch(() => {
+        logger.error('[idempotency] failed to complete key', { route: IDEMPOTENCY_ROUTE, rowId: claim.rowId }, getRequestId(request));
+      });
+    }
+    return response;
   } catch (error) {
     return handleApiError(error, request);
   }
