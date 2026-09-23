@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
+import { withRetry } from '@/lib/upstream/withRetry';
 import { ReferralService } from '@/lib/referral-system/ReferralService';
+import type { CreateReferralResult } from '@/lib/referral-system/types';
 
 /**
  * API endpoint to track referrals after user signup
@@ -10,92 +14,69 @@ import { ReferralService } from '@/lib/referral-system/ReferralService';
  */
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/auth/track-referral', 'POST', async () => {
+  const requestId = getRequestId(req);
   try {
-    
     // Get referral code from request body
     const body = await req.json();
     const { referralCode } = body;
 
     if (!referralCode || typeof referralCode !== 'string' || referralCode.trim().length === 0) {
-      console.error("❌ Invalid referral code provided");
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: "Invalid referral code",
-        success: false 
+        success: false
       }, { status: 400 });
     }
 
-    console.log(`📝 Tracking referral for user ${userId} with code: ${referralCode}`);
+    const code = referralCode.trim().toUpperCase();
+    logger.info('Tracking referral', { userId }, requestId);
 
-    // Track the referral with retry logic (profile might not exist immediately)
-    let result;
-    let lastError;
-    const maxRetries = 3;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`🔄 Attempt ${attempt}/${maxRetries} to track referral`);
-        
-        result = await ReferralService.createReferral({
-          referralCode: referralCode.trim().toUpperCase(),
-          newUserId: userId
-        });
-        
-        if (result.success) {
-          break; // Success, exit retry loop
-        } else {
-          lastError = result.error;
-          console.log(`⚠️ Attempt ${attempt} failed: ${result.error}`);
-        }
-      } catch (error: any) {
-        lastError = error.message;
-        console.error(`❌ Attempt ${attempt} threw error:`, error.message);
-      }
-      
-      // Wait before retrying (except on last attempt)
-      if (attempt < maxRetries) {
-        console.log(`⏳ Waiting 1 second before retry...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    if (!result) {
-      result = { success: false, error: lastError || 'Failed after retries' };
+    // The caller's profile may not exist immediately after signup, so
+    // transient DB failures retry through the shared helper (3 attempts, 1s
+    // fixed delay — same budget as the old hand-rolled loop). Business
+    // outcomes (invalid/self/duplicate) return { success: false } and are
+    // NOT retried: the old loop re-ran them 3x to the same answer.
+    let result: CreateReferralResult;
+    try {
+      result = await withRetry(
+        () => ReferralService.createReferral({ referralCode: code, newUserId: userId }),
+        { maxAttempts: 3, baseDelayMs: 1000, factor: 1, maxDelayMs: 1000, jitter: 'none' }
+      );
+    } catch (error) {
+      return handleApiError(error, req);
     }
 
     if (result.success) {
-      console.log(`✅ Referral tracked successfully! Referral ID: ${result.referralId}`);
+      logger.info('Referral tracked', { referralId: result.referralId }, requestId);
       return NextResponse.json({
         success: true,
         message: "Referral tracked successfully",
         referralId: result.referralId
       });
     } else {
-      console.error(`❌ Failed to track referral:`, result.error);
+      logger.warn('Referral tracking failed', { error: result.error }, requestId);
       return NextResponse.json({
         success: false,
         error: result.error || "Unknown error"
       }, { status: 400 });
     }
-
-  } catch (error: any) {
-    console.error('Error tracking referral:', error);
-
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     // Handle known error types
-    if (error.message?.includes('Invalid referral code')) {
+    if (message.includes('Invalid referral code')) {
       return NextResponse.json(
         { error: 'Invalid referral code' },
         { status: 400 }
       );
     }
 
-    if (error.message?.includes('self-referral')) {
+    if (message.includes('self-referral')) {
       return NextResponse.json(
         { error: 'You cannot refer yourself' },
         { status: 400 }
       );
     }
 
-    if (error.message?.includes('already exists')) {
+    if (message.includes('already exists')) {
       return NextResponse.json(
         { error: 'Referral already exists' },
         { status: 400 }
