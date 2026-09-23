@@ -4,6 +4,7 @@ import { geminiModel } from "./config";
 import { ItinerarySchema } from "../types/schemas";
 import type { EnhancedGenerateContentResponse, GenerateContentResult } from "@google/generative-ai";
 import { withRetry } from "@/lib/upstream/withRetry";
+import { logger } from "../../../../../lib/observability/logger";
 import { UpstreamTimeoutError } from "@/lib/upstream/withTimeout";
 
 const MAX_RETRIES = 2;
@@ -103,7 +104,7 @@ export function parseAndCleanJson(text: string) {
         const validation = ResponseValidator.validateResponse(text);
         
         if (!validation.isValid) {
-            console.warn("Response validation issues:", validation.issues);
+            logger.warn("Response validation issues:", { issues: validation.issues }, 'responseHandler');
         }
         
         // Use cleaned text if available, otherwise original
@@ -112,7 +113,7 @@ export function parseAndCleanJson(text: string) {
         // Use the robust parser with multiple recovery strategies
         return RobustJsonParser.parseResponse(textToProcess);
     } catch (error) {
-        console.error("RobustJsonParser failed:", error);
+        logger.error("RobustJsonParser failed:", { error }, 'responseHandler');
         
         // Ultimate fallback - return minimal valid structure
         return {
