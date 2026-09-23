@@ -1,5 +1,6 @@
 // Removed legacy vector search import - now using unified intelligent search
 import { proposeSubqueries } from "../agent/agent";
+import { logger } from "../../../../../lib/observability/logger";
 import { getCityTime } from "@/lib/traffic/peakHours";
 
 import { WEATHER_TAG_FILTERS } from "./config";
@@ -80,14 +81,14 @@ export async function findAndScoreActivities(
         
         // Use intelligent search engine
         const availableActivities = sampleItineraryCombined.items[0].activities;
-        console.log(`\n🔍 INTELLIGENT SEARCH: Starting search for "${prompt}" with ${availableActivities.length} activities`);
+        logger.info(`\n🔍 INTELLIGENT SEARCH: Starting search for "${prompt}" with ${availableActivities.length} activities`, {prompt: prompt}, 'activitySearch');
         const intelligentResults = await intelligentSearchEngine.search(prompt, searchContext);
-        console.log(`✅ INTELLIGENT SEARCH: Found ${intelligentResults.length} results with traffic-aware scoring`);
+        logger.info(`✅ INTELLIGENT SEARCH: Found ${intelligentResults.length} results with traffic-aware scoring`, {}, 'activitySearch');
         
         // Enhanced intelligent search with query expansion if needed
         let finalResults = intelligentResults;
         if (intelligentResults.length < 2) {
-            console.log(`🔍 EXPANDING SEARCH: Only ${intelligentResults.length} results, generating sub-queries for broader coverage`);
+            logger.info(`🔍 EXPANDING SEARCH: Only ${intelligentResults.length} results, generating sub-queries for broader coverage`, {}, 'activitySearch');
             
             // Generate AI sub-queries to expand search coverage
             const subqueries = await proposeSubqueries({
@@ -123,7 +124,7 @@ export async function findAndScoreActivities(
                 .sort((a, b) => b.scores.composite - a.scores.composite)
                 .slice(0, 30);
                 
-            console.log(`✅ EXPANDED SEARCH: Final results count: ${finalResults.length}`);
+            logger.info(`✅ EXPANDED SEARCH: Final results count: ${finalResults.length}`, {}, 'activitySearch');
         }
 
         // Process unified intelligent search results - only use activities that exist in the database
@@ -196,7 +197,7 @@ export async function findAndScoreActivities(
             });
 
             similar = Array.from(mergedByTitle.values());
-            console.log(`🎛️ RANDOM INTEREST MODE: Using full catalog with ${similar.length} activities for traffic analysis.`);
+            logger.info(`🎛️ RANDOM INTEREST MODE: Using full catalog with ${similar.length} activities for traffic analysis.`, {}, 'activitySearch');
         }
 
         // Apply unified intelligent filtering and optimization
@@ -272,9 +273,9 @@ export async function findAndScoreActivities(
                   const key = `${r.coordinates.lat.toFixed(3)},${r.coordinates.lng.toFixed(3)}`
                   if (!seenTitles.has(key)) { seenTitles.add(key); tomResults.push(r) }
                 }
-                console.log(`🌍 STRICT CITY: query "${q}" → ${batch.length} results (cumulative ${tomResults.length})`)
+                logger.info(`🌍 STRICT CITY: query "${q}" → ${batch.length} results (cumulative ${tomResults.length})`, {q: q}, 'activitySearch')
               } catch (qErr) {
-                console.warn(`STRICT CITY query "${q}" failed`, qErr)
+                logger.warn(`STRICT CITY query "${q}" failed`, { error: qErr }, 'activitySearch')
               }
             }
             // Bounds post-filter (spec 9.1 #7): TomTom bbox is bias not hard filter
@@ -287,7 +288,7 @@ export async function findAndScoreActivities(
                 return isWithinCityBounds(lat, lon, cityId);
               });
               if (beforeBounds !== filteredByBounds.length) {
-                console.log(`STRICT CITY: bounds filter removed ${beforeBounds - filteredByBounds.length} out-of-bounds for ${cityId}`);
+                logger.info(`STRICT CITY: bounds filter removed ${beforeBounds - filteredByBounds.length} out-of-bounds for ${cityId}`, {cityId: cityId}, 'activitySearch');
               }
               tomResults = filteredByBounds;
             }
@@ -307,10 +308,10 @@ export async function findAndScoreActivities(
                   updated_at: new Date().toISOString(),
                 }));
                 const { error } = await supabaseAdmin.from("places").upsert(rows, { onConflict: "id" });
-                if (error) console.warn("places upsert warning", error.message);
+                if (error) logger.warn(`places upsert warning`, { error: error.message }, 'activitySearch');
               }
             } catch (e) {
-              console.warn("places upsert failed (migration not yet applied?)", e);
+              logger.warn(`places upsert failed (migration not yet applied?)`, { error: e }, 'activitySearch');
             }
 
             if (tomResults.length > 0) {
@@ -323,7 +324,7 @@ export async function findAndScoreActivities(
                 const dayIndex = Math.floor(getCityTime(cityId).getTime() / 86400000);
                 const prevHead = tomResults[0]?.name;
                 tomResults = rotateByDay(tomResults, dayIndex);
-                console.log(`🔁 DAILY ROTATION: day ${dayIndex} offset ${dayIndex % tomResults.length}/${tomResults.length} for ${cityId} (head was "${prevHead}")`);
+                logger.info(`🔁 DAILY ROTATION: day ${dayIndex} offset ${dayIndex % tomResults.length}/${tomResults.length} for ${cityId} (head was "${prevHead}")`, {dayIndex: dayIndex, cityId: cityId, prevHead: prevHead}, 'activitySearch');
               }
               filteredSimilar = tomResults.slice(0, 20).map(r => ({
                 activity_id: r.name,
@@ -347,14 +348,14 @@ export async function findAndScoreActivities(
                 searchMethod: 'tomtom_strict',
                 vectorScore:0, semanticScore:0, confidenceLevel:0.6,
               }))
-              console.log(`🌍 STRICT CITY: ${cityId} → ${filteredSimilar.length} TomTom places (Baguio vector ignored)`)
+              logger.info(`🌍 STRICT CITY: ${cityId} → ${filteredSimilar.length} TomTom places (Baguio vector ignored)`, {cityId: cityId}, 'activitySearch')
             } else {
               // STRICT: honest empty — do NOT leak Baguio results into another city
-              console.warn(`⚠️ STRICT CITY: TomTom returned 0 for ${cityId} after retry — returning EMPTY (no Baguio leakage)`)
+              logger.warn(`⚠️ STRICT CITY: TomTom returned 0 for ${cityId} after retry — returning EMPTY (no Baguio leakage)`, {cityId: cityId}, 'activitySearch')
               filteredSimilar = []
             }
           } catch (e) {
-            console.warn(`⚠️ STRICT CITY: TomTom failed for ${cityId} — returning EMPTY (no Baguio leakage)`, e)
+            logger.warn(`⚠️ STRICT CITY: TomTom failed for ${cityId} — returning EMPTY (no Baguio leakage)`, { error: e }, 'activitySearch')
             filteredSimilar = []
           }
         } else if (filteredSimilar.length < 8) {
@@ -396,9 +397,9 @@ export async function findAndScoreActivities(
                             const key = `${r.coordinates.lat.toFixed(3)},${r.coordinates.lng.toFixed(3)}`
                             if (!seenTitles.has(key)) { seenTitles.add(key); baguioTomResults.push(r) }
                         }
-                        console.log(`🌍 BAGUIO SUPPLEMENT: query "${q}" → ${batch.length} results (cumulative ${baguioTomResults.length})`)
+                        logger.info(`🌍 BAGUIO SUPPLEMENT: query "${q}" → ${batch.length} results (cumulative ${baguioTomResults.length})`, {q: q}, 'activitySearch')
                     } catch (qErr) {
-                        console.warn(`BAGUIO SUPPLEMENT query "${q}" failed`, qErr)
+                        logger.warn(`BAGUIO SUPPLEMENT query "${q}" failed`, { error: qErr }, 'activitySearch')
                     }
                 }
                 // Bounds post-filter (spec 9.1 #7)
@@ -411,7 +412,7 @@ export async function findAndScoreActivities(
                         return isWithinCityBounds(lat, lon, "baguio")
                     })
                     if (beforeBounds !== filteredByBounds.length) {
-                        console.log(`BAGUIO SUPPLEMENT: bounds filter removed ${beforeBounds - filteredByBounds.length} out-of-bounds`)
+                        logger.info(`BAGUIO SUPPLEMENT: bounds filter removed ${beforeBounds - filteredByBounds.length} out-of-bounds`, {}, 'activitySearch')
                     }
                     baguioTomResults = filteredByBounds
                 }
@@ -439,12 +440,12 @@ export async function findAndScoreActivities(
                 }))
                 if (hybrid.length > 0) {
                     filteredSimilar = [...filteredSimilar, ...hybrid].slice(0, 40)
-                    console.log(`🌍 BAGUIO SUPPLEMENT: Added ${hybrid.length} TomTom → total ${filteredSimilar.length}`)
+                    logger.info(`🌍 BAGUIO SUPPLEMENT: Added ${hybrid.length} TomTom → total ${filteredSimilar.length}`, {}, 'activitySearch')
                 } else {
-                    console.warn(`🌍 BAGUIO SUPPLEMENT: TomTom returned 0 for Baguio across ${queryCandidates.length} compact queries — falling through to empty-result fallback`)
+                    logger.warn(`🌍 BAGUIO SUPPLEMENT: TomTom returned 0 for Baguio across ${queryCandidates.length} compact queries — falling through to empty-result fallback`, {}, 'activitySearch')
                 }
             } catch (e) {
-                console.warn("Baguio TomTom supplement failed", e)
+                logger.warn(`Baguio TomTom supplement failed`, { error: e }, 'activitySearch')
             }
         }
 
@@ -462,7 +463,7 @@ export async function findAndScoreActivities(
             const tier1 = matchLocalActivities(catalog, terms, allowedWeatherTags);
             const tier2 = tier1.length > 0 ? tier1 : matchLocalActivities(catalog, terms, []);
             const net = tier2.length > 0 ? tier2 : catalog.slice(0, 40);
-            console.log(`🛟 BAGUIO SAFETY NET: ${net.length} local matches (terms: [${terms.join(", ") || "none"}])`);
+            logger.info(`🛟 BAGUIO SAFETY NET: ${net.length} local matches (terms: [${terms.join(", ") || "none"}])`, {}, 'activitySearch');
             filteredSimilar = net.slice(0, 40).map((activity: Activity) => ({
                 activity_id: activity.title,
                 similarity: 0.25,
@@ -491,7 +492,7 @@ export async function findAndScoreActivities(
         // input was day-rotated upstream, so the head varies day to day.
         const FINALIST_CAP = 12;
         if (filteredSimilar.length > FINALIST_CAP) {
-            console.log(`✂️ SHORTLIST: capping ${filteredSimilar.length} → ${FINALIST_CAP} before traffic+image enrichment`);
+            logger.info(`✂️ SHORTLIST: capping ${filteredSimilar.length} → ${FINALIST_CAP} before traffic+image enrichment`, {FINALIST_CAP: FINALIST_CAP}, 'activitySearch');
             filteredSimilar = filteredSimilar.slice(0, FINALIST_CAP);
         }
 
@@ -501,17 +502,16 @@ export async function findAndScoreActivities(
 
             if (trafficAware) {
                 // Apply traffic-aware activity search with detailed logging
-                console.log(`\n🚦 TRAFFIC-AWARE SEARCH: Processing ${filteredSimilar.length} activities`);
+                logger.info(`\n🚦 TRAFFIC-AWARE SEARCH: Processing ${filteredSimilar.length} activities`, {}, 'activitySearch');
                 const trafficOptions = createDefaultTrafficOptions();
                 const trafficEnhancedActivities = await trafficAwareActivitySearch.enhanceActivitiesWithTraffic(
                     filteredSimilar.map(s => s.metadata),
                     trafficOptions
                 );
-                console.log(`✅ TRAFFIC-AWARE SEARCH: Enhanced ${trafficEnhancedActivities.length} activities with real-time traffic data`);
+                logger.info(`✅ TRAFFIC-AWARE SEARCH: Enhanced ${trafficEnhancedActivities.length} activities with real-time traffic data`, {}, 'activitySearch');
                 
                 // Log detailed traffic integration results
-                console.log(`\n=== TOMTOM API INTEGRATION RESULTS ===`);
-                const trafficSummary = trafficEnhancedActivities.map(activity => ({
+                                const trafficSummary = trafficEnhancedActivities.map(activity => ({
                     name: activity.title,
                     coordinates: activity.trafficAnalysis ? `${activity.trafficAnalysis.lat}, ${activity.trafficAnalysis.lon}` : 'NO_COORDS',
                     trafficLevel: activity.trafficAnalysis?.realTimeTraffic?.trafficLevel || 'NO_DATA',
@@ -523,9 +523,8 @@ export async function findAndScoreActivities(
                 const successfulTrafficFetches = trafficSummary.filter(a => a.hasRealTimeData).length;
                 const totalActivities = trafficSummary.length;
                 
-                console.log(`🎯 TOMTOM API SUCCESS RATE: ${successfulTrafficFetches}/${totalActivities} (${Math.round(successfulTrafficFetches/totalActivities*100)}%)`);
-                console.log(`📊 DETAILED TRAFFIC DATA:`, trafficSummary);
-                console.log(`=======================================\n`);
+                logger.info(`🎯 TOMTOM API SUCCESS RATE: ${successfulTrafficFetches}/${totalActivities} (${Math.round(successfulTrafficFetches/totalActivities*100)}%)`, {successfulTrafficFetches: successfulTrafficFetches, totalActivities: totalActivities}, 'activitySearch');
+                logger.info(`📊 DETAILED TRAFFIC DATA:`, { trafficSummary }, 'activitySearch');
 
                 // Soft traffic ranking — keep all, rank by combinedTrafficScore instead of hard drop
                 // Previously hard-filtered HIGH/SEVERE → 0 results on congested PH days (retention killer)
@@ -535,7 +534,7 @@ export async function findAndScoreActivities(
                 trafficFilteredActivities.forEach(a => {
                   const lvl = a.trafficAnalysis?.realTimeTraffic?.trafficLevel
                   if (lvl === 'HIGH' || lvl === 'SEVERE') {
-                    console.log(`⚠️ TRAFFIC SOFT PENALTY: ${a.title} level ${lvl} will rank lower (not dropped)`)
+                    logger.info(`⚠️ TRAFFIC SOFT PENALTY: ${a.title} level ${lvl} will rank lower (not dropped)`, {lvl: lvl}, 'activitySearch')
                   }
                 })
 
@@ -545,9 +544,9 @@ export async function findAndScoreActivities(
                 try {
                     finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5, city: getCityConfig(cityId).name }) as unknown as typeof finalActivities
                 } catch (e) {
-                    console.warn("Image enrichment failed, keeping original images", e)
+                    logger.warn(`Image enrichment failed, keeping original images`, { error: e }, 'activitySearch')
                 }
-                console.log(` FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`);
+                logger.info(` FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`, {}, 'activitySearch');
 
                 // Build sanitised allowed activities (with traffic data)
                 sanitisedAllowedActivities = finalActivities.map(activity => ({
@@ -564,7 +563,7 @@ export async function findAndScoreActivities(
                 }));
             } else {
                 // FAST MODE: Skip traffic enhancement, use raw search results
-                console.log(`⚡ FAST MODE: Skipping traffic integration for ${filteredSimilar.length} activities`);
+                logger.info(`⚡ FAST MODE: Skipping traffic integration for ${filteredSimilar.length} activities`, {}, 'activitySearch');
                 finalActivities = filteredSimilar.map(s => ({
                     ...s.metadata,
                     relevanceScore: s.relevanceScore,
@@ -577,7 +576,7 @@ export async function findAndScoreActivities(
                 try {
                     finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5, city: getCityConfig(cityId).name }) as unknown as typeof finalActivities
                 } catch (e) {
-                    console.warn("Image enrichment (fast mode) failed", e)
+                    logger.warn(`Image enrichment (fast mode) failed`, { error: e }, 'activitySearch')
                 }
                 sanitisedAllowedActivities = finalActivities.map((activity: Activity & { trafficAnalysis?: unknown }) => ({
                     image: activity.image,
@@ -647,8 +646,6 @@ export async function findAndScoreActivities(
 
             // Log traffic integration for traffic-aware mode only
             if (trafficAware) {
-                console.log(`
-=== FINAL ITINERARY TRAFFIC INTEGRATION ===`);
                 const finalTrafficStats = finalActivities.map(activity => ({
                     activity: activity.title,
                     realTimeTraffic: activity.trafficAnalysis?.realTimeTraffic ? 'INTEGRATED' : 'FALLBACK',
@@ -659,9 +656,8 @@ export async function findAndScoreActivities(
                 }));
                 
                 const integratedCount = finalTrafficStats.filter(a => a.realTimeTraffic === 'INTEGRATED').length;
-                console.log(`🚀 REAL-TIME TRAFFIC INTEGRATION: ${integratedCount}/${finalActivities.length} activities using live TomTom data`);
-                console.log(`📈 TRAFFIC-AWARE ITINERARY:`, finalTrafficStats);
-                console.log(`==========================================\n`);
+                logger.info(`🚀 REAL-TIME TRAFFIC INTEGRATION: ${integratedCount}/${finalActivities.length} activities using live TomTom data`, {integratedCount: integratedCount}, 'activitySearch');
+                logger.info(`📈 TRAFFIC-AWARE ITINERARY:`, { finalTrafficStats }, 'activitySearch');
             }
 
             // Add traffic tags only in traffic-aware mode
@@ -783,13 +779,13 @@ export async function findAndScoreActivities(
                         })),
                     },
                 } as unknown as typeof effectiveSampleItinerary;
-                console.log(`🛟 EMPTY-RESULT FALLBACK: ${fallbackMatches.length} local matches for ${cityId} via compact tokens [${compactTokens.slice(0, 4).join(', ')}...]`);
+                logger.info(`🛟 EMPTY-RESULT FALLBACK: ${fallbackMatches.length} local matches for ${cityId} via compact tokens [${compactTokens.slice(0, 4).join(', ')}...]`, {cityId: cityId}, 'activitySearch');
             } else {
-                console.warn(`🛟 EMPTY-RESULT FALLBACK: no curated matches for ${cityId} either — returning null (composer will handle)`);
+                logger.warn(`🛟 EMPTY-RESULT FALLBACK: no curated matches for ${cityId} either — returning null (composer will handle)`, {cityId: cityId}, 'activitySearch');
             }
         }
     } catch (searchErr) {
-        console.warn("Intelligent search failed, falling back to basic search", searchErr);
+        logger.warn(`Intelligent search failed, falling back to basic search`, { error: searchErr }, 'activitySearch');
         
         // Ultimate fallback: return a subset of activities based on simple text matching
         const availableActivities = sampleItineraryCombined.items[0].activities;
