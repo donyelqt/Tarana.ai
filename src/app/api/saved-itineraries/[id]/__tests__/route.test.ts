@@ -21,6 +21,7 @@ import {
   getItineraryById,
   updateItineraryById,
 } from '@/lib/services/itineraryService';
+import { claimIdempotency, completeIdempotency, hashIdempotencyPayload } from '@/lib/services/idempotencyService';
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -35,11 +36,24 @@ jest.mock('@/lib/services/itineraryService', () => ({
   getItineraryById: jest.fn(),
   updateItineraryById: jest.fn(),
 }));
-
+jest.mock('@/lib/services/idempotencyService', () => ({
+  claimIdempotency: jest.fn(),
+  completeIdempotency: jest.fn(),
+  hashIdempotencyPayload: jest.fn(() => 'hash-1'),
+  getIdempotencyKey: (request: { headers: { get: (k: string) => string | null } }) => {
+    const raw = request.headers.get('Idempotency-Key') ?? request.headers.get('X-Idempotency-Key');
+    if (!raw) return null;
+    const trimmed = raw.trim();
+    return trimmed.length > 0 && trimmed.length <= 256 ? trimmed : null;
+  },
+}));
 const sessionMock = mockedGetServerSession as unknown as jest.Mock;
 const mockedGetItineraryById = getItineraryById as unknown as jest.Mock;
 const mockedUpdateItineraryById = updateItineraryById as unknown as jest.Mock;
 const mockedDeleteItineraryById = deleteItineraryById as unknown as jest.Mock;
+const mockedClaimIdempotency = claimIdempotency as unknown as jest.Mock;
+const mockedCompleteIdempotency = completeIdempotency as unknown as jest.Mock;
+const mockedHashIdempotencyPayload = hashIdempotencyPayload as unknown as jest.Mock;
 
 const params = (id = 'itin-1') => ({ params: Promise.resolve({ id }) });
 const req = (body?: unknown) =>
@@ -150,5 +164,95 @@ describe('saved-itineraries [id] route', () => {
     const res = await DELETE(req(), params());
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ success: true });
+  });
+});
+
+describe('saved-itineraries [id] PATCH idempotency (2.3-R3)', () => {
+  function patchWithKey(body: unknown, key: string, id = 'itin-1') {
+    return PATCH(
+      {
+        headers: { get: (name: string) => (name === 'Idempotency-Key' ? key : null) },
+        json: async () => body,
+      } as unknown as NextRequest,
+      params(id)
+    );
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    sessionMock.mockResolvedValue({ user: { id: 'user-1' } });
+    mockedHashIdempotencyPayload.mockReturnValue('hash-1');
+  });
+
+  test('returns a cached replay instead of running the mutation', async () => {
+    mockedClaimIdempotency.mockResolvedValue({
+      kind: 'replay',
+      replay: { status: 200, body: { success: true, data: { id: 'itin-cached' } } },
+    });
+
+    const res = await patchWithKey({ title: 'New' }, 'key-1');
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ data: { id: 'itin-cached' } });
+    expect(mockedUpdateItineraryById).not.toHaveBeenCalled();
+    expect(mockedCompleteIdempotency).not.toHaveBeenCalled();
+  });
+
+  test('claims, runs, and completes a first request with the exact response', async () => {
+    mockedClaimIdempotency.mockResolvedValue({ kind: 'owner', rowId: 7 });
+    mockedUpdateItineraryById.mockResolvedValue(row);
+    mockedCompleteIdempotency.mockResolvedValue(undefined);
+
+    const res = await patchWithKey({ title: 'New' }, 'key-1');
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(mockedClaimIdempotency).toHaveBeenCalledWith('user-1', '/api/saved-itineraries/itin-1', 'key-1', expect.any(String));
+    expect(mockedUpdateItineraryById).toHaveBeenCalledTimes(1);
+    expect(mockedCompleteIdempotency).toHaveBeenCalledWith(7, 200, body);
+  });
+
+  test('does not consult idempotency when no key is sent', async () => {
+    mockedUpdateItineraryById.mockResolvedValue(row);
+
+    const res = await PATCH(req({ title: 'New' }), params());
+
+    expect(res.status).toBe(200);
+    expect(mockedClaimIdempotency).not.toHaveBeenCalled();
+    expect(mockedCompleteIdempotency).not.toHaveBeenCalled();
+  });
+
+  test('rejects a concurrent duplicate without running the mutation', async () => {
+    mockedClaimIdempotency.mockResolvedValue({ kind: 'conflict' });
+
+    const res = await patchWithKey({ title: 'New' }, 'key-1');
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: 'Request is already being processed' });
+    expect(res.headers.get('Retry-After')).toBe('1');
+    expect(mockedUpdateItineraryById).not.toHaveBeenCalled();
+    expect(mockedCompleteIdempotency).not.toHaveBeenCalled();
+  });
+
+  test('rejects a reused key with a different payload without running the mutation', async () => {
+    mockedClaimIdempotency.mockResolvedValue({ kind: 'payload-mismatch' });
+
+    const res = await patchWithKey({ title: 'Different' }, 'key-1');
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ error: 'Idempotency key was already used with a different payload' });
+    expect(mockedUpdateItineraryById).not.toHaveBeenCalled();
+    expect(mockedCompleteIdempotency).not.toHaveBeenCalled();
+  });
+
+  test('caches a 404 miss so a replay cannot re-run the lookup', async () => {
+    mockedClaimIdempotency.mockResolvedValue({ kind: 'owner', rowId: 7 });
+    mockedUpdateItineraryById.mockResolvedValue(null);
+    mockedCompleteIdempotency.mockResolvedValue(undefined);
+
+    const res = await patchWithKey({ title: 'New' }, 'key-1');
+
+    expect(res.status).toBe(404);
+    expect(mockedCompleteIdempotency).toHaveBeenCalledWith(7, 404, { error: 'Itinerary not found' });
   });
 });

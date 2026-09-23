@@ -5,6 +5,9 @@ import { handleApiError } from '@/lib/errors/handleApiError';
 import { mapRowToSavedItinerary, resolveItineraryImage, UpdateItinerarySchema } from '@/lib/data/itineraryMapper';
 import { z } from 'zod';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { claimIdempotency, completeIdempotency, getIdempotencyKey, hashIdempotencyPayload } from '@/lib/services/idempotencyService';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
 
 function toDbPayload(validated: z.infer<typeof UpdateItinerarySchema>) {
   const payload: Record<string, unknown> = {};
@@ -74,12 +77,60 @@ export const PATCH = withAuth(async (request: NextRequest, userId: string, ...ar
         return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
       }
 
-      const data = await updateItineraryById(id, userId, payload);
+      const key = getIdempotencyKey(request);
+      const claim = key
+        ? await claimIdempotency(userId, `/api/saved-itineraries/${id}`, key, hashIdempotencyPayload(validation.data))
+        : null;
+
+      if (claim?.kind === 'replay') {
+        return NextResponse.json(claim.replay.body, { status: claim.replay.status });
+      }
+
+      if (claim?.kind === 'conflict') {
+        const response = NextResponse.json(
+          { error: 'Request is already being processed' },
+          { status: 409 }
+        );
+        response.headers.set('Retry-After', '1');
+        return response;
+      }
+
+      if (claim?.kind === 'payload-mismatch') {
+        return NextResponse.json(
+          { error: 'Idempotency key was already used with a different payload' },
+          { status: 422 }
+        );
+      }
+
+      let data;
+      try {
+        data = await updateItineraryById(id, userId, payload);
+      } catch {
+        if (claim?.kind === 'owner') {
+          await completeIdempotency(claim.rowId, 500, { error: 'Failed to update itinerary' }).catch(() => {
+            logger.error('[idempotency] failed to cache mutation failure', { route: `/api/saved-itineraries/${id}`, rowId: claim.rowId }, getRequestId(request));
+          });
+        }
+        return handleApiError(new Error('Failed to update itinerary'), request);
+      }
 
       if (!data) {
+        if (claim?.kind === 'owner') {
+          await completeIdempotency(claim.rowId, 404, { error: 'Itinerary not found' }).catch(() => {
+            logger.error('[idempotency] failed to cache mutation failure', { route: `/api/saved-itineraries/${id}`, rowId: claim.rowId }, getRequestId(request));
+          });
+        }
         return NextResponse.json({ error: 'Itinerary not found' }, { status: 404 });
       }
-      return NextResponse.json({ success: true, data: mapRowToSavedItinerary(data) });
+      const responseBody = { success: true, data: mapRowToSavedItinerary(data) };
+      const response = NextResponse.json(responseBody);
+
+      if (claim?.kind === 'owner') {
+        await completeIdempotency(claim.rowId, 200, responseBody).catch(() => {
+          logger.error('[idempotency] failed to complete key', { route: `/api/saved-itineraries/${id}`, rowId: claim.rowId }, getRequestId(request));
+        });
+      }
+      return response;
     } catch (error) {
       return handleApiError(error, request);
     }
