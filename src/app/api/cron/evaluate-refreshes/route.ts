@@ -78,9 +78,9 @@ function authFailureResponse(failure: Exclude<AuthFailure, null>): NextResponse 
 
 async function evaluateAndNotify(notify: boolean, message: string, requestId: string): Promise<RequestOutcome> {
   try {
-    const stats = await evaluateAllItineraries();
+    const stats = await evaluateAllItineraries(requestId);
     if (notify && stats.needsRefreshCount > 0) {
-      await notifyUsersOfRefreshNeeds(stats.results);
+      await notifyUsersOfRefreshNeeds(stats.results, requestId);
     }
 
     return {

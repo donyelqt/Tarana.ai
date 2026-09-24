@@ -9,6 +9,7 @@
 import { getSavedItineraries, SavedItinerary } from '../data/savedItineraries';
 import { itineraryRefreshService } from './itineraryRefreshService';
 import { fetchWeatherFromAPI } from '../core/utils';
+import { logger } from '@/lib/observability/logger';
 
 // ============================================================================
 // TYPES
@@ -38,6 +39,8 @@ export interface SchedulerStats {
 // CONFIGURATION
 // ============================================================================
 
+const LOG_ENTRY_POINT = 'refreshScheduler';
+
 const SCHEDULER_CONFIG = {
   evaluationIntervalHours: 6, // Don't re-evaluate within 6 hours
   maxRefreshesPerDay: 4, // Limit refreshes per itinerary per day
@@ -53,11 +56,9 @@ const SCHEDULER_CONFIG = {
  * Evaluate all saved itineraries for refresh needs
  * Called by cron job or manual trigger
  */
-export async function evaluateAllItineraries(): Promise<SchedulerStats> {
+export async function evaluateAllItineraries(requestId?: string): Promise<SchedulerStats> {
   const startTime = Date.now();
-  console.log('\n' + '='.repeat(80));
-  console.log('🔄 SCHEDULED REFRESH EVALUATION STARTED');
-  console.log('='.repeat(80) + '\n');
+  logger.info('Scheduled refresh evaluation started', { entryPoint: LOG_ENTRY_POINT }, requestId);
 
   const stats: SchedulerStats = {
     totalItineraries: 0,
@@ -70,94 +71,100 @@ export async function evaluateAllItineraries(): Promise<SchedulerStats> {
   };
 
   try {
-    // ========================================================================
-    // 1. FETCH ALL ITINERARIES
-    // ========================================================================
-    console.log('📂 Fetching all saved itineraries...');
+    logger.debug('Loading itineraries for refresh evaluation', { entryPoint: LOG_ENTRY_POINT }, requestId);
     const allItineraries = await getSavedItineraries();
     stats.totalItineraries = allItineraries.length;
-    console.log(`✅ Found ${stats.totalItineraries} itineraries\n`);
+    logger.info(
+      'Itineraries loaded for refresh evaluation',
+      { entryPoint: LOG_ENTRY_POINT, totalItineraries: stats.totalItineraries },
+      requestId
+    );
 
     if (allItineraries.length === 0) {
-      console.log('ℹ️ No itineraries to evaluate');
+      logger.info('Refresh evaluation has no itineraries', { entryPoint: LOG_ENTRY_POINT }, requestId);
       stats.duration = Date.now() - startTime;
       return stats;
     }
 
-    // ========================================================================
-    // 2. FILTER ITINERARIES FOR EVALUATION
-    // ========================================================================
-    console.log('🔍 Filtering itineraries for evaluation...');
-    const itinerariesToEvaluate = filterItinerariesForEvaluation(allItineraries);
+    const itinerariesToEvaluate = filterItinerariesForEvaluation(allItineraries, requestId);
     stats.skippedCount = stats.totalItineraries - itinerariesToEvaluate.length;
-    
-    console.log(`✅ ${itinerariesToEvaluate.length} itineraries to evaluate`);
-    console.log(`⏭️ ${stats.skippedCount} itineraries skipped\n`);
+    logger.info(
+      'Itineraries selected for refresh evaluation',
+      {
+        entryPoint: LOG_ENTRY_POINT,
+        selectedCount: itinerariesToEvaluate.length,
+        skippedCount: stats.skippedCount,
+      },
+      requestId
+    );
 
-    // ========================================================================
-    // 3. PROCESS IN BATCHES
-    // ========================================================================
     const batches = createBatches(itinerariesToEvaluate, SCHEDULER_CONFIG.batchSize);
-    console.log(`📦 Processing ${batches.length} batches (${SCHEDULER_CONFIG.batchSize} per batch)\n`);
+    logger.info(
+      'Refresh evaluation batches created',
+      { entryPoint: LOG_ENTRY_POINT, batchCount: batches.length, batchSize: SCHEDULER_CONFIG.batchSize },
+      requestId
+    );
 
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
-      console.log(`\n${'─'.repeat(80)}`);
-      console.log(`📦 Processing Batch ${i + 1}/${batches.length} (${batch.length} itineraries)`);
-      console.log('─'.repeat(80) + '\n');
+      logger.debug(
+        'Refresh evaluation batch started',
+        {
+          entryPoint: LOG_ENTRY_POINT,
+          batchNumber: i + 1,
+          batchCount: batches.length,
+          itineraryCount: batch.length,
+        },
+        requestId
+      );
 
-      const batchResults = await processBatch(batch);
-      
-      // Aggregate results
+      const batchResults = await processBatch(batch, requestId);
       batchResults.forEach(result => {
         if (result) {
           stats.results.push(result);
           stats.evaluatedCount++;
-          if (result.needsRefresh) {
-            stats.needsRefreshCount++;
-          }
+          if (result.needsRefresh) stats.needsRefreshCount++;
         } else {
           stats.errorCount++;
         }
       });
 
-      // Delay between batches to avoid overload
       if (i < batches.length - 1) {
-        console.log(`\n⏳ Waiting ${SCHEDULER_CONFIG.batchDelayMs}ms before next batch...`);
+        logger.debug(
+          'Refresh evaluation batch delay',
+          {
+            entryPoint: LOG_ENTRY_POINT,
+            delayMs: SCHEDULER_CONFIG.batchDelayMs,
+            batchesRemaining: batches.length - i - 1,
+          },
+          requestId
+        );
         await delay(SCHEDULER_CONFIG.batchDelayMs);
       }
     }
 
-    // ========================================================================
-    // 4. SUMMARY
-    // ========================================================================
     stats.duration = Date.now() - startTime;
-    
-    console.log('\n' + '='.repeat(80));
-    console.log('✅ SCHEDULED EVALUATION COMPLETED');
-    console.log('='.repeat(80));
-    console.log(`\n📊 Summary:`);
-    console.log(`   Total Itineraries: ${stats.totalItineraries}`);
-    console.log(`   Evaluated: ${stats.evaluatedCount}`);
-    console.log(`   Needs Refresh: ${stats.needsRefreshCount}`);
-    console.log(`   Skipped: ${stats.skippedCount}`);
-    console.log(`   Errors: ${stats.errorCount}`);
-    console.log(`   Duration: ${(stats.duration / 1000).toFixed(2)}s\n`);
-
-    if (stats.needsRefreshCount > 0) {
-      console.log('🚨 Itineraries needing refresh:');
-      stats.results
-        .filter(r => r.needsRefresh)
-        .forEach(r => {
-          console.log(`   - ${r.itineraryTitle} (${r.severity}): ${r.reasons.join(', ')}`);
-        });
-      console.log('');
-    }
+    logger.info(
+      'Scheduled refresh evaluation completed',
+      {
+        entryPoint: LOG_ENTRY_POINT,
+        totalItineraries: stats.totalItineraries,
+        evaluatedCount: stats.evaluatedCount,
+        needsRefreshCount: stats.needsRefreshCount,
+        skippedCount: stats.skippedCount,
+        errorCount: stats.errorCount,
+        durationMs: stats.duration,
+      },
+      requestId
+    );
 
     return stats;
-
   } catch (error) {
-    console.error('\n❌ SCHEDULER ERROR:', error);
+    logger.error(
+      'Scheduled refresh evaluation failed',
+      { entryPoint: LOG_ENTRY_POINT, errorName: error instanceof Error ? error.name : typeof error },
+      requestId
+    );
     stats.duration = Date.now() - startTime;
     stats.errorCount++;
     return stats;
@@ -171,44 +178,57 @@ export async function evaluateAllItineraries(): Promise<SchedulerStats> {
 /**
  * Filter itineraries that should be evaluated
  */
-function filterItinerariesForEvaluation(itineraries: SavedItinerary[]): SavedItinerary[] {
+function filterItinerariesForEvaluation(
+  itineraries: SavedItinerary[],
+  requestId?: string
+): SavedItinerary[] {
   const now = Date.now();
   const evaluationInterval = SCHEDULER_CONFIG.evaluationIntervalHours * 60 * 60 * 1000;
 
   return itineraries.filter(itinerary => {
-    // Skip if auto-refresh disabled
     if (itinerary.refreshMetadata?.autoRefreshEnabled === false) {
-      console.log(`⏭️ Skipping ${itinerary.title}: Auto-refresh disabled`);
+      logger.debug(
+        'Itinerary skipped',
+        { entryPoint: LOG_ENTRY_POINT, reason: 'auto_refresh_disabled' },
+        requestId
+      );
       return false;
     }
 
-    // Skip if evaluated recently
     const lastEval = itinerary.refreshMetadata?.lastEvaluatedAt;
     if (lastEval) {
       const timeSinceEval = now - new Date(lastEval).getTime();
       if (timeSinceEval < evaluationInterval) {
-        const hoursRemaining = ((evaluationInterval - timeSinceEval) / (60 * 60 * 1000)).toFixed(1);
-        console.log(`⏭️ Skipping ${itinerary.title}: Evaluated ${hoursRemaining}h ago`);
+        logger.debug(
+          'Itinerary skipped',
+          { entryPoint: LOG_ENTRY_POINT, reason: 'evaluated_recently' },
+          requestId
+        );
         return false;
       }
     }
 
-    // Skip if refreshed too many times today
     const refreshCount = itinerary.refreshMetadata?.refreshCount || 0;
     const lastRefresh = itinerary.refreshMetadata?.lastRefreshedAt;
-    
     if (lastRefresh) {
       const hoursSinceRefresh = (now - new Date(lastRefresh).getTime()) / (60 * 60 * 1000);
       if (hoursSinceRefresh < 24 && refreshCount >= SCHEDULER_CONFIG.maxRefreshesPerDay) {
-        console.log(`⏭️ Skipping ${itinerary.title}: Max refreshes reached (${refreshCount}/${SCHEDULER_CONFIG.maxRefreshesPerDay})`);
+        logger.debug(
+          'Itinerary skipped',
+          { entryPoint: LOG_ENTRY_POINT, reason: 'max_refreshes_reached' },
+          requestId
+        );
         return false;
       }
     }
 
-    // Skip if itinerary is in the past
     const endDate = new Date(itinerary.formData.dates.end);
     if (endDate < new Date()) {
-      console.log(`⏭️ Skipping ${itinerary.title}: Trip already completed`);
+      logger.debug(
+        'Itinerary skipped',
+        { entryPoint: LOG_ENTRY_POINT, reason: 'trip_completed' },
+        requestId
+      );
       return false;
     }
 
@@ -231,46 +251,52 @@ function createBatches<T>(items: T[], batchSize: number): T[][] {
  * Process a batch of itineraries
  */
 async function processBatch(
-  itineraries: SavedItinerary[]
+  itineraries: SavedItinerary[],
+  requestId?: string
 ): Promise<(ScheduledEvaluationResult | null)[]> {
-  const promises = itineraries.map(itinerary => evaluateItinerary(itinerary));
-  return Promise.all(promises);
+  return Promise.all(itineraries.map(itinerary => evaluateItinerary(itinerary, requestId)));
 }
 
 /**
  * Evaluate a single itinerary
  */
 async function evaluateItinerary(
-  itinerary: SavedItinerary
+  itinerary: SavedItinerary,
+  requestId?: string
 ): Promise<ScheduledEvaluationResult | null> {
-  console.log(`\n🔍 Evaluating: ${itinerary.title}`);
+  logger.debug('Itinerary evaluation started', { entryPoint: LOG_ENTRY_POINT }, requestId);
 
   try {
-    // Extract activity coordinates
     const activityCoordinates = extractActivityCoordinates(itinerary);
-    
     if (activityCoordinates.length === 0) {
-      console.log(`   Using default Baguio coordinates`);
-      activityCoordinates.push({ 
-        lat: 16.4023, 
-        lon: 120.5960, 
-        name: 'Baguio City Center' 
+      logger.debug(
+        'Itinerary coordinates defaulted',
+        { entryPoint: LOG_ENTRY_POINT, usedDefaultCoordinates: true },
+        requestId
+      );
+      activityCoordinates.push({
+        lat: 16.4023,
+        lon: 120.5960,
+        name: 'Baguio City Center'
       });
     } else {
-      console.log(`   Found ${activityCoordinates.length} activity locations`);
+      logger.debug(
+        'Itinerary coordinates resolved',
+        { entryPoint: LOG_ENTRY_POINT, activityCount: activityCoordinates.length },
+        requestId
+      );
     }
 
-    // Fetch current weather
     const currentWeather = await fetchWeatherFromAPI();
-    
     if (!currentWeather) {
-      console.log(`   ⚠️ Weather data unavailable - skipping`);
+      logger.warn(
+        'Itinerary evaluation skipped',
+        { entryPoint: LOG_ENTRY_POINT, reason: 'weather_unavailable' },
+        requestId
+      );
       return null;
     }
 
-    console.log(`   Weather: ${currentWeather.weather[0]?.main}, ${currentWeather.main.temp}°C`);
-
-    // Evaluate refresh need
     const evaluation = await itineraryRefreshService.evaluateRefreshNeed(
       itinerary,
       currentWeather,
@@ -287,17 +313,24 @@ async function evaluateItinerary(
       evaluatedAt: new Date()
     };
 
-    if (evaluation.needsRefresh) {
-      console.log(`   🚨 NEEDS REFRESH: ${evaluation.severity} (${evaluation.confidence}% confidence)`);
-      console.log(`   Reasons: ${evaluation.reasons.join(', ')}`);
-    } else {
-      console.log(`   ✅ No refresh needed`);
-    }
+    logger.info(
+      'Itinerary evaluation completed',
+      {
+        entryPoint: LOG_ENTRY_POINT,
+        needsRefresh: evaluation.needsRefresh,
+        severity: evaluation.severity,
+        confidence: evaluation.confidence,
+      },
+      requestId
+    );
 
     return result;
-
   } catch (error) {
-    console.error(`   ❌ Error evaluating ${itinerary.title}:`, error);
+    logger.error(
+      'Itinerary evaluation failed',
+      { entryPoint: LOG_ENTRY_POINT, errorName: error instanceof Error ? error.name : typeof error },
+      requestId
+    );
     return null;
   }
 }
@@ -357,23 +390,36 @@ function delay(ms: number): Promise<void> {
  * Manually trigger evaluation for a specific itinerary
  */
 export async function evaluateSingleItinerary(
-  itineraryId: string
+  itineraryId: string,
+  requestId?: string
 ): Promise<ScheduledEvaluationResult | null> {
-  console.log(`\n🔍 Manual evaluation for itinerary: ${itineraryId}\n`);
+  logger.info('Manual itinerary evaluation started', { entryPoint: LOG_ENTRY_POINT }, requestId);
 
   try {
     const allItineraries = await getSavedItineraries();
-    const itinerary = allItineraries.find(i => i.id === itineraryId);
+    const itinerary = allItineraries.find(item => item.id === itineraryId);
 
     if (!itinerary) {
-      console.log(`❌ Itinerary not found: ${itineraryId}`);
+      logger.warn(
+        'Manual itinerary lookup completed',
+        { entryPoint: LOG_ENTRY_POINT, found: false },
+        requestId
+      );
       return null;
     }
 
-    return await evaluateItinerary(itinerary);
-
+    logger.info(
+      'Manual itinerary lookup completed',
+      { entryPoint: LOG_ENTRY_POINT, found: true },
+      requestId
+    );
+    return evaluateItinerary(itinerary, requestId);
   } catch (error) {
-    console.error(`❌ Error in manual evaluation:`, error);
+    logger.error(
+      'Manual itinerary evaluation failed',
+      { entryPoint: LOG_ENTRY_POINT, errorName: error instanceof Error ? error.name : typeof error },
+      requestId
+    );
     return null;
   }
 }
@@ -387,22 +433,30 @@ export async function evaluateSingleItinerary(
  * Can be extended to send emails/push notifications
  */
 export async function notifyUsersOfRefreshNeeds(
-  results: ScheduledEvaluationResult[]
+  results: ScheduledEvaluationResult[],
+  requestId?: string
 ): Promise<void> {
-  const needsRefresh = results.filter(r => r.needsRefresh);
-
+  const needsRefresh = results.filter(result => result.needsRefresh);
   if (needsRefresh.length === 0) {
-    console.log('ℹ️ No notifications needed');
+    logger.info(
+      'Refresh notifications prepared',
+      { entryPoint: LOG_ENTRY_POINT, count: 0, severityCounts: {} },
+      requestId
+    );
     return;
   }
 
-  console.log(`\n📧 Sending notifications for ${needsRefresh.length} itineraries...`);
+  const severityCounts = needsRefresh.reduce<Partial<Record<ScheduledEvaluationResult['severity'], number>>>(
+    (counts, result) => {
+      counts[result.severity] = (counts[result.severity] ?? 0) + 1;
+      return counts;
+    },
+    {}
+  );
 
-  // TODO: Implement email/push notification logic
-  // For now, just log
-  needsRefresh.forEach(result => {
-    console.log(`   - ${result.itineraryTitle}: ${result.severity} severity`);
-  });
-
-  console.log('✅ Notifications sent\n');
+  logger.info(
+    'Refresh notifications prepared',
+    { entryPoint: LOG_ENTRY_POINT, count: needsRefresh.length, severityCounts },
+    requestId
+  );
 }
