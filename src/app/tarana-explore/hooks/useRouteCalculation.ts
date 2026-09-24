@@ -135,10 +135,21 @@ export function useRouteCalculation() {
    * StrictMode double-invokes impure updaters, which doubled this fetch.
    */
   const refreshTraffic = useCallback(async () => {
-    const routeId = stateRef.current.currentRoute?.id
-    if (!routeId) return
+    const route = stateRef.current.currentRoute
+    if (!route) return
+
+    const routeSnapshot = {
+      id: route.id,
+      summary: { travelTimeInSeconds: route.summary.travelTimeInSeconds },
+      geometry: { coordinates: route.geometry.coordinates },
+    }
+
     try {
-      const r = await fetch(`/api/routes/traffic-analysis/${routeId}`)
+      const r = await fetch(`/api/routes/traffic-analysis/${route.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ route: routeSnapshot }),
+      })
       if (!r.ok) return
       const trafficData = await r.json()
       if (!trafficData) return
