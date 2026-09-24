@@ -278,10 +278,11 @@ export const POST = withAuth(async (
         request
       );
     } catch (regenerationError) {
-      console.error('❌ Regeneration failed:', regenerationError);
-      const errorMessage = regenerationError instanceof Error 
-        ? regenerationError.message 
+      const errorMessage = regenerationError instanceof Error
+        ? regenerationError.message
         : 'Unknown generation error';
+      // Server log only: response bodies must not carry raw upstream detail.
+      console.error('Regeneration failed:', errorMessage);
       // Client gets the phase, never the raw upstream text (safe-error
       // boundary: response bodies must not carry raw upstream detail).
       console.error('❌ Regeneration failed:', errorMessage);
@@ -817,8 +818,9 @@ function extractActivityCoordinates(
 }
 
 /**
- * Regenerate itinerary using the enterprise generation pipeline
- * PRODUCTION-OPTIMIZED: Uses direct function import to avoid timeout issues
+ * Regenerate itinerary via the authenticated generation endpoint.
+ * Internal HTTP call: the caller's credential is forwarded (see
+ * forwardCallerCredential) because server-to-server fetch attaches nothing.
  */
 async function regenerateItinerary(
   originalItinerary: SavedItinerary,
