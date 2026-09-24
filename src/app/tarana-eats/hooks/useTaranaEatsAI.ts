@@ -35,12 +35,14 @@ export const useTaranaEatsAI = () => {
           mealType: preferences.mealType
         }
       };
+      const idempotencyKey = globalThis.crypto.randomUUID();
 
       // Call the Gemini API
       const response = await fetch('/api/gemini/food-recommendations', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey
         },
         body: JSON.stringify(payload)
       });

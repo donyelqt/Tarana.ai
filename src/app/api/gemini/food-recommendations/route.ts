@@ -14,6 +14,13 @@ import { withRetry } from "@/lib/upstream/withRetry";
 import { timedHttp } from "@/lib/observability/httpMetrics";
 import { logger } from "@/lib/observability/logger";
 import { getRequestId } from "@/middleware/requestId";
+import {
+  claimIdempotency,
+  completeIdempotency,
+  getIdempotencyKey,
+  hashIdempotencyPayload,
+  type IdempotencyClaim,
+} from "@/lib/services/idempotencyService";
 interface EnhancedResultMatch extends ResultMatch {
   fullMenu?: FullMenu;
   reason?: string;
@@ -37,6 +44,7 @@ const configuredModelId = process.env.GOOGLE_GEMINI_MODEL?.trim();
 const MODEL_ID = configuredModelId && configuredModelId.length > 0 ? configuredModelId : DEFAULT_MODEL_ID;
 
 const LOG_ENTRY_POINT = "food-recommendations";
+const IDEMPOTENCY_ROUTE = '/api/gemini/food-recommendations';
 
 if (!configuredModelId && API_KEY) {
   logger.info(`[Food Recommendations] Using Gemini model: ${DEFAULT_MODEL_ID}`, { entryPoint: LOG_ENTRY_POINT, model: DEFAULT_MODEL_ID });
@@ -81,14 +89,55 @@ const MAX_RECOMMENDATIONS = 5;
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   const requestId = getRequestId(req);
   return timedHttp('/api/gemini/food-recommendations', 'POST', async () => {
+  let claim: IdempotencyClaim | null = null;
+  const completeClaim = async (status: number, body: unknown): Promise<void> => {
+    const rowId = claim?.kind === 'owner' ? claim.rowId : null;
+    if (rowId === null) return;
+    try {
+      await completeIdempotency(rowId, status, body);
+    } catch (error) {
+      logger.error('[idempotency] failed to complete key', {
+        entryPoint: LOG_ENTRY_POINT,
+        route: IDEMPOTENCY_ROUTE,
+        rowId,
+        errorName: error instanceof Error ? error.name : typeof error,
+      }, requestId);
+      throw error;
+    }
+  };
   try {
-    const { prompt, foodData, preferences: clientPreferences } = await req.json();
+    const requestBody = await req.json();
+    const { prompt, foodData, preferences: clientPreferences } = requestBody;
 
     // Input validation
     if (!prompt) {
       return NextResponse.json(
         { error: "Prompt is required" },
         { status: 400 }
+      );
+    }
+    const key = getIdempotencyKey(req);
+    claim = key
+      ? await claimIdempotency(userId, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload(requestBody))
+      : null;
+
+    if (claim?.kind === 'replay') {
+      return NextResponse.json(claim.replay.body, { status: claim.replay.status });
+    }
+
+    if (claim?.kind === 'conflict') {
+      const response = NextResponse.json(
+        { error: 'Request is already being processed' },
+        { status: 409 }
+      );
+      response.headers.set('Retry-After', '1');
+      return response;
+    }
+
+    if (claim?.kind === 'payload-mismatch') {
+      return NextResponse.json(
+        { error: 'Idempotency key was already used with a different payload' },
+        { status: 422 }
       );
     }
     // ✅ CREDIT SYSTEM: Charge first, atomically (H1-Eats). consumeCredits
@@ -103,6 +152,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     // overlapping refund calls dedupe) but unique across retries (so a
     // retried request's legitimate second refund is never swallowed).
     const attemptId = randomUUID();
+    let charged = false;
     try {
       await CreditService.consumeCredits({
         userId,
@@ -112,18 +162,17 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       });
     } catch (creditError) {
       if (creditError instanceof InsufficientCreditsError) {
-        return NextResponse.json(
-          {
-            error: 'Insufficient credits',
-            required: 1,
-            available: creditError.available,
-          },
-          { status: 402 }
-        );
+        const responseBody = {
+          error: 'Insufficient credits',
+          required: 1,
+          available: creditError.available,
+        };
+        await completeClaim(402, responseBody);
+        return NextResponse.json(responseBody, { status: 402 });
       }
       throw creditError;
     }
-    const charged = true;
+    charged = true;
 
     // Parse preferences from prompt first
     const preferences = parseUserPreferences(prompt, requestId);
@@ -173,6 +222,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       
       // Use intelligent recommendation engine instead of basic fallback
       const intelligentRecommendations = createIntelligentRecommendations(foodData, prompt, preferences, requestId);
+      await completeClaim(200, intelligentRecommendations);
       return NextResponse.json(intelligentRecommendations);
     }
     
@@ -189,6 +239,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     // Check cache for recent similar requests
     const cached = responseCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      await completeClaim(200, cached.response);
       return NextResponse.json(cached.response);
     }
     const preprocessingKey = `${preferences.cuisine || 'all'}-${preferences.budget || 'all'}-${preferences.pax || 2}`;
@@ -204,6 +255,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       logger.error("Gemini model is not initialized – missing API key?", { entryPoint: LOG_ENTRY_POINT }, requestId);
       // Create a fallback response
       const fallbackRecommendations = createFallbackRecommendations(foodData, prompt, requestId);
+      await completeClaim(200, fallbackRecommendations);
       return NextResponse.json(fallbackRecommendations);
     }
 
@@ -366,6 +418,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         timestamp: Date.now()
       });
 
+      await completeClaim(200, recommendations);
       return NextResponse.json(recommendations);
 
     } catch (apiError) {
@@ -390,6 +443,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         retryable: foodError.retryable
       }, requestId);
       const errorResponse = FoodRecommendationErrorHandler.createErrorResponse(foodError);
+      await completeClaim(500, errorResponse);
       return NextResponse.json(errorResponse, { status: 500 });
     }
   } catch (error) {
@@ -401,6 +455,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }, requestId);
 
     const errorResponse = FoodRecommendationErrorHandler.createErrorResponse(foodError);
+    await completeClaim(500, errorResponse);
     return NextResponse.json(errorResponse, { status: 500 });
   }
   }, (res) => res.status);
