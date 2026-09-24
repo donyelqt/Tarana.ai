@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RouteTrafficAnalysis } from '@/types/route-optimization';
-import { routeTrafficAnalyzer } from '@/lib/services/routeTrafficAnalysis';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
 
 /**
  * GET /api/routes/traffic-analysis/[id]
@@ -12,8 +13,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   return timedHttp('/api/routes/traffic-analysis/[id]', 'GET', async () => {
+  const routeId = params.id;
+  const requestId = getRequestId(request);
   try {
-    const routeId = params.id;
 
     if (!routeId) {
       return NextResponse.json(
@@ -22,7 +24,11 @@ export async function GET(
       );
     }
 
-    console.log(`🔍 API: Getting traffic analysis for route ${routeId}`);
+    logger.info(
+      'Getting traffic analysis',
+      { entryPoint: '/api/routes/traffic-analysis/[id]', routeIdLength: routeId.length },
+      requestId
+    );
 
     // In a real implementation, you would:
     // 1. Fetch the route data from database using routeId
@@ -104,12 +110,20 @@ export async function GET(
       lastUpdated: new Date()
     };
 
-    console.log(`✅ API: Traffic analysis retrieved for route ${routeId}`);
+    logger.info(
+      'Traffic analysis retrieved',
+      { entryPoint: '/api/routes/traffic-analysis/[id]', routeIdLength: routeId.length },
+      requestId
+    );
 
     return NextResponse.json(mockTrafficAnalysis);
 
-  } catch (error) {
-    console.error('❌ API: Traffic analysis retrieval failed:', error);
+  } catch {
+    logger.error(
+      'Traffic analysis retrieval failed',
+      { entryPoint: '/api/routes/traffic-analysis/[id]', routeIdLength: routeId?.length ?? 0 },
+      requestId
+    );
     
     return NextResponse.json(
       { error: 'Failed to get traffic analysis' },
