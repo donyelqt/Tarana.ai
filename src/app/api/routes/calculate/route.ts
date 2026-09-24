@@ -10,13 +10,18 @@ import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import { routeTrafficAnalyzer } from '@/lib/services/routeTrafficAnalysis';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
+
+const LOG_ENTRY_POINT = '/api/routes/calculate';
 
 /**
  * POST /api/routes/calculate
  * Calculate optimal route with traffic analysis
  */
 export async function POST(request: NextRequest) {
-  return timedHttp('/api/routes/calculate', 'POST', async () => {
+  return timedHttp(LOG_ENTRY_POINT, 'POST', async () => {
+  const correlationId = getRequestId(request);
   try {
     const body = await request.json();
     const routeRequest: RouteRequest = body;
@@ -36,13 +41,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log(`📋 API: Processing route request ${requestId}:`, {
-      origin: routeRequest.origin.name,
-      destination: routeRequest.destination.name,
-      waypoints: routeRequest.waypoints?.length || 0,
-      routeType: routeRequest.preferences.routeType
-    });
+    const responseRequestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    logger.info(
+      'Route calculation started',
+      { entryPoint: LOG_ENTRY_POINT, waypointCount: routeRequest.waypoints?.length ?? 0 },
+      correlationId
+    );
 
     // Forward the browser's Referer so TomTom's Referer allowlist accepts the
     // server-side call (the browser already sends an allowed Referer for the map).
@@ -50,29 +54,45 @@ export async function POST(request: NextRequest) {
 
     // Calculate primary route
     const primaryRoute = await tomtomRoutingService.calculateRoute(routeRequest, forwardedReferer);
-    console.log(`✅ API: Primary route calculated - ${primaryRoute.id}`);
+    logger.info(
+      'Primary route calculated',
+      { entryPoint: LOG_ENTRY_POINT, routeIdLength: primaryRoute.id.length },
+      correlationId
+    );
 
     // Calculate alternative routes (parallel to traffic analysis)
     const [alternativeRoutes, trafficAnalysis] = await Promise.all([
-      tomtomRoutingService.getAlternativeRoutes(routeRequest, forwardedReferer).catch(error => {
-        console.warn('⚠️ API: Alternative routes calculation failed:', error);
+      tomtomRoutingService.getAlternativeRoutes(routeRequest, forwardedReferer).catch(() => {
+        logger.warn('Alternative routes unavailable', { entryPoint: LOG_ENTRY_POINT }, correlationId);
         return [];
       }),
-      routeTrafficAnalyzer.analyzeRouteTraffic(primaryRoute).catch(error => {
-        console.warn('⚠️ API: Traffic analysis failed:', error);
+      routeTrafficAnalyzer.analyzeRouteTraffic(primaryRoute).catch(() => {
+        logger.warn(
+          'Traffic analysis unavailable; using fallback',
+          { entryPoint: LOG_ENTRY_POINT, fallback: true },
+          correlationId
+        );
         return createFallbackTrafficAnalysis(primaryRoute);
       })
     ]);
 
-    console.log(`📊 API: Analysis complete - ${alternativeRoutes.length} alternatives, traffic score: ${trafficAnalysis.congestionScore}%`);
+    logger.info(
+      'Route analysis completed',
+      { entryPoint: LOG_ENTRY_POINT, alternativeCount: alternativeRoutes.length, congestionScore: trafficAnalysis.congestionScore },
+      correlationId
+    );
 
     // Analyze alternative routes traffic if available
     let alternativeAnalyses: RouteTrafficAnalysis[] = [];
     if (alternativeRoutes.length > 0) {
       alternativeAnalyses = await Promise.all(
-        alternativeRoutes.map(route => 
-          routeTrafficAnalyzer.analyzeRouteTraffic(route).catch(error => {
-            console.warn(`⚠️ API: Traffic analysis failed for alternative route ${route.id}:`, error);
+        alternativeRoutes.map((route, index) =>
+          routeTrafficAnalyzer.analyzeRouteTraffic(route).catch(() => {
+            logger.warn(
+              'Alternative route traffic analysis unavailable; using fallback',
+              { entryPoint: LOG_ENTRY_POINT, alternativeIndex: index, fallback: true },
+              correlationId
+            );
             return createFallbackTrafficAnalysis(route);
           })
         )
@@ -91,11 +111,15 @@ export async function POST(request: NextRequest) {
         ]);
         
         recommendations = [routeComparison.recommendation];
-        console.log(`🎯 API: Route comparison complete - Best: ${routeComparison.bestRouteId}`);
-      } catch (error) {
-        console.warn('⚠️ API: Route comparison failed:', error);
-      }
+        logger.info(
+          'Route comparison completed',
+          { entryPoint: LOG_ENTRY_POINT, recommendationCount: recommendations.length },
+          correlationId
+        );
+      } catch {
+        logger.warn('Route comparison unavailable', { entryPoint: LOG_ENTRY_POINT }, correlationId);
     }
+  }
 
     // Generate general recommendations based on traffic analysis
     if (recommendations.length === 0) {
@@ -113,7 +137,7 @@ export async function POST(request: NextRequest) {
         destination: routeRequest.destination,
         waypoints: routeRequest.waypoints || []
       },
-      requestId,
+      requestId: responseRequestId,
       timestamp: new Date()
     };
 
@@ -127,7 +151,16 @@ export async function POST(request: NextRequest) {
       (response as any).comparisonMetrics = routeComparison.comparisonMetrics;
     }
 
-    console.log(`🎉 API: Route analyzation completed successfully for request ${requestId}`);
+    logger.info(
+      'Route calculation completed',
+      {
+        entryPoint: LOG_ENTRY_POINT,
+        alternativeCount: alternativeRoutes.length,
+        hasAlternativeAnalyses: alternativeAnalyses.length > 0,
+        hasComparison: routeComparison !== null,
+      },
+      correlationId
+    );
 
     return NextResponse.json(response);
 
