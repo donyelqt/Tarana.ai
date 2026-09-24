@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
+import { BENCH_TOKEN_HEADER } from '@/lib/auth/benchToken';
 import { getSavedItineraries, updateItinerary, SavedItinerary } from '@/lib/data/savedItineraries';
 import { fetchWeatherFromAPI } from '@/lib/core/utils';
 import { timedHttp } from '@/lib/observability/httpMetrics';
@@ -15,6 +16,36 @@ import {
   ChangeDetectionResult 
 } from '@/lib/services/itineraryRefreshService';
 import { parallelTrafficProcessor } from '@/lib/performance/parallelTrafficProcessor';
+
+// ============================================================================
+// CROSS-ROUTE CREDENTIAL FORWARDING
+// ============================================================================
+
+/**
+ * Build the auth headers for an internal server-to-server call.
+ *
+ * The generator enforces its own auth boundary (`withAuth`), and Node's
+ * `fetch` does not attach the browser's cookies to an outbound server call.
+ * Without this, the internal POST carries no credential, the generator
+ * returns 401, and the refresh path can never regenerate.
+ *
+ * Only the caller's own credential is forwarded — never a service token —
+ * so the downstream call is scoped to the requesting user exactly as their
+ * own browser request would be. Session cookies are still validated
+ * upstream by NextAuth on the generator side.
+ */
+function forwardCallerCredential(request: NextRequest): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const benchToken = request.headers.get(BENCH_TOKEN_HEADER);
+  if (benchToken) {
+    // Bench requests carry no session cookie; the HMAC token is their proof.
+    headers[BENCH_TOKEN_HEADER] = benchToken;
+    return headers;
+  }
+  const cookie = request.headers.get('cookie');
+  if (cookie) headers.cookie = cookie;
+  return headers;
+}
 
 // ============================================================================
 // ROUTE SEGMENT CONFIG (Next.js 13+ App Router)
@@ -243,23 +274,24 @@ export const POST = withAuth(async (
         itinerary,
         currentWeather,
         activityCoordinates,
-        evaluation
+        evaluation,
+        request
       );
     } catch (regenerationError) {
       console.error('❌ Regeneration failed:', regenerationError);
       const errorMessage = regenerationError instanceof Error 
         ? regenerationError.message 
         : 'Unknown generation error';
+      // Client gets the phase, never the raw upstream text (safe-error
+      // boundary: response bodies must not carry raw upstream detail).
+      console.error('❌ Regeneration failed:', errorMessage);
       
       return NextResponse.json(
         { 
           success: false, 
           message: 'Generation failed', 
-          error: `Failed to generate updated itinerary: ${errorMessage}`,
-          details: {
-            phase: 'regeneration',
-            originalError: errorMessage
-          }
+          error: 'Failed to generate an updated itinerary',
+          details: { phase: 'regeneration' }
         },
         { status: 500 }
       );
@@ -416,7 +448,7 @@ export const POST = withAuth(async (
       { 
         success: false, 
         message: 'Refresh failed', 
-        error: errorMessage,
+        error: 'Internal server error',
         details: {
           duration: `${duration}ms`,
           category: isTimeout ? 'timeout' : isNetworkError ? 'network' : isGenerationError ? 'generation' : 'unknown',
@@ -792,7 +824,8 @@ async function regenerateItinerary(
   originalItinerary: SavedItinerary,
   currentWeather: any,
   activityCoordinates: Array<{ lat: number; lon: number; name: string }>,
-  evaluation: ChangeDetectionResult
+  evaluation: ChangeDetectionResult,
+  request: NextRequest
 ): Promise<any> {
   try {
     console.log('🔄 Calling itinerary generation API...');
@@ -857,7 +890,13 @@ async function regenerateItinerary(
       headers: { 
         'Content-Type': 'application/json',
         'x-refresh-request': 'true', // Flag for cache bypass
-        'x-bypass-cache': 'true' // Additional cache bypass flag
+        'x-bypass-cache': 'true', // Additional cache bypass flag
+        // The generator is an authenticated endpoint (withAuth). This is a
+        // server-to-server call, so the browser's session cookie is not
+        // attached automatically — forward the caller's credential or the
+        // request 401s and every refresh fails. Bench tokens win when
+        // present (k6 path); otherwise the session cookie is forwarded.
+        ...forwardCallerCredential(request),
       },
       body: JSON.stringify({
         prompt: prompt,
