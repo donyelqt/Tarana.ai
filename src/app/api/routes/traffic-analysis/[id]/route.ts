@@ -1,134 +1,93 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { RouteTrafficAnalysis } from '@/types/route-optimization';
-import { timedHttp } from '@/lib/observability/httpMetrics';
-import { logger } from '@/lib/observability/logger';
-import { getRequestId } from '@/middleware/requestId';
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { timedHttp } from '@/lib/observability/httpMetrics'
+import { logger } from '@/lib/observability/logger'
+import { getRequestId } from '@/middleware/requestId'
+import { routeTrafficAnalyzer } from '@/lib/services/routeTrafficAnalysis'
+
+const MAX_REQUEST_BYTES = 256 * 1024
+const MAX_COORDINATES = 1_000
+
+const routeSnapshotSchema = z.object({
+  id: z.string().trim().min(1).max(200),
+  summary: z.object({
+    travelTimeInSeconds: z.number().finite().positive().max(86_400),
+  }).strict(),
+  geometry: z.object({
+    coordinates: z.array(
+      z.object({
+        lat: z.number().finite().min(-90).max(90),
+        lng: z.number().finite().min(-180).max(180),
+      }).strict()
+    ).min(2).max(MAX_COORDINATES),
+  }).strict(),
+}).strict()
+
+const requestBodySchema = z.object({ route: routeSnapshotSchema }).strict()
 
 /**
- * GET /api/routes/traffic-analysis/[id]
- * Get real-time traffic analysis for a specific route
+ * POST /api/routes/traffic-analysis/[id]
+ * Recompute traffic for a route already held by the caller.
  */
-export async function GET(
+export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  return timedHttp('/api/routes/traffic-analysis/[id]', 'GET', async () => {
-  const routeId = params.id;
-  const requestId = getRequestId(request);
-  try {
+  const routeId = params.id
+  const requestId = getRequestId(request)
 
-    if (!routeId) {
-      return NextResponse.json(
-        { error: 'Route ID is required' },
-        { status: 400 }
-      );
+  return timedHttp('/api/routes/traffic-analysis/[id]', 'POST', async () => {
+    const contentLengthHeader = request.headers.get('content-length')
+    const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0
+
+    if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 })
     }
 
-    logger.info(
-      'Getting traffic analysis',
-      { entryPoint: '/api/routes/traffic-analysis/[id]', routeIdLength: routeId.length },
-      requestId
-    );
+    let payload: unknown
+    try {
+      payload = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
 
-    // In a real implementation, you would:
-    // 1. Fetch the route data from database using routeId
-    // 2. Analyze current traffic conditions
-    // 3. Return updated traffic analysis
+    const parsed = requestBodySchema.safeParse(payload)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid route data' }, { status: 400 })
+    }
 
-    // For now, return a mock traffic analysis
-    const mockTrafficAnalysis: RouteTrafficAnalysis = {
-      overallTrafficLevel: 'MODERATE',
-      segmentAnalysis: [
+    const { route } = parsed.data
+    if (route.id !== routeId) {
+      return NextResponse.json({ error: 'Route id does not match request path' }, { status: 400 })
+    }
+
+    try {
+      logger.info(
+        'Traffic analysis requested',
+        { entryPoint: '/api/routes/traffic-analysis/[id]', routeIdLength: routeId.length },
+        requestId
+      )
+
+      const analysis = await routeTrafficAnalyzer.analyzeRouteTraffic(route)
+      logger.info(
+        'Traffic analysis refreshed',
+        { entryPoint: '/api/routes/traffic-analysis/[id]', routeIdLength: routeId.length },
+        requestId
+      )
+
+      return NextResponse.json(analysis)
+    } catch (error) {
+      logger.error(
+        'Traffic analysis failed',
         {
-          segmentId: 'segment_0',
-          startCoordinate: { lat: 16.4067, lng: 120.5960 },
-          endCoordinate: { lat: 16.4099, lng: 120.5950 },
-          trafficLevel: 'LOW',
-          speedKmh: 45,
-          freeFlowSpeedKmh: 60,
-          delaySeconds: 120,
-          incidents: [],
-          roadType: 'arterial',
-          roadName: 'Gov. Pack Road'
+          entryPoint: '/api/routes/traffic-analysis/[id]',
+          routeIdLength: routeId.length,
+          errorName: error instanceof Error ? error.name : typeof error,
         },
-        {
-          segmentId: 'segment_1',
-          startCoordinate: { lat: 16.4099, lng: 120.5950 },
-          endCoordinate: { lat: 16.4120, lng: 120.5930 },
-          trafficLevel: 'MODERATE',
-          speedKmh: 35,
-          freeFlowSpeedKmh: 50,
-          delaySeconds: 180,
-          incidents: [
-            {
-              id: 'incident_1',
-              iconCategory: 1,
-              magnitudeOfDelay: 2,
-              events: [
-                {
-                  description: 'Minor traffic congestion',
-                  code: 101,
-                  iconCategory: 1
-                }
-              ],
-              startTime: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-              endTime: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-              from: 'Magsaysay Ave',
-              to: 'Jose Abad Santos Dr',
-              length: 500,
-              delay: 180,
-              roadNumbers: ['Local Road'],
-              timeValidity: 'active',
-              coordinates: { lat: 16.4110, lng: 120.5940 }
-            }
-          ],
-          roadType: 'local',
-          roadName: 'Magsaysay Avenue'
-        }
-      ],
-      estimatedDelay: 300,
-      alternativeRecommendation: false,
-      peakHourImpact: {
-        isCurrentlyPeakHour: false,
-        peakHourMultiplier: 1.0,
-        expectedTrafficIncrease: 0,
-        nextPeakHour: new Date(Date.now() + 2 * 60 * 60 * 1000),
-        historicalAverage: 25
-      },
-      historicalComparison: {
-        typicalTravelTime: 1800,
-        currentVsTypical: 1.2,
-        weekdayPattern: [1.0, 0.8, 0.9, 1.2, 1.4, 1.3, 0.7],
-        hourlyPattern: [
-          0.3, 0.2, 0.2, 0.3, 0.4, 0.6, 0.8, 1.4, 1.6, 1.2,
-          1.0, 1.1, 1.3, 1.2, 1.0, 0.9, 1.1, 1.5, 1.7, 1.3,
-          1.0, 0.8, 0.6, 0.4
-        ]
-      },
-      congestionScore: 45,
-      recommendationScore: 75,
-      lastUpdated: new Date()
-    };
+        requestId
+      )
 
-    logger.info(
-      'Traffic analysis retrieved',
-      { entryPoint: '/api/routes/traffic-analysis/[id]', routeIdLength: routeId.length },
-      requestId
-    );
-
-    return NextResponse.json(mockTrafficAnalysis);
-
-  } catch {
-    logger.error(
-      'Traffic analysis retrieval failed',
-      { entryPoint: '/api/routes/traffic-analysis/[id]', routeIdLength: routeId?.length ?? 0 },
-      requestId
-    );
-    
-    return NextResponse.json(
-      { error: 'Failed to get traffic analysis' },
-      { status: 500 }
-    );
-  }
-  }, (res) => res.status);
+      return NextResponse.json({ error: 'Failed to get traffic analysis' }, { status: 500 })
+    }
+  }, (res) => res.status)
 }

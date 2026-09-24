@@ -32,11 +32,21 @@ const DESTINATION: LocationPoint = {
 
 const PRIMARY_ROUTE = {
   id: 'route-123',
-  summary: {},
+  summary: {
+    lengthInMeters: 2_000,
+    travelTimeInSeconds: 1_800,
+    trafficDelayInSeconds: 0,
+  },
   legs: [],
-  geometry: {},
+  geometry: {
+    type: 'LineString',
+    coordinates: [
+      { lat: 16.4088, lng: 120.5979 },
+      { lat: 16.4158, lng: 120.6122 },
+    ],
+  },
   instructions: [],
-} as unknown as import('@/types/route-optimization').RouteData
+} as const
 
 const INITIAL_TRAFFIC = {
   overallTrafficLevel: 'LOW',
@@ -104,7 +114,20 @@ describe('useRouteCalculation.refreshTraffic', () => {
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock).toHaveBeenCalledWith('/api/routes/traffic-analysis/route-123')
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/routes/traffic-analysis/route-123',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          route: {
+            id: PRIMARY_ROUTE.id,
+            summary: { travelTimeInSeconds: PRIMARY_ROUTE.summary.travelTimeInSeconds },
+            geometry: { coordinates: PRIMARY_ROUTE.geometry.coordinates },
+          },
+        }),
+      }
+    )
     expect(result.current.state.trafficConditions).toEqual(REFRESHED_TRAFFIC)
     expect(result.current.state.lastUpdated).not.toBeNull()
   })

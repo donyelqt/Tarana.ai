@@ -19,6 +19,28 @@ import {
 import { tomtomTrafficService, LocationTrafficData } from '@/lib/traffic/tomtomTraffic';
 import { getTrafficLevelFromScore } from '@/lib/utils/trafficColors';
 import { isPeakHour, getPeakHourMultiplier, getNextPeakHour } from '@/lib/traffic/peakHours';
+import { logger } from '@/lib/observability/logger';
+
+export type TrafficRouteSnapshot = {
+  id: string;
+  summary: { travelTimeInSeconds: number };
+  geometry: { coordinates: Coordinates[] };
+};
+
+const LOG_ENTRY_POINT = 'routeTrafficAnalysis';
+
+function getErrorLogMetadata(error: unknown): { errorName: string; errorCode?: string } {
+  const errorName = error instanceof Error ? error.name : typeof error;
+
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    const errorCode = error.code;
+    if (typeof errorCode === 'string' && errorCode.length > 0 && errorCode.length <= 32) {
+      return { errorName, errorCode };
+    }
+  }
+
+  return { errorName };
+}
 
 interface TrafficSegmentAnalysis {
   segmentId: string;
@@ -42,13 +64,13 @@ class RouteTrafficAnalyzer {
   /**
    * Analyze traffic conditions for a complete route
    */
-  async analyzeRouteTraffic(route: RouteData): Promise<RouteTrafficAnalysis> {
-    console.log('🔍 Route Traffic: Analyzing traffic for route', route.id);
+  async analyzeRouteTraffic(route: TrafficRouteSnapshot): Promise<RouteTrafficAnalysis> {
+    logger.info('Route traffic analysis started', { entryPoint: LOG_ENTRY_POINT, routeIdLength: route.id.length });
 
     // Check cache first
     const cached = this.cache.get(route.id);
     if (cached && Date.now() < cached.expiry) {
-      console.log('📋 Route Traffic: Using cached analysis for route', route.id);
+      logger.info('Using cached route traffic analysis', { entryPoint: LOG_ENTRY_POINT, routeIdLength: route.id.length });
       return cached.analysis;
     }
 
@@ -91,7 +113,9 @@ class RouteTrafficAnalyzer {
         expiry: Date.now() + this.CACHE_DURATION
       });
 
-      console.log(`✅ Route Traffic: Analysis complete for route ${route.id}:`, {
+      logger.info('Route traffic analysis completed', {
+        entryPoint: LOG_ENTRY_POINT,
+        routeIdLength: route.id.length,
         trafficLevel: analysis.overallTrafficLevel,
         congestionScore: analysis.congestionScore,
         recommendationScore: analysis.recommendationScore,
@@ -101,7 +125,11 @@ class RouteTrafficAnalyzer {
       return analysis;
 
     } catch (error) {
-      console.error('❌ Route Traffic: Analysis failed for route', route.id, error);
+      logger.error('Route traffic analysis failed', {
+        entryPoint: LOG_ENTRY_POINT,
+        routeIdLength: route.id.length,
+        ...getErrorLogMetadata(error)
+      });
       
       // Return fallback analysis
       return this.createFallbackAnalysis(route);
@@ -112,7 +140,7 @@ class RouteTrafficAnalyzer {
    * Compare multiple routes for traffic efficiency
    */
   async compareRouteTraffic(routes: RouteData[]): Promise<RouteComparison> {
-    console.log('🏁 Route Traffic: Comparing', routes.length, 'routes');
+    logger.info('Comparing route traffic', { entryPoint: LOG_ENTRY_POINT, routeCount: routes.length });
 
     if (routes.length === 0) {
       throw new Error('No routes provided for comparison');
@@ -136,12 +164,22 @@ class RouteTrafficAnalyzer {
         comparisonMetrics: this.calculateComparisonMetrics(routes, trafficAnalyses)
       };
 
-      console.log(`✅ Route Traffic: Comparison complete - Best route: ${bestRoute.id} (${recommendation.reason})`);
+      logger.info('Route traffic comparison completed', {
+        entryPoint: LOG_ENTRY_POINT,
+        routeCount: routes.length,
+        bestRouteIdLength: bestRoute.id.length,
+        recommendationType: recommendation.type,
+        recommendationPriority: recommendation.priority
+      });
 
       return comparison;
 
     } catch (error) {
-      console.error('❌ Route Traffic: Route comparison failed:', error);
+      logger.error('Route traffic comparison failed', {
+        entryPoint: LOG_ENTRY_POINT,
+        routeCount: routes.length,
+        ...getErrorLogMetadata(error)
+      });
       throw error;
     }
   }
@@ -150,7 +188,11 @@ class RouteTrafficAnalyzer {
    * Predict traffic conditions for future departure times
    */
   async predictTrafficConditions(route: RouteData, departureTime: Date): Promise<RouteTrafficAnalysis> {
-    console.log('🔮 Route Traffic: Predicting traffic for departure at', departureTime.toLocaleString());
+    logger.info('Predicting route traffic conditions', {
+      entryPoint: LOG_ENTRY_POINT,
+      routeIdLength: route.id.length,
+      departureTime: departureTime.toISOString()
+    });
 
     try {
       // Get current traffic analysis as baseline
@@ -187,12 +229,21 @@ class RouteTrafficAnalyzer {
         predictedAnalysis.peakHourImpact
       );
 
-      console.log(`✅ Route Traffic: Prediction complete - Congestion score: ${predictedAnalysis.congestionScore}%, Recommendation: ${predictedAnalysis.recommendationScore}%`);
+      logger.info('Route traffic prediction completed', {
+        entryPoint: LOG_ENTRY_POINT,
+        routeIdLength: route.id.length,
+        congestionScore: predictedAnalysis.congestionScore,
+        recommendationScore: predictedAnalysis.recommendationScore
+      });
 
       return predictedAnalysis;
 
     } catch (error) {
-      console.error('❌ Route Traffic: Traffic prediction failed:', error);
+      logger.error('Route traffic prediction failed', {
+        entryPoint: LOG_ENTRY_POINT,
+        routeIdLength: route.id.length,
+        ...getErrorLogMetadata(error)
+      });
       throw error;
     }
   }
@@ -204,7 +255,7 @@ class RouteTrafficAnalyzer {
   /**
    * Analyze traffic for individual route segments
    */
-  private async analyzeRouteSegments(route: RouteData): Promise<RouteSegmentTraffic[]> {
+  private async analyzeRouteSegments(route: TrafficRouteSnapshot): Promise<RouteSegmentTraffic[]> {
     const segments: RouteSegmentTraffic[] = [];
     
     // Divide route into segments for analysis
@@ -235,7 +286,11 @@ class RouteTrafficAnalyzer {
         segments.push(segment);
         
       } catch (error) {
-        console.warn(`⚠️ Route Traffic: Failed to analyze segment ${i}:`, error);
+        logger.warn('Failed to analyze route traffic segment', {
+          entryPoint: LOG_ENTRY_POINT,
+          segmentIndex: i,
+          ...getErrorLogMetadata(error)
+        });
         
         // Add fallback segment
         segments.push(this.createFallbackSegment(i, segmentPoints[i], segmentPoints[i + 1]));
@@ -279,7 +334,7 @@ class RouteTrafficAnalyzer {
   /**
    * Analyze peak hour impact on route
    */
-  private analyzePeakHourImpact(route: RouteData, overallAnalysis: any): PeakHourAnalysis {
+  private analyzePeakHourImpact(route: TrafficRouteSnapshot, overallAnalysis: any): PeakHourAnalysis {
     const now = new Date();
     const isCurrentPeakHour = isPeakHour(now);
     const peakMultiplier = getPeakHourMultiplier(now);
@@ -296,7 +351,7 @@ class RouteTrafficAnalyzer {
   /**
    * Generate historical traffic comparison
    */
-  private generateHistoricalComparison(route: RouteData, overallAnalysis: any): TrafficHistoryData {
+  private generateHistoricalComparison(route: TrafficRouteSnapshot, overallAnalysis: any): TrafficHistoryData {
     const typicalTime = route.summary.travelTimeInSeconds;
     const currentTime = typicalTime + overallAnalysis.totalDelay;
     
@@ -551,7 +606,7 @@ class RouteTrafficAnalyzer {
     ];
   }
 
-  private createFallbackAnalysis(route: RouteData): RouteTrafficAnalysis {
+  private createFallbackAnalysis(route: TrafficRouteSnapshot): RouteTrafficAnalysis {
     return {
       overallTrafficLevel: 'MODERATE',
       segmentAnalysis: [],
@@ -590,7 +645,10 @@ class RouteTrafficAnalyzer {
     }
     
     if (cleared > 0) {
-      console.log(`🧹 Route Traffic Analyzer: Cleared ${cleared} expired cache entries`);
+      logger.info('Cleared expired route traffic cache entries', {
+        entryPoint: LOG_ENTRY_POINT,
+        clearedCount: cleared
+      });
     }
   }
 }
