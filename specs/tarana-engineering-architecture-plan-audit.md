@@ -553,7 +553,7 @@ test variables, without changing the source default. Full suite: 550 passed,
 
 | Status | # | Item | Evidence |
 |---|---|---|---|
-| [~] | 5.1 | Structured logs everywhere | Route slices through PR #587, the authenticated cron endpoint, and `refreshScheduler.ts` are converted. The remaining emitter is the unauthenticated, stateful `routes/monitor` placeholder; full close-out is not done. |
+| [x] | 5.1 | Structured logs everywhere | Complete: production route slices through PR #587, the authenticated cron endpoint, and `refreshScheduler.ts` are converted; the unused unauthenticated `routes/monitor` placeholder is removed. Remaining `console.*` inventory is limited to standalone test/diagnostic utilities outside production runtime paths. |
 | [ ] | 5.2 | Tracing | No OpenTelemetry instrumentation. |
 | [ ] | 5.3 | Alerting with runbooks | No symptom alerts or `docs/runbooks/` entries. |
 | [x] | 5.4 | Health checks | **Done — verified live 2026-09-24** (no code change this slice). `src/app/api/health/route.ts` per §3.2 invariant 8: connection-level checks only, 3s per-dependency timeout, unhealthy dependency returns 200 with `status: 'degraded'` rather than failing the request. Live probe on a fresh `next dev` (`:3111`): cold 200 in 5.6s (3.7s of that is first-hit route compile), warm 1014ms then 419ms; body `{"status":"ok","checks":{"supabase":"ok","geminiKey":"ok","tomtom":"ok"}}` on all three calls. Gemini check is key-presence, not generation — a monitoring probe must not cost money. |

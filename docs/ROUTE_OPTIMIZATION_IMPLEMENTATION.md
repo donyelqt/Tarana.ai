@@ -92,13 +92,6 @@ Method: GET
 Purpose: Search and geocode locations
 ```
 
-#### 3. Route Monitoring (`/api/routes/monitor`)
-```
-Location: src/app/api/routes/monitor/route.ts
-Methods: POST, GET, DELETE
-Purpose: Manage real-time route monitoring
-```
-
 ### Type Definitions
 
 #### Comprehensive Types (`route-optimization.ts`)
