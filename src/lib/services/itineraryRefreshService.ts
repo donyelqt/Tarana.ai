@@ -9,6 +9,8 @@
 import { WeatherData } from '../core/utils';
 import { tomtomTrafficService, LocationTrafficData } from '../traffic/tomtomTraffic';
 import { SavedItinerary } from '../data/savedItineraries';
+import { logger } from '@/lib/observability/logger';
+import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -111,6 +113,8 @@ const DEFAULT_CONFIG: RefreshConfiguration = {
   ],
   trafficLevelThreshold: 'MODERATE' // Refresh if traffic exceeds MODERATE
 };
+const LOG_ENTRY_POINT = 'itineraryRefreshService';
+
 
 // ============================================================================
 // ITINERARY REFRESH SERVICE
@@ -123,7 +127,15 @@ class ItineraryRefreshService {
 
   constructor(config: Partial<RefreshConfiguration> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    console.log('🔄 ItineraryRefreshService initialized with config:', this.config);
+    logger.info('Itinerary refresh service initialized', {
+      entryPoint: LOG_ENTRY_POINT,
+      temperatureThreshold: this.config.temperatureThreshold,
+      congestionThreshold: this.config.congestionThreshold,
+      enableAutoRefresh: this.config.enableAutoRefresh,
+      evaluationIntervalHours: this.config.evaluationIntervalHours,
+      maxRefreshesPerDay: this.config.maxRefreshesPerDay,
+      trafficLevelThreshold: this.config.trafficLevelThreshold,
+    });
   }
 
   // ==========================================================================
@@ -138,7 +150,10 @@ class ItineraryRefreshService {
     currentWeather: WeatherData,
     activityCoordinates: Array<{ lat: number; lon: number }>
   ): Promise<ChangeDetectionResult> {
-    console.log(`🔍 Evaluating refresh need for itinerary: ${itinerary.id}`);
+    logger.info('Evaluating itinerary refresh need', {
+      entryPoint: LOG_ENTRY_POINT,
+      activityCount: activityCoordinates.length,
+    });
 
     const cacheKey = `${itinerary.id}_${Date.now()}`;
     
@@ -174,11 +189,12 @@ class ItineraryRefreshService {
         confidence
       };
 
-      console.log(`✅ Evaluation complete:`, {
+      logger.info('Itinerary refresh evaluation complete', {
+        entryPoint: LOG_ENTRY_POINT,
         needsRefresh,
         reasons,
         severity,
-        confidence: `${confidence}%`
+        confidence,
       });
 
       // Cache result
@@ -187,7 +203,10 @@ class ItineraryRefreshService {
       return result;
 
     } catch (error) {
-      console.error('❌ Error evaluating refresh need:', error);
+      logger.error('Itinerary refresh evaluation failed', {
+        entryPoint: LOG_ENTRY_POINT,
+        ...getSafeErrorMetadata(error),
+      });
       
       // Return conservative result on error
       return {
@@ -213,7 +232,7 @@ class ItineraryRefreshService {
     currentWeather: WeatherData
   ): WeatherChangeDetails | null {
     if (!previousWeather || !previousWeather.main) {
-      console.log('⚠️ No previous weather data - assuming change');
+      logger.info('No previous weather data; assuming change', { entryPoint: LOG_ENTRY_POINT });
       return {
         temperatureDelta: 0,
         previousCondition: 'unknown',
@@ -232,13 +251,12 @@ class ItineraryRefreshService {
     const precipitationChange = this.detectPrecipitationChange(prevCondition, currCondition);
     const extremeWeather = this.isExtremeWeather(currentWeather);
 
-    console.log(`🌤️ Weather change analysis:`, {
-      tempDelta: `${tempDelta.toFixed(1)}°C`,
+    logger.info('Weather change analysis completed', {
+      entryPoint: LOG_ENTRY_POINT,
+      temperatureDeltaCelsius: Number(tempDelta.toFixed(1)),
       conditionChanged,
-      previousCondition: prevCondition,
-      currentCondition: currCondition,
       precipitationChange,
-      extremeWeather
+      extremeWeatherDetected: extremeWeather,
     });
 
     return {
@@ -280,7 +298,10 @@ class ItineraryRefreshService {
     itinerary: SavedItinerary,
     activityCoordinates: Array<{ lat: number; lon: number }>
   ): Promise<TrafficChangeDetails | null> {
-    console.log(`🚗 Analyzing traffic for ${activityCoordinates.length} locations`);
+    logger.info('Analyzing itinerary traffic', {
+      entryPoint: LOG_ENTRY_POINT,
+      locationCount: activityCoordinates.length,
+    });
 
     try {
       // Fetch current traffic data for all locations
@@ -297,7 +318,7 @@ class ItineraryRefreshService {
         .map(result => result.value);
 
       if (validTrafficData.length === 0) {
-        console.log('⚠️ No valid traffic data available');
+        logger.info('No valid traffic data available', { entryPoint: LOG_ENTRY_POINT });
         return null;
       }
 
@@ -322,7 +343,7 @@ class ItineraryRefreshService {
       const previousSnapshot = this.extractTrafficSnapshot(itinerary);
       
       if (!previousSnapshot) {
-        console.log('⚠️ No previous traffic snapshot - creating baseline');
+        logger.info('No previous traffic snapshot; creating baseline', { entryPoint: LOG_ENTRY_POINT });
         return {
           congestionDelta: 0,
           previousLevel: 'UNKNOWN',
@@ -337,13 +358,14 @@ class ItineraryRefreshService {
       const levelChanged = avgTrafficLevel !== previousSnapshot.averageTrafficLevel;
       const newIncidents = Math.max(0, totalIncidents - previousSnapshot.incidentCount);
 
-      console.log(`🚦 Traffic change analysis:`, {
-        congestionDelta: `${congestionDelta.toFixed(1)}%`,
+      logger.info('Traffic change analysis completed', {
+        entryPoint: LOG_ENTRY_POINT,
+        congestionDelta: Number(congestionDelta.toFixed(1)),
         previousLevel: previousSnapshot.averageTrafficLevel,
         currentLevel: avgTrafficLevel,
         levelChanged,
-        newIncidents,
-        criticalIncidents
+        newIncidentCount: newIncidents,
+        criticalIncidentCount: criticalIncidents,
       });
 
       return {
@@ -356,7 +378,11 @@ class ItineraryRefreshService {
       };
 
     } catch (error) {
-      console.error('❌ Error detecting traffic change:', error);
+      logger.error('Error detecting traffic change', {
+        entryPoint: LOG_ENTRY_POINT,
+        locationCount: activityCoordinates.length,
+        ...getSafeErrorMetadata(error),
+      });
       return null;
     }
   }
@@ -409,31 +435,42 @@ class ItineraryRefreshService {
   ): boolean {
     // Extreme weather always triggers refresh
     if (weatherChange?.extremeWeatherDetected) {
-      console.log('🚨 CRITICAL: Extreme weather detected - refresh required');
+      logger.info('Extreme weather detected; refresh required', { entryPoint: LOG_ENTRY_POINT });
       return true;
     }
 
     // Significant temperature change
     if (weatherChange && weatherChange.temperatureDelta > this.config.temperatureThreshold) {
-      console.log(`🌡️ Temperature changed by ${weatherChange.temperatureDelta}°C - refresh required`);
+      logger.info('Weather temperature change requires refresh', {
+        entryPoint: LOG_ENTRY_POINT,
+        temperatureDeltaCelsius: weatherChange.temperatureDelta,
+        temperatureThresholdCelsius: this.config.temperatureThreshold,
+      });
       return true;
     }
 
     // Precipitation state change
     if (weatherChange?.precipitationChange) {
-      console.log('🌧️ Precipitation state changed - refresh required');
+      logger.info('Precipitation state changed; refresh required', { entryPoint: LOG_ENTRY_POINT });
       return true;
     }
 
     // Critical traffic incidents
     if (trafficChange && trafficChange.criticalIncidents > 0) {
-      console.log(`🚨 ${trafficChange.criticalIncidents} critical traffic incidents - refresh required`);
+      logger.info('Critical traffic incidents require refresh', {
+        entryPoint: LOG_ENTRY_POINT,
+        criticalIncidentCount: trafficChange.criticalIncidents,
+      });
       return true;
     }
 
     // Significant congestion increase
     if (trafficChange && trafficChange.congestionDelta > this.config.congestionThreshold) {
-      console.log(`🚗 Congestion increased by ${trafficChange.congestionDelta}% - refresh required`);
+      logger.info('Traffic congestion increase requires refresh', {
+        entryPoint: LOG_ENTRY_POINT,
+        congestionDelta: trafficChange.congestionDelta,
+        congestionThreshold: this.config.congestionThreshold,
+      });
       return true;
     }
 
@@ -443,12 +480,15 @@ class ItineraryRefreshService {
       const thresholdMet = this.isTrafficLevelAboveThreshold(currentLevel);
       
       if (thresholdMet) {
-        console.log(`🚦 Traffic level changed to ${currentLevel} - refresh required`);
+        logger.info('Traffic level change requires refresh', {
+          entryPoint: LOG_ENTRY_POINT,
+          currentLevel,
+        });
         return true;
       }
     }
 
-    console.log('✅ No significant changes detected - refresh not needed');
+    logger.info('No significant changes detected; refresh not needed', { entryPoint: LOG_ENTRY_POINT });
     return false;
   }
 
@@ -653,7 +693,10 @@ class ItineraryRefreshService {
     }
     
     if (cleared > 0) {
-      console.log(`🧹 Cleared ${cleared} expired evaluation cache entries`);
+      logger.info('Expired itinerary evaluation cache entries cleared', {
+        entryPoint: LOG_ENTRY_POINT,
+        clearedCount: cleared,
+      });
     }
   }
 }

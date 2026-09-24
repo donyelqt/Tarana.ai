@@ -7,6 +7,7 @@ import { getRequestId } from '@/middleware/requestId';
 import { claimIdempotency, completeIdempotency, getIdempotencyKey, hashIdempotencyPayload } from '@/lib/services/idempotencyService';
 import { getProfileByEmail, updateProfileByEmail } from '@/lib/services/profileService';
 import { sanitizeName, sanitizeText } from '@/lib/security/inputSanitizer';
+import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 
 const IDEMPOTENCY_ROUTE = '/api/profile';
 
@@ -18,7 +19,7 @@ export const GET = withAuthEmail(async (req: NextRequest, { email }) => {
     try {
       user = await getProfileByEmail(email);
     } catch (error) {
-      logger.error('Error fetching user profile', { error }, getRequestId(req));
+      logger.error('Error fetching user profile', { entryPoint: '/api/profile', ...getSafeErrorMetadata(error) }, getRequestId(req));
       return NextResponse.json(
         { error: 'Failed to fetch profile' },
         { status: 500 }
@@ -118,7 +119,7 @@ export const PATCH = withAuthEmail(async (req: NextRequest, { email }) => {
     try {
       updatedUser = await updateProfileByEmail(email, sanitizedUpdate);
     } catch (error) {
-      logger.error('Error updating user profile', { error }, getRequestId(req));
+      logger.error('Error updating user profile', { entryPoint: '/api/profile', ...getSafeErrorMetadata(error) }, getRequestId(req));
       if (claim?.kind === 'owner') {
         await completeIdempotency(claim.rowId, 500, { error: 'Failed to update profile' }).catch(() => {
           logger.error('[idempotency] failed to cache mutation failure', { route: IDEMPOTENCY_ROUTE, rowId: claim.rowId }, getRequestId(req));

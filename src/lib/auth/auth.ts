@@ -5,6 +5,8 @@ import bcrypt from "bcryptjs";
 // Removed unused direct supabase client import
 import { supabaseAdmin } from '../data/supabaseAdmin';
 import { ReferralService } from '../referral-system/ReferralService';
+import { logger } from '@/lib/observability/logger';
+import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 
 interface LoginAttemptEntry {
   attempts: number;
@@ -129,7 +131,7 @@ export async function createUserInSupabase(fullName: string, email: string, pass
     .single();
 
   if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116: 'No rows found'
-    console.error('Error checking for existing user:', fetchError);
+    logger.error('Error checking for existing user', { entryPoint: 'auth', ...getSafeErrorMetadata(fetchError) });
     throw new Error('Error checking for existing user');
   }
 
@@ -153,7 +155,7 @@ export async function createUserInSupabase(fullName: string, email: string, pass
     .single();
 
   if (insertError) {
-    console.error('Error creating user in Supabase:', insertError);
+    logger.error('Error creating user in Supabase', { entryPoint: 'auth', ...getSafeErrorMetadata(insertError) });
     throw new Error('Failed to create user');
   }
 
@@ -170,7 +172,7 @@ export async function findUserByEmailFromSupabase(email: string): Promise<Supaba
 
   if (error) {
     if (error.code === 'PGRST116') return null; // User not found
-    console.error('Error fetching user by email:', error);
+    logger.error('Error fetching user by email', { entryPoint: 'auth', ...getSafeErrorMetadata(error) });
     return null;
   }
   return data as SupabaseUser;
@@ -269,7 +271,7 @@ export const authOptions: NextAuthOptions = {
             image: user.image,
           };
         } catch (error) {
-          console.error('Authentication error:', error);
+          logger.error('Authentication error', { entryPoint: 'auth', ...getSafeErrorMetadata(error) });
           return null;
         }
       },
@@ -298,7 +300,7 @@ export const authOptions: NextAuthOptions = {
             .single();
 
           if (fetchError && fetchError.code !== 'PGRST116') {
-            console.error("Error fetching user during sign-in:", fetchError);
+            logger.error('Error fetching user during sign-in', { entryPoint: 'auth', ...getSafeErrorMetadata(fetchError) });
             return false; // Prevent sign-in if there's a DB error
           }
 
@@ -310,7 +312,7 @@ export const authOptions: NextAuthOptions = {
                 .update({ image: user.image })
                 .eq('id', dbUser.id);
               if (updateError) {
-                console.error("Error updating user image:", updateError);
+                logger.error('Error updating user image', { entryPoint: 'auth', ...getSafeErrorMetadata(updateError) });
                 // Decide if this should prevent sign-in
               }
             }
@@ -326,12 +328,12 @@ export const authOptions: NextAuthOptions = {
               });
 
             if (insertError) {
-              console.error("Error creating user during Google sign-in:", insertError);
+              logger.error('Error creating user during Google sign-in', { entryPoint: 'auth', ...getSafeErrorMetadata(insertError) });
               return false;
             }
           }
         } catch (e) {
-          console.error("Error in signIn callback:", e);
+          logger.error('Error in signIn callback', { entryPoint: 'auth', ...getSafeErrorMetadata(e) });
           return false;
         }
       }
@@ -372,9 +374,9 @@ export const authOptions: NextAuthOptions = {
           }
 
           if (!resolvedDbUser?.id) {
-            console.error(
+            logger.error(
               'Google sign-in failed: no users row exists post-provisioning',
-              { provider: 'google', emailDomain: user.email?.split('@')[1] ?? 'unknown-domain' }
+              { entryPoint: 'auth', provider: 'google' }
             );
             throw new Error('auth_user_row_missing');
           }

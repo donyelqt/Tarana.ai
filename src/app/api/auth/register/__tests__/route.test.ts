@@ -140,6 +140,37 @@ describe('Register API Route Tests', () => {
     expect(createUserProfile as jest.Mock).toHaveBeenCalledWith('test-user-id');
   });
 
+  test('does not log raw profile creation errors', async () => {
+    const sentinel = 'PROFILE_SECRET_xyz789';
+    (validatePasswordStrength as jest.Mock).mockReturnValue({
+      isValid: true,
+      errors: [],
+      score: 2,
+      feedback: [],
+      strengthLevel: 'medium',
+    });
+    (require('@/lib/security/inputSanitizer').sanitizeUserRegistration as jest.Mock)
+      .mockReturnValue({
+        sanitized: { fullName: 'John Doe', email: 'john@example.com', password: 'strongPassword123!' },
+        errors: [],
+      });
+    (createUserInSupabase as jest.Mock).mockResolvedValue({ id: 'test-user-id' });
+    (createUserProfile as jest.Mock).mockRejectedValue(new Error(sentinel));
+
+    const response = await POST({
+      headers: { get: () => null },
+      json: jest.fn().mockResolvedValue({
+        fullName: 'John Doe',
+        email: 'john@example.com',
+        password: 'strongPassword123!',
+        agreed: true,
+      }),
+    } as unknown as NextRequest);
+
+    expect(response.status).toBe(201);
+    expect(JSON.stringify(mockLogger.error.mock.calls)).not.toContain(sentinel);
+  });
+
   test('should return 409 when user already exists', async () => {
     (validatePasswordStrength as jest.Mock).mockReturnValue({
       isValid: true,

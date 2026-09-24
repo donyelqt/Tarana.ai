@@ -4,6 +4,7 @@ import { recordTosAcceptance } from '@/lib/services/userService';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
+import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 
 /**
  * Records ToS/Privacy acceptance for the signed-in user.
@@ -21,8 +22,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         'Error recording ToS acceptance',
         {
           entryPoint: '/api/auth/consent',
-          errorName: error instanceof Error ? error.name : 'UnknownError',
-          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          ...getSafeErrorMetadata(error),
         },
         getRequestId(req)
       );

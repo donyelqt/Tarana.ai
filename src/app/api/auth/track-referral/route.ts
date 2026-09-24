@@ -28,7 +28,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
 
     const code = referralCode.trim().toUpperCase();
-    logger.info('Tracking referral', { userId }, requestId);
+    logger.info('Tracking referral', { userIdLength: userId.length }, requestId);
 
     // The caller's profile may not exist immediately after signup, so
     // transient DB failures retry through the shared helper (3 attempts, 1s
@@ -46,14 +46,14 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
 
     if (result.success) {
-      logger.info('Referral tracked', { referralId: result.referralId }, requestId);
+      logger.info('Referral tracked', { referralIdLength: result.referralId?.length ?? 0 }, requestId);
       return NextResponse.json({
         success: true,
         message: "Referral tracked successfully",
         referralId: result.referralId
       });
     } else {
-      logger.warn('Referral tracking failed', { error: result.error }, requestId);
+      logger.warn('Referral tracking failed', { errorType: 'referral_rejected' }, requestId);
       return NextResponse.json({
         success: false,
         error: result.error || "Unknown error"

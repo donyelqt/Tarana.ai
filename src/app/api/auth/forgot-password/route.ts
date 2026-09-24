@@ -7,6 +7,7 @@ import { checkRequiredEnvVars } from '@/lib/security/environmentValidator';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
+import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 import crypto from 'crypto';
 
 // Strict rate limiter for password reset attempts
@@ -73,8 +74,7 @@ export async function POST(request: NextRequest) {
           'Error storing reset token',
           {
             entryPoint: '/api/auth/forgot-password',
-            errorName: updateError instanceof Error ? updateError.name : 'UnknownError',
-            errorMessage: updateError instanceof Error ? updateError.message : 'Unknown error',
+            ...getSafeErrorMetadata(updateError),
           },
           requestId
         );
@@ -107,8 +107,7 @@ export async function POST(request: NextRequest) {
         'Forgot password error',
         {
           entryPoint: '/api/auth/forgot-password',
-          errorName: error instanceof Error ? error.name : 'UnknownError',
-          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          ...getSafeErrorMetadata(error),
         },
         requestId
       );

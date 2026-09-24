@@ -4,6 +4,13 @@ import type { WeatherData } from "../core/utils";
 import type { RefreshMetadata, TrafficSnapshot } from "../services/itineraryRefreshService";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mapRowToSavedItinerary as mapApiRow, resolveItineraryImage } from "./itineraryMapper";
+import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
+
+async function logServerError(message: string, error: unknown): Promise<void> {
+  if (typeof window !== 'undefined') return;
+  const { logger } = await import('@/lib/observability/logger');
+  logger.error(message, { entryPoint: 'savedItineraries', ...getSafeErrorMetadata(error) });
+}
 
 export interface ItineraryActivity {
   image: string | StaticImageData;
@@ -111,7 +118,7 @@ async function getCurrentUserId(): Promise<string | null> {
     const session = await getSession();
     return session?.user?.id ?? null;
   } catch (error) {
-    console.error('Failed to resolve current user session:', error);
+    await logServerError('Failed to resolve current user session', error);
     return null;
   }
 }
@@ -132,7 +139,6 @@ export const getSavedItineraries = async (): Promise<SavedItinerary[]> => {
   if (typeof window === 'undefined') {
     const userId = await getCurrentUserId();
     if (!userId) {
-      console.log('No user logged in, returning empty itineraries.');
       return [];
     }
     try {
@@ -142,19 +148,18 @@ export const getSavedItineraries = async (): Promise<SavedItinerary[]> => {
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (error) {
-        console.error('Error loading saved itineraries from Supabase:', error);
+        await logServerError('Error loading saved itineraries from Supabase', error);
         return [];
       }
       return ((data ?? []) as Record<string, unknown>[]).map(toSavedItinerary);
     } catch (error) {
-      console.error('Error loading saved itineraries:', error);
+      await logServerError('Error loading saved itineraries', error);
       return [];
     }
   }
   try {
     return await requestItinerariesApi<SavedItinerary[]>('/api/saved-itineraries');
-  } catch (error) {
-    console.error('Error loading saved itineraries:', error);
+  } catch {
     return [];
   }
 };
@@ -163,7 +168,6 @@ export const saveItinerary = async (itinerary: Omit<SavedItinerary, 'id' | 'crea
   if (typeof window === 'undefined') {
     const userId = await getCurrentUserId();
     if (!userId) {
-      console.error('SaveItinerary: User ID is null. User must be logged in.');
       throw new Error('User must be logged in to save an itinerary');
     }
     const { data, error } = await (await getServerAdminClient())
@@ -182,7 +186,7 @@ export const saveItinerary = async (itinerary: Omit<SavedItinerary, 'id' | 'crea
       .select()
       .single();
     if (error || !data) {
-      console.error('Error saving itinerary to Supabase:', error);
+      await logServerError('Error saving itinerary to Supabase', error);
       throw new Error('Failed to save itinerary. Details: Unknown error');
     }
     return toSavedItinerary(data as Record<string, unknown>);
@@ -204,7 +208,6 @@ export const saveItinerary = async (itinerary: Omit<SavedItinerary, 'id' | 'crea
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('Error saving itinerary:', message);
     throw new Error(`Failed to save itinerary. Details: ${message}`);
   }
 };
@@ -222,11 +225,11 @@ export const deleteItinerary = async (id: string): Promise<void> => {
         .eq('id', id)
         .eq('user_id', userId); // Ensure user can only delete their own itineraries
       if (error) {
-        console.error('Error deleting itinerary from Supabase:', error);
+        await logServerError('Error deleting itinerary from Supabase', error);
         throw new Error('Failed to delete itinerary');
       }
     } catch (error) {
-      console.error('Error deleting itinerary:', error);
+      await logServerError('Error deleting itinerary', error);
       throw new Error('Failed to delete itinerary');
     }
     return;
@@ -235,8 +238,7 @@ export const deleteItinerary = async (id: string): Promise<void> => {
     await requestItinerariesApi<{ id: string }>(`/api/saved-itineraries/${id}`, {
       method: 'DELETE',
     });
-  } catch (error) {
-    console.error('Error deleting itinerary:', error);
+  } catch {
     throw new Error('Failed to delete itinerary');
   }
 };

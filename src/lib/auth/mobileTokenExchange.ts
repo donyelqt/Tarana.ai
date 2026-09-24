@@ -19,6 +19,9 @@ import {
   MobileTokenPayload,
   MOBILE_TOKEN_MAX_AGE_SECONDS,
 } from '@/lib/auth/mobileToken';
+import { logger } from '@/lib/observability/logger';
+import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
+import { getRequestId } from '@/middleware/requestId';
 
 export type ExchangeRequest = {
   req: NextRequest;
@@ -140,7 +143,7 @@ export async function runMobileTokenExchange({
   try {
     mobileToken = await encodeMobileToken(payload);
   } catch (error) {
-    console.error('Failed to encode mobile token', error);
+    logger.error('Failed to encode mobile token', { entryPoint: 'auth/mobile-token', ...getSafeErrorMetadata(error) }, getRequestId(req));
     return {
       response: NextResponse.json(
         { error: 'Failed to issue mobile token' },

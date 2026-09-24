@@ -8,6 +8,7 @@ import { createUserProfile } from '@/lib/services/userService';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
+import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 // Rate limiter for registration attempts
 const registerRateLimit = createRateLimitMiddleware(rateLimitConfigs.auth);
 
@@ -88,9 +89,8 @@ export async function POST(request: NextRequest) {
               'Error creating user profile',
               {
                 entryPoint: '/api/auth/register',
-                userId: newUser.id,
-                errorName: profileError instanceof Error ? profileError.name : 'UnknownError',
-                errorMessage: profileError instanceof Error ? profileError.message : 'Unknown error',
+                userIdLength: newUser.id.length,
+                ...getSafeErrorMetadata(profileError),
               },
               requestId
             );
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
             if (referralResult.success) {
               logger.info(
                 'Referral created',
-                { entryPoint: '/api/auth/register', userId: newUser.id },
+                { entryPoint: '/api/auth/register', userIdLength: newUser.id.length },
                 requestId
               );
             } else {
@@ -114,8 +114,7 @@ export async function POST(request: NextRequest) {
                 'Failed to create referral',
                 {
                   entryPoint: '/api/auth/register',
-                  userId: newUser.id,
-                  errorMessage: referralResult.error,
+                  errorType: 'referral_rejected',
                 },
                 requestId
               );
@@ -126,9 +125,8 @@ export async function POST(request: NextRequest) {
             'Error in referral system setup',
             {
               entryPoint: '/api/auth/register',
-              userId: newUser.id,
-              errorName: profileError instanceof Error ? profileError.name : 'UnknownError',
-              errorMessage: profileError instanceof Error ? profileError.message : 'Unknown error',
+              userIdLength: newUser.id.length,
+              ...getSafeErrorMetadata(profileError),
             },
             requestId
           );
@@ -164,8 +162,7 @@ export async function POST(request: NextRequest) {
       'Registration error',
       {
         entryPoint: '/api/auth/register',
-        errorName: error instanceof Error ? error.name : 'UnknownError',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        ...getSafeErrorMetadata(error),
       },
       requestId
     );

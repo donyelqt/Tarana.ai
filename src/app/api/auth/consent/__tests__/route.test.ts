@@ -66,7 +66,8 @@ describe('Consent API Route Tests', () => {
 
   test('returns 500 when the timestamp update fails', async () => {
     mockedGetServerSession.mockResolvedValue({ user: { id: 'user-1' } });
-    mockedRecordTosAcceptance.mockRejectedValue(new Error('db down'));
+    const sentinel = 'CONSENT_UPSTREAM_SECRET_xyz789';
+    mockedRecordTosAcceptance.mockRejectedValue(new Error(sentinel));
 
     const response = await POST(makeRequest());
 
@@ -78,5 +79,6 @@ describe('Consent API Route Tests', () => {
       expect.objectContaining({ entryPoint: '/api/auth/consent' }),
       expect.any(String)
     );
+    expect(JSON.stringify(mockLogger.error.mock.calls)).not.toContain(sentinel);
   });
 });

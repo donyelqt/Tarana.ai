@@ -1,5 +1,12 @@
 import { authOptions } from '../auth';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { logger } from '@/lib/observability/logger';
+
+jest.mock('@/lib/observability/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
+
+const mockLogger = logger as jest.Mocked<typeof logger>;
 
 jest.mock('@/lib/data/supabaseAdmin', () => ({
   supabaseAdmin: {
@@ -60,13 +67,13 @@ describe('auth jwt() Google branch — no id-less sessions', () => {
     expect(mockSingle).toHaveBeenCalledTimes(2);
     expect(mockedFrom).toHaveBeenCalledTimes(2);
 
-    // Fail-loud log: names the provider and the domain, never the full email.
-    const errorSpy = console.error as unknown as jest.Mock;
-    expect(errorSpy).toHaveBeenCalled();
-    const serialized = JSON.stringify(errorSpy.mock.calls);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Google sign-in failed: no users row exists post-provisioning',
+      expect.objectContaining({ entryPoint: 'auth' })
+    );
+    const serialized = JSON.stringify(mockLogger.error.mock.calls);
     expect(serialized).toMatch(/google/i);
-    expect(serialized).toContain('Example.com');
-    expect(serialized).toMatch(/no users row exists post-provisioning/i);
+    expect(serialized).not.toContain('Example.com');
     expect(serialized).not.toContain('Someone@Example.com');
   });
 

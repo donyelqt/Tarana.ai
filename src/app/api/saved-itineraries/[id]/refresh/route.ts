@@ -19,6 +19,7 @@ import {
 } from '@/lib/services/itineraryRefreshService';
 import { parallelTrafficProcessor } from '@/lib/performance/parallelTrafficProcessor';
 import { getIdempotencyKey } from '@/lib/services/idempotencyService';
+import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 
 // ============================================================================
 // CROSS-ROUTE CREDENTIAL FORWARDING
@@ -74,6 +75,16 @@ interface RefreshResponse {
   error?: string;
 }
 
+type RefreshErrorCategory = 'timeout' | 'network' | 'generation' | 'unknown';
+
+function classifyRefreshError(error: unknown): RefreshErrorCategory {
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  if (message.includes('timeout') || message.includes('aborted')) return 'timeout';
+  if (message.includes('fetch') || message.includes('econnrefused')) return 'network';
+  if (message.includes('generation') || message.includes('gemini')) return 'generation';
+  return 'unknown';
+}
+
 // ============================================================================
 // GET /api/saved-itineraries/[id]/refresh (Evaluation Only)
 // ============================================================================
@@ -86,7 +97,7 @@ export const GET = withAuth(async (
   const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
   const { id } = await params;
   const requestId = getRequestId(request);
-  logger.info('Refresh evaluation requested', { itineraryId: id }, requestId);
+  logger.info('Refresh evaluation requested', { itineraryIdLength: id.length }, requestId);
 
   return timedHttp('/api/saved-itineraries/[id]/refresh', 'GET', async () => {
   try {
@@ -131,7 +142,7 @@ export const GET = withAuth(async (
     });
 
   } catch (error) {
-    logger.error('Refresh evaluation failed', { error: error instanceof Error ? error.message : String(error) }, requestId);
+    logger.error('Refresh evaluation failed', { entryPoint: 'refresh', ...getSafeErrorMetadata(error) }, requestId);
     return NextResponse.json(
       { success: false, message: 'Evaluation failed', error: 'Internal error' },
       { status: 500 }
@@ -153,7 +164,7 @@ export const POST = withAuth(async (
   const { id } = await params;
   const startTime = Date.now();
   const requestId = getRequestId(request);
-  logger.info('Itinerary refresh requested', { itineraryId: id }, requestId);
+  logger.info('Itinerary refresh requested', { itineraryIdLength: id.length }, requestId);
 
   return timedHttp('/api/saved-itineraries/[id]/refresh', 'POST', async () => {
   try {
@@ -168,7 +179,7 @@ export const POST = withAuth(async (
     
     try {
       requestBody = await request.json();
-      logger.info('Refresh request options received', { options: requestBody }, requestId);
+      logger.info('Refresh request options received', { force: requestBody.force === true, evaluateOnly: requestBody.evaluateOnly === true }, requestId);
     } catch {
       // Empty body is OK for force refresh
       logger.info('Empty refresh request body - using defaults', {}, requestId);
@@ -177,7 +188,7 @@ export const POST = withAuth(async (
     // ========================================================================
     // 3. FETCH ITINERARY
     // ========================================================================
-    logger.info(`\n📂 Fetching itinerary ${id}...`, {}, requestId);
+    logger.info('Fetching itinerary', { itineraryIdLength: id.length }, requestId);
     
     const allItineraries = await getSavedItineraries();
     const itinerary = allItineraries.find(i => i.id === id);
@@ -194,7 +205,7 @@ export const POST = withAuth(async (
       );
     }
 
-    logger.info(`✅ Itinerary found: "${itinerary.title}"`, {}, requestId);
+    logger.info('Itinerary found', { itineraryIdLength: id.length }, requestId);
 
     // ========================================================================
     // 4. EXTRACT ACTIVITY COORDINATES
@@ -229,7 +240,7 @@ export const POST = withAuth(async (
       );
     }
 
-    logger.info(`✅ Weather fetched: ${currentWeather.weather[0]?.main || 'Unknown'}, ${currentWeather.main.temp}°C`, {}, requestId);
+    logger.info('Weather fetched', { entryPoint: 'refresh', available: true }, requestId);
 
     // ========================================================================
     // 6. EVALUATE REFRESH NEED
@@ -242,11 +253,13 @@ export const POST = withAuth(async (
       activityCoordinates
     );
 
-    logger.info(`\n📊 Evaluation Results:`, {}, requestId);
-    logger.info(`   Needs Refresh: ${evaluation.needsRefresh}`, {}, requestId);
-    logger.info(`   Severity: ${evaluation.severity}`, {}, requestId);
-    logger.info(`   Confidence: ${evaluation.confidence}`, {}, requestId);
-    logger.info(`   Reasons: ${evaluation.reasons.join(', ')}`, {}, requestId);
+    logger.info('Refresh evaluation completed', {
+      entryPoint: 'refresh',
+      needsRefresh: evaluation.needsRefresh,
+      severity: evaluation.severity,
+      confidence: evaluation.confidence,
+      reasonCount: evaluation.reasons.length,
+    }, requestId);
 
     // ========================================================================
     // 7. DETERMINE ACTION
@@ -281,11 +294,7 @@ export const POST = withAuth(async (
         request
       );
     } catch (regenerationError) {
-      const errorMessage = regenerationError instanceof Error
-        ? regenerationError.message
-        : 'Unknown generation error';
-      // Server log only: response bodies must not carry raw upstream detail.
-      logger.error('Regeneration failed', { detail: errorMessage }, requestId);
+      logger.error('Regeneration failed', { entryPoint: 'refresh', ...getSafeErrorMetadata(regenerationError) }, requestId);
       return NextResponse.json(
         { 
           success: false, 
@@ -320,20 +329,22 @@ export const POST = withAuth(async (
       .flatMap((item: any) => item.activities || [])
       .filter((activity: any) => activity.trafficAnalysis || activity.trafficLevel);
     
-    logger.info(`📊 Traffic Metadata Check:`, {}, requestId);
-    logger.info(`   Total activities: ${regeneratedItinerary.items.flatMap((item: any) => item.activities || []).length}`, {}, requestId);
-    logger.info(`   Activities with traffic data: ${activitiesWithTraffic.length}`, {}, requestId);
-    
+    logger.info('Traffic metadata check', {
+      entryPoint: 'refresh',
+      totalActivities: regeneratedItinerary.items.flatMap((item: any) => item.activities || []).length,
+      activitiesWithTraffic: activitiesWithTraffic.length,
+    }, requestId);
+
     if (activitiesWithTraffic.length > 0) {
-      logger.info(`   Sample traffic data:`, {
-        title: activitiesWithTraffic[0].title,
+      logger.info('Traffic metadata present', {
+        entryPoint: 'refresh',
         trafficLevel: activitiesWithTraffic[0].trafficAnalysis?.realTimeTraffic?.trafficLevel || activitiesWithTraffic[0].trafficLevel,
-        tags: activitiesWithTraffic[0].tags,
-        hasTrafficAnalysis: !!activitiesWithTraffic[0].trafficAnalysis
+        hasTrafficAnalysis: !!activitiesWithTraffic[0].trafficAnalysis,
       }, requestId);
     } else {
-      logger.warn(`⚠️ WARNING: No activities have traffic metadata after regeneration!`, {}, requestId);
+      logger.warn('No activities have traffic metadata after regeneration', { entryPoint: 'refresh' }, requestId);
     }
+
 
     // ========================================================================
     // 9. CREATE TRAFFIC SNAPSHOT
@@ -355,10 +366,13 @@ export const POST = withAuth(async (
     
     // 🔍 CRITICAL DEBUG: Log data before database update
     logger.info('\n📝 DATA BEING SENT TO DATABASE:', {}, requestId);
-    logger.info('Database update payload shapes', { trafficSnapshot: trafficSnapshot ? 'EXISTS' : 'NULL', trafficSnapshotPreview: trafficSnapshot ? JSON.stringify(trafficSnapshot).substring(0, 100) : '' }, requestId);
-    logger.info('   activityCoordinates:', { detail: activityCoordinates ? `EXISTS (${activityCoordinates.length} coords)` : 'NULL/UNDEFINED' }, requestId);
-    logger.info('   refreshMetadata.trafficSnapshot:', { detail: trafficSnapshot ? 'EXISTS' : 'NULL/UNDEFINED' }, requestId);
-    logger.info('   refreshMetadata.refreshCount:', { detail: ((itinerary.refreshMetadata?.refreshCount || 0) + 1) }, requestId);
+    logger.info('Database update payload validated', {
+      entryPoint: 'refresh',
+      hasTrafficSnapshot: Boolean(trafficSnapshot),
+      activityCoordinateCount: activityCoordinates.length,
+      hasTrafficSnapshotMetadata: Boolean(trafficSnapshot),
+      nextRefreshCount: (itinerary.refreshMetadata?.refreshCount || 0) + 1,
+    }, requestId);
 
     const updatedItinerary = await updateItinerary(id, {
       // ✅ Preserve original form data (essential for UI display)
@@ -411,7 +425,7 @@ export const POST = withAuth(async (
     logger.info(`   Total Duration: ${duration}ms`, {}, requestId);
     logger.info(`   Severity: ${evaluation.severity}`, {}, requestId);
     logger.info(`   Confidence: ${evaluation.confidence}%`, {}, requestId);
-    logger.info(`   Reasons: ${evaluation.reasons.join(', ')}`, {}, requestId);
+    logger.info('Refresh metrics', { entryPoint: 'refresh', reasonCount: evaluation.reasons.length }, requestId);
     logger.info(`   Activities Count: ${updatedItinerary.itineraryData?.items?.flatMap((i: any) => i.activities || []).length || 0}`, {}, requestId);
     logger.info(`   Refresh Count: ${updatedItinerary.refreshMetadata?.refreshCount || 0}`, {}, requestId);
     logger.info('', {}, requestId);
@@ -425,26 +439,21 @@ export const POST = withAuth(async (
 
   } catch (error) {
     const duration = Date.now() - startTime;
-    logger.error('Refresh failed', { durationMs: duration, errorType: error instanceof Error ? error.constructor.name : typeof error, stack: error instanceof Error ? error.stack : 'none' }, requestId);
-    
-    // Determine error category for better client handling
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    const isTimeout = errorMessage.includes('timeout') || errorMessage.includes('AbortError');
-    const isNetworkError = errorMessage.includes('fetch') || errorMessage.includes('ECONNREFUSED');
-    const isGenerationError = errorMessage.includes('Generation') || errorMessage.includes('Gemini');
-    
-    logger.error('Refresh error classification', { isTimeout, isNetworkError, isGenerationError, message: errorMessage.substring(0, 100) }, requestId);
+    const category = classifyRefreshError(error);
+    logger.error('Refresh failed', { entryPoint: 'refresh', durationMs: duration, category, ...getSafeErrorMetadata(error) }, requestId);
+
+    const safeDetails = {
+      duration: `${duration}ms`,
+      category,
+      timestamp: new Date().toISOString()
+    };
     
     return NextResponse.json(
       { 
         success: false, 
         message: 'Refresh failed', 
         error: 'Internal server error',
-        details: {
-          duration: `${duration}ms`,
-          category: isTimeout ? 'timeout' : isNetworkError ? 'network' : isGenerationError ? 'generation' : 'unknown',
-          timestamp: new Date().toISOString()
-        }
+        details: safeDetails
       },
       { status: 500 }
     );
@@ -534,7 +543,7 @@ function transformItineraryStructure(apiResponse: any): any {
     };
     
   } catch (error) {
-    logger.error('❌ Error transforming itinerary structure:', { entryPoint: 'refresh', detail: error });
+    logger.error('Error transforming itinerary structure', { entryPoint: 'refresh', ...getSafeErrorMetadata(error) });
     return {
       title: "Refreshed Itinerary",
       subtitle: "Updated with current conditions",
@@ -755,8 +764,7 @@ async function enrichItineraryWithTraffic(itinerary: any) {
     return itinerary;
   } catch (error) {
     const enrichmentDuration = Date.now() - enrichmentStartTime;
-    logger.error(`❌ TRAFFIC ENRICHMENT FAILED after ${enrichmentDuration}ms:`, { entryPoint: 'refresh', detail: error });
-    logger.error('Stack trace:', { entryPoint: 'refresh', detail: error instanceof Error ? error.stack : 'No stack trace' });
+    logger.error('Traffic enrichment failed', { entryPoint: 'refresh', durationMs: enrichmentDuration, ...getSafeErrorMetadata(error) });
     // Return original itinerary without traffic enrichment rather than failing
     return itinerary;
   }
@@ -851,27 +859,28 @@ async function regenerateItinerary(
     
     // Enhanced safety validation
     if (!baseUrl || baseUrl === 'undefined' || baseUrl.includes('undefined') || baseUrl === 'null') {
-      logger.error('❌ Invalid baseUrl constructed:', { entryPoint: 'refresh', detail: baseUrl });
-      logger.error('Environment variables:', { entryPoint: 'refresh', NEXTAUTH_URL: process.env.NEXTAUTH_URL ? 'SET' : 'NOT SET',
-        VERCEL_URL: process.env.VERCEL_URL ? 'SET' : 'NOT SET',
-        VERCEL_BRANCH_URL: process.env.VERCEL_BRANCH_URL ? 'SET' : 'NOT SET',
-        NODE_ENV: process.env.NODE_ENV,
-        VERCEL: process.env.VERCEL
+      logger.error('Invalid base URL constructed', { entryPoint: 'refresh', hasBaseUrl: Boolean(baseUrl) });
+      logger.error('Refresh environment configuration incomplete', {
+        entryPoint: 'refresh',
+        nextAuthUrlConfigured: Boolean(process.env.NEXTAUTH_URL),
+        vercelUrlConfigured: Boolean(process.env.VERCEL_URL),
+        vercelBranchUrlConfigured: Boolean(process.env.VERCEL_BRANCH_URL),
       });
       throw new Error('Critical: Base URL cannot be determined. Set NEXTAUTH_URL environment variable.');
     }
     
-    logger.info(`📡 Calling generation API: ${baseUrl}/api/gemini/itinerary-generator`, { entryPoint: 'refresh' });
-    logger.info(`🔍 Environment - NEXTAUTH_URL: ${process.env.NEXTAUTH_URL ? 'SET' : 'NOT SET'}, VERCEL_URL: ${process.env.VERCEL_URL ? 'SET' : 'NOT SET'}`, { entryPoint: 'refresh' });
+    logger.info('Calling itinerary generator', { entryPoint: 'refresh', target: 'itinerary-generator' });
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s timeout (under Vercel limit)
 
-    logger.info('📤 Refresh Request Payload:', { entryPoint: 'refresh', prompt: prompt.substring(0, 100) + '...',
-      interests: formData.selectedInterests,
+    logger.info('Refresh generation request prepared', {
+      entryPoint: 'refresh',
+      promptLength: prompt.length,
+      interestCount: formData.selectedInterests?.length ?? 0,
       duration: parseInt(formData.duration) || 1,
-      weatherCondition: currentWeather?.weather?.[0]?.main,
-      isRefresh: true
+      hasWeather: Boolean(currentWeather),
+      isRefresh: true,
     });
 
     const idempotencyKey = getIdempotencyKey(request);
@@ -914,21 +923,22 @@ async function regenerateItinerary(
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'No error details');
-      logger.error(`❌ Generation API Error (${response.status}):`, { entryPoint: 'refresh', detail: errorText });
-      logger.error(`❌ Request URL: ${baseUrl}/api/gemini/itinerary-generator`, { entryPoint: 'refresh' });
-      throw new Error(`Generation API returned ${response.status}: ${errorText.substring(0, 200)}`);
+      
+      logger.error('Generation API request failed', { entryPoint: 'refresh', statusCode: response.status });
+      logger.error('Generation API target', { entryPoint: 'refresh', target: 'itinerary-generator' });
+      throw new Error(`Generation API returned ${response.status}`);
     }
 
     const result = await response.json();
     
     if (result.error) {
-      logger.error('❌ Generation API Error:', { entryPoint: 'refresh', detail: result.error });
-      logger.error('Error details:', { entryPoint: 'refresh', errorType: result.errorType,
-        requestId: result.requestId,
-        retryable: result.retryable
+      logger.error('Generation API returned an error', {
+        entryPoint: 'refresh',
+        errorType: typeof result.errorType === 'string' ? result.errorType.slice(0, 64) : 'unknown',
+        retryable: result.retryable === true,
+        upstreamRequestIdLength: typeof result.requestId === 'string' ? result.requestId.length : 0,
       });
-      throw new Error(result.error);
+      throw new Error('Generation API returned an error');
     }
 
     logger.info('✅ Itinerary generated successfully', { entryPoint: 'refresh' });
@@ -948,7 +958,7 @@ async function regenerateItinerary(
       logger.error('❌ Generation timeout after 55 seconds', { entryPoint: 'refresh' });
       throw new Error('Generation timeout - please try again');
     }
-    logger.error('❌ Error regenerating itinerary:', { entryPoint: 'refresh', detail: error });
+    logger.error('Error regenerating itinerary', { entryPoint: 'refresh', ...getSafeErrorMetadata(error) });
     throw error; // Propagate error instead of returning null
   }
 }

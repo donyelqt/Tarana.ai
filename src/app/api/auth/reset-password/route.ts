@@ -6,6 +6,7 @@ import { checkRequiredEnvVars } from '@/lib/security/environmentValidator';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
+import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 // Rate limiter for password reset attempts
 const resetPasswordRateLimit = createRateLimitMiddleware(rateLimitConfigs.auth);
 
@@ -81,8 +82,7 @@ export async function POST(request: NextRequest) {
         'Error updating password',
         {
           entryPoint: '/api/auth/reset-password',
-          errorName: updateError instanceof Error ? updateError.name : 'UnknownError',
-          errorMessage: updateError instanceof Error ? updateError.message : 'Unknown error',
+          ...getSafeErrorMetadata(updateError),
         },
         requestId
       );
@@ -101,8 +101,7 @@ export async function POST(request: NextRequest) {
       'Reset password error',
       {
         entryPoint: '/api/auth/reset-password',
-        errorName: error instanceof Error ? error.name : 'UnknownError',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        ...getSafeErrorMetadata(error),
       },
       requestId
     );

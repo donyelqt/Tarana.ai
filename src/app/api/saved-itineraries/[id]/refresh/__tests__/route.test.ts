@@ -35,6 +35,11 @@ import { getServerSession } from 'next-auth';
 import { getSavedItineraries, updateItinerary } from '@/lib/data/savedItineraries';
 import { fetchWeatherFromAPI } from '@/lib/core/utils';
 import { itineraryRefreshService } from '@/lib/services/itineraryRefreshService';
+jest.mock('@/lib/observability/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
+
+import { logger } from '@/lib/observability/logger';
 
 jest.mock('@/lib/data/savedItineraries', () => ({
   getSavedItineraries: jest.fn(),
@@ -56,6 +61,7 @@ jest.mock('@/lib/performance/parallelTrafficProcessor', () => ({
   },
 }));
 
+const mockLogger = logger as jest.Mocked<typeof logger>;
 const sessionMock = getServerSession as unknown as jest.Mock;
 const mockedList = getSavedItineraries as unknown as jest.Mock;
 const mockedUpdate = updateItinerary as unknown as jest.Mock;
@@ -152,6 +158,23 @@ describe('saved-itineraries/[id]/refresh route', () => {
     expect(url).toContain('/api/gemini/itinerary-generator');
     // The regression: without this header the generator answers 401.
     expect(init.headers.cookie).toBe('next-auth.session-token=abc123');
+  });
+
+  it('does not log the generated refresh prompt or raw upstream text', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => ({ error: SENTINEL }),
+      text: async () => SENTINEL,
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const res = await callPost({ cookie: 'next-auth.session-token=abc123' });
+    const serializedLogs = JSON.stringify(mockLogger.info.mock.calls.concat(mockLogger.error.mock.calls));
+
+    expect(res.status).toBe(500);
+    expect(serializedLogs).not.toContain(SENTINEL);
+    expect(serializedLogs).not.toContain('Update the itinerary');
   });
 
   it('forwards one stable idempotency key for repeated refresh regeneration', async () => {
