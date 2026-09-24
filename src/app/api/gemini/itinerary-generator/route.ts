@@ -77,6 +77,7 @@ const pipelineCoordinator = new PipelineCoordinator({
 export const maxDuration = 60;
 
 const USE_MULTI_AGENT = isFlagEnabled('USE_MULTI_AGENT');
+const IDEMPOTENCY_ROUTE = '/api/gemini/itinerary-generator';
 
 async function consumeCredit(userId: string, prompt: string) {
     // Fail-closed: propagate so the caller can refuse to serve output it could not charge for.
@@ -92,15 +93,64 @@ async function consumeCredit(userId: string, prompt: string) {
 // credit on a happy-path zero result. Imported from ./lib/zeroActivityItinerary
 // so the unit test can exercise it without pulling in next/server.
 
-async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
-    if (!API_KEY) {
-        logger.error("GOOGLE_GEMINI_API_KEY is missing!", {}, getRequestId(req));
-        return NextResponse.json({ text: "", error: "GOOGLE_GEMINI_API_KEY is missing on the server." }, { status: 500 });
-    }
-
+async function handleMultiAgentPost(req: NextRequest, userId: string): Promise<NextResponse> {
+    let claim: IdempotencyClaim | null = null;
     let session: RequestSession | undefined;
+    let generated = false;
+
+    const completeClaim = async (status: number, body: unknown): Promise<void> => {
+        if (claim?.kind !== 'owner') return;
+        try {
+            await completeIdempotency(claim.rowId, status, body);
+        } catch (error) {
+            logger.error(
+                "[idempotency] failed to complete multi-agent key",
+                { route: IDEMPOTENCY_ROUTE, rowId: claim.rowId, error },
+                getRequestId(req),
+            );
+        }
+    };
 
     try {
+        const key = getIdempotencyKey(req);
+        if (key) {
+            // Read a clone so ConciergeAgent can still consume the original body.
+            const rawBody = await req.clone().json().catch(() => null);
+            claim = await claimIdempotency(
+                userId,
+                IDEMPOTENCY_ROUTE,
+                key,
+                hashIdempotencyPayload(rawBody),
+            );
+
+            if (claim.kind === 'replay') {
+                return NextResponse.json(claim.replay.body, { status: claim.replay.status });
+            }
+
+            if (claim.kind === 'conflict') {
+                const response = NextResponse.json(
+                    { error: 'Request is already being processed', text: '' },
+                    { status: 409 },
+                );
+                response.headers.set('Retry-After', '1');
+                return response;
+            }
+
+            if (claim.kind === 'payload-mismatch') {
+                return NextResponse.json(
+                    { error: 'Idempotency key was already used with a different payload' },
+                    { status: 422 },
+                );
+            }
+        }
+
+        if (!API_KEY) {
+            const responseBody = { text: "", error: "GOOGLE_GEMINI_API_KEY is missing on the server." };
+            await completeClaim(500, responseBody);
+            logger.error("GOOGLE_GEMINI_API_KEY is missing!", { entryPoint: "itinerary-generator" }, getRequestId(req));
+            return NextResponse.json(responseBody, { status: 500 });
+        }
+
         session = await pipelineCoordinator.handleRequest(req);
 
         if (!session.itinerary?.json) {
@@ -108,35 +158,40 @@ async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
         }
 
         // H2: charge-before moved into pipelineCoordinator.handleRequest (before generation)
-
+        generated = true;
         const responsePayload = { text: JSON.stringify(session.itinerary.json) };
+        await completeClaim(200, responsePayload);
         return NextResponse.json(responsePayload);
     } catch (error: any) {
         const err = error as Error & { details?: Record<string, string[]> };
 
         if (error instanceof InsufficientCreditsError) {
-            return NextResponse.json({
+            const responseBody = {
                 error: "Insufficient credits",
                 text: "",
                 required: error.required,
                 available: error.available,
-            }, { status: 402 });
+            };
+            return NextResponse.json(responseBody, { status: 402 });
         }
 
         if (err?.message === "Authentication required") {
-            return NextResponse.json({ error: err.message, text: "" }, { status: 401 });
+            const responseBody = { error: err.message, text: "" };
+            return NextResponse.json(responseBody, { status: 401 });
         }
 
         if (err?.details) {
-            return NextResponse.json({ error: "Invalid request payload", details: err.details }, { status: 400 });
+            const responseBody = { error: "Invalid request payload", details: err.details };
+            return NextResponse.json(responseBody, { status: 400 });
         }
 
         // Primary refund lives in PipelineCoordinator.catch (it owns charged-state);
-        // this block covers only the post-success throw path (anti-double-spend
-        // via __galaRefunded flag). The bench exemption is gated on the bypass
-        // being active, not bare id equality (see pipelineCoordinator).
+        // this block covers only a session returned without an itinerary. Once a
+        // valid result exists, a storage failure must not refund a successful
+        // generation. The bench exemption is gated on the bypass being active,
+        // not bare id equality (see pipelineCoordinator).
         let routeRefunded = false;
-        if (!(error as any).__galaRefunded && session?.userId && !(benchBypassEnabled() && session.userId === configuredBenchUserId())) {
+        if (!generated && !(error as any).__galaRefunded && session?.userId && !(benchBypassEnabled() && session.userId === configuredBenchUserId())) {
             try {
                 routeRefunded = await CreditService.refundCredits({
                     userId: session.userId,
@@ -156,7 +211,9 @@ async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
         }
 
         logger.error("Multi-agent pipeline error:", { error: err }, getRequestId(req));
-        return NextResponse.json({ text: "", error: "Internal server error", refunded: (error as any).__galaRefunded === true || routeRefunded }, { status: 500 });
+        const errorResponse = { text: "", error: "Internal server error", refunded: (error as any).__galaRefunded === true || routeRefunded };
+        await completeClaim(500, errorResponse);
+        return NextResponse.json(errorResponse, { status: 500 });
     } finally {
         if (session) {
             clearSession(session.id);
@@ -248,7 +305,7 @@ const getCachedItinerary = unstable_cache(
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/gemini/itinerary-generator', 'POST', async () => {
     if (USE_MULTI_AGENT) {
-        return handleMultiAgentPost(req);
+        return handleMultiAgentPost(req, userId);
     }
 
     let charged = false;
@@ -263,7 +320,6 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     // validation), read by the success/failure completions and the catch
     // block. Null on the unkeyed path, which flows exactly as before.
     let claim: IdempotencyClaim | null = null;
-    const IDEMPOTENCY_ROUTE = '/api/gemini/itinerary-generator';
     try {
         // Bench HMAC accepted here too (k6 targets this URL); the bench
         // identity skips the balance pre-check and charge below, mirroring
@@ -316,7 +372,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         // Unkeyed requests flow unchanged (opt-in contract, not a mandate).
         const key = getIdempotencyKey(req);
         if (key) {
-          claim = await claimIdempotency(userId, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload(parsedRequestBody.data));
+          claim = await claimIdempotency(userId, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload(rawRequestBody));
         }
 
         if (claim?.kind === 'replay') {
