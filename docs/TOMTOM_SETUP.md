@@ -84,7 +84,6 @@ TOMTOM_API_KEY=your_tomtom_api_key_here
 ### API Routes
 - `src/app/api/locations/search/route.ts` - Location search endpoint
 - `src/app/api/routes/calculate/route.ts` - Route calculation endpoint
-- `src/app/api/routes/monitor/route.ts` - Route monitoring endpoint
 - `src/app/api/routes/traffic-analysis/[id]/route.ts` - Traffic analysis endpoint
 
 ### UI Components

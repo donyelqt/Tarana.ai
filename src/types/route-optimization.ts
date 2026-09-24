@@ -273,14 +273,6 @@ export interface LocationSearchResponse {
   totalResults: number;
 }
 
-export interface RouteMonitoringResponse {
-  monitoringId: string;
-  routeId: string;
-  currentStatus: RouteStatus;
-  estimatedUpdates: Date[];
-  alertsEnabled: boolean;
-}
-
 // ============================================================================
 // REAL-TIME MONITORING TYPES
 // ============================================================================
