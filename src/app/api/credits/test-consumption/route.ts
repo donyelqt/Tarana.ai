@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
 import {
   consumeTestCredit,
   getRecentTransactions,
@@ -14,6 +16,7 @@ import {
  */
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/credits/test-consumption', 'POST', async () => {
+    const requestId = getRequestId(req);
   try {
     if (process.env.NODE_ENV === 'production') {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -56,7 +59,11 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     });
 
     // STEP 3: Try to call consume_credits function
-    console.log(`[TEST] Attempting to consume 1 credit for user ${userId}`);
+    logger.info(
+      'Attempting to consume test credit',
+      { entryPoint: '/api/credits/test-consumption', userId },
+      requestId
+    );
 
     const { data: consumeResult, error: consumeError } = await consumeTestCredit(userId);
 
