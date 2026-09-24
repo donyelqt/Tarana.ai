@@ -158,6 +158,8 @@ describe('cron refresh authentication and validation', () => {
     }));
     expect(body.results).toBeUndefined();
     expect(mockNotify).toHaveBeenCalledTimes(1);
+    expect(mockEvaluate).toHaveBeenCalledWith(requestId);
+    expect(mockNotify).toHaveBeenCalledWith(stats.results, requestId);
     expect(mockLogger.info).toHaveBeenNthCalledWith(
       1,
       'Scheduled refresh evaluation started',
