@@ -761,7 +761,7 @@ function calculateRecommendedPrice(restaurant: any, groupSize: number, userBudge
     const budgetNum = parseInt(userBudget.replace(/[^\d]/g, ''));
     if (budgetNum && budgetNum > 0) {
       // DEBUG LOGGING - Remove after fixing
-      logger.debug("🔍 API ROUTE DEBUG - Using User Budget:", {
+      logger.info("🔍 API ROUTE DEBUG - Using User Budget:", {
         entryPoint: LOG_ENTRY_POINT,
         restaurantName: restaurant.name,
         userBudgetInput: userBudget,
@@ -778,7 +778,7 @@ function calculateRecommendedPrice(restaurant: any, groupSize: number, userBudge
   const fallbackPrice = Math.round(avgPrice * groupSize);
   
   // DEBUG LOGGING - Remove after fixing
-  logger.debug("🔍 API ROUTE DEBUG - Using Restaurant Pricing:", {
+  logger.info("🔍 API ROUTE DEBUG - Using Restaurant Pricing:", {
     entryPoint: LOG_ENTRY_POINT,
     restaurantName: restaurant.name,
     userBudgetInput: userBudget,
