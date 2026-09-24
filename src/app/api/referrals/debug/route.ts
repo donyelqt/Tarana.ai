@@ -9,6 +9,8 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
+const LOG_ENTRY_POINT = '/api/referrals/debug';
+
 export const GET = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/referrals/debug', 'GET', async () => {
   try {
@@ -114,10 +116,11 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
+  const requestId = getRequestId(req);
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log(`🔧 Fixing referral tier for user ${userId}...`);
+    logger.info('Referral tier fix started', { entryPoint: LOG_ENTRY_POINT }, requestId);
 
     // 1. Get active referral count
     const { data: referrals, error: referralsError } = await supabase
@@ -126,7 +129,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       .eq('referrer_id', userId);
 
     if (referralsError) {
-      logger.error('Referrals debug: referrals fetch failed', { error: referralsError }, getRequestId(req));
+      logger.error('Referrals debug: referrals fetch failed', { entryPoint: LOG_ENTRY_POINT }, requestId);
       return NextResponse.json({ error: "Failed to fetch referrals" }, { status: 500 });
     }
 
@@ -157,11 +160,20 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       .single();
 
     if (updateError) {
-      logger.error('Referrals debug: tier fix failed', { error: updateError }, getRequestId(req));
+      logger.error('Referrals debug: tier fix failed', { entryPoint: LOG_ENTRY_POINT }, requestId);
       return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
     }
 
-    console.log(`✅ Tier fixed: ${updated.current_tier} with ${updated.daily_credits} credits`);
+    logger.info(
+      'Referral tier fixed',
+      {
+        entryPoint: LOG_ENTRY_POINT,
+        activeReferrals: updated.active_referrals,
+        currentTier: updated.current_tier,
+        dailyCredits: updated.daily_credits,
+      },
+      requestId
+    );
 
     return NextResponse.json({
       status: "success",
