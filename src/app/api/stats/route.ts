@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getStats } from '@/lib/services/statsService';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
 
 /**
  * GET /api/stats
@@ -8,12 +10,12 @@ import { getStats } from '@/lib/services/statsService';
  * Cafes come from the static restaurant dataset; the rest are exact-count
  * head queries (no rows transferred).
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const stats = await getStats();
     return NextResponse.json({ success: true, stats });
-  } catch (error) {
-    console.error('Error in /api/stats:', error);
+  } catch {
+    logger.error('Stats request failed', { entryPoint: '/api/stats' }, getRequestId(request));
     return NextResponse.json(
       { error: 'Failed to get stats' },
       { status: 500 }
