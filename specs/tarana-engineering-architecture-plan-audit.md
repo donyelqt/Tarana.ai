@@ -888,28 +888,13 @@ upstream detail — borderline, kept. Weather's `fetchError.message` hit is
 log-side only (the 502 body is sanitized). Remaining sweep rule: run the
 leak grep over `rglob`, not the shell glob.
 
-**38. H1-Eats charge-first is still open (repo's own declared stop-ship).**
-`specs/tarana-eats-city-scale-plan.md:153` + AGENTS.md CHARGE-FIRST,
-ATOMIC, REFUND-ON-FAILURE. Measured 2026-09-24: `route.ts:333`
-`consumeCredits` runs AFTER successful generation, and the catch path
-returns a free fallback (`route.ts:90-106` pre-flight balance check races
-the charge). The Gala generator is fail-closed (`route.ts:82-89`).
-Next task per the eats spec: move the charge BEFORE the Gemini call with a
-`charged` flag + `refundCredits` on every non-success path; drop the
-pre-flight race. Not done here — separate slice, needs its own revert-check.
+**38. H1-Eats charge-first — DONE (PR #563, merged `9b8a2f0`; CI `verify` SUCCESS 2m41s).**
+Was: pre-flight `getCurrentBalance` check (races the charge) + charge-after-success + free fallback on Gemini failure (unbilled output served).
+Now: validate-then-charge atomically (400s never bill); `consumeCredits` 402s on `InsufficientCreditsError`, fail-closed otherwise; `refundCredits` (never throws) on the single non-success path, which returns a safe 500 instead of free output. Refund key per-attempt (`refund:eats:<attemptId>`), mirroring Gala's `refund:fail:<attemptId>`.
+3 regression tests (`food-recommendations/__tests__/route.test.ts`: 402 isolation, charge-once + safe failure, refund-on-fail + sentinel); 3/3 RED pre-fix. tsc 0 errors, eslint clean, full suite 635/6/0.
+Out of scope (spec slices 0/0b/1+): zod `cityId`, server-side city filter, prompt interpolation, `imageService` wiring, `saved_meals.location`.
 
-**39. Ranked next tasks (verified 2026-09-24, main @ `7baca48`).**
-1. **Refresh `console.*` → logger (~88 calls)** — established 5.1 slice shape
-(route: `logger` + `getRequestId`; helpers: `{ entryPoint }` meta);
-independent follow-up to #561, keeps this file reviewable.
-2. **H1-Eats charge-first (correction 38)** — revenue-integrity; spec-written
-verify column already exists in the eats plan.
-3. **Generator POST idempotency** — charge-first billable route with no
-`Idempotency-Key`; client retry = double charge. 2.3's 5 covered endpoints
-do not include it.
-4. **Dead-file carve-out ruling** — `route_legacy.ts`,
-`middleware/logger.ts`, `lib/test-*` (zero inbound refs, re-verified);
-delete vs convert still needs your call.
-Explicitly not next: 5.2 tracing (no sink per §3.3), 5.3 alerts (no
-channel), 2.4 Redis (deferred per §3.3), 1.3/1.4 (cross-client), 4.x (heavy
-independent track), Phase 6/7 (product decisions pending).
+**39. Ranked next tasks (verified 2026-09-24, main @ `9b8a2f0`).**
+1. **Generator POST idempotency** — charge-first billable route with no `Idempotency-Key`; client retry = double charge. 2.3's 5 covered endpoints do not include it.
+2. **Dead-file carve-out ruling** — `route_legacy.ts`, `middleware/logger.ts`, `lib/test-*` (zero inbound refs, re-verified); delete vs convert still needs your call.
+Explicitly not next: 5.2 tracing (no sink per §3.3), 5.3 alerts (no channel), 2.4 Redis (deferred per §3.3), 1.3/1.4 (cross-client), 4.x (heavy independent track), Phase 6/7 (product decisions pending).
