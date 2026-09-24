@@ -297,11 +297,11 @@ export const POST = withAuth(async (
     }
 
     if (!regeneratedItinerary || !regeneratedItinerary.items) {
-      logger.info('❌ Invalid regenerated itinerary structure', {}, requestId);
+      logger.error('Invalid regenerated itinerary structure', {}, requestId);
       return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Generation failed', 
+        {
+          success: false,
+          message: 'Generation failed',
           error: 'Generated itinerary has invalid structure. Please try again.',
           details: {
             phase: 'validation',
