@@ -2,18 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { upsertActivityEmbedding } from "@/lib/search";
 import { sampleItinerary } from "@/app/itinerary-generator/data/itineraryData";
 import { timingSafeEqual } from "crypto";
-import { timedHttp } from "@/lib/observability/httpMetrics";
+import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
+
+const LOG_ENTRY_POINT = '/api/reindex';
 
 // Simple auth via header X-ADMIN-TOKEN that must match env.REINDEX_SECRET
 const ADMIN_TOKEN = process.env.REINDEX_SECRET || "";
 
 export async function POST(req: NextRequest) {
-  return timedHttp('/api/reindex', 'POST', async () => {
+  const requestId = getRequestId(req);
+  return timedHttp(LOG_ENTRY_POINT, 'POST', async () => {
   const providedToken = req.headers.get("x-admin-token") || ""; 
 
   // Ensure the secret is configured on the server and is not an empty string.
   if (!ADMIN_TOKEN) {
-    console.error("REINDEX_SECRET is not set. Aborting.");
+    logger.error('Reindex secret is not configured', { entryPoint: LOG_ENTRY_POINT }, requestId);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -53,7 +58,12 @@ export async function POST(req: NextRequest) {
   const successfulUpserts = results.filter((r) => r.status === "fulfilled").length;
   results.forEach((result, index) => {
     if (result.status === "rejected") {
-      console.error(`Failed to embed activity "${activities[index].title}":`, result.reason);
+      const errorName = result.reason instanceof Error ? result.reason.name : 'UnknownError';
+      logger.error(
+        'Reindex embedding failed',
+        { entryPoint: LOG_ENTRY_POINT, activityIndex: index, errorName },
+        requestId
+      );
     }
   });
 
