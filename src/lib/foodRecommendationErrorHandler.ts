@@ -2,6 +2,7 @@
  * Comprehensive Error Handler for Food Recommendations
  * Enterprise-grade error handling with typed errors and retry logic
  */
+import { logger } from '@/lib/observability/logger';
 
 export enum FoodErrorType {
   VALIDATION = 'VALIDATION',
@@ -68,7 +69,13 @@ export class FoodRecommendationErrorHandler {
         
         // Exponential backoff
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
-        console.log(`🔄 Retrying ${context} in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        logger.info(`🔄 Retrying ${context} in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`, {
+          entryPoint: 'food-recommendations',
+          context,
+          attempt: attempt + 1,
+          maxRetries,
+          delayMs: delay
+        });
         await this.sleep(delay);
       }
     }
@@ -141,17 +148,22 @@ export class FoodRecommendationErrorHandler {
    */
   static logError(error: FoodError): void {
     const logLevel = this.getLogLevel(error.type);
-    const logMessage = `🚨 [${error.type}] ${error.message} (ID: ${error.requestId})`;
-    
+    const logMessage = `🚨 [${error.type}] Food recommendation error (ID: ${error.requestId})`;
+    const meta = {
+      entryPoint: 'food-recommendations',
+      errorType: error.type,
+      retryable: error.retryable,
+    };
+
     switch (logLevel) {
       case 'error':
-        console.error(logMessage, error.details);
+        logger.error(logMessage, meta, error.requestId);
         break;
       case 'warn':
-        console.warn(logMessage);
+        logger.warn(logMessage, meta, error.requestId);
         break;
       case 'info':
-        console.info(logMessage);
+        logger.info(logMessage, meta, error.requestId);
         break;
     }
   }
