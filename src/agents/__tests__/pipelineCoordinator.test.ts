@@ -183,4 +183,106 @@ describe("PipelineCoordinator", () => {
       refundSpy.mockRestore();
     }
   });
+  it("retries a failed refund and marks the error refunded only after success", async () => {
+    const session = createSession({
+      userId: "user-3",
+      prompt: "Trip",
+      preferences: { interests: [], durationDays: null },
+    });
+    const refundCredits = jest.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const concierge = {
+      initialize: jest.fn(async () => ({
+        authSession: { user: { id: "user-3" } },
+        creditBalance: undefined,
+        requestBody: { prompt: "Trip" },
+        requestSession: session,
+      })),
+      markInProgress: jest.fn(() => session),
+      failSession: jest.fn(),
+    };
+    const coordinator = new PipelineCoordinator({
+      concierge: concierge as any,
+      contextScout: { execute: jest.fn(async () => session) } as any,
+      retrievalStrategist: { execute: jest.fn(async () => { throw new Error("retrieval failed"); }) } as any,
+      itineraryComposer: { execute: jest.fn() } as any,
+      creditService: {
+        consumeCredits: jest.fn().mockResolvedValue({}),
+        refundCredits,
+      } as any,
+    });
+
+    await expect(coordinator.handleRequest(createMockRequest())).rejects.toMatchObject({
+      message: "retrieval failed",
+      __galaRefunded: true,
+    });
+    expect(refundCredits).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not mark a refund successful when both attempts return false", async () => {
+    const session = createSession({
+      userId: "user-4",
+      prompt: "Trip",
+      preferences: { interests: [], durationDays: null },
+    });
+    const refundCredits = jest.fn().mockResolvedValue(false);
+    const concierge = {
+      initialize: jest.fn(async () => ({
+        authSession: { user: { id: "user-4" } },
+        creditBalance: undefined,
+        requestBody: { prompt: "Trip" },
+        requestSession: session,
+      })),
+      markInProgress: jest.fn(() => session),
+      failSession: jest.fn(),
+    };
+    const coordinator = new PipelineCoordinator({
+      concierge: concierge as any,
+      contextScout: { execute: jest.fn(async () => session) } as any,
+      retrievalStrategist: { execute: jest.fn(async () => { throw new Error("retrieval failed"); }) } as any,
+      itineraryComposer: { execute: jest.fn() } as any,
+      creditService: {
+        consumeCredits: jest.fn().mockResolvedValue({}),
+        refundCredits,
+      } as any,
+    });
+
+    const error = await coordinator.handleRequest(createMockRequest()).catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ message: "retrieval failed" });
+    expect((error as { __galaRefunded?: boolean }).__galaRefunded).not.toBe(true);
+    expect(refundCredits).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves the generation error when both refund attempts throw", async () => {
+    const session = createSession({
+      userId: "user-5",
+      prompt: "Trip",
+      preferences: { interests: [], durationDays: null },
+    });
+    const refundCredits = jest.fn().mockRejectedValue(new Error("refund store down"));
+    const concierge = {
+      initialize: jest.fn(async () => ({
+        authSession: { user: { id: "user-5" } },
+        creditBalance: undefined,
+        requestBody: { prompt: "Trip" },
+        requestSession: session,
+      })),
+      markInProgress: jest.fn(() => session),
+      failSession: jest.fn(),
+    };
+    const coordinator = new PipelineCoordinator({
+      concierge: concierge as any,
+      contextScout: { execute: jest.fn(async () => session) } as any,
+      retrievalStrategist: { execute: jest.fn(async () => { throw new Error("retrieval failed"); }) } as any,
+      itineraryComposer: { execute: jest.fn() } as any,
+      creditService: {
+        consumeCredits: jest.fn().mockResolvedValue({}),
+        refundCredits,
+      } as any,
+    });
+
+    await expect(coordinator.handleRequest(createMockRequest())).rejects.toMatchObject({
+      message: "retrieval failed",
+    });
+    expect(refundCredits).toHaveBeenCalledTimes(2);
+  });
 });

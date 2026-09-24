@@ -135,23 +135,28 @@ async function handleMultiAgentPost(req: NextRequest): Promise<NextResponse> {
         // this block covers only the post-success throw path (anti-double-spend
         // via __galaRefunded flag). The bench exemption is gated on the bypass
         // being active, not bare id equality (see pipelineCoordinator).
+        let routeRefunded = false;
         if (!(error as any).__galaRefunded && session?.userId && !(benchBypassEnabled() && session.userId === configuredBenchUserId())) {
             try {
-                await CreditService.refundCredits({
+                routeRefunded = await CreditService.refundCredits({
                     userId: session.userId,
                     amount: 1,
                     service: "tarana_gala",
                     description: `Refund: multi-agent failed ${session.id}`,
                     idempotencyKey: `refund:${session.id}`,
-                });
-                logger.info(`💸 Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`, { userId: session.userId, sessionId: session.id }, getRequestId(req));
+                }) === true;
+                if (routeRefunded) {
+                    logger.info(`💸 Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`, { userId: session.userId, sessionId: session.id }, getRequestId(req));
+                } else {
+                    logger.warn("Multi-agent route refund did not apply", { sessionId: session.id }, getRequestId(req));
+                }
             } catch (refundErr) {
                 logger.error("Multi-agent refund failed (best-effort):", { error: refundErr }, getRequestId(req));
             }
         }
 
         logger.error("Multi-agent pipeline error:", { error: err }, getRequestId(req));
-        return NextResponse.json({ text: "", error: "Internal server error", refunded: true }, { status: 500 });
+        return NextResponse.json({ text: "", error: "Internal server error", refunded: (error as any).__galaRefunded === true || routeRefunded }, { status: 500 });
     } finally {
         if (session) {
             clearSession(session.id);
