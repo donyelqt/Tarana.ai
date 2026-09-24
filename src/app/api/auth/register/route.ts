@@ -6,11 +6,14 @@ import { checkRequiredEnvVars } from '@/lib/security/environmentValidator';
 import { ReferralService } from '@/lib/referral-system';
 import { createUserProfile } from '@/lib/services/userService';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
 // Rate limiter for registration attempts
 const registerRateLimit = createRateLimitMiddleware(rateLimitConfigs.auth);
 
 export async function POST(request: NextRequest) {
   return timedHttp('/api/auth/register', 'POST', async () => {
+    const requestId = getRequestId(request);
   try {
     // Check required environment variables
     checkRequiredEnvVars(['NEXTAUTH_SECRET', 'SUPABASE_SERVICE_ROLE_KEY']);
@@ -81,7 +84,16 @@ export async function POST(request: NextRequest) {
           try {
             await createUserProfile(newUser.id);
           } catch (profileError) {
-            console.error('Error creating user profile:', profileError);
+            logger.error(
+              'Error creating user profile',
+              {
+                entryPoint: '/api/auth/register',
+                userId: newUser.id,
+                errorName: profileError instanceof Error ? profileError.name : 'UnknownError',
+                errorMessage: profileError instanceof Error ? profileError.message : 'Unknown error',
+              },
+              requestId
+            );
           }
 
           // Create referral relationship if referral code provided
@@ -92,13 +104,34 @@ export async function POST(request: NextRequest) {
             });
 
             if (referralResult.success) {
-              console.log(`✅ Referral created for user ${newUser.id} with code ${referralCode}`);
+              logger.info(
+                'Referral created',
+                { entryPoint: '/api/auth/register', userId: newUser.id },
+                requestId
+              );
             } else {
-              console.error('Failed to create referral:', referralResult.error);
+              logger.error(
+                'Failed to create referral',
+                {
+                  entryPoint: '/api/auth/register',
+                  userId: newUser.id,
+                  errorMessage: referralResult.error,
+                },
+                requestId
+              );
             }
           }
         } catch (profileError) {
-          console.error('Error in referral system setup:', profileError);
+          logger.error(
+            'Error in referral system setup',
+            {
+              entryPoint: '/api/auth/register',
+              userId: newUser.id,
+              errorName: profileError instanceof Error ? profileError.name : 'UnknownError',
+              errorMessage: profileError instanceof Error ? profileError.message : 'Unknown error',
+            },
+            requestId
+          );
           // Don't block registration if profile creation fails
         }
       }
@@ -127,7 +160,15 @@ export async function POST(request: NextRequest) {
       throw userError;
     }
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error(
+      'Registration error',
+      {
+        entryPoint: '/api/auth/register',
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      },
+      requestId
+    );
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

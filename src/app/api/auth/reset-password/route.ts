@@ -4,11 +4,14 @@ import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rate
 import { validatePasswordStrength } from '@/lib/security/inputSanitizer';
 import { checkRequiredEnvVars } from '@/lib/security/environmentValidator';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
 // Rate limiter for password reset attempts
 const resetPasswordRateLimit = createRateLimitMiddleware(rateLimitConfigs.auth);
 
 export async function POST(request: NextRequest) {
   return timedHttp('/api/auth/reset-password', 'POST', async () => {
+    const requestId = getRequestId(request);
   try {
     // Check required environment variables
     checkRequiredEnvVars(['NEXTAUTH_SECRET', 'SUPABASE_SERVICE_ROLE_KEY']);
@@ -74,7 +77,15 @@ export async function POST(request: NextRequest) {
     try {
       await resetPassword(user.id, hashedPassword);
     } catch (updateError) {
-      console.error('Error updating password:', updateError);
+      logger.error(
+        'Error updating password',
+        {
+          entryPoint: '/api/auth/reset-password',
+          errorName: updateError instanceof Error ? updateError.name : 'UnknownError',
+          errorMessage: updateError instanceof Error ? updateError.message : 'Unknown error',
+        },
+        requestId
+      );
       return NextResponse.json(
         { error: 'Failed to reset password' },
         { status: 500 }
@@ -86,7 +97,15 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Reset password error:', error);
+    logger.error(
+      'Reset password error',
+      {
+        entryPoint: '/api/auth/reset-password',
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      },
+      requestId
+    );
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
