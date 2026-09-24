@@ -17,14 +17,14 @@ import { AppError, AppErrorCodes, type AppErrorCode } from '@/lib/errors/AppErro
  * - Returns `{ error: string }` with the AppError status. The wire shape
  *   stays a string so existing clients (savedItineraries.ts:91-92,
  *   supabaseMeals.ts:26) keep working.
- * - The typed metadata (code, retryable, logMessage) is consumed here for
- *   logging and status selection; it is not serialized into the response.
+ * - The typed metadata (code, retryable) is consumed here for logging and
+ *   status selection; it is not serialized into the response.
  */
 export function handleApiError(error: unknown, request: NextRequest): NextResponse {
   const requestId = getRequestId(request);
   const appError = toAppError(error);
 
-  logger.error(appError.logMessage, { code: appError.code, retryable: appError.retryable }, requestId);
+  logger.error(appError.safeMessage, { code: appError.code, retryable: appError.retryable }, requestId);
 
   const response = NextResponse.json(
     { error: appError.safeMessage },
