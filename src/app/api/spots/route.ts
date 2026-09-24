@@ -1,5 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
 import { getCityConfig, isWithinCityBounds } from '@/lib/data/cityConfig';
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import type { BoundingBox } from '@/types/route-optimization';
@@ -58,6 +60,7 @@ function isRealPhoto(image: unknown): boolean {
  */
 export async function GET(request: Request) {
   return timedHttp('/api/spots', 'GET', async () => {
+  const requestId = getRequestId(request as NextRequest);
   const city = new URL(request.url).searchParams.get('city') ?? 'baguio';
 
   if (!isSpotScopeId(city) || !SUPPORTED.includes(city)) {
@@ -134,15 +137,25 @@ export async function GET(request: Request) {
         const verified = candidates.filter((s) => isRealPhoto(s.image));
         const dropped = candidates.length - verified.length;
         if (dropped > 0) {
-          console.debug(
-            `🔍 BAGUIO EXTRAS: dropped ${dropped}/${candidates.length} map-only extras (no real photo)`
+          logger.debug(
+            'Baguio extras dropped',
+            { dropped, total: candidates.length, entryPoint: '/api/spots' },
+            requestId
           );
         }
 
         extras = verified;
       } catch (e) {
         // Scale is best-effort — curated pool still serves on TomTom failure.
-        console.error('Baguio extras failed, serving curated only:', e);
+        logger.error(
+          'Baguio extras failed, serving curated only',
+          {
+            entryPoint: '/api/spots',
+            errorName: e instanceof Error ? e.name : 'UnknownError',
+            errorMessage: e instanceof Error ? e.message : 'Unknown error',
+          },
+          requestId
+        );
       }
       // Full-pool rotation (NOT curated-first): the display slices 3, so
       // curated-first pinned extras at indices 37+ where they never rendered.
@@ -152,7 +165,18 @@ export async function GET(request: Request) {
       const dayIndex = Math.floor(Date.now() / 86400000);
       const rotated = rotateByDay(pool, dayIndex);
       if (rotated.length > 1) {
-        console.log(`🔁 DAILY ROTATION: day ${dayIndex} offset ${dayIndex % rotated.length}/${rotated.length} for baguio (head was "${pool[0]?.name}")`);
+        logger.info(
+          'Daily rotation',
+          {
+            dayIndex,
+            offset: dayIndex % rotated.length,
+            total: rotated.length,
+            city: 'baguio',
+            head: pool[0]?.name,
+            entryPoint: '/api/spots',
+          },
+          requestId
+        );
       }
       return NextResponse.json({ success: true, city, spots: rotated });
     }
@@ -189,7 +213,18 @@ export async function GET(request: Request) {
     const dayIndex = Math.floor(Date.now() / 86400000);
     const rotatedSpots = rotateByDay(spots, dayIndex);
     if (rotatedSpots.length > 1) {
-      console.log(`🔁 DAILY ROTATION: day ${dayIndex} offset ${dayIndex % rotatedSpots.length}/${rotatedSpots.length} for ${city} (head was "${spots[0]?.name}")`);
+      logger.info(
+        'Daily rotation',
+        {
+          dayIndex,
+          offset: dayIndex % rotatedSpots.length,
+          total: rotatedSpots.length,
+          city,
+          head: spots[0]?.name,
+          entryPoint: '/api/spots',
+        },
+        requestId
+      );
     }
 
     // Enrich only the visible head: real photos (tier chain, cached) and
@@ -223,7 +258,15 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, city, spots: rotatedSpots });
   } catch (error) {
-    console.error('Error in /api/spots:', error);
+    logger.error(
+      'Error in /api/spots',
+      {
+        entryPoint: '/api/spots',
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      },
+      requestId
+    );
     return NextResponse.json(
       { error: 'Failed to get spots' },
       { status: 500 }
