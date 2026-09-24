@@ -154,6 +154,39 @@ describe('saved-itineraries/[id]/refresh route', () => {
     expect(init.headers.cookie).toBe('next-auth.session-token=abc123');
   });
 
+  it('forwards one stable idempotency key for repeated refresh regeneration', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ text: JSON.stringify(storedItinerary.itineraryData) }),
+      text: async () => '',
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await callPost({ cookie: 'next-auth.session-token=abc123', 'idempotency-key': 'refresh-op-1' });
+    await callPost({ cookie: 'next-auth.session-token=abc123', 'idempotency-key': 'refresh-op-1' });
+
+    const firstHeaders = (fetchMock.mock.calls[0] as [string, { headers: Record<string, string> }])[1].headers;
+    const secondHeaders = (fetchMock.mock.calls[1] as [string, { headers: Record<string, string> }])[1].headers;
+    expect(firstHeaders['Idempotency-Key']).toBe('refresh-op-1');
+    expect(secondHeaders['Idempotency-Key']).toBe('refresh-op-1');
+  });
+
+  it('does not synthesize a generator key when the caller is unkeyed', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ text: JSON.stringify(storedItinerary.itineraryData) }),
+      text: async () => '',
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await callPost({ cookie: 'next-auth.session-token=abc123' });
+
+    const headers = (fetchMock.mock.calls[0] as [string, { headers: Record<string, string> }])[1].headers;
+    expect(headers['Idempotency-Key']).toBeUndefined();
+  });
+
   it('forwards a bench token ahead of the cookie when present', async () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,

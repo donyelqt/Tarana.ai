@@ -121,6 +121,7 @@ const SavedItineraryDetail = () => {
   const handleRefreshItinerary = async (force: boolean = false) => {
     if (!itinerary) return;
     setIsRefreshing(true);
+    const idempotencyKey = `refresh:${id}:${globalThis.crypto.randomUUID()}`;
     
     try {
       // Step 1: Evaluate if refresh is needed (unless forced)
@@ -172,7 +173,8 @@ const SavedItineraryDetail = () => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'no-cache',
+          'Idempotency-Key': idempotencyKey
         },
         body: JSON.stringify({ force: true }),
         signal: controller.signal

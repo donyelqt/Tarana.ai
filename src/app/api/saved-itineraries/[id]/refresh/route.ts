@@ -18,6 +18,7 @@ import {
   ChangeDetectionResult 
 } from '@/lib/services/itineraryRefreshService';
 import { parallelTrafficProcessor } from '@/lib/performance/parallelTrafficProcessor';
+import { getIdempotencyKey } from '@/lib/services/idempotencyService';
 
 // ============================================================================
 // CROSS-ROUTE CREDENTIAL FORWARDING
@@ -873,9 +874,11 @@ async function regenerateItinerary(
       isRefresh: true
     });
 
+    const idempotencyKey = getIdempotencyKey(request);
+
     const response = await fetch(`${baseUrl}/api/gemini/itinerary-generator`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'x-refresh-request': 'true', // Flag for cache bypass
         'x-bypass-cache': 'true', // Additional cache bypass flag
@@ -885,6 +888,10 @@ async function regenerateItinerary(
         // request 401s and every refresh fails. Bench tokens win when
         // present (k6 path); otherwise the session cookie is forwarded.
         ...forwardCallerCredential(request),
+        // Forward the caller's key only when supplied. A missing key keeps
+        // the generator's opt-in unkeyed path; synthesizing one here would
+        // conflate distinct refresh operations for the same itinerary.
+        ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
       },
       body: JSON.stringify({
         prompt: prompt,
