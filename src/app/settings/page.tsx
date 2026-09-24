@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Sun } from 'lucide-react';
 import { noProfile } from 'public';
 import { WeatherData, fetchWeatherFromAPI, getWeatherIconUrl } from '@/lib/core/utils';
+import RecommendedForYou from './RecommendedForYou';
 
 interface UserProfile {
   id: string;
@@ -495,18 +496,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* Recommended For You */}
-                <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Recommended For You</h3>
-                  <div className="space-y-4">
-                    <div className="bg-gray-200 rounded-2xl h-40 flex items-center justify-center">
-                      <span className="text-gray-500 font-medium">Ad Space</span>
-                    </div>
-                    <div className="bg-gray-200 rounded-2xl h-40 flex items-center justify-center">
-                      <span className="text-gray-500 font-medium">Ad Space</span>
-                    </div>
-                  </div>
-                </div>
+                <RecommendedForYou />
 
                 {/* Upcoming Events */}
                 <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
