@@ -27,6 +27,7 @@ import { isFlagEnabled } from "@/lib/flags/flags";
 import { withAuth } from "@/lib/auth/withAuth";
 import { logger } from "@/lib/observability/logger";
 import { getRequestId } from "@/middleware/requestId";
+import { claimIdempotency, completeIdempotency, getIdempotencyKey, hashIdempotencyPayload, type IdempotencyClaim } from "@/lib/services/idempotencyService";
 
 const itineraryRequestSchema = z.object({
     prompt: z.string().min(1).max(5000),
@@ -253,6 +254,11 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     // Body-derived fingerprints must NOT be used here: two identical
     // requests are two separate charges needing independent refunds.
     const attemptId = randomUUID();
+    // Idempotency claim handle: owned by the keyed branch below (after
+    // validation), read by the success/failure completions and the catch
+    // block. Null on the unkeyed path, which flows exactly as before.
+    let claim: IdempotencyClaim | null = null;
+    const IDEMPOTENCY_ROUTE = '/api/gemini/itinerary-generator';
     try {
         // Bench HMAC accepted here too (k6 targets this URL); the bench
         // identity skips the balance pre-check and charge below, mirroring
@@ -298,6 +304,35 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
 
         const requestBody: ItineraryRequest = parsedRequestBody.data;
         const { prompt } = requestBody;
+
+        // Idempotency (2.3): a retried generation must not charge twice.
+        // Claim runs after validation (400s never bill, never claim) and
+        // before the charge, mirroring saved-itineraries/[id] PATCH.
+        // Unkeyed requests flow unchanged (opt-in contract, not a mandate).
+        const key = getIdempotencyKey(req);
+        if (key) {
+          claim = await claimIdempotency(userId, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload(parsedRequestBody.data));
+        }
+
+        if (claim?.kind === 'replay') {
+          return NextResponse.json(claim.replay.body, { status: claim.replay.status });
+        }
+
+        if (claim?.kind === 'conflict') {
+          const conflict = NextResponse.json(
+            { error: 'Request is already being processed', text: '' },
+            { status: 409 }
+          );
+          conflict.headers.set('Retry-After', '1');
+          return conflict;
+        }
+
+        if (claim?.kind === 'payload-mismatch') {
+          return NextResponse.json(
+            { error: 'Idempotency key was already used with a different payload', text: '' },
+            { status: 422 }
+          );
+        }
 
         if (!API_KEY) {
             logger.error("GOOGLE_GEMINI_API_KEY is missing!", {}, getRequestId(req));
@@ -455,14 +490,29 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
             if (zeroSnapshot.refunded > 0 || zeroSnapshot.failed > 0 || zeroSnapshot.noop > 0) {
               logger.info(`[refund-metrics] request=${userId || '?'} refunded=${zeroSnapshot.refunded} failed=${zeroSnapshot.failed} noop=${zeroSnapshot.noop} reason=zero-activity`, { refunded: zeroSnapshot.refunded, failed: zeroSnapshot.failed, noop: zeroSnapshot.noop }, getRequestId(req));
             }
-            return NextResponse.json({
+            const zeroBody = {
                 text: responseData?.text ?? "",
                 refunded: true,
                 reason: 'no_activities_matched',
-            }, { status: 200 });
+            };
+            const owned = claim;
+            if (owned?.kind === 'owner') {
+                await completeIdempotency(owned.rowId, 200, zeroBody).catch(() => {
+                    logger.error('[idempotency] failed to complete key', { route: IDEMPOTENCY_ROUTE, rowId: owned.rowId }, getRequestId(req));
+                });
+            }
+            return NextResponse.json(zeroBody, { status: 200 });
         }
 
-        return NextResponse.json(responseData);
+        const successBody = responseData;
+        const successOwned = claim;
+        if (successOwned?.kind === 'owner') {
+            await completeIdempotency(successOwned.rowId, 200, successBody).catch(() => {
+                logger.error('[idempotency] failed to complete key', { route: IDEMPOTENCY_ROUTE, rowId: successOwned.rowId }, getRequestId(req));
+            });
+        }
+
+        return NextResponse.json(successBody);
 
     } catch (e: any) {
         // If we charged but generation failed, refund so the user isn't billed
@@ -492,10 +542,17 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         const requestId = createHash('sha256').update(`${userId || 'anon'}:${req.url}`).digest('hex').substring(0, 8);
         const errorDetails = ErrorHandler.handleError(e, requestId);
         logger.error("Error in itinerary generation pipeline:", { errorDetails }, getRequestId(req));
-        return NextResponse.json({
+        const failureBody = {
             text: "",
             error: "Internal server error"
-        }, { status: 500 });
+        };
+        const failed = claim;
+        if (failed?.kind === 'owner') {
+            await completeIdempotency(failed.rowId, 500, failureBody).catch(() => {
+                logger.error('[idempotency] failed to cache mutation failure', { route: IDEMPOTENCY_ROUTE, rowId: failed.rowId }, getRequestId(req));
+            });
+        }
+        return NextResponse.json(failureBody, { status: 500 });
     }
   }, (res) => res.status);
 });
