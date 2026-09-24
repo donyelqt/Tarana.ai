@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
@@ -76,26 +77,6 @@ const MAX_RECOMMENDATIONS = 5;
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/gemini/food-recommendations', 'POST', async () => {
   try {
-
-    // ✅ CREDIT SYSTEM: Check available credits
-    try {
-      const balance = await CreditService.getCurrentBalance(userId);
-      if (balance.remainingToday < 1) {
-        return NextResponse.json(
-          {
-            error: "Insufficient credits",
-            required: 1,
-            available: balance.remainingToday,
-            nextRefresh: balance.nextRefresh,
-          },
-          { status: 402 }
-        );
-      }
-    } catch (creditError) {
-      console.error("Error checking credits:", creditError);
-      // Continue without credit check if service is unavailable
-    }
-
     const { prompt, foodData, preferences: clientPreferences } = await req.json();
 
     // Input validation
@@ -105,6 +86,39 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         { status: 400 }
       );
     }
+    // ✅ CREDIT SYSTEM: Charge first, atomically (H1-Eats). consumeCredits
+    // throws InsufficientCreditsError when the balance cannot cover the
+    // request, so no separate balance pre-check is needed — the pre-check
+    // raced the charge (check-then-act) and the charge must not be skipped.
+    // Fail-closed: a charge failure refuses service; the route never serves
+    // output it could not bill for. Validation runs before the charge so a
+    // malformed request never bills.
+    //
+    // Per-attempt refund identity: stable within this invocation (so
+    // overlapping refund calls dedupe) but unique across retries (so a
+    // retried request's legitimate second refund is never swallowed).
+    const attemptId = randomUUID();
+    try {
+      await CreditService.consumeCredits({
+        userId,
+        amount: 1,
+        service: 'tarana_eats',
+        description: `Food recommendation: ${prompt?.substring(0, 50) || 'Food search'}`,
+      });
+    } catch (creditError) {
+      if (creditError instanceof InsufficientCreditsError) {
+        return NextResponse.json(
+          {
+            error: 'Insufficient credits',
+            required: 1,
+            available: creditError.available,
+          },
+          { status: 402 }
+        );
+      }
+      throw creditError;
+    }
+    const charged = true;
 
     // Parse preferences from prompt first
     const preferences = parseUserPreferences(prompt);
@@ -327,39 +341,26 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         timestamp: Date.now()
       });
 
-      // ✅ CREDIT SYSTEM: Consume 1 credit for successful generation
-      try {
-        console.log(`🔄 Attempting to consume 1 credit for user ${userId} - Tarana Eats`);
-        const consumeResult = await CreditService.consumeCredits({
-          userId,
-          amount: 1,
-          service: 'tarana_eats',
-          description: `Food recommendation: ${prompt?.substring(0, 50) || 'Food search'}`
-        });
-        console.log(`✅ Credit consumed successfully for user ${userId} - Tarana Eats`, consumeResult);
-      } catch (creditConsumeError: any) {
-        console.error("❌ CREDIT CONSUMPTION FAILED:", {
-          userId,
-          service: 'tarana_eats',
-          error: creditConsumeError?.message || creditConsumeError,
-          code: creditConsumeError?.code,
-          details: creditConsumeError?.details,
-          stack: creditConsumeError?.stack
-        });
-        // Don't block response if credit consumption fails
-      }
-
       return NextResponse.json(recommendations);
 
     } catch (apiError) {
-      const error = FoodRecommendationErrorHandler.createError(apiError, 'gemini_api_call');
-      FoodRecommendationErrorHandler.logError(error);
-      
-      // Use intelligent recommendations on API failure (FREE - no credit consumed)
-      console.log('⚠️ API error, falling back to FREE intelligent recommendations (no credits charged)');
-      const intelligentRecommendations = createIntelligentRecommendations(foodData, prompt, preferences);
-      
-      return NextResponse.json(intelligentRecommendations);
+      // Charged up front (H1-Eats): a generation we cannot deliver must be
+      // refunded. The free-fallback path is gone — serving unbilled output
+      // is exactly the leak this refactor closes. refundCredits never throws
+      // (returns false on no-op), so the original failure still surfaces.
+      if (charged) {
+        await CreditService.refundCredits({
+          userId,
+          amount: 1,
+          service: 'tarana_eats',
+          description: `Refund: failed food recommendation for ${userId}`,
+          idempotencyKey: `refund:eats:${attemptId}`,
+        });
+      }
+
+      const foodError = FoodRecommendationErrorHandler.createError(apiError, 'gemini_api_call');
+      const errorResponse = FoodRecommendationErrorHandler.createErrorResponse(foodError);
+      return NextResponse.json(errorResponse, { status: 500 });
     }
   } catch (error) {
     const foodError = FoodRecommendationErrorHandler.createError(error, 'food_recommendations_api');
