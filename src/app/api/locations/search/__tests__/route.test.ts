@@ -75,7 +75,7 @@ describe('GET /api/locations/search', () => {
       { entryPoint: '/api/locations/search', hasBounds: true },
       expect.any(String)
     );
-    expect(mockLogger.warn.mock.calls[0]).not.toContain('{invalid-json');
+    expect(JSON.stringify(mockLogger.warn.mock.calls[0][1])).not.toContain('{invalid-json');
   });
 
   it('rejects short queries before calling the upstream service', async () => {
