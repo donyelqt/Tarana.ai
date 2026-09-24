@@ -3,6 +3,8 @@ import { LocationSearchResponse, SearchResult, BoundingBox } from '@/types/route
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
 
 /**
  * GET /api/locations/search
@@ -10,6 +12,7 @@ import { timedHttp } from '@/lib/observability/httpMetrics';
  */
 export async function GET(request: NextRequest) {
   return timedHttp('/api/locations/search', 'GET', async () => {
+    const requestId = getRequestId(request);
     try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
@@ -23,7 +26,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`🔍 API: Location search for query: "${query}"`);
+    logger.info(
+      'Location search started',
+      { entryPoint: '/api/locations/search', queryLength: query.trim().length },
+      requestId
+    );
 
     // Parse bounds if provided
     let bounds: BoundingBox | undefined;
@@ -35,7 +42,11 @@ export async function GET(request: NextRequest) {
           bottomRight: { lat: boundsData.bottomRight.lat, lng: boundsData.bottomRight.lng }
         };
       } catch (error) {
-        console.warn('⚠️ API: Invalid bounds parameter:', boundsParam);
+        logger.warn(
+          'Invalid location bounds',
+          { entryPoint: '/api/locations/search', hasBounds: true },
+          requestId
+        );
       }
     }
 
@@ -60,7 +71,11 @@ export async function GET(request: NextRequest) {
       totalResults: searchResults.length
     };
 
-    console.log(`✅ API: Location search completed - ${searchResults.length} results found`);
+    logger.info(
+      'Location search completed',
+      { entryPoint: '/api/locations/search', resultCount: searchResults.length },
+      requestId
+    );
 
     return NextResponse.json(response);
 
