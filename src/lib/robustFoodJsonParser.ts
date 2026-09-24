@@ -4,6 +4,9 @@
  */
 
 import { ResultMatch } from "@/types/tarana-eats";
+import { logger } from "@/lib/observability/logger";
+
+const PARSER_ENTRY_POINT = 'robust-food-json-parser';
 
 interface EnhancedResultMatch extends ResultMatch {
   fullMenu?: any;
@@ -31,23 +34,23 @@ export class RobustFoodJsonParser {
    * Parse JSON with multiple fallback strategies
    */
   static parseResponse(response: string): ParseResult {
-    console.log(`🔍 RobustFoodJsonParser: Starting parse with ${response.length} characters`);
+    logger.info('RobustFoodJsonParser: Starting parse', { entryPoint: PARSER_ENTRY_POINT, responseLength: response.length });
     
     for (const strategy of this.STRATEGIES) {
       try {
         const result = this.executeStrategy(strategy, response);
         if (result.success) {
-          console.log(`✅ RobustFoodJsonParser: Success with strategy '${strategy}'`);
+          logger.info('RobustFoodJsonParser: Parse succeeded', { entryPoint: PARSER_ENTRY_POINT, strategy });
           return result;
         }
       } catch (error) {
-        console.log(`❌ Strategy '${strategy}' failed:`, error);
+        logger.warn(`RobustFoodJsonParser: Strategy '${strategy}' failed`, { entryPoint: PARSER_ENTRY_POINT, strategy, error: error instanceof Error ? error.message : String(error) });
         continue;
       }
     }
 
     // Ultimate fallback - return empty structure
-    console.log(`🚨 RobustFoodJsonParser: All strategies failed, returning empty structure`);
+    logger.warn('RobustFoodJsonParser: All strategies failed; returning empty structure', { entryPoint: PARSER_ENTRY_POINT });
     return {
       success: true,
       data: { matches: [] },
