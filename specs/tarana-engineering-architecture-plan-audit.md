@@ -621,6 +621,7 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | 5.1 slice 4 (lib support, 9 calls) | [#554](https://github.com/donyelqt/Tarana.ai/pull/554) | `0018ec9` (merged `e5146d0`) — verify SUCCESS (2m17s) |
 | 5.1 slice 5 (itinerary-generator route, 14 calls) | [#555](https://github.com/donyelqt/Tarana.ai/pull/555) | `fa3ab07` (merged `de1c95d`) — verify SUCCESS (2m08s) |
 | 5.1 slice 6 (JSON engines, 40 calls) | [#556](https://github.com/donyelqt/Tarana.ai/pull/556) | `c6d8afa` (merged `5b2b40c`) — verify SUCCESS (2m31s) |
+| refresh credential-forward fix | [#561](https://github.com/donyelqt/Tarana.ai/pull/561) | `e74e940` + `7b9e677` (merged `7baca48`) — verify SUCCESS (2m43s) |
 
 ### What the slice did NOT touch
 
@@ -854,3 +855,60 @@ not a middleware guarantee.
 | Body | same | `{"status":"ok","checks":{"supabase":"ok","geminiKey":"ok","tomtom":"ok"}}` on all three calls |
 | Design | `src/app/api/health/route.ts` | Connection-level only; 3s per-dependency timeout; no Gemini generation (key-presence only); degraded state returns 200 |
 | Caveat | response headers | `x-request-id` absent (route-owned `NextResponse`); see correction 35(b) |
+
+**36. Refresh regeneration was dead in production — fixed by PR #561 (2026-09-24).**
+`POST /api/saved-itineraries/[id]/refresh` regenerates by POSTing to the
+authenticated `/api/gemini/itinerary-generator` server-to-server. `fetch`
+attaches no cookies, so the generator answered **401 on every regeneration**
+(force-refresh and auto-regenerate alike) and the route returned 500 with the
+raw upstream text. The 401 gate dates to Nov 2025, not to the 1.1 auth
+centralization — the break predates it by ~10 months.
+Proof, on a fresh `next dev` (`:3222`): the refresh route's exact headers with
+no credential → `401 {"error":"Authentication required"}`; identical request
+plus a credential → `200` with a real itinerary; refresh POST with a
+credential passes the auth boundary and reaches the data layer (404 for a
+bogus id). The only delta between fail and success is a credential.
+Fix (`7baca48`, merged): `forwardCallerCredential()` carries only the
+caller's own credential — `x-bench-token` HMAC on the bench path, else the
+session cookie — on the internal call. 5 new regression tests
+(`refresh/__tests__/route.test.ts`, 4/5 fail pre-fix). tsc 0 errors, full
+suite 637 passed / 6 skipped / 0 failed, eslint clean, CI `verify` pass
+(2m43s). Independent Osmani review: APPROVE, 2 Required nits fixed pre-merge.
+
+**37. The 0.1a-2 leak sweep had a glob hole — nested routes were never checked.**
+The cited command `grep -rn ... src/app/api/**/route.ts` matches only
+single-level dirs in bash (no globstar), so `[id]/` subroutes were invisible
+to the "response-body leaks: 0" claim. Full-tree re-sweep (`rglob`) found 2
+real raw-error bodies, both in the refresh route fixed by #561: inner
+regeneration catch (`error: ...${errorMessage}`, `details.originalError`) and
+outer catch (`error: error.message`). Register's `userError.message` 409/400
+responses are app-authored strings from `createUserInSupabase`, not raw
+upstream detail — borderline, kept. Weather's `fetchError.message` hit is
+log-side only (the 502 body is sanitized). Remaining sweep rule: run the
+leak grep over `rglob`, not the shell glob.
+
+**38. H1-Eats charge-first is still open (repo's own declared stop-ship).**
+`specs/tarana-eats-city-scale-plan.md:153` + AGENTS.md CHARGE-FIRST,
+ATOMIC, REFUND-ON-FAILURE. Measured 2026-09-24: `route.ts:333`
+`consumeCredits` runs AFTER successful generation, and the catch path
+returns a free fallback (`route.ts:90-106` pre-flight balance check races
+the charge). The Gala generator is fail-closed (`route.ts:82-89`).
+Next task per the eats spec: move the charge BEFORE the Gemini call with a
+`charged` flag + `refundCredits` on every non-success path; drop the
+pre-flight race. Not done here — separate slice, needs its own revert-check.
+
+**39. Ranked next tasks (verified 2026-09-24, main @ `7baca48`).**
+1. **Refresh `console.*` → logger (~88 calls)** — established 5.1 slice shape
+(route: `logger` + `getRequestId`; helpers: `{ entryPoint }` meta);
+independent follow-up to #561, keeps this file reviewable.
+2. **H1-Eats charge-first (correction 38)** — revenue-integrity; spec-written
+verify column already exists in the eats plan.
+3. **Generator POST idempotency** — charge-first billable route with no
+`Idempotency-Key`; client retry = double charge. 2.3's 5 covered endpoints
+do not include it.
+4. **Dead-file carve-out ruling** — `route_legacy.ts`,
+`middleware/logger.ts`, `lib/test-*` (zero inbound refs, re-verified);
+delete vs convert still needs your call.
+Explicitly not next: 5.2 tracing (no sink per §3.3), 5.3 alerts (no
+channel), 2.4 Redis (deferred per §3.3), 1.3/1.4 (cross-client), 4.x (heavy
+independent track), Phase 6/7 (product decisions pending).
