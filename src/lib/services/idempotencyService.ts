@@ -44,11 +44,10 @@ function toError(error: unknown): Error {
   return new Error('Idempotency store operation failed');
 }
 
-function pendingClaimExpiry(): string {
-  // A crashed owner must not brick its key until the 30-day replay TTL.
-  // Pending rows live only long enough for one save to finish; cleanup
-  // reclaims them, and the next caller becomes the new owner.
-  return new Date(Date.now() + 5 * 60 * 1000).toISOString();
+function pendingClaimExpiry(pendingTtlMs: number): string {
+  // Crashed owners must not brick their key, but long-running owners need a
+  // TTL longer than their maximum execution window.
+  return new Date(Date.now() + pendingTtlMs).toISOString();
 }
 
 function completedResponseExpiry(): string {
@@ -109,7 +108,8 @@ export async function claimIdempotency(
   userId: string,
   route: string,
   key: string,
-  requestHash: string
+  requestHash: string,
+  pendingTtlMs: number = 5 * 60 * 1000
 ): Promise<IdempotencyClaim> {
   await cleanupExpiredIdempotencyKeys();
 
@@ -122,7 +122,7 @@ export async function claimIdempotency(
       request_hash: requestHash,
       status: IN_PROGRESS_STATUS,
       response_body: null,
-      expires_at: pendingClaimExpiry(),
+      expires_at: pendingClaimExpiry(pendingTtlMs),
     })
     .select('id')
     .maybeSingle();
