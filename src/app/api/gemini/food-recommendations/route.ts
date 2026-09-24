@@ -12,6 +12,8 @@ import { menuIndexingService } from "@/app/tarana-eats/services/menuIndexingServ
 import { budgetAllocator } from "@/app/tarana-eats/services/budgetAllocator";
 import { withRetry } from "@/lib/upstream/withRetry";
 import { timedHttp } from "@/lib/observability/httpMetrics";
+import { logger } from "@/lib/observability/logger";
+import { getRequestId } from "@/middleware/requestId";
 interface EnhancedResultMatch extends ResultMatch {
   fullMenu?: FullMenu;
   reason?: string;
@@ -34,8 +36,10 @@ const DEFAULT_MODEL_ID = "gemini-2.5-flash"; // Valid Gemini model
 const configuredModelId = process.env.GOOGLE_GEMINI_MODEL?.trim();
 const MODEL_ID = configuredModelId && configuredModelId.length > 0 ? configuredModelId : DEFAULT_MODEL_ID;
 
+const LOG_ENTRY_POINT = "food-recommendations";
+
 if (!configuredModelId && API_KEY) {
-  console.log(`[Food Recommendations] Using Gemini model: ${DEFAULT_MODEL_ID}`);
+  logger.info(`[Food Recommendations] Using Gemini model: ${DEFAULT_MODEL_ID}`, { entryPoint: LOG_ENTRY_POINT, model: DEFAULT_MODEL_ID });
 }
 
 const geminiModel = genAI ? genAI.getGenerativeModel({ 
@@ -75,6 +79,7 @@ const MIN_RECOMMENDATIONS = 3;
 const MAX_RECOMMENDATIONS = 5;
 
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
+  const requestId = getRequestId(req);
   return timedHttp('/api/gemini/food-recommendations', 'POST', async () => {
   try {
     const { prompt, foodData, preferences: clientPreferences } = await req.json();
@@ -121,7 +126,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     const charged = true;
 
     // Parse preferences from prompt first
-    const preferences = parseUserPreferences(prompt);
+    const preferences = parseUserPreferences(prompt, requestId);
     
     // CRITICAL: Override with client preferences if provided (handles form data directly)
     if (clientPreferences) {
@@ -140,34 +145,38 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
     
     // DEBUG: Log all parsed preferences
-    console.log("📊 Parsed user preferences:", {
+    logger.info("📊 Parsed user preferences:", {
+      entryPoint: LOG_ENTRY_POINT,
       pax: preferences.pax,
       budget: preferences.budget,
       cuisine: preferences.cuisine,
       restrictions: preferences.restrictions
-    });
+    }, requestId);
 
     // Initialize menu indexing service with restaurant data
     if (foodData?.restaurants && foodData.restaurants.length > 0) {
       try {
         menuIndexingService.indexRestaurants(foodData.restaurants);
-        console.log('✅ Menu indexing initialized');
+        logger.info('✅ Menu indexing initialized', { entryPoint: LOG_ENTRY_POINT }, requestId);
       } catch (indexError) {
-        console.warn('⚠️ Menu indexing failed, continuing without index:', indexError);
+        logger.warn('⚠️ Menu indexing failed, continuing without index:', {
+          entryPoint: LOG_ENTRY_POINT,
+          errorName: indexError instanceof Error ? indexError.name : typeof indexError
+        }, requestId);
       }
     }
 
     // Check and log API key presence
     const apiKey = process.env.GOOGLE_GEMINI_API_KEY || "";
     if (!apiKey) {
-      console.warn("⚠️ GOOGLE_GEMINI_API_KEY is missing! Using intelligent fallback with recommendation engine.");
+      logger.warn("⚠️ GOOGLE_GEMINI_API_KEY is missing! Using intelligent fallback with recommendation engine.", { entryPoint: LOG_ENTRY_POINT }, requestId);
       
       // Use intelligent recommendation engine instead of basic fallback
-      const intelligentRecommendations = createIntelligentRecommendations(foodData, prompt, preferences);
+      const intelligentRecommendations = createIntelligentRecommendations(foodData, prompt, preferences, requestId);
       return NextResponse.json(intelligentRecommendations);
     }
     
-    console.log("✓ Gemini AI enabled - generating personalized recommendations...");
+    logger.info("✓ Gemini AI enabled - generating personalized recommendations...", { entryPoint: LOG_ENTRY_POINT }, requestId);
     
     // Generate optimized cache key
     const cacheKey = JSON.stringify({
@@ -192,9 +201,9 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     // Re-use the globally initialised model
     const model = geminiModel;
     if (!model) {
-      console.error("Gemini model is not initialized – missing API key?");
+      logger.error("Gemini model is not initialized – missing API key?", { entryPoint: LOG_ENTRY_POINT }, requestId);
       // Create a fallback response
-      const fallbackRecommendations = createFallbackRecommendations(foodData, prompt);
+      const fallbackRecommendations = createFallbackRecommendations(foodData, prompt, requestId);
       return NextResponse.json(fallbackRecommendations);
     }
 
@@ -284,33 +293,45 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       
       // Debug: Check prompt feedback and safety ratings
       if (response.promptFeedback) {
-        console.log(`⚠️ Prompt Feedback:`, JSON.stringify(response.promptFeedback));
+        logger.warn(`⚠️ Prompt Feedback:`, {
+          entryPoint: LOG_ENTRY_POINT,
+          promptFeedback: response.promptFeedback
+        }, requestId);
         if (response.promptFeedback.blockReason) {
-          console.error(`❌ Content blocked by Gemini. Reason: ${response.promptFeedback.blockReason}`);
+          logger.error(`❌ Content blocked by Gemini. Reason: ${response.promptFeedback.blockReason}`, {
+            entryPoint: LOG_ENTRY_POINT,
+            blockReason: response.promptFeedback.blockReason
+          }, requestId);
           throw new Error(`Gemini blocked content: ${response.promptFeedback.blockReason}`);
         }
       }
       
       // Check if candidates exist
       if (!response.candidates || response.candidates.length === 0) {
-        console.error(`❌ No candidates in Gemini response`);
-        console.log(`Full response:`, JSON.stringify(response, null, 2));
+        logger.error(`❌ No candidates in Gemini response`, { entryPoint: LOG_ENTRY_POINT }, requestId);
+        logger.info(`Gemini response candidates omitted`, { entryPoint: LOG_ENTRY_POINT, candidateCount: 0 }, requestId);
         throw new Error('No candidates in Gemini response');
       }
       
       const textResponse = response.text();
       
-      console.log(`📊 Gemini response length: ${textResponse?.length || 0} characters`);
+      logger.info(`📊 Gemini response length: ${textResponse?.length || 0} characters`, {
+        entryPoint: LOG_ENTRY_POINT,
+        responseLength: textResponse?.length || 0
+      }, requestId);
       
       // Check if response is empty or invalid
       if (!textResponse || textResponse.trim().length < 10) {
-        console.error(`❌ Gemini returned empty/invalid response (length: ${textResponse?.length || 0})`);
-        console.log(`Candidate finish reason:`, response.candidates[0]?.finishReason);
-        console.log(`Candidate safety ratings:`, JSON.stringify(response.candidates[0]?.safetyRatings));
+        logger.error(`❌ Gemini returned empty/invalid response (length: ${textResponse?.length || 0})`, {
+          entryPoint: LOG_ENTRY_POINT,
+          responseLength: textResponse?.length || 0
+        }, requestId);
+        logger.info(`Candidate finish reason:`, { entryPoint: LOG_ENTRY_POINT, finishReason: response.candidates[0]?.finishReason }, requestId);
+        logger.info(`Candidate safety ratings:`, { entryPoint: LOG_ENTRY_POINT, safetyRatings: response.candidates[0]?.safetyRatings }, requestId);
         throw new Error('Empty Gemini response');
       }
       
-      console.log(`✅ Gemini returned valid response: ${textResponse.substring(0, 100)}...`);
+      logger.info(`✅ Gemini returned valid response`, { entryPoint: LOG_ENTRY_POINT, responseLength: textResponse.length }, requestId);
 
       // Use robust JSON parser with multiple recovery strategies
       const parseResult = RobustFoodJsonParser.parseResponse(textResponse);
@@ -318,7 +339,10 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
 
       if (parseResult.success && parseResult.data && parseResult.data.matches && parseResult.data.matches.length > 0) {
         recommendations = parseResult.data;
-        console.log(`✅ Gemini AI successfully generated ${recommendations.matches.length} recommendations`);
+        logger.info(`✅ Gemini AI successfully generated ${recommendations.matches.length} recommendations`, {
+          entryPoint: LOG_ENTRY_POINT,
+          recommendationCount: recommendations.matches.length
+        }, requestId);
         
         // Validate and enhance the response
         if (recommendations.matches && Array.isArray(recommendations.matches)) {
@@ -326,11 +350,12 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
             recommendations.matches,
             foodData,
             preferences,
-            prompt
+            prompt,
+            requestId
           );
         }
       } else {
-        console.warn('⚠️ JSON parsing failed or no matches found, using intelligent fallback recommendations');
+        logger.warn('⚠️ JSON parsing failed or no matches found, using intelligent fallback recommendations', { entryPoint: LOG_ENTRY_POINT }, requestId);
         throw new Error('Invalid parse result');
       }
       
@@ -359,12 +384,21 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       }
 
       const foodError = FoodRecommendationErrorHandler.createError(apiError, 'gemini_api_call');
+      logger.error('Food recommendation generation failed', {
+        entryPoint: LOG_ENTRY_POINT,
+        errorType: foodError.type,
+        retryable: foodError.retryable
+      }, requestId);
       const errorResponse = FoodRecommendationErrorHandler.createErrorResponse(foodError);
       return NextResponse.json(errorResponse, { status: 500 });
     }
   } catch (error) {
     const foodError = FoodRecommendationErrorHandler.createError(error, 'food_recommendations_api');
-    FoodRecommendationErrorHandler.logError(foodError);
+    logger.error('Food recommendation request failed', {
+      entryPoint: LOG_ENTRY_POINT,
+      errorType: foodError.type,
+      retryable: foodError.retryable
+    }, requestId);
 
     const errorResponse = FoodRecommendationErrorHandler.createErrorResponse(foodError);
     return NextResponse.json(errorResponse, { status: 500 });
@@ -377,7 +411,8 @@ function validateAndEnhanceRecommendations(
   matches: EnhancedResultMatch[],
   foodData: any,
   preferences: any,
-  prompt: string
+  prompt: string,
+  requestId: string
 ): EnhancedResultMatch[] {
   if (!foodData?.restaurants || foodData.restaurants.length === 0) {
     return matches;
@@ -390,13 +425,19 @@ function validateAndEnhanceRecommendations(
   for (const match of matches) {
     const restaurant = findRestaurantByNormalizedName(restaurantLookup, match.name);
     if (!restaurant) {
-      console.warn(`⚠️ Skipping hallucinated restaurant from AI response: "${match.name}"`);
+      logger.warn(`⚠️ Skipping hallucinated restaurant from AI response: "${match.name}"`, {
+        entryPoint: LOG_ENTRY_POINT,
+        restaurantName: match.name
+      }, requestId);
       continue;
     }
 
     const normalizedName = normalizeRestaurantName(restaurant.name);
     if (seenRestaurants.has(normalizedName)) {
-      console.log(`ℹ️ Ignoring duplicate recommendation for: ${restaurant.name}`);
+      logger.info(`ℹ️ Ignoring duplicate recommendation for: ${restaurant.name}`, {
+        entryPoint: LOG_ENTRY_POINT,
+        restaurantName: restaurant.name
+      }, requestId);
       continue;
     }
 
@@ -408,8 +449,11 @@ function validateAndEnhanceRecommendations(
   }
 
   if (groundedMatches.length < MIN_RECOMMENDATIONS) {
-    console.log(`⚠️ Only ${groundedMatches.length} grounded matches. Supplementing with retrieval engine.`);
-    const fallbackMatches = createIntelligentRecommendations(foodData, prompt, preferences).matches;
+    logger.info(`⚠️ Only ${groundedMatches.length} grounded matches. Supplementing with retrieval engine.`, {
+      entryPoint: LOG_ENTRY_POINT,
+      groundedMatchCount: groundedMatches.length
+    }, requestId);
+    const fallbackMatches = createIntelligentRecommendations(foodData, prompt, preferences, requestId).matches;
 
     for (const fallbackMatch of fallbackMatches) {
       const fallbackRestaurant = findRestaurantByNormalizedName(restaurantLookup, fallbackMatch.name);
@@ -431,8 +475,8 @@ function validateAndEnhanceRecommendations(
   }
 
   if (groundedMatches.length === 0) {
-    console.error('❌ No valid recommendations after grounding. Falling back entirely to deterministic engine.');
-    return createIntelligentRecommendations(foodData, prompt, preferences).matches.slice(0, MAX_RECOMMENDATIONS);
+    logger.error('❌ No valid recommendations after grounding. Falling back entirely to deterministic engine.', { entryPoint: LOG_ENTRY_POINT }, requestId);
+    return createIntelligentRecommendations(foodData, prompt, preferences, requestId).matches.slice(0, MAX_RECOMMENDATIONS);
   }
 
   return groundedMatches.slice(0, MAX_RECOMMENDATIONS);
@@ -541,9 +585,9 @@ function normalizeRestaurantName(name: string): string {
 }
 
 // Intelligent recommendations using recommendation engine
-function createIntelligentRecommendations(foodData: any, prompt: string, preferences: any): { matches: EnhancedResultMatch[] } {
-  console.log('🧠 Using intelligent recommendation engine...');
-  console.log('🎯 Generating intelligent recommendations...');
+function createIntelligentRecommendations(foodData: any, prompt: string, preferences: any, requestId: string): { matches: EnhancedResultMatch[] } {
+  logger.info('🧠 Using intelligent recommendation engine...', { entryPoint: LOG_ENTRY_POINT }, requestId);
+  logger.info('🎯 Generating intelligent recommendations...', { entryPoint: LOG_ENTRY_POINT }, requestId);
   
   // Use recommendation engine for advanced scoring
   const recommendations = recommendationEngine.generateRecommendations(
@@ -552,7 +596,10 @@ function createIntelligentRecommendations(foodData: any, prompt: string, prefere
     5 // Top 5 recommendations
   );
   
-  console.log(`✅ Generated ${recommendations.length} recommendations`);
+  logger.info(`✅ Generated ${recommendations.length} recommendations`, {
+    entryPoint: LOG_ENTRY_POINT,
+    recommendationCount: recommendations.length
+  }, requestId);
   
   const matches: EnhancedResultMatch[] = recommendations.map(rec => {
     const userBudget = preferences.budget ? parseInt(preferences.budget.replace(/[^\d]/g, '')) : null;
@@ -630,18 +677,21 @@ function createIntelligentRecommendations(foodData: any, prompt: string, prefere
     };
   });
   
-  console.log(`✅ Generated ${matches.length} intelligent recommendations`);
+  logger.info(`✅ Generated ${matches.length} intelligent recommendations`, {
+    entryPoint: LOG_ENTRY_POINT,
+    recommendationCount: matches.length
+  }, requestId);
   return { matches };
 }
 
 // Legacy fallback for compatibility
-function createFallbackRecommendations(foodData: any, prompt: string): { matches: EnhancedResultMatch[] } {
-  const preferences = parseUserPreferences(prompt);
-  return createIntelligentRecommendations(foodData, prompt, preferences);
+function createFallbackRecommendations(foodData: any, prompt: string, requestId: string): { matches: EnhancedResultMatch[] } {
+  const preferences = parseUserPreferences(prompt, requestId);
+  return createIntelligentRecommendations(foodData, prompt, preferences, requestId);
 }
 
 // Parse user preferences from prompt
-function parseUserPreferences(prompt: string): any {
+function parseUserPreferences(prompt: string, requestId: string): any {
   const preferences: any = {};
   
   // Extract budget
@@ -667,7 +717,10 @@ function parseUserPreferences(prompt: string): any {
   
   // DEBUG: Log parsed pax value
   if (preferences.pax) {
-    console.log(`✓ Parsed group size: ${preferences.pax} people from prompt: "${prompt}"`);
+    logger.info(`✓ Parsed group size: ${preferences.pax} people from prompt`, {
+      entryPoint: LOG_ENTRY_POINT,
+      pax: preferences.pax
+    }, requestId);
   }
   
   // Extract dietary restrictions
@@ -702,19 +755,20 @@ function parseBudgetRange(budgetStr: string): { min: number; max: number } {
 }
 
 // Calculate recommended price based on user's budget input, fallback to restaurant pricing
-function calculateRecommendedPrice(restaurant: any, groupSize: number, userBudget?: string): number {
+function calculateRecommendedPrice(restaurant: any, groupSize: number, userBudget?: string, requestId?: string): number {
   // If user provided a budget, use that as the total budget for the group
   if (userBudget) {
     const budgetNum = parseInt(userBudget.replace(/[^\d]/g, ''));
     if (budgetNum && budgetNum > 0) {
       // DEBUG LOGGING - Remove after fixing
-      console.log("🔍 API ROUTE DEBUG - Using User Budget:", {
+      logger.debug("🔍 API ROUTE DEBUG - Using User Budget:", {
+        entryPoint: LOG_ENTRY_POINT,
         restaurantName: restaurant.name,
         userBudgetInput: userBudget,
         extractedBudgetNum: budgetNum,
         groupSize: groupSize,
         finalPrice: budgetNum
-      });
+      }, requestId);
       return budgetNum; // Return user's budget as total budget for entire group
     }
   }
@@ -724,7 +778,8 @@ function calculateRecommendedPrice(restaurant: any, groupSize: number, userBudge
   const fallbackPrice = Math.round(avgPrice * groupSize);
   
   // DEBUG LOGGING - Remove after fixing
-  console.log("🔍 API ROUTE DEBUG - Using Restaurant Pricing:", {
+  logger.debug("🔍 API ROUTE DEBUG - Using Restaurant Pricing:", {
+    entryPoint: LOG_ENTRY_POINT,
     restaurantName: restaurant.name,
     userBudgetInput: userBudget,
     restaurantMinPrice: restaurant.priceRange.min,
@@ -732,7 +787,7 @@ function calculateRecommendedPrice(restaurant: any, groupSize: number, userBudge
     avgPrice: avgPrice,
     groupSize: groupSize,
     finalPrice: fallbackPrice
-  });
+  }, requestId);
   
   return fallbackPrice;
 }
@@ -831,6 +886,7 @@ function generateQuickReason(restaurant: any, preferences: any): string {
 
 // Health check endpoint for monitoring
 export async function GET(req: NextRequest) {
+  const requestId = getRequestId(req);
   return timedHttp('/api/gemini/food-recommendations', 'GET', async () => {
   try {
   const url = new URL(req.url);
@@ -851,6 +907,10 @@ export async function GET(req: NextRequest) {
   
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
+    logger.error('Food recommendation monitoring request failed', {
+      entryPoint: LOG_ENTRY_POINT,
+      errorName: error instanceof Error ? error.name : typeof error
+    }, requestId);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
   }, (res) => res.status);
