@@ -21,7 +21,7 @@ export interface PipelineCoordinatorDeps {
       service: string;
       description?: string;
       idempotencyKey: string;
-    }) => Promise<unknown>;
+    }) => Promise<boolean>;
   };
 }
 
@@ -65,23 +65,41 @@ export class PipelineCoordinator {
         logger.error(`Bookkeeping failed for session ${session.id} (refund still attempted)`, { entryPoint: "pipelineCoordinator", error: bookkeepingError, sessionId: session.id });
       }
       if (charged && !isBenchUser) {
-        try {
-          // Prefer the injected seam (tests observe it); fall back to the
-          // concrete service so older dep objects keep working.
-          const refund =
-            creditService.refundCredits?.bind(creditService) ?? CreditService.refundCredits;
-          await refund({
-            userId: session.userId,
-            amount: 1,
-            service: "tarana_gala",
-            description: `Refund: multi-agent failed ${session.id}`,
-            idempotencyKey: `refund:${session.id}`,
-          });
+        // Prefer the injected seam (tests observe it); fall back to the
+        // concrete service so older dep objects keep working.
+        const refund =
+          creditService.refundCredits?.bind(creditService) ?? CreditService.refundCredits;
+        const attemptRefund = async (): Promise<boolean> => {
+          try {
+            return await refund({
+              userId: session.userId,
+              amount: 1,
+              service: "tarana_gala",
+              description: `Refund: multi-agent failed ${session.id}`,
+              idempotencyKey: `refund:${session.id}`,
+            }) === true;
+          } catch (refundError) {
+            logger.error(`Multi-agent refund attempt threw for session ${session.id}`, {
+              entryPoint: "pipelineCoordinator",
+              sessionId: session.id,
+              errorName: refundError instanceof Error ? refundError.name : typeof refundError,
+            });
+            return false;
+          }
+        };
+
+        // Retry the same idempotency key. A distinct key could double-refund
+        // when the first call was a replay/no-op; the RPC key makes retry safe.
+        const refunded = (await attemptRefund()) || (await attemptRefund());
+        if (refunded) {
+          (error as Error & { __galaRefunded?: boolean }).__galaRefunded = true;
           logger.info(`Multi-agent refund: 1 credit refunded to ${session.userId} (session ${session.id})`, { entryPoint: "pipelineCoordinator", userId: session.userId, sessionId: session.id });
-        } catch {
-          // best-effort; swallow refund errors
+        } else {
+          logger.warn(`Multi-agent refund did not apply for session ${session.id}`, {
+            entryPoint: "pipelineCoordinator",
+            sessionId: session.id,
+          });
         }
-        (error as Error & { __galaRefunded?: boolean }).__galaRefunded = true;
       }
       throw error;
     }
