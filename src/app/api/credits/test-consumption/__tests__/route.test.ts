@@ -12,6 +12,13 @@ import {
   getRecentTransactions,
   getUserProfileRow,
 } from '@/lib/services/creditDiagnostics';
+import { logger } from '@/lib/observability/logger';
+
+jest.mock('@/lib/observability/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
+
+const mockLogger = logger as jest.Mocked<typeof logger>;
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -93,6 +100,11 @@ describe('Test Consumption API Route Tests', () => {
       transactionLogged: true,
     });
     expect(mockedConsumeTestCredit).toHaveBeenCalledWith('user-1');
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      'Attempting to consume test credit',
+      expect.objectContaining({ entryPoint: '/api/credits/test-consumption', userId: 'user-1' }),
+      expect.any(String)
+    );
   });
 
   test('surfaces the migration hint when the RPC function is missing', async () => {
