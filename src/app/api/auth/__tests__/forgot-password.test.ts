@@ -20,6 +20,11 @@ import * as auth from '@/lib/auth';
 import * as email from '@/lib/email';
 import { storeResetToken } from '@/lib/services/passwordService';
 import crypto from 'crypto';
+import { logger } from '@/lib/observability/logger';
+
+jest.mock('@/lib/observability/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
 
 // Mock dependencies — route owns token generation + email, service owns DB write
 jest.mock('@/lib/services/passwordService', () => ({
@@ -46,18 +51,12 @@ const mockCrypto = crypto as jest.Mocked<typeof crypto>;
 const mockAuth = auth as jest.Mocked<typeof auth>;
 const mockEmail = email as jest.Mocked<typeof email>;
 const mockStoreResetToken = storeResetToken as jest.Mock;
+const mockLogger = logger as jest.Mocked<typeof logger>;
 
-// Mock console methods
-const consoleSpy = {
-  error: jest.spyOn(console, 'error').mockImplementation(),
-  warn: jest.spyOn(console, 'warn').mockImplementation(),
-};
 
 describe('/api/auth/forgot-password', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    consoleSpy.error.mockClear();
-    consoleSpy.warn.mockClear();
 
     // Mock environment variables
     process.env.NEXTAUTH_URL = 'http://localhost:3000';
@@ -67,13 +66,10 @@ describe('/api/auth/forgot-password', () => {
     mockStoreResetToken.mockResolvedValue(undefined);
   });
 
-  afterAll(() => {
-    consoleSpy.error.mockRestore();
-    consoleSpy.warn.mockRestore();
-  });
 
   const createMockRequest = (body: any) => {
     return {
+      headers: { get: () => null },
       json: jest.fn().mockResolvedValue(body),
     } as unknown as NextRequest;
   };
@@ -193,9 +189,10 @@ describe('/api/auth/forgot-password', () => {
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Failed to process reset request');
-      expect(consoleSpy.error).toHaveBeenCalledWith(
-        'Error storing reset token:',
-        expect.any(Error)
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error storing reset token',
+        expect.objectContaining({ entryPoint: '/api/auth/forgot-password' }),
+        expect.any(String)
       );
     });
 
@@ -242,13 +239,18 @@ describe('/api/auth/forgot-password', () => {
 
       expect(response.status).toBe(200);
       expect(data.message).toBe('If an account with that email exists, we have sent a password reset link.');
-      expect(consoleSpy.warn).toHaveBeenCalledWith('Failed to send password reset email, but continuing for security');
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Failed to send password reset email',
+        expect.objectContaining({ entryPoint: '/api/auth/forgot-password' }),
+        expect.any(String)
+      );
     });
   });
 
   describe('Error Handling', () => {
     it('should handle JSON parsing errors', async () => {
       const request = {
+        headers: { get: () => null },
         json: jest.fn().mockRejectedValue(new Error('Invalid JSON')),
       } as unknown as NextRequest;
 
@@ -257,7 +259,11 @@ describe('/api/auth/forgot-password', () => {
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Internal server error');
-      expect(consoleSpy.error).toHaveBeenCalledWith('Forgot password error:', expect.any(Error));
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Forgot password error',
+        expect.objectContaining({ entryPoint: '/api/auth/forgot-password' }),
+        expect.any(String)
+      );
     });
 
     it('should handle unexpected errors gracefully', async () => {
@@ -270,7 +276,11 @@ describe('/api/auth/forgot-password', () => {
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Internal server error');
-      expect(consoleSpy.error).toHaveBeenCalledWith('Forgot password error:', expect.any(Error));
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Forgot password error',
+        expect.objectContaining({ entryPoint: '/api/auth/forgot-password' }),
+        expect.any(String)
+      );
     });
   });
 

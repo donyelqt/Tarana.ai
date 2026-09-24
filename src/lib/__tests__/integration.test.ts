@@ -13,6 +13,13 @@ import * as email from '@/lib/email/email';
 import * as emailConfig from '@/lib/email/emailConfig';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { logger } from '@/lib/observability/logger';
+
+jest.mock('@/lib/observability/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
+
+const mockLogger = logger as jest.Mocked<typeof logger>;
 
 // Mock all dependencies - use getter for supabaseAdmin to allow mutable mock
 jest.mock('@/lib/data/supabaseAdmin', () => ({
@@ -80,6 +87,7 @@ describe('Password Reset Integration Tests', () => {
 
   const createMockRequest = (body: any) => {
     return {
+      headers: { get: () => null },
       json: jest.fn().mockResolvedValue(body),
     } as unknown as NextRequest;
   };
@@ -262,7 +270,7 @@ describe('Password Reset Integration Tests', () => {
       // Mock email failure
       (email.sendPasswordResetEmail as jest.Mock).mockResolvedValue(false);
       
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      mockLogger.warn.mockClear();
       
       const request = createMockRequest({ email: userEmail });
       const response = await forgotPasswordPOST(request);
@@ -270,9 +278,11 @@ describe('Password Reset Integration Tests', () => {
       
       expect(response.status).toBe(200);
       expect(data.message).toBe('If an account with that email exists, we have sent a password reset link.');
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to send password reset email, but continuing for security');
-      
-      consoleSpy.mockRestore();
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Failed to send password reset email',
+        expect.objectContaining({ entryPoint: '/api/auth/forgot-password' }),
+        expect.any(String)
+      );
     });
 
     it('should prevent timing attacks between existing and non-existing users', async () => {

@@ -15,6 +15,11 @@ import {
   hashPassword,
   resetPassword,
 } from '@/lib/services/passwordService';
+import { logger } from '@/lib/observability/logger';
+
+jest.mock('@/lib/observability/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
 
 // Mock service boundary — route owns validation + expiry check, service owns DB + hashing
 jest.mock('@/lib/services/passwordService', () => ({
@@ -42,27 +47,21 @@ jest.mock('@/lib/security/inputSanitizer', () => ({
 const mockFindUserByResetToken = findUserByResetToken as jest.Mock;
 const mockHashPassword = hashPassword as jest.Mock;
 const mockResetPassword = resetPassword as jest.Mock;
+const mockLogger = logger as jest.Mocked<typeof logger>;
 
-// Mock console methods
-const consoleSpy = {
-  error: jest.spyOn(console, 'error').mockImplementation(),
-};
 
 describe('/api/auth/reset-password', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    consoleSpy.error.mockClear();
     mockHashPassword.mockResolvedValue('hashed_password_123');
     mockResetPassword.mockResolvedValue(true);
     mockFindUserByResetToken.mockResolvedValue(null);
   });
 
-  afterAll(() => {
-    consoleSpy.error.mockRestore();
-  });
 
   const createMockRequest = (body: any) => {
     return {
+      headers: { get: () => null },
       json: jest.fn().mockResolvedValue(body),
     } as unknown as NextRequest;
   };
@@ -240,7 +239,7 @@ describe('/api/auth/reset-password', () => {
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Internal server error');
-      expect(consoleSpy.error).toHaveBeenCalledWith('Reset password error:', expect.any(Error));
+      expect(mockLogger.error).toHaveBeenCalledWith('Reset password error', expect.objectContaining({ entryPoint: '/api/auth/reset-password' }), expect.any(String));
     });
   });
 
@@ -272,7 +271,7 @@ describe('/api/auth/reset-password', () => {
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Failed to reset password');
-      expect(consoleSpy.error).toHaveBeenCalledWith('Error updating password:', expect.any(Error));
+      expect(mockLogger.error).toHaveBeenCalledWith('Error updating password', expect.objectContaining({ entryPoint: '/api/auth/reset-password' }), expect.any(String));
     });
   });
 
@@ -311,6 +310,7 @@ describe('/api/auth/reset-password', () => {
   describe('Error Handling', () => {
     it('should handle JSON parsing errors', async () => {
       const request = {
+        headers: { get: () => null },
         json: jest.fn().mockRejectedValue(new Error('Invalid JSON')),
       } as unknown as NextRequest;
 
@@ -319,7 +319,7 @@ describe('/api/auth/reset-password', () => {
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Internal server error');
-      expect(consoleSpy.error).toHaveBeenCalledWith('Reset password error:', expect.any(Error));
+      expect(mockLogger.error).toHaveBeenCalledWith('Reset password error', expect.objectContaining({ entryPoint: '/api/auth/reset-password' }), expect.any(String));
     });
 
     it('should handle unexpected errors gracefully', async () => {
@@ -335,7 +335,7 @@ describe('/api/auth/reset-password', () => {
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Internal server error');
-      expect(consoleSpy.error).toHaveBeenCalledWith('Reset password error:', expect.any(Error));
+      expect(mockLogger.error).toHaveBeenCalledWith('Reset password error', expect.objectContaining({ entryPoint: '/api/auth/reset-password' }), expect.any(String));
     });
   });
 

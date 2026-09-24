@@ -8,6 +8,11 @@ import { NextRequest } from 'next/server';
 import { POST } from '../route';
 import { getServerSession } from 'next-auth';
 import { recordTosAcceptance } from '@/lib/services/userService';
+import { logger } from '@/lib/observability/logger';
+
+jest.mock('@/lib/observability/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
 
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -22,6 +27,7 @@ jest.mock('@/lib/services/userService', () => ({
 }));
 
 const mockedGetServerSession = getServerSession as unknown as jest.Mock;
+const mockLogger = logger as jest.Mocked<typeof logger>;
 const mockedRecordTosAcceptance = recordTosAcceptance as unknown as jest.Mock;
 
 function makeRequest(): NextRequest {
@@ -67,5 +73,10 @@ describe('Consent API Route Tests', () => {
     expect(response.status).toBe(500);
     const body = await response.json();
     expect(body.error).toBeDefined();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Error recording ToS acceptance',
+      expect.objectContaining({ entryPoint: '/api/auth/consent' }),
+      expect.any(String)
+    );
   });
 });

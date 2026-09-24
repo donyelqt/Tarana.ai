@@ -5,6 +5,8 @@ import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rate
 import { sanitizeEmail } from '@/lib/security/inputSanitizer';
 import { checkRequiredEnvVars } from '@/lib/security/environmentValidator';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { logger } from '@/lib/observability/logger';
+import { getRequestId } from '@/middleware/requestId';
 import crypto from 'crypto';
 
 // Strict rate limiter for password reset attempts
@@ -12,6 +14,7 @@ const passwordResetRateLimit = createRateLimitMiddleware(rateLimitConfigs.passwo
 
 export async function POST(request: NextRequest) {
   return timedHttp('/api/auth/forgot-password', 'POST', async () => {
+    const requestId = getRequestId(request);
     try {
       // Check required environment variables
       checkRequiredEnvVars(['NEXTAUTH_SECRET', 'SUPABASE_SERVICE_ROLE_KEY', 'SMTP_HOST']);
@@ -66,7 +69,15 @@ export async function POST(request: NextRequest) {
       try {
         await storeResetToken(user.id, resetToken, resetTokenExpiry);
       } catch (updateError) {
-        console.error('Error storing reset token:', updateError);
+        logger.error(
+          'Error storing reset token',
+          {
+            entryPoint: '/api/auth/forgot-password',
+            errorName: updateError instanceof Error ? updateError.name : 'UnknownError',
+            errorMessage: updateError instanceof Error ? updateError.message : 'Unknown error',
+          },
+          requestId
+        );
         return NextResponse.json(
           { error: 'Failed to process reset request' },
           { status: 500 }
@@ -81,14 +92,26 @@ export async function POST(request: NextRequest) {
       const emailSent = await sendPasswordResetEmail(sanitizedEmail, resetUrl);
 
       if (!emailSent) {
-        console.warn('Failed to send password reset email, but continuing for security');
+        logger.warn(
+          'Failed to send password reset email',
+          { entryPoint: '/api/auth/forgot-password' },
+          requestId
+        );
       }
 
       return NextResponse.json({
         message: 'If an account with that email exists, we have sent a password reset link.',
       });
     } catch (error) {
-      console.error('Forgot password error:', error);
+      logger.error(
+        'Forgot password error',
+        {
+          entryPoint: '/api/auth/forgot-password',
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        },
+        requestId
+      );
       return NextResponse.json(
         { error: 'Internal server error' },
         { status: 500 }

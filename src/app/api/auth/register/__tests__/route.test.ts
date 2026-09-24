@@ -9,7 +9,13 @@ import { NextRequest } from 'next/server';
 import { createUserInSupabase } from '@/lib/auth';
 import { createUserProfile } from '@/lib/services/userService';
 import { validatePasswordStrength } from '@/lib/security/inputSanitizer';
+import { logger } from '@/lib/observability/logger';
 
+jest.mock('@/lib/observability/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
+
+const mockLogger = logger as jest.Mocked<typeof logger>;
 jest.mock('@/lib/auth', () => ({
   createUserInSupabase: jest.fn(),
 }));
@@ -51,6 +57,7 @@ describe('Register API Route Tests', () => {
 
   test('should return 400 for missing required fields', async () => {
     const mockRequest = {
+      headers: { get: () => null },
       json: jest.fn().mockResolvedValue({}),
     } as unknown as NextRequest;
 
@@ -60,6 +67,7 @@ describe('Register API Route Tests', () => {
 
   test('should return 400 when ToS agreement is missing', async () => {
     const mockRequest = {
+      headers: { get: () => null },
       json: jest.fn().mockResolvedValue({
         fullName: 'John Doe',
         email: 'john@example.com',
@@ -73,6 +81,7 @@ describe('Register API Route Tests', () => {
 
   test('should return 400 when ToS agreement is false', async () => {
     const mockRequest = {
+      headers: { get: () => null },
       json: jest.fn().mockResolvedValue({
         fullName: 'John Doe',
         email: 'john@example.com',
@@ -107,6 +116,7 @@ describe('Register API Route Tests', () => {
     });
 
     const mockRequest = {
+      headers: { get: () => null },
       json: jest.fn().mockResolvedValue({
         fullName: 'John Doe',
         email: 'john@example.com',
@@ -150,6 +160,7 @@ describe('Register API Route Tests', () => {
     );
 
     const mockRequest = {
+      headers: { get: () => null },
       json: jest.fn().mockResolvedValue({
         fullName: 'John Doe',
         email: 'john@example.com',
@@ -170,6 +181,7 @@ describe('Register API Route Tests', () => {
     ReferralService.validateReferralCode.mockResolvedValue(false);
 
     const mockRequest = {
+      headers: { get: () => null },
       json: jest.fn().mockResolvedValue({
         fullName: 'John Doe',
         email: 'john@example.com',
@@ -201,9 +213,10 @@ describe('Register API Route Tests', () => {
         errors: [],
       });
 
-    (createUserInSupabase as jest.Mock).mockRejectedValue(new Error('Unexpected error'));
+    (createUserInSupabase as jest.Mock).mockRejectedValue('Unexpected error');
 
     const mockRequest = {
+      headers: { get: () => null },
       json: jest.fn().mockResolvedValue({
         fullName: 'John Doe',
         email: 'john@example.com',
@@ -217,5 +230,10 @@ describe('Register API Route Tests', () => {
 
     const responseBody = await response.json();
     expect(responseBody.error).toBeDefined();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Registration error',
+      expect.objectContaining({ entryPoint: '/api/auth/register' }),
+      expect.any(String)
+    );
   });
 });
