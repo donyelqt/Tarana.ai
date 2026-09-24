@@ -14,6 +14,13 @@ import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import { tomtomTrafficService } from '@/lib/traffic/tomtomTraffic';
 import { enrichActivitiesWithImages } from '@/lib/services/imageService';
 import { activityToPayload, spotPool } from '@/app/dashboard/utils';
+import { logger } from '@/lib/observability/logger';
+
+jest.mock('@/lib/observability/logger', () => ({
+  logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+}));
+
+const mockLogger = logger as jest.Mocked<typeof logger>;
 
 jest.mock('@/lib/services/tomtomRouting', () => ({
   tomtomRoutingService: { searchLocations: jest.fn() },
@@ -185,23 +192,20 @@ describe('GET /api/spots', () => {
             : 'https://api.tomtom.com/map/1/staticimage?key=K&center=120.645,16.445&zoom=15',
       }))
     );
-    const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
-    try {
-      const res = await get('baguio');
-      const body = await res.json();
-      const names = (body.spots as { name: string }[]).map((s) => s.name);
-      expect(names).toContain('Real Photo Spot');
-      expect(names).not.toContain('Map Only Spot');
-      expect(body.spots).toHaveLength(curatedLen + 1);
-      expect([...names].sort()).toEqual(
-        [...curated.map((c) => c.name), 'Real Photo Spot'].sort()
-      );
-      expect(debugSpy).toHaveBeenCalledWith(
-        expect.stringContaining('dropped 1/2 map-only extras')
-      );
-    } finally {
-      debugSpy.mockRestore();
-    }
+    const res = await get('baguio');
+    const body = await res.json();
+    const names = (body.spots as { name: string }[]).map((s) => s.name);
+    expect(names).toContain('Real Photo Spot');
+    expect(names).not.toContain('Map Only Spot');
+    expect(body.spots).toHaveLength(curatedLen + 1);
+    expect([...names].sort()).toEqual(
+      [...curated.map((c) => c.name), 'Real Photo Spot'].sort()
+    );
+    expect(mockLogger.debug).toHaveBeenCalledWith(
+      'Baguio extras dropped',
+      expect.objectContaining({ dropped: 1, total: 2, entryPoint: '/api/spots' }),
+      expect.any(String)
+    );
   });
 
   it('dedupes TomTom extras against curated coords (toFixed(3)) and bounds', async () => {
