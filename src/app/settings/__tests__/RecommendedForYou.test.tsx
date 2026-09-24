@@ -1,9 +1,8 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import RecommendedForYou from '../RecommendedForYou';
-import { getSavedMeals } from '@/lib/data/supabaseMeals';
-import type { SavedMeal } from '@/app/saved-meals/data';
+import type { SettingsRecommendation, SettingsRecommendationsResponse } from '@/types/settings-recommendations';
 
 jest.mock('next-auth/react', () => ({
   useSession: () => ({
@@ -17,11 +16,34 @@ jest.mock('next/image', () => ({
   default: ({ fill: _fill, ...props }: Record<string, unknown>) => <img {...props} />,
 }));
 
-jest.mock('@/lib/data/supabaseMeals', () => ({
-  getSavedMeals: jest.fn(),
-}));
+const mockedFetch = jest.fn();
+global.fetch = mockedFetch as unknown as typeof fetch;
 
-const mockedGetSavedMeals = getSavedMeals as jest.MockedFunction<typeof getSavedMeals>;
+const recommendations: SettingsRecommendation[] = [
+  {
+    kind: 'cafe',
+    card: { name: 'Itaewon Cafe', image: null, distance: '~1.0km', time: '~3 min', traffic: 'Low' },
+    href: '/tarana-eats',
+    action: 'Explore cafe',
+    context: 'Taste match',
+  },
+  {
+    kind: 'spot',
+    card: { name: 'Baguio Public Market', image: null, distance: '~0.3km', time: '~1 min', traffic: 'Low' },
+    href: '/tarana-explore',
+    action: 'Explore spot',
+    context: 'Good timing',
+  },
+];
+
+function response(overrides: Partial<SettingsRecommendationsResponse> = {}): SettingsRecommendationsResponse {
+  return {
+    success: true,
+    personalized: false,
+    recommendations,
+    ...overrides,
+  };
+}
 
 function renderWithQueryClient() {
   const queryClient = new QueryClient({
@@ -37,30 +59,30 @@ function renderWithQueryClient() {
 
 describe('RecommendedForYou', () => {
   beforeEach(() => {
-    mockedGetSavedMeals.mockReset();
+    mockedFetch.mockReset();
   });
 
-  it('uses saved meals to label a real cafe recommendation and keeps the actions navigable', async () => {
-    const savedMeal: SavedMeal = {
-      id: 'meal-1',
-      cafeName: 'Itaewon Cafe',
-      mealType: 'Lunch',
-      price: 300,
-      goodFor: 2,
-      location: 'Session Road',
-      image: 'saved-meal.jpg',
-    };
-    mockedGetSavedMeals.mockResolvedValue([savedMeal]);
+  it('uses the server recommendation response and keeps the actions navigable', async () => {
+    mockedFetch.mockResolvedValue({
+      ok: true,
+      json: async () => response({ personalized: true }),
+    });
 
     renderWithQueryClient();
 
     expect(await screen.findByText('Taste match')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Explore cafe:/ })).toHaveAttribute('href', '/tarana-eats');
     expect(screen.getByRole('link', { name: /Explore spot:/ })).toHaveAttribute('href', '/tarana-explore');
+    expect(mockedFetch).toHaveBeenCalledWith('/api/recommendations/settings', {
+      headers: { Accept: 'application/json' },
+    });
   });
 
-  it('keeps useful fallback recommendations visible when personalization fails', async () => {
-    mockedGetSavedMeals.mockRejectedValue(new Error('network unavailable'));
+  it('keeps fallback recommendations visible when the server reports a personalization failure', async () => {
+    mockedFetch.mockResolvedValue({
+      ok: true,
+      json: async () => response({ personalizationError: true }),
+    });
 
     renderWithQueryClient();
 
@@ -68,5 +90,17 @@ describe('RecommendedForYou', () => {
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Explore cafe:/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Explore spot:/ })).toBeInTheDocument();
+  });
+
+  it('shows the empty state when the recommendations endpoint itself fails', async () => {
+    mockedFetch.mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'network unavailable' }),
+    });
+
+    renderWithQueryClient();
+
+    expect(await screen.findByText('No recommendations yet')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Build an itinerary' })).toHaveAttribute('href', '/itinerary-generator');
   });
 });

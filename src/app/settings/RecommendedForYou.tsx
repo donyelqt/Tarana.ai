@@ -2,30 +2,16 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowUpRight, Clock3, Compass, MapPin, RefreshCw, Utensils } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import {
-  activityToPayload,
-  rankCafes,
-  rankSpots,
-  spotPool,
-  toCafeCard,
-  toSpotCard,
-  type RecommendationCard,
-} from '@/app/dashboard/utils';
-import { getSavedMeals } from '@/lib/data/supabaseMeals';
+import type {
+  SettingsRecommendation,
+  SettingsRecommendationsResponse,
+} from '@/types/settings-recommendations';
 
-type Recommendation = {
-  kind: 'cafe' | 'spot';
-  card: RecommendationCard;
-  href: string;
-  action: string;
-  context: string;
-};
-
-function RecommendationRow({ recommendation }: { recommendation: Recommendation }) {
+function RecommendationRow({ recommendation }: { recommendation: SettingsRecommendation }) {
   const [imageFailed, setImageFailed] = useState(false);
   const { card, kind, href, action, context } = recommendation;
   const Icon = kind === 'cafe' ? Utensils : Compass;
@@ -86,46 +72,39 @@ function RecommendationRow({ recommendation }: { recommendation: Recommendation 
 export default function RecommendedForYou() {
   const { data: session } = useSession();
   const userId = session?.user?.id;
-  const { data: savedMeals = [], isFetching, isError, refetch } = useQuery({
-    queryKey: ['saved-meals', userId],
+  const { data: response, isFetching, isError, refetch } = useQuery<SettingsRecommendationsResponse>({
+    queryKey: ['settings-recommendations', userId],
     queryFn: async () => {
-      if (!userId) return [];
-      return await getSavedMeals();
+      if (!userId) {
+        return { success: true, personalized: false, recommendations: [] };
+      }
+
+      const result = await fetch('/api/recommendations/settings', {
+        headers: { Accept: 'application/json' },
+      });
+      const body = (await result.json().catch(() => null)) as
+        | (Partial<SettingsRecommendationsResponse> & { error?: string })
+        | null;
+
+      if (!result.ok || body?.success !== true || !Array.isArray(body.recommendations)) {
+        throw new Error(body?.error || 'Failed to load recommendations');
+      }
+
+      return body as SettingsRecommendationsResponse;
     },
     enabled: Boolean(userId),
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
 
-  const recommendations = useMemo<Recommendation[]>(() => {
-    const rankedCafe = rankCafes(savedMeals, 1)[0];
-    const cafeCard = rankedCafe ? toCafeCard(rankedCafe) : null;
-    const rankedSpot = rankSpots(spotPool(), new Date(), 1)[0];
-    const spotCard = rankedSpot ? toSpotCard(activityToPayload(rankedSpot)) : null;
-
-    return [
-      cafeCard && {
-        kind: 'cafe' as const,
-        card: cafeCard,
-        href: '/tarana-eats',
-        action: 'Explore cafe',
-        context: rankedCafe.matchedOn.length > 0 ? 'Taste match' : 'Popular cafe',
-      },
-      spotCard && {
-        kind: 'spot' as const,
-        card: spotCard,
-        href: '/tarana-explore',
-        action: 'Explore spot',
-        context: spotCard.traffic ? 'Good timing' : 'Baguio favorite',
-      },
-    ].filter((recommendation): recommendation is Recommendation => recommendation !== null && recommendation !== undefined);
-  }, [savedMeals]);
-
-  const hasSavedMeals = savedMeals.length > 0;
+  const recommendations = response?.recommendations ?? [];
+  const hasSavedMeals = response?.personalized ?? false;
+  const personalizationError = response?.personalizationError ?? false;
+  const showPersonalizationError = isError || personalizationError;
   const hasTasteMatch = recommendations.some(
     (recommendation) => recommendation.kind === 'cafe' && recommendation.context === 'Taste match'
   );
-  const statusText = isError
+  const statusText = showPersonalizationError
     ? 'Showing popular picks — saved meals could not load.'
     : isFetching && !hasSavedMeals
       ? 'Personalizing picks from your saved meals…'
@@ -155,7 +134,7 @@ export default function RecommendedForYou() {
         )}
       </div>
 
-      {isError && (
+      {showPersonalizationError && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900" role="status">
           <span>Personalization is temporarily unavailable.</span>
           <button
