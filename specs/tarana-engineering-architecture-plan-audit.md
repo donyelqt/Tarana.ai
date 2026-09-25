@@ -240,8 +240,8 @@ request
 - **Verify:** E2E suite passes in CI; failing E2E blocks merge. Current: `tests/e2e/smoke.spec.ts` (4 tests) + `tests/e2e/journey.spec.ts` (7 tests) = 11 E2E tests green locally on a clean production build; full Jest suite 776 passed / 6 skipped / 0 failed.
 
 #### 4.2 Contract tests
-- For each API route, validate request/response against the Zod schema in a test.
-- Use `@stoplight/spectral` or manual schema validation.
+- Consumer-visible response envelopes are pinned per route with inline shape assertions (repo convention — no zod in tests, no `@stoplight/spectral`). Only genuinely uncovered routes get new files: `credits/balance` 401, `saved-itineraries`/`generator` 401s already live at E2E level and are not duplicated.
+- Slice 1: `GET /api/health` — `src/app/api/health/__tests__/route.test.ts` (4 tests: 200 ok envelope, 200 degraded on 500s, ok/fail value bounds + key set, missing-keys fail without network; `fetch` mocked, env set/restored).
 - **Verify:** a breaking change to a route's response shape fails the contract test.
 
 #### 4.3 Mobile tests
@@ -732,7 +732,7 @@ evidence. Items without a marker are **not done** — do not assume they are.
 | Status | # | Item | Evidence |
 |---|---|---|---|
 | [ ] | 4.1 | E2E tests | Partial — Playwright smoke (PR #605: `playwright.config.ts`, `tests/e2e/smoke.spec.ts` 4 tests) + journey boundaries (`tests/e2e/journey.spec.ts` 7 tests: register 400s ×4, generator 401, save 401, save 401-before-400; serial, ≤4 register POSTs under the in-memory auth rate limit; smoke untouched). Happy-path signup → login → generate → save → dashboard still needs live Supabase/Gemini/ledger (stub env 500s, no deterministic session); explicitly not attempted. Verified: 11/11 E2E green on clean production build, Jest 776/6/0, tsc 0, ESLint 0. |
-| [ ] | 4.2 | Contract tests | API request/response contract suite not implemented. |
+| [ ] | 4.2 | Contract tests | Partial — slice 1: `GET /api/health` contract (`src/app/api/health/__tests__/route.test.ts` 4 tests: 200 ok envelope, 200 degraded on dependency 500s, ok/fail bounds + key set, missing-keys fail; fetch mocked, per-route `__tests__` convention, inline asserts). 401 envelopes already covered (credits/balance unit, generator/save E2E) and not duplicated. Verified: 4/4 green, Jest 780/6/0, tsc 0, ESLint 0. |
 | [ ] | 4.3 | Mobile tests | `tarana-mobile` has no Jest test job in CI. |
 | [x] | 4.4 | Fix the failing test | PR #518 (`6fef869`) isolates `SMTP_FROM_EMAIL` in `mockEnv` without changing the source default. emailConfig 9/9; full suite **550 passed, 6 skipped, 0 failed** — first 100% green run. |
 | [x] | 5.1-R1 narrow | track-referral via withRetry + structured logger | **Done — 1 route, not repo-wide 5.1.** PR #542 (`2eee7c0`, merged `75aa447`): hand-rolled 3-attempt loop (re-ran business failures, inline sleep, 9 `console.*`) → `withRetry` (3 attempts, 1s fixed, `jitter: 'none'`); business `{success:false}` outcomes (invalid/self/duplicate) return without retry; transient throws retry; exhaustion → `handleApiError` safe 500. `console.*` → `logger.info/warn` + `getRequestId`; known-error branches byte-identical; catch typed `unknown`; wire shape unchanged for `referralTracking.ts`. New `__tests__/route.test.ts` (6: 401, blank-400, normalization, no-retry-on-business, retry-then-succeed, sentinel-leak 500). Verified: focused 6/6, `console.` in route → zero, tsc 0 errors, CI `verify` 2m16s + Vercel pass. Repo-wide `console.*` elimination (Phase 5.1 full) remains open. |
@@ -906,11 +906,12 @@ Converted 29 direct `console.*` calls in `src/app/api/gemini/food-recommendation
 **41. Food recommendations idempotency — DONE (PR #567, merged `50220a2`; CI `verify` SUCCESS 2m48s).**
 The charge-first `/api/gemini/food-recommendations` path now claims the caller's key before consuming a credit, hashes the complete request payload, replays the exact stored response, rejects in-flight duplicates with `409` + `Retry-After`, rejects key reuse with a different payload using `422`, and completes owned claims for success, insufficient-credit, and safe failure responses. Completion-store failure is logged and rethrown so the client cannot receive a false success. The web `useTaranaEatsAI` caller sends one `crypto.randomUUID()` key per generation intent. Unkeyed requests preserve the previous flow. Verification: 9 new route idempotency tests, 1 client-hook test, full suite **649 passed / 6 skipped / 0 failed**, tsc clean, lint 0 errors with pre-existing warnings, production build green, CI `verify` pass. Independent review initially requested changes for swallowed completion errors; both the completion-failure and explicit charge-state findings were fixed, and the post-fix verdict is **APPROVE**.
 
-**Current next-task ranking after the 4.1 journey-boundary slice (on `origin/main` @ `a57f3b1`, PR #608 merged):**
+**Current next-task ranking after the 4.2 contract slice 1 (on `origin/main` @ `8c97184`, PR #609 merged):**
 1. **Mobile shippability decision** — still product-scope blocked (`eas.json`, tests, CI job, local-AI stub, offline behavior); decision before code.
 2. **Happy-path E2E behind live services** — needs staging Supabase/Gemini/ledger + seeded session; only then can signup → login → generate → save → dashboard be asserted end-to-end.
+3. **Contract slices 2+** — next uncovered envelope (credits/balance 200 happy path needs live ledger; generator/save 200s need session + Gemini); only slice where deterministic.
 
-Closed since the prior ranking: **4.1 journey boundaries** (7 deterministic tests; happy path explicitly deferred to live services), **§3.2 SSRF decided-no-wire-target** (fate review + closeout; guard retained for future request-derived-URL surfaces), **unify `CreditService.ensureUserProfile`** (#604 via `e9094b2` — delegates to `userService.createUserProfile`/`userProfileExists`, `src/lib/referral-system/CreditService.ts:20,33-46`) and **delete `ensureFullItinerary` dead code** (#604 via `5e938fe` — `git grep ensureFullItinerary origin/main -- src` → zero).
+Closed since the prior ranking: **4.2 contract slice 1** (health envelope, 4 deterministic tests), **4.1 journey boundaries** (7 deterministic tests; happy path explicitly deferred to live services), **§3.2 SSRF decided-no-wire-target** (fate review + closeout; guard retained for future request-derived-URL surfaces), **unify `CreditService.ensureUserProfile`** (#604 via `e9094b2` — delegates to `userService.createUserProfile`/`userProfileExists`, `src/lib/referral-system/CreditService.ts:20,33-46`) and **delete `ensureFullItinerary` dead code** (#604 via `5e938fe` — `git grep ensureFullItinerary origin/main -- src` → zero).
 
 Explicitly deferred: 2.4 Redis rate limiting (ADR/traffic decision), 5.2 tracing (no sink), 5.3 alerting (no channel), 1.3/1.4 architecture/API migration, and Phase 6/7 product work.
 
