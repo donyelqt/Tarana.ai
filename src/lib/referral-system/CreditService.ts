@@ -15,6 +15,9 @@ import {
   ServiceType,
   UserTier,
 } from './types';
+import { logger } from '@/lib/observability/logger';
+import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
+import { createUserProfile, userProfileExists } from '@/lib/services/userService';
 
 const unlimitedIds = new Set(
   (process.env.UNLIMITED_CREDIT_USERS || '')
@@ -29,57 +32,24 @@ export class CreditService {
    */
   private static async ensureUserProfile(userId: string): Promise<void> {
     if (!supabaseAdmin) {
-      console.log(`[CreditService] ensureUserProfile: supabaseAdmin not available`);
+      logger.warn('Credit profile assurance skipped: database unavailable', {
+        entryPoint: 'credit-service',
+      });
       return;
     }
 
     try {
-      console.log(`[CreditService] Checking if profile exists for user ${userId}...`);
-      
-      // Check if profile exists
-      const { data: existing, error: checkError } = await supabaseAdmin
-        .from('user_profiles')
-        .select('id')
-        .eq('id', userId)
-        .single();
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error(`[CreditService] Error checking profile:`, checkError);
+      if (await userProfileExists(userId)) {
+        return;
       }
 
-      if (!existing) {
-        // Create profile with default values
-        console.log(`[CreditService] Profile not found. Creating profile for user ${userId}...`);
-        const { data: newProfile, error: insertError } = await supabaseAdmin
-          .from('user_profiles')
-          .insert({
-            id: userId,
-            current_tier: 'Default',
-            daily_credits: 5,
-            credits_used_today: 0,
-            total_referrals: 0,
-            active_referrals: 0,
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error('[CreditService] ❌ Error creating user profile:', {
-            message: insertError.message,
-            code: insertError.code,
-            details: insertError.details,
-            hint: insertError.hint
-          });
-        } else {
-          console.log(`[CreditService] ✅ User profile created successfully for ${userId}`, newProfile);
-        }
-      } else {
-        console.log(`[CreditService] ✅ Profile exists for user ${userId}`);
-      }
-    } catch (error: any) {
-      console.error('[CreditService] Exception in ensureUserProfile:', {
-        error: error?.message || error,
-        userId
+      await createUserProfile(userId);
+    } catch (error) {
+      // Preserve the money path's non-fatal profile behavior: balance and
+      // consumption continue and surface their own typed errors if needed.
+      logger.error('Credit profile assurance failed', {
+        entryPoint: 'credit-service',
+        ...getSafeErrorMetadata(error),
       });
     }
   }

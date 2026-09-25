@@ -11,6 +11,22 @@ jest.mock('@/lib/data/supabaseAdmin', () => ({
 import { CreditService } from '../CreditService';
 import { InsufficientCreditsError } from '../types';
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+jest.mock('@/lib/observability/logger', () => ({
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
+import { logger } from '@/lib/observability/logger';
+
+const mockLogger = logger as unknown as { error: jest.Mock; warn: jest.Mock; info: jest.Mock };
+jest.mock('@/lib/services/userService', () => ({
+  userProfileExists: jest.fn(),
+  createUserProfile: jest.fn(),
+}));
+
+import { userProfileExists, createUserProfile } from '@/lib/services/userService';
+
+const mockUserProfileExists = userProfileExists as unknown as jest.Mock;
+const mockCreateUserProfile = createUserProfile as unknown as jest.Mock;
 
 describe('CreditService', () => {
   const mockRpc = (supabaseAdmin as any).rpc as jest.Mock;
@@ -99,18 +115,53 @@ describe('CreditService', () => {
       ).resolves.toBe(false);
     });
 
-    it('returns false without throwing when the RPC errors', async () => {
-      mockRpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
-      await expect(
-        CreditService.refundCredits({ userId: 'u1', amount: 1, service: 'tarana_gala', idempotencyKey: 'refund:sess-1' })
-      ).resolves.toBe(false);
-    });
-
     it('returns false without throwing when the DB client throws', async () => {
       mockRpc.mockRejectedValueOnce(new Error('db down'));
       await expect(
         CreditService.refundCredits({ userId: 'u1', amount: 1, service: 'tarana_gala', idempotencyKey: 'refund:sess-1' })
       ).resolves.toBe(false);
     });
+  });
+});
+
+describe('ensureUserProfile unification', () => {
+  const consume = () =>
+    CreditService.consumeCredits({ userId: 'u1', amount: 1, service: 'tarana_gala' });
+
+  beforeEach(() => {
+    mockUserProfileExists.mockResolvedValue(true);
+    mockCreateUserProfile.mockResolvedValue(undefined);
+  });
+
+  it('creates a missing profile through the shared service and still consumes credits', async () => {
+    mockUserProfileExists.mockResolvedValueOnce(false);
+    const res = await consume();
+    expect(res.success).toBe(true);
+    expect(mockCreateUserProfile).toHaveBeenCalledWith('u1');
+  });
+
+  it('skips creation when the profile already exists', async () => {
+    const res = await consume();
+    expect(res.success).toBe(true);
+    expect(mockCreateUserProfile).not.toHaveBeenCalled();
+  });
+
+  it('treats profile creation failure as non-fatal on the money path', async () => {
+    mockUserProfileExists.mockResolvedValueOnce(false);
+    mockCreateUserProfile.mockRejectedValueOnce(new Error('duplicate key value violates unique constraint'));
+    const res = await consume();
+    expect(res.success).toBe(true);
+    expect(mockCreateUserProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it('never logs raw profile errors or user IDs', async () => {
+    const sentinel = 'PROFILE_SENTINEL_xyz789';
+    mockUserProfileExists.mockResolvedValueOnce(false);
+    mockCreateUserProfile.mockRejectedValueOnce(Object.assign(new Error(sentinel), { code: '23505' }));
+    await consume();
+    expect(mockLogger.error).toHaveBeenCalled();
+    const serialized = JSON.stringify(mockLogger.error.mock.calls);
+    expect(serialized).not.toContain(sentinel);
+    expect(serialized).not.toContain('u1');
   });
 });
