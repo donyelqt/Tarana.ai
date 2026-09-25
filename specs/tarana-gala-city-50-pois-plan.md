@@ -246,12 +246,10 @@ Rules:
 - `src/types/route-optimization.ts`
 - `src/lib/services/__tests__/tomtomRoutingSearch.test.ts`
 
-**Changes:**
-
-- add `searchPois` with bounded limit, POI endpoint, bounds, country/language, `view=Unified`;
-- preserve `searchLocations` and its current default limit;
-- add category metadata to the transform;
-- add tests proving the fuzzy default is unchanged and the POI method clamps `limit`.
+- [x] add `searchPois` with bounded limit, POI endpoint, bounds, country/language, `view=Unified`;
+- [x] preserve `searchLocations` and its current default limit;
+- [x] add category metadata to the transform;
+- [ ] add tests proving the fuzzy default is unchanged and the POI method clamps `limit`.
 
 **Verify:**
 
@@ -271,19 +269,19 @@ pnpm exec tsc --noEmit
 
 **Changes:**
 
-- validate the target-city allowlist;
-- fixed query buckets, such as:
+- [x] validate the target-city allowlist;
+- [x] fixed query buckets, such as:
   - `tourist attractions {city}`
   - `landmarks museums parks {city}`
   - `historic sites viewpoints {city}`
   - `beaches nature {city}`
-- stop as soon as 50 accepted unique POIs are reached;
-- require POI type, category allowlist, city bounds, valid coordinates;
-- dedupe by provider ID, normalized-name + coordinates, and same-name coordinate jitter;
-- read fresh `places` rows first;
-- backfill through TomTom only when fresh cache coverage is below target;
-- upsert accepted results with seven-day validity and provenance;
-- return honestly fewer than 50 when coverage is insufficient — never pad.
+- [x] stop as soon as 50 accepted unique POIs are reached;
+- [x] require POI type, category allowlist, city bounds, valid coordinates;
+- [x] dedupe by provider ID, normalized-name + coordinates, and same-name coordinate jitter;
+- [x] read fresh `places` rows first;
+- [x] backfill through TomTom only when fresh cache coverage is below target;
+- [x] upsert accepted results with seven-day validity and provenance;
+- [x] return honestly fewer than 50 when coverage is insufficient — never pad.
 
 **Verify:**
 
