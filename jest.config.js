@@ -34,6 +34,7 @@ module.exports = {
     '/.next/',
     '/.swc/',
     '/.kilo/',
+    '/tests/e2e/',
   ],
   testEnvironmentOptions: {
     customExportConditions: [''],
