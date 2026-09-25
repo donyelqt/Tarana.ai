@@ -13,6 +13,37 @@
 
 const IMAGE_CACHE_TTL = 24 * 60 * 60 * 1000 // 24h
 
+/**
+ * Remote hosts this service may hand to `next/image`.
+ *
+ * This MUST stay a subset of `images.remotePatterns` in `next.config.ts`.
+ * `next/image` throws a runtime error for an unconfigured host, and the
+ * component's `onError` handler never fires because the failure happens in
+ * the loader, not the network request. Guarding here degrades to the logo
+ * fallback instead of crashing the page.
+ *
+ * The drift guard is `src/lib/services/__tests__/imageHosts.test.ts`.
+ */
+export const RENDERABLE_IMAGE_HOSTS: readonly string[] = [
+  'maps.googleapis.com',
+  'images.unsplash.com',
+  'upload.wikimedia.org',
+  'thumb.wikimedia.org',
+]
+
+/** True for local paths and for remote https URLs on a configured host. */
+export function isRenderableImageUrl(url: string | null | undefined): boolean {
+  if (!url) return false
+  if (url.startsWith('/')) return true
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:') return false
+    return RENDERABLE_IMAGE_HOSTS.includes(parsed.hostname)
+  } catch {
+    return false
+  }
+}
+
 type PlaceInput = {
   title: string
   lat?: number
@@ -157,7 +188,9 @@ async function fetchGooglePhoto(place: PlaceInput): Promise<string | null> {
     // We return the Google photo URL; Next.js Image with `unoptimized` or `remotePatterns` will handle it.
     // To avoid leaking key to client, we proxy via our own API if needed — for now return the direct URL
     // and let the caller decide to proxy.
-    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoRef}&key=${apiKey}`
+    const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoRef}&key=${apiKey}`
+    if (!isRenderableImageUrl(photoUrl)) return null
+    return photoUrl
   } catch {
     return null
   }
@@ -186,7 +219,14 @@ async function fetchUnsplashPhoto(place: PlaceInput): Promise<string | null> {
     }
     const data = (await res.json()) as { results?: Array<{ urls?: { regular?: string; small?: string } }> }
     const hit = data.results?.[0]?.urls?.regular || data.results?.[0]?.urls?.small || null
-    if (!hit) console.log(`🖼️ Tier2b Unsplash: miss "${place.title}" (empty: no results for query)`)
+    if (!hit) {
+      console.log(`🖼️ Tier2b Unsplash: miss "${place.title}" (empty: no results for query)`)
+      return null
+    }
+    if (!isRenderableImageUrl(hit)) {
+      console.warn(`🖼️ Tier2b Unsplash: miss "${place.title}" (unrenderable-host)`)
+      return null
+    }
     return hit
   } catch {
     console.warn(`🖼️ Tier2b Unsplash: miss "${place.title}" (network-or-timeout)`)
@@ -217,7 +257,15 @@ async function fetchWikimediaThumb(place: PlaceInput): Promise<string | null> {
     if (!pages) return null
 
     for (const page of Object.values(pages)) {
-      if (page.thumbnail?.source) return page.thumbnail.source
+      const source = page.thumbnail?.source
+      if (!source) continue
+      // Guard against another Wikimedia domain migration handing us a host
+      // that `next/image` is not configured to load (T427465).
+      if (!isRenderableImageUrl(source)) {
+        console.warn(`🖼️ Tier2 Wikimedia: miss "${place.title}" (unrenderable-host: ${source.slice(0, 60)})`)
+        return null
+      }
+      return source
     }
     console.log(`🖼️ Tier2 Wikimedia: miss "${place.title}" (empty: no page thumbnail)`)
     return null

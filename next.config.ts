@@ -81,6 +81,14 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
+        // Wikimedia moved page-image thumbnails from upload.wikimedia.org to
+        // thumb.wikimedia.org (Phabricator T427465). Both hosts are allowed
+        // while the migration is in flight.
+        protocol: 'https',
+        hostname: 'thumb.wikimedia.org',
+        pathname: '/**',
+      },
+      {
         protocol: 'https',
         hostname: 'api.tomtom.com',
         pathname: '/map/1/staticimage/**',
