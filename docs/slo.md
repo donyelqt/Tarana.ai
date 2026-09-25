@@ -29,5 +29,5 @@ baseline pace) is a **hold** signal — same as an elevated error rate.
 ## What this doc does NOT cover
 
 - Rollback levers and trigger thresholds — see `docs/rollback.md`.
-- Alert thresholds per symptom — see `docs/runbooks/` (Phase 5.3).
+- Alert thresholds per symptom — see `docs/runbooks/`.
 - Metric instrumentation itself — Phase 0.3 (open).

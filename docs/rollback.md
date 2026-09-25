@@ -53,6 +53,6 @@ non-flagged code):
 ## What this doc does NOT cover
 
 - SLO numbers and error-budget policy — see `docs/slo.md`.
-- Per-alert runbooks — see `docs/runbooks/` (Phase 5.3, not yet written).
+- Per-alert runbooks — see `docs/runbooks/`.
 - Deploy steps themselves — see `docs/DEPLOYMENT_CHECKLIST.md`
   (its Rollback Plan section is the click-path; this doc is the policy).
