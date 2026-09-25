@@ -379,6 +379,63 @@ class TomTomRoutingService {
   }
 
   /**
+   * POI-only search for the tourist-coverage path.
+   *
+   * Uses TomTom's poiSearch endpoint so callers cannot receive address or
+   * street results. The fuzzy searchLocations default stays untouched: other
+   * consumers (autocomplete, geocoding) must not silently grow from 10 to 100.
+   *
+   * Source: https://docs.tomtom.com/search-api/documentation/search-service/points-of-interest-search
+   */
+  async searchPois(
+    query: string,
+    bounds: BoundingBox,
+    options?: { countrySet?: string; language?: string; limit?: number }
+  ): Promise<SearchResult[]> {
+    if (!this.config.apiKey || !query.trim()) {
+      return [];
+    }
+
+    const limit = Math.min(Math.max(options?.limit ?? 50, 1), 100);
+    const countrySet = options?.countrySet ?? 'PH';
+    const language = options?.language ?? 'en-US';
+    const cacheKey = `poi_${query}_${JSON.stringify(bounds)}_${countrySet}_${language}_${limit}`;
+    const cached = this.cache.get(cacheKey);
+
+    if (cached && Date.now() < cached.expiry) {
+      return cached.data as SearchResult[];
+    }
+
+    try {
+      const params = new URLSearchParams({
+        key: this.config.apiKey,
+        query: query.trim(),
+        limit: String(limit),
+        language,
+        view: 'Unified',
+      });
+      if (countrySet) params.set('countrySet', countrySet);
+      params.set('topLeft', `${bounds.topLeft.lat},${bounds.topLeft.lng}`);
+      params.set('btmRight', `${bounds.bottomRight.lat},${bounds.bottomRight.lng}`);
+
+      const url = `${this.config.baseUrl}/search/2/poiSearch/${encodeURIComponent(query)}.json`;
+      const response = await this.makeRequest(url, Object.fromEntries(params));
+      const searchData = await response.json() as TomTomSearchResponse;
+      const results = searchData.results.map(this.transformSearchResult);
+
+      this.cache.set(cacheKey, {
+        data: results,
+        expiry: Date.now() + 60 * 60 * 1000,
+      });
+
+      return results;
+    } catch (error) {
+      console.error('❌ TomTom: POI search failed:', error);
+      return [];
+    }
+  }
+
+  /**
    * Reverse geocoding - coordinates to address
    */
   async reverseGeocode(coordinates: Coordinates, referer?: string): Promise<AddressResult | null> {
@@ -679,6 +736,8 @@ class TomTomRoutingService {
       lng: result.position.lon
     },
     category: result.poi?.categories?.[0] || 'Location',
+    categories: result.poi?.categories ?? [],
+    categorySet: result.poi?.categorySet?.map((entry) => entry.id) ?? [],
     relevanceScore: result.score,
     popularityIndex: Math.min(result.score * 10, 100),
     distance: result.dist,

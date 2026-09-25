@@ -92,3 +92,99 @@ describe('tomtomRouting.searchLocations view param', () => {
     expect(url.searchParams.get('view')).toBe('Unified');
   });
 });
+
+describe('tomtomRouting.searchPois', () => {
+  const realFetch = global.fetch;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    global.fetch = realFetch;
+  });
+
+  const bounds = {
+    topLeft: { lat: 10.45, lng: 123.75 },
+    bottomRight: { lat: 10.18, lng: 124.05 },
+  };
+
+  function captureUrl(): { urls: string[] } {
+    const urls: string[] = [];
+    global.fetch = jest.fn(async (url: unknown) => {
+      urls.push(String(url));
+      return {
+        ok: true,
+        json: async () => ({ ...cannedSearchResponse(), results: [] }),
+      };
+    }) as unknown as typeof fetch;
+    return { urls };
+  }
+
+  it('uses the POI-only endpoint with bounds, country, language, and view', async () => {
+    const { urls } = captureUrl();
+
+    await tomtomRoutingService.searchPois('tourist attraction Cebu City', bounds, {
+      countrySet: 'PH',
+      language: 'en-US',
+      limit: 50,
+    });
+
+    expect(urls).toHaveLength(1);
+    const url = new URL(urls[0]);
+    expect(url.pathname).toContain('/search/2/poiSearch/');
+    expect(url.searchParams.get('limit')).toBe('50');
+    expect(url.searchParams.get('countrySet')).toBe('PH');
+    expect(url.searchParams.get('language')).toBe('en-US');
+    expect(url.searchParams.get('view')).toBe('Unified');
+    expect(url.searchParams.get('topLeft')).toBe('10.45,123.75');
+    expect(url.searchParams.get('btmRight')).toBe('10.18,124.05');
+  });
+
+  it('clamps the limit to the documented 1..100 range', async () => {
+    const { urls } = captureUrl();
+
+    await tomtomRoutingService.searchPois('park Cebu City', bounds, { limit: 500 });
+    await tomtomRoutingService.searchPois('park Manila City', bounds, { limit: 0 });
+
+    expect(new URL(urls[0]).searchParams.get('limit')).toBe('100');
+    expect(new URL(urls[1]).searchParams.get('limit')).toBe('1');
+  });
+
+  it('defaults to limit=50 without changing fuzzy searchLocations default', async () => {
+    const { urls } = captureUrl();
+
+    await tomtomRoutingService.searchPois('museum Manila City', bounds);
+
+    expect(new URL(urls[0]).searchParams.get('limit')).toBe('50');
+  });
+
+  it('preserves POI categories for tourist filtering', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        ...cannedSearchResponse(),
+        results: [
+          {
+            type: 'POI',
+            id: 'poi-1',
+            score: 9,
+            poi: {
+              name: 'Fort San Pedro',
+              categories: ['important tourist attraction', 'historic site'],
+              categorySet: [{ id: 1234 }],
+            },
+            address: { freeformAddress: 'Cebu City' },
+            position: { lat: 10.292, lon: 123.906 },
+          },
+        ],
+      }),
+    })) as unknown as typeof fetch;
+
+    const results = await tomtomRoutingService.searchPois('historic site Cebu City', bounds);
+
+    expect(results[0].category).toBe('important tourist attraction');
+    expect(results[0].categories).toEqual(['important tourist attraction', 'historic site']);
+    expect(results[0].categorySet).toEqual([1234]);
+  });
+});
