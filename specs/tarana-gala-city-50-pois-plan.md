@@ -360,10 +360,10 @@ pnpm exec tsc --noEmit
 
 **Changes:**
 
-- probe Cebu, Manila, and Davao through the POI endpoint;
-- report raw, accepted, rejected-by-category, out-of-bounds, duplicate, and latency counts;
-- never print API keys or raw request URLs;
-- report a clear blocked status when credentials are absent.
+- [x] probe Cebu, Manila, and Davao through the POI endpoint;
+- [ ] report raw, accepted, rejected-by-category, out-of-bounds, duplicate, and latency counts;
+- [x] never print API keys or raw request URLs;
+- [x] report a clear blocked status when credentials are absent.
 
 **Checks:**
 
@@ -377,30 +377,30 @@ node scripts/check-bundle-budget.mjs
 
 Then run an Osmani review focused on:
 
-- POI-only and category correctness;
-- no cross-city leakage;
-- no padding to 50;
-- bounded external calls and cost;
-- cache correctness and outage behavior;
-- response contract compatibility.
+- [ ] POI-only and category correctness;
+- [ ] no cross-city leakage;
+- [ ] no padding to 50;
+- [ ] bounded external calls and cost;
+- [ ] cache correctness and outage behavior;
+- [ ] response contract compatibility.
 
 ---
 
 ## 7. Required acceptance tests
 
-1. `searchPois` sends `/poiSearch/`, respects `limit <= 100`, sends bounds/country/language/view, and leaves fuzzy `searchLocations` at its existing default.
-2. A generic business row with `category=office` is rejected.
-3. A non-POI address is rejected.
-4. An out-of-city POI is rejected.
-5. Provider-ID duplicates and normalized-name + coordinate duplicates are collapsed.
-6. Distinct venues at the same coordinates remain distinct.
-7. Fresh `places` rows are served without calling TomTom.
-8. Insufficient fresh `places` rows trigger a bounded TomTom backfill.
-9. TomTom failure returns valid fresh cached rows, not an empty overwrite.
-10. `GET /api/spots?city=cebu|manila|davao` returns at most 50, bounded, deduped, tourist-only rows.
-11. Dashboard still enriches at most the head and still renders three cards.
-12. Gala still shortlists at most 12 before traffic/image work and never leaks Baguio.
-13. The live coverage probe reports accepted counts per target city.
+1. [x] `searchPois` sends `/poiSearch/`, respects `limit <= 100`, sends bounds/country/language/view, and leaves fuzzy `searchLocations` at its existing default.
+2. [x] A generic business row with `category=office` is rejected.
+3. [x] A non-POI address is rejected.
+4. [x] An out-of-city POI is rejected.
+5. [x] Provider-ID duplicates and normalized-name + coordinate duplicates are collapsed.
+6. [x] Distinct venues at the same coordinates remain distinct.
+7. [x] Fresh `places` rows are served without calling TomTom.
+8. [x] Insufficient fresh `places` rows trigger a bounded TomTom backfill.
+9. [x] TomTom failure returns valid fresh cached rows, not an empty overwrite.
+10. [x] `GET /api/spots?city=cebu|manila|davao` returns at most 50, bounded, deduped, tourist-only rows.
+11. [x] Dashboard still enriches at most the head and still renders three cards.
+12. [x] Gala still shortlists at most 12 before traffic/image work and never leaks Baguio.
+13. [x] The live coverage probe reports accepted counts per target city.
 
 ---
 
@@ -422,12 +422,12 @@ Then run an Osmani review focused on:
 
 ## 9. Definition of Done
 
-- [ ] Cebu, Manila, and Davao have a shared POI-only retrieval path.
+- [x] Cebu, Manila, and Davao have a shared POI-only retrieval path.
 - [ ] Each target city can serve up to 50 accepted tourist POIs when upstream coverage exists.
-- [ ] Results are POI-only, category-filtered, city-bounded, and deduplicated correctly.
-- [ ] Fresh `places` rows are read before TomTom; successful TomTom rows are cached with provenance and expiry.
-- [ ] Dashboard returns up to 50, enriches at most 6, and still renders 3 cards.
-- [ ] Gala receives up to 50 candidates but still shortlists 12 before traffic/image work.
-- [ ] Baguio behavior is unchanged.
-- [ ] Unit, route, type, build, bundle-budget, and live-probe checks pass or are explicitly environment-blocked.
+- [x] Results are POI-only, category-filtered, city-bounded, and deduplicated correctly.
+- [x] Fresh `places` rows are read before TomTom; successful TomTom rows are cached with provenance and expiry.
+- [x] Dashboard returns up to 50, enriches at most 6, and still renders 3 cards.
+- [x] Gala receives up to 50 candidates but still shortlists 12 before traffic/image work.
+- [x] Baguio behavior is unchanged.
+- [x] Unit, route, type, build, bundle-budget, and live-probe checks pass or are explicitly environment-blocked.
 - [ ] Osmani review has no unresolved Critical or Required findings.
