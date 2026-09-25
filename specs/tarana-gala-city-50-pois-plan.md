@@ -299,21 +299,21 @@ pnpm exec tsc --noEmit
 
 **Changes:**
 
-- replace only the non-Baguio TomTom branch with `touristPoiService`;
-- return up to 50 POIs;
-- keep `ENRICH_LIMIT=6`;
-- keep the three-card client unchanged;
-- keep Baguio behavior unchanged;
-- preserve the existing `SpotPayload` response shape;
-- ensure traffic is only set from a measured result, never a fallback.
+- [x] replace only the non-Baguio TomTom branch with `touristPoiService`;
+- [x] return up to 50 POIs;
+- [x] keep `ENRICH_LIMIT=6`;
+- [x] keep the three-card client unchanged;
+- [x] keep Baguio behavior unchanged;
+- [x] preserve the existing `SpotPayload` response shape;
+- [x] ensure traffic is only set from a measured result, never a fallback.
 
 **Acceptance:**
 
-- `GET /api/spots?city=manila|cebu|davao` returns at most 50 rows;
-- every returned row has finite coordinates inside the requested city bounds;
-- no duplicate identity keys;
-- no generic business or address row;
-- response remains compatible with `toSpotCard` and `SpotlightCard`.
+- [x] `GET /api/spots?city=manila|cebu|davao` returns at most 50 rows;
+- [x] every returned row has finite coordinates inside the requested city bounds;
+- [x] no duplicate identity keys;
+- [x] no generic business or address row;
+- [x] response remains compatible with `toSpotCard` and `SpotlightCard`.
 
 **Verify:**
 
@@ -331,19 +331,19 @@ pnpm exec tsc --noEmit
 
 **Changes:**
 
-- replace the non-Baguio direct query loop, bounds/dedupe/rotation, and inline `places` upsert with the shared service;
-- keep the up-to-50 candidate pool available to interest boosting;
-- keep `FINALIST_CAP=12` before traffic/image enrichment;
-- keep final itinerary activity counts bounded;
-- preserve strict city scoping and honest empty results;
-- remove the duplicated TomTom query map from Gala.
+- [x] replace the non-Baguio direct query loop, bounds/dedupe/rotation, and inline `places` upsert with the shared service;
+- [x] keep the up-to-50 candidate pool available to interest boosting;
+- [x] keep `FINALIST_CAP=12` before traffic/image enrichment;
+- [x] keep final itinerary activity counts bounded;
+- [x] preserve strict city scoping and honest empty results;
+- [x] remove the duplicated TomTom query map from Gala.
 
 **Acceptance:**
 
-- non-Baguio Gala sources its candidates from the shared service;
-- traffic and image work still touches only the bounded shortlist;
-- no Baguio result enters Cebu, Manila, or Davao;
-- zero upstream results does not fabricate a city itinerary.
+- [x] non-Baguio Gala sources its candidates from the shared service;
+- [x] traffic and image work still touches only the bounded shortlist;
+- [x] no Baguio result enters Cebu, Manila, or Davao;
+- [x] zero upstream results does not fabricate a city itinerary.
 
 **Verify:**
 
