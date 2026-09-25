@@ -45,6 +45,9 @@ jobs:
       - name: Dependency audit
         run: pnpm audit --audit-level=critical --prod
 
+      - name: Lockfile hygiene
+        run: node scripts/check-lockfile-integrity.mjs
+
       - name: Typecheck
         run: npx tsc --noEmit --skipLibCheck
 
@@ -102,6 +105,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Lockfile hygiene
+        run: node scripts/check-lockfile-integrity.mjs
 
       - name: Build
         run: pnpm run build
