@@ -218,6 +218,8 @@ export interface SearchResult {
   address: string;
   coordinates: Coordinates;
   category: string;
+  categories?: string[];
+  categorySet?: number[];
   relevanceScore: number;
   popularityIndex: number;
   distance?: number;

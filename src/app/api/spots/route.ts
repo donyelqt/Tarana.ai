@@ -3,6 +3,7 @@ import { timedHttp } from '@/lib/observability/httpMetrics';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
 import { getCityConfig, isWithinCityBounds } from '@/lib/data/cityConfig';
+import { getTouristPois } from '@/lib/services/touristPoiService';
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import type { BoundingBox } from '@/types/route-optimization';
 import { tomtomTrafficService } from '@/lib/traffic/tomtomTraffic';
@@ -182,33 +183,20 @@ export async function GET(request: Request) {
     }
 
     const cfg = getCityConfig(city);
-    const bounds: BoundingBox = {
-      topLeft: { lat: cfg.bounds.north, lng: cfg.bounds.west },
-      bottomRight: { lat: cfg.bounds.south, lng: cfg.bounds.east },
-    };
-    const results = await tomtomRoutingService.searchLocations(
-      `tourist attractions ${cfg.name}`,
-      bounds,
-      undefined,
-      { countrySet: cfg.countrySet, language: cfg.language }
-    );
-
-    const seen = new Set<string>();
-    const spots: SpotPayload[] = [];
-    for (const r of results) {
-      const lat = r.coordinates?.lat;
-      const lon = r.coordinates?.lng;
-      if (lat == null || lon == null) continue;
-      if (!isWithinCityBounds(lat, lon, city)) continue;
-      const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      spots.push({ name: r.name, image: null, lat, lon, peakHours: null });
-      if (spots.length >= 12) break;
-    }
+    // getTouristPois already dedupes by provider id + name/coordinate keys.
+    // Re-deduping by coordinates alone here would collapse distinct venues that
+    // legitimately share a building or gate.
+    const touristPois = await getTouristPois(city);
+    const spots: SpotPayload[] = touristPois.map((r) => ({
+      name: r.name,
+      image: null,
+      lat: r.coordinates.lat,
+      lon: r.coordinates.lng,
+      peakHours: null,
+    }));
 
     // Daily rotation (Gala strict-city parity): TomTom order is deterministic,
-    // so without rotation the same 3 surface every day. Rotates the 12 before
+    // so without rotation the same 3 surface every day. Rotates the pool before
     // head-6 enrichment so every head is fully dressed. Baguio untouched.
     const dayIndex = Math.floor(Date.now() / 86400000);
     const rotatedSpots = rotateByDay(spots, dayIndex);

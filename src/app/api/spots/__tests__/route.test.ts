@@ -11,6 +11,7 @@
  */
 import { GET } from '../route';
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
+import { getTouristPois } from '@/lib/services/touristPoiService';
 import { tomtomTrafficService } from '@/lib/traffic/tomtomTraffic';
 import { enrichActivitiesWithImages } from '@/lib/services/imageService';
 import { activityToPayload, spotPool } from '@/app/dashboard/utils';
@@ -24,6 +25,10 @@ const mockLogger = logger as jest.Mocked<typeof logger>;
 
 jest.mock('@/lib/services/tomtomRouting', () => ({
   tomtomRoutingService: { searchLocations: jest.fn() },
+}));
+
+jest.mock('@/lib/services/touristPoiService', () => ({
+  getTouristPois: jest.fn(),
 }));
 
 jest.mock('@/lib/traffic/tomtomTraffic', () => ({
@@ -48,9 +53,24 @@ if (typeof MockedResponse.json !== 'function') {
     });
 }
 
-const searchMock = tomtomRoutingService.searchLocations as unknown as jest.Mock;
+const baguioSearchMock = tomtomRoutingService.searchLocations as unknown as jest.Mock;
+const touristPoiMock = getTouristPois as unknown as jest.Mock;
 const trafficMock = tomtomTrafficService.getLocationTrafficData as unknown as jest.Mock;
 const enrichMock = enrichActivitiesWithImages as unknown as jest.Mock;
+
+function poiResult(name: string, lat: number, lng: number) {
+  return {
+    id: name,
+    name,
+    address: `${name} address`,
+    coordinates: { lat, lng },
+    category: 'tourist attraction',
+    categories: ['tourist attraction'],
+    relevanceScore: 9,
+    popularityIndex: 90,
+    placeType: 'POI',
+  };
+}
 
 function get(city: string | null) {
   const url =
@@ -62,10 +82,12 @@ function get(city: string | null) {
 
 describe('GET /api/spots', () => {
   beforeEach(() => {
-    searchMock.mockReset();
+    baguioSearchMock.mockReset();
+    touristPoiMock.mockReset();
     trafficMock.mockReset();
-    // Default: no TomTom results (Baguio → curated-only, others → empty).
-    searchMock.mockResolvedValue([]);
+    // Default: no TomTom/Tourist POI results (Baguio → curated-only, others → empty).
+    baguioSearchMock.mockResolvedValue([]);
+    touristPoiMock.mockResolvedValue([]);
     trafficMock.mockResolvedValue({ congestionScore: 10 });
     // Passthrough by default: images stay undefined (map-guard drops extras).
     enrichMock.mockImplementation(async (acts: unknown[]) => acts);
@@ -75,12 +97,13 @@ describe('GET /api/spots', () => {
     const res = await get('paris');
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ error: 'Unsupported city' });
-    expect(searchMock).not.toHaveBeenCalled();
+    expect(baguioSearchMock).not.toHaveBeenCalled();
+    expect(touristPoiMock).not.toHaveBeenCalled();
   });
 
   it('serves the full Baguio pool with daily rotation (curated-only when zero extras survive)', async () => {
     const curated = spotPool().map(activityToPayload);
-    searchMock.mockResolvedValue([]);
+    baguioSearchMock.mockResolvedValue([]);
     const day1 = Date.UTC(2026, 7, 4);
     const nowSpy = jest.spyOn(Date, 'now');
     try {
@@ -120,8 +143,8 @@ describe('GET /api/spots', () => {
       nowSpy.mockRestore();
     }
     // ONE TomTom supplement with the Baguio bounds/countrySet/language.
-    expect(searchMock).toHaveBeenCalledTimes(4);
-    expect(searchMock).toHaveBeenCalledWith(
+    expect(baguioSearchMock).toHaveBeenCalledTimes(4);
+    expect(baguioSearchMock).toHaveBeenCalledWith(
       'tourist attractions Baguio City',
       {
         topLeft: { lat: 16.47, lng: 120.55 },
@@ -134,7 +157,7 @@ describe('GET /api/spots', () => {
 
   it('keeps curated entries unenriched while enriching extras only', async () => {
     const curated = spotPool().map(activityToPayload);
-    searchMock.mockResolvedValue([
+    baguioSearchMock.mockResolvedValue([
       { name: 'Extra Viewpoint', coordinates: { lat: 16.442, lng: 120.642 } },
     ]);
     enrichMock.mockImplementation(async (acts: { title: string; lat?: number; lon?: number }[]) =>
@@ -179,7 +202,7 @@ describe('GET /api/spots', () => {
   it('drops TomTom-static-map-only extras so filler never displaces curated cards', async () => {
     const curated = spotPool().map(activityToPayload);
     const curatedLen = curated.length;
-    searchMock.mockResolvedValue([
+    baguioSearchMock.mockResolvedValue([
       { name: 'Real Photo Spot', coordinates: { lat: 16.442, lng: 120.642 } },
       { name: 'Map Only Spot', coordinates: { lat: 16.445, lng: 120.645 } },
     ]);
@@ -212,7 +235,7 @@ describe('GET /api/spots', () => {
     const curated = spotPool().map(activityToPayload);
     const first = curated[0];
     expect(first.lat).not.toBeNull();
-    searchMock.mockResolvedValue([
+    baguioSearchMock.mockResolvedValue([
       // Exact curated coords → dupe.
       { name: 'Dupe Exact', coordinates: { lat: first.lat, lng: first.lon } },
       // Same toFixed(3) bucket → dupe.
@@ -246,7 +269,7 @@ describe('GET /api/spots', () => {
 
   it('caps extras at 8 within the mixed rotating pool', async () => {
     const curated = spotPool().map(activityToPayload);
-    searchMock.mockResolvedValue(
+    baguioSearchMock.mockResolvedValue(
       Array.from({ length: 12 }, (_, i) => ({
         name: `Extra ${i}`,
         coordinates: { lat: 16.438 + i * 0.001, lng: 120.638 + i * 0.001 },
@@ -274,7 +297,7 @@ describe('GET /api/spots', () => {
 
   it('rotates the full mixed Baguio pool across days so extras surface in the head', async () => {
     const curated = spotPool().map(activityToPayload);
-    searchMock.mockResolvedValue(
+    baguioSearchMock.mockResolvedValue(
       Array.from({ length: 5 }, (_, i) => ({
         name: `RotExtra ${i}`,
         coordinates: { lat: 16.44 + i * 0.002, lng: 120.64 + i * 0.001 },
@@ -324,12 +347,8 @@ describe('GET /api/spots', () => {
     expect((await res.json()).city).toBe('baguio');
   });
 
-  it('maps TomTom results for other cities, dropping out-of-bounds', async () => {
-    searchMock.mockResolvedValue([
-      { name: 'Cebu Spot', coordinates: { lat: 10.3, lng: 123.9 } },
-      { name: 'Manila Spot', coordinates: { lat: 14.6, lng: 121.0 } },
-      { name: 'No Coords', coordinates: { lat: null, lng: null } },
-    ]);
+  it('maps shared-service POIs for other cities', async () => {
+    touristPoiMock.mockResolvedValue([poiResult('Cebu Spot', 10.3, 123.9)]);
     trafficMock.mockResolvedValue({ congestionScore: 10 });
     const res = await get('cebu');
     expect(res.status).toBe(200);
@@ -337,12 +356,11 @@ describe('GET /api/spots', () => {
     expect(body.spots).toEqual([
       { name: 'Cebu Spot', image: null, lat: 10.3, lon: 123.9, peakHours: null, traffic: 'Low' },
     ]);
+    expect(baguioSearchMock).not.toHaveBeenCalled();
   });
 
   it('enriches photos and maps high congestion to High', async () => {
-    searchMock.mockResolvedValue([
-      { name: 'Busy Spot', coordinates: { lat: 10.31, lng: 123.91 } },
-    ]);
+    touristPoiMock.mockResolvedValue([poiResult('Busy Spot', 10.31, 123.91)]);
     enrichMock.mockImplementation(async (acts: { title: string }[]) =>
       acts.map((a) => ({ ...a, image: 'https://photos.example/busy.jpg' }))
     );
@@ -355,9 +373,7 @@ describe('GET /api/spots', () => {
   });
 
   it('hides the badge when traffic lookup fails (measured or nothing)', async () => {
-    searchMock.mockResolvedValue([
-      { name: 'Cebu Spot', coordinates: { lat: 10.3, lng: 123.9 } },
-    ]);
+    touristPoiMock.mockResolvedValue([poiResult('Cebu Spot', 10.3, 123.9)]);
     trafficMock.mockRejectedValue(new Error('flow down'));
     const res = await get('cebu');
     const body = await res.json();
@@ -365,19 +381,27 @@ describe('GET /api/spots', () => {
     expect(body.spots[0].image).toBeNull();
   });
 
-  it('degrades to an empty pool when TomTom fails', async () => {
-    searchMock.mockResolvedValue([]);
+  it('degrades to an empty pool when shared-service coverage is unavailable', async () => {
+    touristPoiMock.mockResolvedValue([]);
     const res = await get('davao');
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ success: true, city: 'davao', spots: [] });
   });
 
+  it('returns up to 50 non-Baguio POIs', async () => {
+    touristPoiMock.mockResolvedValue(
+      Array.from({ length: 50 }, (_, i) => poiResult(`S${i}`, 10.2 + i * 0.002, 123.8 + i * 0.002))
+    );
+    trafficMock.mockResolvedValue({ congestionScore: 10 });
+    const res = await get('cebu');
+    const body = await res.json();
+    expect(body.spots).toHaveLength(50);
+    expect(touristPoiMock).toHaveBeenCalledWith('cebu');
+  });
+
   it('rotates the non-Baguio head daily so the first 3 differ across days', async () => {
-    searchMock.mockResolvedValue(
-      Array.from({ length: 12 }, (_, i) => ({
-        name: `S${i}`,
-        coordinates: { lat: 10.2 + i * 0.01, lng: 123.8 + i * 0.01 },
-      }))
+    touristPoiMock.mockResolvedValue(
+      Array.from({ length: 12 }, (_, i) => poiResult(`S${i}`, 10.2 + i * 0.01, 123.8 + i * 0.01))
     );
     trafficMock.mockResolvedValue({ congestionScore: 10 });
     const names = async () =>
