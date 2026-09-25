@@ -75,3 +75,39 @@ jobs:
           echo "health check FAILED after 10 attempts (last: $STATUS)"
           kill $SERVER_PID
           exit 1
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: verify
+    env:
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ci-test-secret-at-least-32-chars-long
+      USE_MULTI_AGENT: 'true'
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+      OPENWEATHER_API_KEY: ci-openweather-key
+      TOMTOM_API_KEY: ci-tomtom-key
+      GOOGLE_GEMINI_API_KEY: ci-gemini-key
+      UNSPLASH_ACCESS_KEY: ci-unsplash-key
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Playwright smoke journey
+        run: pnpm run test:e2e
