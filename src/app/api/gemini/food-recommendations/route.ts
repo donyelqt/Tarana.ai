@@ -78,9 +78,22 @@ const geminiModel = genAI ? genAI.getGenerativeModel({
   ],
 }) : null;
 
-// Optimized caching system
+// Optimized caching system. Keys are user-scoped: without the userId a
+// second user with the same prompt would be served the first user phrasing.
+// Both maps are LRU-capped so 30-minute TTL entries cannot accumulate per
+// instance without bound.
+const CACHE_MAX_ENTRIES = 200;
 const responseCache = new Map<string, { response: any; timestamp: number }>();
 const preprocessingCache = new Map<string, any>();
+function cacheSet<K, V>(map: Map<K, V>, key: K, value: V): void {
+  if (map.has(key)) map.delete(key);
+  map.set(key, value);
+  while (map.size > CACHE_MAX_ENTRIES) {
+    const oldest = map.keys().next();
+    if (oldest.done) break;
+    map.delete(oldest.value);
+  }
+}
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes for better cache utilization
 const DEFAULT_PLACEHOLDER_IMAGE = "/images/placeholders/hero-placeholder.svg";
 const MIN_RECOMMENDATIONS = 3;
@@ -242,6 +255,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     
     // Generate optimized cache key
     const cacheKey = JSON.stringify({
+      user: userId,
       prompt: prompt?.substring(0, 30), // Further reduced for better hit rates
       budget: preferences.budget ? Math.floor(parseInt(preferences.budget) / 100) * 100 : null, // Round to nearest 100
       cuisine: preferences.cuisine,
@@ -254,11 +268,11 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       await completeClaim(200, cached.response);
       return NextResponse.json(cached.response);
     }
-    const preprocessingKey = `${preferences.cuisine || 'all'}-${preferences.budget || 'all'}-${preferences.pax || 2}`;
+    const preprocessingKey = `${userId}:${preferences.cuisine || 'all'}-${preferences.budget || 'all'}-${preferences.pax || 2}`;
     let relevantRestaurants = preprocessingCache.get(preprocessingKey);
     if (!relevantRestaurants) {
       relevantRestaurants = getRelevantRestaurants(foodData.restaurants, preferences);
-      preprocessingCache.set(preprocessingKey, relevantRestaurants);
+      cacheSet(preprocessingCache, preprocessingKey, relevantRestaurants);
     }
 
     // Re-use the globally initialised model
@@ -425,7 +439,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       
       // Enhance each match with comprehensive menu data and smart suggestions
       // Cache the response
-      responseCache.set(cacheKey, {
+      cacheSet(responseCache, cacheKey, {
         response: recommendations,
         timestamp: Date.now()
       });

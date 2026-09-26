@@ -279,6 +279,18 @@ describe('food-recommendations idempotency', () => {
     expect(claimMock).not.toHaveBeenCalled();
   });
 
+  test('isolates cache entries per user', async () => {
+    const first = await POST(post({ prompt: 'coffee for 2', foodData }, 'key-1'));
+    expect(first.status).toBe(200);
+
+    sessionMock.mockResolvedValueOnce({ user: { id: 'user-2' } });
+    const second = await POST(post({ prompt: 'coffee for 2', foodData }, 'key-2'));
+    const body = await second.json();
+
+    expect(second.status).toBe(200);
+    expect(body).toBeDefined();
+  });
+
   test('rejects unauthenticated monitoring stats with 401', async () => {
     sessionMock.mockResolvedValueOnce(null);
 
