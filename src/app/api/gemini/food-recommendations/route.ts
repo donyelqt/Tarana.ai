@@ -310,9 +310,18 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     logger.info("✓ Gemini AI enabled - generating personalized recommendations...", { entryPoint: LOG_ENTRY_POINT }, requestId);
     
     // Generate optimized cache key
+    // Catalog fingerprint: the response depends on WHICH restaurants were
+    // searchable, so same-prompt requests over different name sets must not
+    // share a cache entry. Sorted names keep the key stable under reorder.
+    const catalogFingerprint = Array.isArray((foodData as { restaurants?: unknown } | undefined)?.restaurants)
+      ? ((foodData as { restaurants: Array<{ name?: unknown }> }).restaurants
+        .map((r) => (typeof r?.name === "string" ? r.name : ""))
+        .sort()
+        .join("|")) : "";
     const cacheKey = JSON.stringify({
       user: userId,
       prompt: prompt?.substring(0, 30), // Further reduced for better hit rates
+      catalog: catalogFingerprint,
       budget: preferences.budget ? Math.floor(parseInt(preferences.budget) / 100) * 100 : null, // Round to nearest 100
       cuisine: preferences.cuisine,
       pax: preferences.pax || 2
