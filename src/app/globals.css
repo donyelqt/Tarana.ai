@@ -500,8 +500,12 @@ body {
   border-top-color: transparent !important;
 }
 
-/* Modern close button styling */
-.modern-popup .mapboxgl-popup-close-button {
+/* Modern close button styling.
+   TomTom v6 renders .tt-popup-close-button; MapLibre/GL renders
+   .mapboxgl-popup-close-button. Style both or the X is invisible to one
+   engine and dead-looking on the other. */
+.modern-popup .mapboxgl-popup-close-button,
+.modern-popup .tt-popup-close-button {
   position: absolute;
   right: 8px;
   top: 8px;
@@ -522,16 +526,20 @@ body {
   z-index: 10;
   padding: 0;
   line-height: 1;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 
-.modern-popup .mapboxgl-popup-close-button:hover {
+.modern-popup .mapboxgl-popup-close-button:hover,
+.modern-popup .tt-popup-close-button:hover {
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
   border-color: rgba(239, 68, 68, 0.2);
   transform: scale(1.05);
 }
 
-.modern-popup .mapboxgl-popup-close-button:active {
+.modern-popup .mapboxgl-popup-close-button:active,
+.modern-popup .tt-popup-close-button:active {
   transform: scale(0.95);
 }
 
