@@ -5,7 +5,7 @@ if (typeof MockedResponseEats.json !== 'function') {
 }
 
 import { NextRequest } from 'next/server';
-import { POST } from '../route';
+import { POST, __resetFoodRecommendationCachesForTests } from '../route';
 import { getServerSession } from 'next-auth';
 import { CreditService, InsufficientCreditsError } from '@/lib/referral-system';
 import { withRetry } from '@/lib/upstream/withRetry';
@@ -103,6 +103,7 @@ describe('food-recommendations charge-first (H1-Eats)', () => {
   ];
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetFoodRecommendationCachesForTests();
     sessionMock.mockResolvedValue({ user: { id: 'user-1' } });
     consumeMock.mockResolvedValue({ success: true, remainingCredits: 4 });
     refundMock.mockResolvedValue(true);
@@ -160,6 +161,7 @@ describe('food-recommendations idempotency', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetFoodRecommendationCachesForTests();
     sessionMock.mockResolvedValue({ user: { id: 'user-1' } });
     consumeMock.mockResolvedValue({ success: true, remainingCredits: 4 });
     refundMock.mockResolvedValue(true);
@@ -321,15 +323,28 @@ describe('food-recommendations idempotency', () => {
   });
 
   test('isolates cache entries per user', async () => {
+    // Same prompt, same catalog, different users: user-2 must not be served
+    // user-1's cached entry, so generation runs again for user-2.
+    parseMock.mockReturnValueOnce({
+      success: true,
+      data: { matches: [{ name: 'Good Shepherd Cafe', meals: 2, price: 210, image: '/img.jpg', reason: 'Great coffee.' }] },
+    });
     const first = await POST(post({ prompt: 'coffee for 2', foodData }, 'key-1'));
     expect(first.status).toBe(200);
+    expect(parseMock).toHaveBeenCalledTimes(1);
 
+    parseMock.mockReturnValueOnce({
+      success: true,
+      data: { matches: [{ name: 'Good Shepherd Cafe', meals: 2, price: 210, image: '/img.jpg', reason: 'Fresh greens.' }] },
+    });
     sessionMock.mockResolvedValueOnce({ user: { id: 'user-2' } });
     const second = await POST(post({ prompt: 'coffee for 2', foodData }, 'key-2'));
     const body = await second.json();
 
     expect(second.status).toBe(200);
-    expect(body).toBeDefined();
+    expect(parseMock).toHaveBeenCalledTimes(2);
+    const names = (body.matches ?? []).map((m: { name: string }) => m.name);
+    expect(names).toContain('Good Shepherd Cafe');
   });
 
   test('rejects unauthenticated monitoring stats with 401', async () => {
