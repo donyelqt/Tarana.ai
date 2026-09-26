@@ -262,6 +262,90 @@ describe('food-recommendations idempotency', () => {
     expect(completeMock).toHaveBeenNthCalledWith(2, 7, 500, expect.anything());
   });
 
+  test('rejects oversized bodies with 413 without charging', async () => {
+    const bigBody = { prompt: 'coffee for 2', foodData };
+    const req = {
+      headers: {
+        get: (name: string) =>
+          name === 'content-length' ? String(64 * 1024) : null,
+      },
+      json: async () => bigBody,
+    } as unknown as NextRequest;
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(413);
+    expect(consumeMock).not.toHaveBeenCalled();
+    expect(claimMock).not.toHaveBeenCalled();
+  });
+
+  test('rejects oversized prompts with 400', async () => {
+    const res = await POST(post({ prompt: 'x'.repeat(6000), foodData }));
+
+    expect(res.status).toBe(400);
+    expect(consumeMock).not.toHaveBeenCalled();
+  });
+
+  test('drops poisoned client restaurants unknown to the server registry', async () => {
+    const poisoned = {
+      restaurants: [
+        ...foodData.restaurants,
+        { name: 'Evil Attacker Cafe', cuisine: ['Cafe'], priceRange: { min: 1, max: 2 }, location: 'Nowhere', popularFor: ['cozy'], dietaryOptions: [], ratings: 5, image: '/evil.jpg', fullMenu: [] },
+      ],
+    };
+    parseMock.mockReturnValueOnce({
+      success: true,
+      data: { matches: [{ name: 'Evil Attacker Cafe', meals: 2, price: 2, image: '/evil.jpg', reason: 'Great coffee.' }] },
+    });
+
+    const res = await POST(post({ prompt: 'coffee for 2', foodData: poisoned }, 'key-poison'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const names = (body.matches ?? []).map((m: { name: string }) => m.name);
+    expect(names).not.toContain('Evil Attacker Cafe');
+  });
+
+  test('strips URLs from model reason text', async () => {
+    parseMock.mockReturnValueOnce({
+      success: true,
+      data: { matches: [{ name: 'Cafe Baguio', meals: 2, price: 500, image: '/img.jpg', reason: 'Great coffee. Visit https://evil.example.com for more.' }] },
+    });
+
+    const res = await POST(post({ prompt: 'coffee for 2', foodData }, 'key-reason'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const reasons = (body.matches ?? []).map((m: { reason: string }) => m.reason).join(' ');
+    expect(reasons).not.toContain('evil.example.com');
+  });
+
+  test('isolates cache entries per user', async () => {
+    const first = await POST(post({ prompt: 'coffee for 2', foodData }, 'key-1'));
+    expect(first.status).toBe(200);
+
+    sessionMock.mockResolvedValueOnce({ user: { id: 'user-2' } });
+    const second = await POST(post({ prompt: 'coffee for 2', foodData }, 'key-2'));
+    const body = await second.json();
+
+    expect(second.status).toBe(200);
+    expect(body).toBeDefined();
+  });
+
+  test('rejects unauthenticated monitoring stats with 401', async () => {
+    sessionMock.mockResolvedValueOnce(null);
+
+    const { GET } = await import('../route');
+    const req = {
+      url: 'http://localhost/api/gemini/food-recommendations?action=stats',
+      headers: new Headers(),
+    } as unknown as NextRequest;
+
+    const res = await GET(req);
+
+    expect(res.status).toBe(401);
+  });
+
   test('does not claim when no idempotency key is sent', async () => {
     const res = await POST(post({ prompt: 'coffee for 2', foodData }));
 

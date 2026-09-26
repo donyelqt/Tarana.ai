@@ -10,27 +10,13 @@ const formValues: TaranaEatsFormValues = {
   mealType: [],
 };
 
-const idempotencyKey = '00000000-0000-4000-8000-000000000001';
-
 describe('useTaranaEatsAI', () => {
-  const originalRandomUUID = globalThis.crypto.randomUUID;
   const fetchMock = global.fetch as jest.Mock;
 
   beforeEach(() => {
-    Object.defineProperty(globalThis.crypto, 'randomUUID', {
-      configurable: true,
-      value: jest.fn(() => idempotencyKey),
-    });
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ matches: [] }),
-    });
-  });
-
-  afterAll(() => {
-    Object.defineProperty(globalThis.crypto, 'randomUUID', {
-      configurable: true,
-      value: originalRandomUUID,
     });
   });
 
@@ -42,12 +28,27 @@ describe('useTaranaEatsAI', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/gemini/food-recommendations',
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({ 'Idempotency-Key': idempotencyKey }),
-      })
-    );
+    const sentKey = (fetchMock.mock.calls[0][1] as { headers: Record<string, string> }).headers['Idempotency-Key'];
+    expect(sentKey).toMatch(/^eats:[0-9a-f]{8}$/);
+  });
+
+  test('reuses the same key for identical resubmits and rotates on field change', async () => {
+    const { result } = renderHook(() => useTaranaEatsAI());
+
+    await act(async () => {
+      await result.current.generateRecommendations(formValues);
+    });
+    await act(async () => {
+      await result.current.generateRecommendations(formValues);
+    });
+    const firstKey = fetchMock.mock.calls[0][1].headers['Idempotency-Key'];
+    const secondKey = fetchMock.mock.calls[1][1].headers['Idempotency-Key'];
+    expect(secondKey).toBe(firstKey);
+
+    await act(async () => {
+      await result.current.generateRecommendations({ ...formValues, pax: 4 });
+    });
+    const thirdKey = fetchMock.mock.calls[2][1].headers['Idempotency-Key'];
+    expect(thirdKey).not.toBe(firstKey);
   });
 });

@@ -2,8 +2,10 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/ge
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { z } from "zod";
 import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
 import { FullMenu, RestaurantData } from "@/app/tarana-eats/data/taranaEatsData";
+import { restaurants as serverRestaurants } from "@/app/tarana-eats/data/restaurants";
 import { ResultMatch } from "@/types/tarana-eats";
 import { RobustFoodJsonParser } from "@/lib/robustFoodJsonParser";
 import { FoodRecommendationErrorHandler, FoodErrorType } from "@/lib/foodRecommendationErrorHandler";
@@ -78,13 +80,71 @@ const geminiModel = genAI ? genAI.getGenerativeModel({
   ],
 }) : null;
 
-// Optimized caching system
+// Optimized caching system. Keys are user-scoped: without the userId a
+// second user with the same prompt would be served the first user phrasing.
+// Both maps are LRU-capped so 30-minute TTL entries cannot accumulate per
+// instance without bound.
+const CACHE_MAX_ENTRIES = 200;
 const responseCache = new Map<string, { response: any; timestamp: number }>();
 const preprocessingCache = new Map<string, any>();
+function cacheSet<K, V>(map: Map<K, V>, key: K, value: V): void {
+  if (map.has(key)) map.delete(key);
+  map.set(key, value);
+  while (map.size > CACHE_MAX_ENTRIES) {
+    const oldest = map.keys().next();
+    if (oldest.done) break;
+    map.delete(oldest.value);
+  }
+}
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes for better cache utilization
 const DEFAULT_PLACEHOLDER_IMAGE = "/images/placeholders/hero-placeholder.svg";
 const MIN_RECOMMENDATIONS = 3;
 const MAX_RECOMMENDATIONS = 5;
+
+// Bounded input contract (Gala parity): prompt length, typed client
+// preferences, and a bounded foodData envelope. Raw regex parsing below
+// must never see unbounded text.
+const eatsRequestSchema = z.object({
+  prompt: z.string().min(1).max(5000),
+  foodData: z.object({
+    restaurants: z.array(z.unknown()).max(200).optional(),
+  }).passthrough().optional(),
+  preferences: z.object({
+    pax: z.union([z.string().max(50), z.number().int().positive()]).optional(),
+    budget: z.string().max(100).optional(),
+    cuisine: z.string().max(100).optional(),
+    restrictions: z.array(z.string().max(100)).max(25).optional(),
+    mealType: z.array(z.string().max(100)).max(25).optional(),
+  }).passthrough().optional(),
+}).passthrough();
+
+// Model reason strings render as UI text. Strip URLs, @-handles, and
+// instruction-shaped lines so smuggled directives never reach the card.
+function sanitizeReasonText(reason: string): string {
+  if (typeof reason !== "string") return "";
+  return reason
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0
+      && !/https?:\/\//i.test(line)
+      && !/www\./i.test(line)
+      && !/^\s*[@#]/.test(line)
+      && !/\b(ignore|disregard|forget|override|system|instruction|prompt)\b/i.test(line))
+    .join(" ")
+    .slice(0, 500);
+}
+
+// Trust boundary: the client ships a foodData catalog, but grounding must
+// never certify names against that same client list. Cross-check every
+// client restaurant name against the server registry; unknown names are
+// dropped before indexing, relevance, and grounding ever see them.
+function serverKnownRestaurants(clientRestaurants: unknown): RestaurantData[] {
+  if (!Array.isArray(clientRestaurants)) return [...serverRestaurants];
+  const known = new Set(serverRestaurants.map((r) => normalizeRestaurantName(r.name)));
+  const kept = (clientRestaurants as Array<{ name?: unknown }>).filter((r) =>
+    typeof r?.name === "string" && known.has(normalizeRestaurantName(r.name)));
+  return kept.length > 0 ? (kept as unknown as RestaurantData[]) : [...serverRestaurants];
+}
 
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   const requestId = getRequestId(req);
@@ -106,13 +166,33 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
   };
   try {
+    // Hard 32KB body cap (Gala parity): the route interpolates the whole
+    // foodData catalog into the model prompt, so an unbounded req.json()
+    // lets any client push multi-MB payloads through parsing + indexing
+    // compute before any charge decision. Reject loud with 413.
+    const contentLength = Number(req.headers.get('content-length') ?? 0);
+    if (contentLength > 32 * 1024) {
+      return NextResponse.json(
+        { error: "Request body too large" },
+        { status: 413 }
+      );
+    }
+
     const requestBody = await req.json();
-    const { prompt, foodData, preferences: clientPreferences } = requestBody;
+    const { prompt, foodData: clientFoodData, preferences: clientPreferences } = requestBody;
+    const foodData = { ...((clientFoodData as Record<string, unknown> | undefined) ?? {}), restaurants: serverKnownRestaurants((clientFoodData as { restaurants?: unknown } | undefined)?.restaurants) };
 
     // Input validation
     if (!prompt) {
       return NextResponse.json(
         { error: "Prompt is required" },
+        { status: 400 }
+      );
+    }
+    const parsed = eatsRequestSchema.safeParse(requestBody);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request payload" },
         { status: 400 }
       );
     }
@@ -193,13 +273,14 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       }
     }
     
-    // DEBUG: Log all parsed preferences
-    logger.info("📊 Parsed user preferences:", {
+    // Redacted counters only: raw prompt-derived values can carry PII
+    // (names, hotels, dates) and must not sit at info level.
+    logger.info("Parsed user preferences", {
       entryPoint: LOG_ENTRY_POINT,
-      pax: preferences.pax,
-      budget: preferences.budget,
-      cuisine: preferences.cuisine,
-      restrictions: preferences.restrictions
+      hasPax: preferences.pax != null,
+      hasBudget: preferences.budget != null,
+      hasCuisine: preferences.cuisine != null,
+      restrictionCount: Array.isArray(preferences.restrictions) ? preferences.restrictions.length : 0
     }, requestId);
 
     // Initialize menu indexing service with restaurant data
@@ -230,6 +311,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     
     // Generate optimized cache key
     const cacheKey = JSON.stringify({
+      user: userId,
       prompt: prompt?.substring(0, 30), // Further reduced for better hit rates
       budget: preferences.budget ? Math.floor(parseInt(preferences.budget) / 100) * 100 : null, // Round to nearest 100
       cuisine: preferences.cuisine,
@@ -242,11 +324,11 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       await completeClaim(200, cached.response);
       return NextResponse.json(cached.response);
     }
-    const preprocessingKey = `${preferences.cuisine || 'all'}-${preferences.budget || 'all'}-${preferences.pax || 2}`;
+    const preprocessingKey = `${userId}:${preferences.cuisine || 'all'}-${preferences.budget || 'all'}-${preferences.pax || 2}`;
     let relevantRestaurants = preprocessingCache.get(preprocessingKey);
     if (!relevantRestaurants) {
       relevantRestaurants = getRelevantRestaurants(foodData.restaurants, preferences);
-      preprocessingCache.set(preprocessingKey, relevantRestaurants);
+      cacheSet(preprocessingCache, preprocessingKey, relevantRestaurants);
     }
 
     // Re-use the globally initialised model
@@ -413,7 +495,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       
       // Enhance each match with comprehensive menu data and smart suggestions
       // Cache the response
-      responseCache.set(cacheKey, {
+      cacheSet(responseCache, cacheKey, {
         response: recommendations,
         timestamp: Date.now()
       });
@@ -542,6 +624,7 @@ function hydrateMatchFromRestaurant(
   restaurant: RestaurantData,
   preferences: any
 ): EnhancedResultMatch {
+  if (typeof match.reason === "string") match.reason = sanitizeReasonText(match.reason);
   const meals = preferences?.pax || match.meals || 2;
 
   let finalPrice = Number(match.price) || 0;
@@ -772,9 +855,8 @@ function parseUserPreferences(prompt: string, requestId: string): any {
   
   // DEBUG: Log parsed pax value
   if (preferences.pax) {
-    logger.info(`✓ Parsed group size: ${preferences.pax} people from prompt`, {
-      entryPoint: LOG_ENTRY_POINT,
-      pax: preferences.pax
+    logger.debug(`Parsed group size from prompt`, {
+      entryPoint: LOG_ENTRY_POINT
     }, requestId);
   }
   
@@ -939,8 +1021,9 @@ function generateQuickReason(restaurant: any, preferences: any): string {
 }
 
 
-// Health check endpoint for monitoring
-export async function GET(req: NextRequest) {
+// Health check endpoint for monitoring. Stats exposes error-type counts and
+// last-error metadata, so it sits behind auth; bare health stays open.
+export const GET = withAuth(async (req: NextRequest) => {
   const requestId = getRequestId(req);
   return timedHttp('/api/gemini/food-recommendations', 'GET', async () => {
   try {
@@ -969,4 +1052,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
   }, (res) => res.status);
-}
+});
