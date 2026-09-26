@@ -264,11 +264,9 @@ request
 - **Verify:** `grep -rn console.log src --include=*.ts | grep -v __tests__` returns zero.
 
 #### 5.2 Tracing
-- Add OpenTelemetry with auto-instrumentation for HTTP, Supabase, and external
-  fetches.
-- Sample 1% of requests; keep 100% of errors.
-- **Verify:** a single request can be followed from API route → Supabase → Gemini
-  in the tracing UI.
+- **Deferred by ADR-008 (2026-09-26, this slice): no OpenTelemetry SDK until a sink decision lands** (`docs/adr/008-no-distributed-tracing-without-sink.md`). Zero tracing instrumentation in `src` (verified); only transitive `@opentelemetry/api` via Next, no SDK. Trace-equivalent evidence today: `requestId` correlation + RED per-route histogram + `entryPoint` log sequence. Known gaps stated in the ADR: stage-level duration attribution, 5s histogram ceiling on 7.5–60s generations.
+- Original slice text (deferred): OpenTelemetry auto-instrumentation for HTTP/Supabase/fetches; 1% sample, 100% errors.
+- **Verify (deferred):** no tracing UI exists; today, trace-equivalent evidence is `requestId` correlation + RED per-route histogram + `entryPoint` log sequence (stage-level duration is a known gap).
 
 #### 5.3 Alerting with runbooks
 - **5.3a runbook documentation — DONE (2026-09-26, this slice).** `docs/runbooks/` holds 3 symptom runbooks (`5xx-spike.md`, `latency-breach.md`, `credit-charge-anomaly.md`): thresholds human-evaluated (5xx >2x baseline per `docs/rollback.md`; p95 >50% above baseline — no absolute SLO latency number exists; any verified wrong charge), first queries executable against the existing `/api/metrics` exposition, levers mapped to `docs/rollback.md` Lever 1/2. No webhook/sink wired (zero-dep convention).
@@ -554,9 +552,9 @@ test variables, without changing the source default. Full suite: 550 passed,
 | Status | # | Item | Evidence |
 |---|---|---|---|
 | [x] | 5.1 | Structured logs everywhere | Complete: production route slices through PR #587, the authenticated cron endpoint, and `refreshScheduler.ts` are converted; the unused unauthenticated `routes/monitor` placeholder is removed. Remaining `console.*` inventory is limited to standalone test/diagnostic utilities outside production runtime paths. |
-| [ ] | 5.2 | Tracing | No OpenTelemetry instrumentation. |
+
 | [x] | 5.3a | Runbook documentation | 3 symptom runbooks in `docs/runbooks/` (`5xx-spike.md`, `latency-breach.md`, `credit-charge-anomaly.md`): thresholds human-evaluated against `/api/metrics` + `/api/health` (5xx >2x baseline per `docs/rollback.md`; p95 >50% above baseline — no absolute SLO latency number; any verified wrong charge), first queries executable against the existing exposition, levers mapped to `docs/rollback.md` Lever 1/2. No webhook/sink wired (zero-dep convention). |
-| [ ] | 5.3b | Alert wiring | No pager sink; thresholds are human-evaluated against `/api/metrics` + `/api/health`, not wired webhooks. Deferred pending the §3.3 sink decision. |
+| [ ] | 5.3b | Alert wiring | No pager sink; test-fire-in-staging verify clause unmet. Deferred pending the §3.3 sink decision. |
 | [x] | 5.4 | Health checks | **Done — verified live 2026-09-24** (no code change this slice). `src/app/api/health/route.ts` per §3.2 invariant 8: connection-level checks only, 3s per-dependency timeout, unhealthy dependency returns 200 with `status: 'degraded'` rather than failing the request. Live probe on a fresh `next dev` (`:3111`): cold 200 in 5.6s (3.7s of that is first-hit route compile), warm 1014ms then 419ms; body `{"status":"ok","checks":{"supabase":"ok","geminiKey":"ok","tomtom":"ok"}}` on all three calls. Gemini check is key-presence, not generation — a monitoring probe must not cost money. |
 
 ## 9. Implementation Status (re-verified 2026-09-23)
@@ -907,14 +905,14 @@ Converted 29 direct `console.*` calls in `src/app/api/gemini/food-recommendation
 
 **41. Food recommendations idempotency — DONE (PR #567, merged `50220a2`; CI `verify` SUCCESS 2m48s).**
 The charge-first `/api/gemini/food-recommendations` path now claims the caller's key before consuming a credit, hashes the complete request payload, replays the exact stored response, rejects in-flight duplicates with `409` + `Retry-After`, rejects key reuse with a different payload using `422`, and completes owned claims for success, insufficient-credit, and safe failure responses. Completion-store failure is logged and rethrown so the client cannot receive a false success. The web `useTaranaEatsAI` caller sends one `crypto.randomUUID()` key per generation intent. Unkeyed requests preserve the previous flow. Verification: 9 new route idempotency tests, 1 client-hook test, full suite **649 passed / 6 skipped / 0 failed**, tsc clean, lint 0 errors with pre-existing warnings, production build green, CI `verify` pass. Independent review initially requested changes for swallowed completion errors; both the completion-failure and explicit charge-state findings were fixed, and the post-fix verdict is **APPROVE**.
-**Current next-task ranking after the 3.3a hygiene slice (on `origin/main` @ `59c0f64`, PR #611 merged):**
+**Current next-task ranking after the 5.2 tracing decision (on `origin/main` @ `9b6e253`, PR #612 merged):**
 1. **Mobile shippability decision** — still product-scope blocked (`eas.json`, tests, CI job, local-AI stub, offline behavior); decision before code.
 2. **Happy-path E2E behind live services** — needs staging Supabase/Gemini/ledger + seeded session; only then can signup → login → generate → save → dashboard be asserted end-to-end.
 3. **Contract slices 2+** — next uncovered envelope; only slice where deterministic.
 
-Closed since the prior ranking: **3.3a lockfile hygiene** (NOT provenance — honest structural gate, both CI jobs), **5.3a runbook documentation** (3 symptom runbooks, human-evaluated thresholds, no sink), **4.2 contract slice 1** (health envelope, 4 deterministic tests), **4.1 journey boundaries** (7 deterministic tests; happy path explicitly deferred to live services), **§3.2 SSRF decided-no-wire-target** (fate review + closeout; guard retained for future request-derived-URL surfaces), **unify `CreditService.ensureUserProfile`** (#604 via `e9094b2`) and **delete `ensureFullItinerary` dead code** (#604 via `5e938fe`).
+Closed since the prior ranking: **5.2 tracing decision** (ADR-008: no SDK without a sink; known gaps stated; 3 revisit triggers), **3.3a lockfile hygiene** (NOT provenance — honest structural gate, both CI jobs), **5.3a runbook documentation** (3 symptom runbooks, human-evaluated thresholds, no sink), **4.2 contract slice 1** (health envelope, 4 deterministic tests), **4.1 journey boundaries** (7 deterministic tests; happy path explicitly deferred to live services), **§3.2 SSRF decided-no-wire-target** (fate review + closeout; guard retained for future request-derived-URL surfaces), **unify `CreditService.ensureUserProfile`** (#604 via `e9094b2`) and **delete `ensureFullItinerary` dead code** (#604 via `5e938fe`).
 
-Explicitly deferred: 2.4 Redis rate limiting (ADR/traffic decision), 3.3b attestation/signature verification (pnpm ≥10 or Sigstore sink), 5.2 tracing (no sink), 5.3b alert wiring (pager sink pending §3.3 decision), 1.3/1.4 architecture/API migration, and Phase 6/7 product work.
+Explicitly deferred: 2.4 Redis rate limiting (ADR/traffic decision), 3.3b attestation/signature verification (pnpm ≥10 or Sigstore sink), 5.2 tracing implementation (sink decision per ADR-008), 5.3b alert wiring (pager sink pending §3.3 decision), 1.3/1.4 architecture/API migration, and Phase 6/7 product work.
 
 
 **42. Multi-agent refund outcome propagation — DONE (PR #569, merged `38c9b29`; CI `verify` SUCCESS).**
