@@ -232,12 +232,15 @@ class ItineraryRefreshService {
     currentWeather: WeatherData
   ): WeatherChangeDetails | null {
     if (!previousWeather || !previousWeather.main) {
-      logger.info('No previous weather data; assuming change', { entryPoint: LOG_ENTRY_POINT });
+      // No baseline: report the current condition honestly but do not claim a
+      // change. shouldRefresh only fires on measured deltas, so a missing
+      // snapshot must not manufacture one.
+      logger.info('No previous weather data; reporting current condition without change', { entryPoint: LOG_ENTRY_POINT });
       return {
         temperatureDelta: 0,
-        previousCondition: 'unknown',
+        previousCondition: currentWeather.weather[0]?.main.toLowerCase() || 'unknown',
         currentCondition: currentWeather.weather[0]?.main.toLowerCase() || 'unknown',
-        conditionChanged: true,
+        conditionChanged: false,
         precipitationChange: false,
         extremeWeatherDetected: this.isExtremeWeather(currentWeather)
       };
@@ -281,10 +284,13 @@ class ItineraryRefreshService {
    * Detect precipitation state changes
    */
   private detectPrecipitationChange(prev: string, curr: string): boolean {
+    // Unknown baselines must not manufacture a change: without a previous
+    // condition there is nothing to compare against.
+    if (!prev || prev === 'unknown' || !curr || curr === 'unknown') return false;
     const wetConditions = ['rain', 'drizzle', 'thunderstorm', 'snow'];
-    const wasDry = !wetConditions.includes(prev);
+    const wasWet = wetConditions.includes(prev);
     const isWet = wetConditions.includes(curr);
-    return wasDry !== isWet;
+    return wasWet !== isWet;
   }
 
   // ==========================================================================
