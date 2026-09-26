@@ -196,6 +196,19 @@ async function fetchGooglePhoto(place: PlaceInput): Promise<string | null> {
   }
 }
 
+// POIs whose Wikipedia page exists but carries no pageimage thumbnail.
+// Without this, Tier 2 reports a miss and Tier 2b Unsplash happily returns a
+// textually-near but wrong photo (e.g. another university's campus). Keys are
+// exact place titles as returned by the POI provider.
+const WIKIMEDIA_FILE_OVERRIDES: Record<string, string> = {
+  // Verified 2026-09-26: MCU page (id 12493904) exists with no thumbnail, but
+  // hosts File:Manila Central University, Caloocan, Mar 2024 (1).jpg
+  // (2173x1637, reachable, image/jpeg). The Nicanor Reyes Hall photo on the
+  // card today belongs to Far Eastern University, ~2km away — wrong school.
+  "Manila Central University":
+    "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/08/Manila_Central_University%2C_Caloocan%2C_Mar_2024_%281%29.jpg/960px-Manila_Central_University%2C_Caloocan%2C_Mar_2024_%281%29.jpg",
+};
+
 // ─────────────────────────────────────────────────────────────
 // Tier 2: Wikimedia Commons (free, accurate for landmarks/museums/parks)
 // Tier 2b: Unsplash (free tier, no billing — category-accurate for food/cafes)
@@ -234,6 +247,14 @@ async function fetchUnsplashPhoto(place: PlaceInput): Promise<string | null> {
   }
 }
 async function fetchWikimediaThumb(place: PlaceInput): Promise<string | null> {
+  const override = WIKIMEDIA_FILE_OVERRIDES[place.title]
+  if (override) {
+    if (!isRenderableImageUrl(override)) {
+      console.warn(`🖼️ Tier2 Wikimedia: miss "${place.title}" (unrenderable-host override)`)
+      return null
+    }
+    return override
+  }
   try {
     const controller = new AbortController()
     const t = setTimeout(() => controller.abort(), 3000)
