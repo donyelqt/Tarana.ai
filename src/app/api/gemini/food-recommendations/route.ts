@@ -106,6 +106,18 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
   };
   try {
+    // Hard 32KB body cap (Gala parity): the route interpolates the whole
+    // foodData catalog into the model prompt, so an unbounded req.json()
+    // lets any client push multi-MB payloads through parsing + indexing
+    // compute before any charge decision. Reject loud with 413.
+    const contentLength = Number(req.headers.get('content-length') ?? 0);
+    if (contentLength > 32 * 1024) {
+      return NextResponse.json(
+        { error: "Request body too large" },
+        { status: 413 }
+      );
+    }
+
     const requestBody = await req.json();
     const { prompt, foodData, preferences: clientPreferences } = requestBody;
 
@@ -939,8 +951,9 @@ function generateQuickReason(restaurant: any, preferences: any): string {
 }
 
 
-// Health check endpoint for monitoring
-export async function GET(req: NextRequest) {
+// Health check endpoint for monitoring. Stats exposes error-type counts and
+// last-error metadata, so it sits behind auth; bare health stays open.
+export const GET = withAuth(async (req: NextRequest) => {
   const requestId = getRequestId(req);
   return timedHttp('/api/gemini/food-recommendations', 'GET', async () => {
   try {
@@ -969,4 +982,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
   }, (res) => res.status);
-}
+});

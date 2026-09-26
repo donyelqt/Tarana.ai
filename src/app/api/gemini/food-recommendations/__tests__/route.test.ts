@@ -262,6 +262,37 @@ describe('food-recommendations idempotency', () => {
     expect(completeMock).toHaveBeenNthCalledWith(2, 7, 500, expect.anything());
   });
 
+  test('rejects oversized bodies with 413 without charging', async () => {
+    const bigBody = { prompt: 'coffee for 2', foodData };
+    const req = {
+      headers: {
+        get: (name: string) =>
+          name === 'content-length' ? String(64 * 1024) : null,
+      },
+      json: async () => bigBody,
+    } as unknown as NextRequest;
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(413);
+    expect(consumeMock).not.toHaveBeenCalled();
+    expect(claimMock).not.toHaveBeenCalled();
+  });
+
+  test('rejects unauthenticated monitoring stats with 401', async () => {
+    sessionMock.mockResolvedValueOnce(null);
+
+    const { GET } = await import('../route');
+    const req = {
+      url: 'http://localhost/api/gemini/food-recommendations?action=stats',
+      headers: new Headers(),
+    } as unknown as NextRequest;
+
+    const res = await GET(req);
+
+    expect(res.status).toBe(401);
+  });
+
   test('does not claim when no idempotency key is sent', async () => {
     const res = await POST(post({ prompt: 'coffee for 2', foodData }));
 
