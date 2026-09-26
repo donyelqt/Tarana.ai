@@ -75,7 +75,7 @@ const completeMock = completeIdempotency as unknown as jest.Mock;
 const hashMock = hashIdempotencyPayload as unknown as jest.Mock;
 
 const restaurant = {
-  name: 'Cafe Baguio',
+  name: 'Good Shepherd Cafe',
   cuisine: ['Cafe'],
   priceRange: { min: 100, max: 300 },
   location: 'Baguio',
@@ -99,7 +99,7 @@ function post(body: unknown, idempotencyKey?: string) {
 
 describe('food-recommendations charge-first (H1-Eats)', () => {
   const geminiMatches = [
-    { name: 'Cafe Baguio', meals: 2, price: 500, image: '/img.jpg', reason: 'Great coffee and cozy seats.' },
+    { name: 'Good Shepherd Cafe', meals: 2, price: 500, image: '/img.jpg', reason: 'Great coffee and cozy seats.' },
   ];
   beforeEach(() => {
     jest.clearAllMocks();
@@ -156,7 +156,7 @@ describe('food-recommendations charge-first (H1-Eats)', () => {
 
 describe('food-recommendations idempotency', () => {
   const matches = [
-    { name: 'Cafe Baguio', meals: 2, price: 500, image: '/img.jpg', reason: 'Great coffee and cozy seats.' },
+    { name: 'Good Shepherd Cafe', meals: 2, price: 500, image: '/img.jpg', reason: 'Great coffee and cozy seats.' },
   ];
 
   beforeEach(() => {
@@ -302,16 +302,17 @@ describe('food-recommendations idempotency', () => {
 
     const res = await POST(post({ prompt: 'coffee for 2', foodData: poisoned }, 'key-poison'));
 
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    const names = (body.matches ?? []).map((m: { name: string }) => m.name);
-    expect(names).not.toContain('Evil Attacker Cafe');
+    // Zero servable matches after grounding: the prepaid credit is refunded
+    // and a safe failure is answered, never an unbilled empty 200.
+    expect(res.status).toBe(500);
+    expect(refundMock).toHaveBeenCalledTimes(1);
+    expect(completeMock).toHaveBeenCalledWith(7, 500, expect.anything());
   });
 
   test('strips URLs from model reason text', async () => {
     parseMock.mockReturnValueOnce({
       success: true,
-      data: { matches: [{ name: 'Cafe Baguio', meals: 2, price: 500, image: '/img.jpg', reason: 'Great coffee. Visit https://evil.example.com for more.' }] },
+      data: { matches: [{ name: 'Good Shepherd Cafe', meals: 2, price: 500, image: '/img.jpg', reason: 'Great coffee. Visit https://evil.example.com for more.' }] }, // Registry name: grounding drops unknown names before sanitize runs
     });
 
     const res = await POST(post({ prompt: 'coffee for 2', foodData }, 'key-reason'));
