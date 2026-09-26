@@ -119,9 +119,12 @@ const SavedItineraryDetail = () => {
   };
 
   const handleRefreshItinerary = async (force: boolean = false) => {
-    if (!itinerary) return;
+    if (!itinerary || isRefreshing) return;
     setIsRefreshing(true);
-    const idempotencyKey = `refresh:${id}:${globalThis.crypto.randomUUID()}`;
+    // Stable per-evaluation key: retries and double-clicks of one refresh share
+    // the same key so the generator dedupes; each new click mints a new intent
+    // via the evaluation timestamp below.
+    const idempotencyKey = `refresh:${id}:${Date.now()}`;
     
     try {
       // Step 1: Evaluate if refresh is needed (unless forced)
@@ -185,6 +188,16 @@ const SavedItineraryDetail = () => {
       const result = await response.json();
       
       if (result.success) {
+        const hasUsableItems = Array.isArray(result.updatedItinerary?.itineraryData?.items) && (result.updatedItinerary.itineraryData.items.length ?? 0) > 0;
+        if (!hasUsableItems) {
+          console.error('❌ Refresh returned no usable itinerary items:', result);
+          modernToast.error(
+            "Refresh Incomplete",
+            "Generator returned no usable stops - itinerary unchanged"
+          );
+          setIsRefreshing(false);
+          return;
+        }
         // ✅ CRITICAL: Always refetch from database to ensure UI reflects latest state
         console.log('🔄 Refetching updated itinerary from database...');
         await refetchItinerary();
