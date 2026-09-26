@@ -131,7 +131,7 @@ const SavedTrips = () => {
         {!isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredItineraries.map((itinerary) => (
-            <div key={itinerary.id} className="group relative overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-1">
+            <div key={itinerary.id} className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-1">
               {/* Image */}
               <div className="relative h-48 w-full">
                 <Image
@@ -147,10 +147,10 @@ const SavedTrips = () => {
               </div>
 
               {/* Content */}
-              <div className="p-6">
+              <div className="flex flex-1 flex-col p-6">
                 {/* Title and ID */}
                 <div className="mb-3">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{itinerary.title} <span className="text-sm text-gray-400 font-normal">#{itinerary.id}</span></h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2 min-h-[3.5rem]">{itinerary.title} <span className="text-sm text-gray-400 font-normal break-all">#{itinerary.id}</span></h3>
                 </div>
 
                 {/* Date and Time */}
@@ -174,12 +174,12 @@ const SavedTrips = () => {
                 </div>
 
                 {/* Tags */}
-                <div className="mb-4">
+                <div className="mb-4 md:min-h-[5.5rem]">
                   <div className="flex flex-wrap gap-2">
                     {itinerary.tags.map((tag, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center rounded-lg border-2 bg-white px-2 py-2"
+                        className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1"
                       >
                         <span className="mr-1">
                           {/*{tag === "Food & Culinary" && "🍽️"}
@@ -192,7 +192,7 @@ const SavedTrips = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-2">
+                <div className="mt-auto flex gap-2 pt-2">
                   <Button
                     className="flex-1 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
                     onClick={() => router.push(`/saved-trips/${itinerary.id}`)}
