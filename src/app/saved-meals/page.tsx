@@ -18,14 +18,37 @@ import {
 } from "@/components/ui/select";
 import { Plus, Search, Utensils } from 'lucide-react';
 import { savedMeals as initialSavedMeals, SavedMeal } from "./data";
+import { restaurants } from "@/app/tarana-eats/data/restaurants";
 import MealCard from "./components/MealCard";
 import { useRouter } from 'next/navigation';
+
+// Cuisine comes from the Tarana Eats restaurant catalog, not the saved_meals
+// row (which carries no cuisine field). Match on exact cafe name; unknown
+// cafes resolve to [] so the filter degrades to no-match only when active.
+function getCuisinesForCafe(cafeName: string): string[] {
+  const match = restaurants.find((r) => r.name.toLowerCase() === cafeName.trim().toLowerCase());
+  return match?.cuisine ?? [];
+}
+
+const CUISINE_OPTIONS = (() => {
+  const seen = new Map<string, string>();
+  for (const r of restaurants) {
+    for (const c of r.cuisine) {
+      const key = c.toLowerCase();
+      if (!seen.has(key)) seen.set(key, c);
+    }
+  }
+  return [...seen.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1]))
+    .map(([value, label]) => ({ value, label }));
+})();
 
 const SavedMealsPage = () => {
   const { contentClass } = useSidebarCollapsed();
   const [searchQuery, setSearchQuery] = useState("");
   const [mealTypeFilter, setMealTypeFilter] = useState("all");
   const [budgetFilter, setBudgetFilter] = useState("all");
+  const [cuisineFilter, setCuisineFilter] = useState("all");
   const router = useRouter();
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -57,9 +80,12 @@ const SavedMealsPage = () => {
         (budgetFilter === "100-300" && meal.price >= 100 && meal.price <= 300) ||
         (budgetFilter === "300-500" && meal.price > 300 && meal.price <= 500) ||
         (budgetFilter === "500+" && meal.price > 500);
-      return matchesQuery && matchesMealType && matchesBudget;
+      const matchesCuisine =
+        cuisineFilter === "all" ||
+        getCuisinesForCafe(meal.cafeName).some((c) => c.toLowerCase() === cuisineFilter);
+      return matchesQuery && matchesMealType && matchesBudget && matchesCuisine;
     });
-  }, [savedMeals, searchQuery, mealTypeFilter, budgetFilter]);
+  }, [savedMeals, searchQuery, mealTypeFilter, budgetFilter, cuisineFilter]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -127,12 +153,17 @@ const SavedMealsPage = () => {
                   <SelectItem value="500+">₱500+</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value="all" disabled>
-                <SelectTrigger aria-label="Cuisine type (coming soon)">
+              <Select value={cuisineFilter} onValueChange={setCuisineFilter}>
+                <SelectTrigger aria-label="Cuisine type">
                   <SelectValue placeholder="Cuisine Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Cuisines (coming soon)</SelectItem>
+                  <SelectItem value="all">All Cuisines</SelectItem>
+                  {CUISINE_OPTIONS.map((cuisine) => (
+                    <SelectItem key={cuisine.value} value={cuisine.value}>
+                      {cuisine.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
