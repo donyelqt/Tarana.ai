@@ -505,6 +505,12 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
             requestId
           );
         }
+        if (!recommendations.matches || recommendations.matches.length === 0) {
+          // Fail-closed: a billed generation that yields zero servable matches
+          // is refunded, never cached, and answered as a safe 500. The 500
+          // path below refunds via charged=true and skips the cache write.
+          throw new Error('No servable recommendations after grounding');
+        }
       } else {
         logger.warn('⚠️ JSON parsing failed or no matches found, using intelligent fallback recommendations', { entryPoint: LOG_ENTRY_POINT }, requestId);
         throw new Error('Invalid parse result');
