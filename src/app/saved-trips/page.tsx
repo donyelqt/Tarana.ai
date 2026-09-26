@@ -19,6 +19,8 @@ const SavedTrips = () => {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState("")
+  const [expandedTags, setExpandedTags] = useState<Record<string, boolean>>({})
+  const MAX_VISIBLE_TAGS = 2
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [itineraryToDelete, setItineraryToDelete] = useState<SavedItinerary | null>(null)
   const { toast } = useToast()
@@ -174,20 +176,30 @@ const SavedTrips = () => {
                 </div>
 
                 {/* Tags */}
-                <div className="mb-4 md:min-h-[5.5rem]">
-                  <div className="flex flex-wrap gap-2">
-                    {itinerary.tags.map((tag, index) => (
+                <div className="mb-2 md:min-h-[2.75rem]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {(expandedTags[itinerary.id] ? itinerary.tags : itinerary.tags.slice(0, MAX_VISIBLE_TAGS)).map((tag, index) => (
                       <span
                         key={index}
                         className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1"
                       >
-                        <span className="mr-1">
-                          {/*{tag === "Food & Culinary" && "🍽️"}
-                          {tag === "Nature & Scenery" && "🌿"}*/}
-                        </span>
                         <span className="text-xs text-gray-600">{tag}</span>
                       </span>
                     ))}
+                    {itinerary.tags.length > MAX_VISIBLE_TAGS && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setExpandedTags((prev) => ({ ...prev, [itinerary.id]: !prev[itinerary.id] }))
+                        }}
+                        aria-expanded={Boolean(expandedTags[itinerary.id])}
+                        aria-label={expandedTags[itinerary.id] ? `Show fewer tags for ${itinerary.title}` : `See ${itinerary.tags.length - MAX_VISIBLE_TAGS} more tags for ${itinerary.title}`}
+                        className="inline-flex min-h-[44px] items-center gap-0.5 rounded-lg px-2 py-1 text-xs font-semibold text-blue-700 underline decoration-blue-300 decoration-2 underline-offset-2 hover:bg-blue-50 hover:text-blue-800 hover:decoration-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+                      >
+                        {expandedTags[itinerary.id] ? "Show less" : `See ${itinerary.tags.length - MAX_VISIBLE_TAGS} more`}
+                      </button>
+                    )}
                   </div>
                 </div>
 
