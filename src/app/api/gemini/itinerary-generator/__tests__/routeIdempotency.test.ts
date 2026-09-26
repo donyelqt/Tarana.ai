@@ -123,6 +123,36 @@ describe('itinerary-generator POST idempotency (2.3)', () => {
     expect(consumeMock).not.toHaveBeenCalled();
   });
 
+  test('rejects oversized bodies with 413 without charging', async () => {
+    const bigBody = { ...validBody };
+    const req = {
+      headers: { get: (k: string) => (k === 'content-length' ? String(64 * 1024) : null) },
+      json: async () => bigBody,
+      url: 'http://localhost/api/gemini/itinerary-generator',
+      nextUrl: { searchParams: new URLSearchParams() },
+    } as unknown as NextRequest;
+
+    const out = await POST(req);
+    expect(out.status).toBe(413);
+    expect(consumeMock).not.toHaveBeenCalled();
+    expect(claimMock).not.toHaveBeenCalled();
+  });
+
+  test('rejects oversized prompts with 400 without charging', async () => {
+    const out = await POST(post({ ...validBody, prompt: 'x'.repeat(6000) }));
+    expect(out.status).toBe(400);
+    expect(consumeMock).not.toHaveBeenCalled();
+    expect(claimMock).not.toHaveBeenCalled();
+  });
+
+  test('rejects unauthenticated generation with 401', async () => {
+    sessionMock.mockResolvedValueOnce(null);
+    const out = await POST(post(validBody, { 'Idempotency-Key': 'key-1' }));
+    expect(out.status).toBe(401);
+    expect(consumeMock).not.toHaveBeenCalled();
+    expect(claimMock).not.toHaveBeenCalled();
+  });
+
   test('leaves the no-key path untouched (no idempotency machinery runs)', async () => {
     const out = await POST(post({ prompt: '' }));
 
