@@ -2,6 +2,7 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/ge
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { z } from "zod";
 import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
 import { FullMenu, RestaurantData } from "@/app/tarana-eats/data/taranaEatsData";
 import { ResultMatch } from "@/types/tarana-eats";
@@ -99,6 +100,39 @@ const DEFAULT_PLACEHOLDER_IMAGE = "/images/placeholders/hero-placeholder.svg";
 const MIN_RECOMMENDATIONS = 3;
 const MAX_RECOMMENDATIONS = 5;
 
+// Bounded input contract (Gala parity): prompt length, typed client
+// preferences, and a bounded foodData envelope. Raw regex parsing below
+// must never see unbounded text.
+const eatsRequestSchema = z.object({
+  prompt: z.string().min(1).max(5000),
+  foodData: z.object({
+    restaurants: z.array(z.unknown()).max(200).optional(),
+  }).passthrough().optional(),
+  preferences: z.object({
+    pax: z.union([z.string().max(50), z.number().int().positive()]).optional(),
+    budget: z.string().max(100).optional(),
+    cuisine: z.string().max(100).optional(),
+    restrictions: z.array(z.string().max(100)).max(25).optional(),
+    mealType: z.array(z.string().max(100)).max(25).optional(),
+  }).passthrough().optional(),
+}).passthrough();
+
+// Model reason strings render as UI text. Strip URLs, @-handles, and
+// instruction-shaped lines so smuggled directives never reach the card.
+function sanitizeReasonText(reason: string): string {
+  if (typeof reason !== "string") return "";
+  return reason
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0
+      && !/https?:\/\//i.test(line)
+      && !/www\./i.test(line)
+      && !/^\s*[@#]/.test(line)
+      && !/\b(ignore|disregard|forget|override|system|instruction|prompt)\b/i.test(line))
+    .join(" ")
+    .slice(0, 500);
+}
+
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   const requestId = getRequestId(req);
   return timedHttp('/api/gemini/food-recommendations', 'POST', async () => {
@@ -138,6 +172,13 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     if (!prompt) {
       return NextResponse.json(
         { error: "Prompt is required" },
+        { status: 400 }
+      );
+    }
+    const parsed = eatsRequestSchema.safeParse(requestBody);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request payload" },
         { status: 400 }
       );
     }
@@ -568,6 +609,7 @@ function hydrateMatchFromRestaurant(
   restaurant: RestaurantData,
   preferences: any
 ): EnhancedResultMatch {
+  if (typeof match.reason === "string") match.reason = sanitizeReasonText(match.reason);
   const meals = preferences?.pax || match.meals || 2;
 
   let finalPrice = Number(match.price) || 0;

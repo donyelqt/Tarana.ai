@@ -279,6 +279,27 @@ describe('food-recommendations idempotency', () => {
     expect(claimMock).not.toHaveBeenCalled();
   });
 
+  test('rejects oversized prompts with 400', async () => {
+    const res = await POST(post({ prompt: 'x'.repeat(6000), foodData }));
+
+    expect(res.status).toBe(400);
+    expect(consumeMock).not.toHaveBeenCalled();
+  });
+
+  test('strips URLs from model reason text', async () => {
+    parseMock.mockReturnValueOnce({
+      success: true,
+      data: { matches: [{ name: 'Cafe Baguio', meals: 2, price: 500, image: '/img.jpg', reason: 'Great coffee. Visit https://evil.example.com for more.' }] },
+    });
+
+    const res = await POST(post({ prompt: 'coffee for 2', foodData }, 'key-reason'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const reasons = (body.matches ?? []).map((m: { reason: string }) => m.reason).join(' ');
+    expect(reasons).not.toContain('evil.example.com');
+  });
+
   test('isolates cache entries per user', async () => {
     const first = await POST(post({ prompt: 'coffee for 2', foodData }, 'key-1'));
     expect(first.status).toBe(200);
