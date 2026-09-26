@@ -96,6 +96,14 @@ function cacheSet<K, V>(map: Map<K, V>, key: K, value: V): void {
     map.delete(oldest.value);
   }
 }
+// Test isolation: these caches persist across POSTs in the same process, so
+// suites must reset them in beforeEach. Without this, an early test's cached
+// response serves later tests with the same key and their queued parser mocks
+// leak into neighboring tests (order-dependent suite).
+export function __resetFoodRecommendationCachesForTests(): void {
+  responseCache.clear();
+  preprocessingCache.clear();
+}
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes for better cache utilization
 const DEFAULT_PLACEHOLDER_IMAGE = "/images/placeholders/hero-placeholder.svg";
 const MIN_RECOMMENDATIONS = 3;
