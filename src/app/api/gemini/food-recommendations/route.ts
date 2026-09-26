@@ -5,6 +5,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { z } from "zod";
 import { CreditService, InsufficientCreditsError } from "@/lib/referral-system";
 import { FullMenu, RestaurantData } from "@/app/tarana-eats/data/taranaEatsData";
+import { restaurants as serverRestaurants } from "@/app/tarana-eats/data/restaurants";
 import { ResultMatch } from "@/types/tarana-eats";
 import { RobustFoodJsonParser } from "@/lib/robustFoodJsonParser";
 import { FoodRecommendationErrorHandler, FoodErrorType } from "@/lib/foodRecommendationErrorHandler";
@@ -133,6 +134,18 @@ function sanitizeReasonText(reason: string): string {
     .slice(0, 500);
 }
 
+// Trust boundary: the client ships a foodData catalog, but grounding must
+// never certify names against that same client list. Cross-check every
+// client restaurant name against the server registry; unknown names are
+// dropped before indexing, relevance, and grounding ever see them.
+function serverKnownRestaurants(clientRestaurants: unknown): RestaurantData[] {
+  if (!Array.isArray(clientRestaurants)) return [...serverRestaurants];
+  const known = new Set(serverRestaurants.map((r) => normalizeRestaurantName(r.name)));
+  const kept = (clientRestaurants as Array<{ name?: unknown }>).filter((r) =>
+    typeof r?.name === "string" && known.has(normalizeRestaurantName(r.name)));
+  return kept.length > 0 ? (kept as unknown as RestaurantData[]) : [...serverRestaurants];
+}
+
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   const requestId = getRequestId(req);
   return timedHttp('/api/gemini/food-recommendations', 'POST', async () => {
@@ -166,7 +179,8 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
 
     const requestBody = await req.json();
-    const { prompt, foodData, preferences: clientPreferences } = requestBody;
+    const { prompt, foodData: clientFoodData, preferences: clientPreferences } = requestBody;
+    const foodData = { ...((clientFoodData as Record<string, unknown> | undefined) ?? {}), restaurants: serverKnownRestaurants((clientFoodData as { restaurants?: unknown } | undefined)?.restaurants) };
 
     // Input validation
     if (!prompt) {

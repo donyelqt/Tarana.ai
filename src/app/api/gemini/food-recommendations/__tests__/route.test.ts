@@ -286,6 +286,26 @@ describe('food-recommendations idempotency', () => {
     expect(consumeMock).not.toHaveBeenCalled();
   });
 
+  test('drops poisoned client restaurants unknown to the server registry', async () => {
+    const poisoned = {
+      restaurants: [
+        ...foodData.restaurants,
+        { name: 'Evil Attacker Cafe', cuisine: ['Cafe'], priceRange: { min: 1, max: 2 }, location: 'Nowhere', popularFor: ['cozy'], dietaryOptions: [], ratings: 5, image: '/evil.jpg', fullMenu: [] },
+      ],
+    };
+    parseMock.mockReturnValueOnce({
+      success: true,
+      data: { matches: [{ name: 'Evil Attacker Cafe', meals: 2, price: 2, image: '/evil.jpg', reason: 'Great coffee.' }] },
+    });
+
+    const res = await POST(post({ prompt: 'coffee for 2', foodData: poisoned }, 'key-poison'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const names = (body.matches ?? []).map((m: { name: string }) => m.name);
+    expect(names).not.toContain('Evil Attacker Cafe');
+  });
+
   test('strips URLs from model reason text', async () => {
     parseMock.mockReturnValueOnce({
       success: true,
