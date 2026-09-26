@@ -44,8 +44,11 @@ const SpotlightCard = ({
     ? `https://www.google.com/maps?q=${coordinates.lat},${coordinates.lon}&z=15&output=embed`
     : null;
 
-  const mapLink = coordinates
-    ? `https://www.google.com/maps/search/?api=1&query=${coordinates.lat},${coordinates.lon}`
+  // Visit Spot stays inside Tarana: deep-link to our own Explore map with the
+  // spot prefilled as the destination. Coordinates are required; without them
+  // the CTA renders unlinked (same as before) rather than guessing.
+  const exploreHref = coordinates
+    ? `/tarana-explore?to=${encodeURIComponent(coordinates.name)}&toLat=${coordinates.lat}&toLon=${coordinates.lon}`
     : null;
 
   // Map facade: the embed iframe (~1MB+, third-party JS) loads only after an
@@ -119,13 +122,8 @@ const SpotlightCard = ({
           </div>
         )}
         <div className="mt-auto">
-          {mapLink ? (
-            <a
-              href={mapLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block"
-            >
+          {exploreHref ? (
+            <a href={exploreHref} className="block" aria-label={`${ctaText}: ${coordinates?.name}`}>
               <Button className="w-full bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-medium">
                 {ctaText}
               </Button>
