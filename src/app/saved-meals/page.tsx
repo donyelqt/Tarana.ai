@@ -24,6 +24,8 @@ import { useRouter } from 'next/navigation';
 const SavedMealsPage = () => {
   const { contentClass } = useSidebarCollapsed();
   const [searchQuery, setSearchQuery] = useState("");
+  const [mealTypeFilter, setMealTypeFilter] = useState("all");
+  const [budgetFilter, setBudgetFilter] = useState("all");
   const router = useRouter();
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -39,15 +41,25 @@ const SavedMealsPage = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Filtered meals based on search (memoized for performance)
+  // Filtered meals based on search + selects (memoized for performance)
   const filteredMeals = useMemo(() => {
-    if (searchQuery.trim() === "") {
-      return savedMeals;
-    }
-    return savedMeals.filter((meal) =>
-      meal.cafeName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [savedMeals, searchQuery]);
+    const query = searchQuery.trim().toLowerCase();
+    return savedMeals.filter((meal) => {
+      const dishNames = (meal.menuItems ?? []).map((item) => String(item?.name ?? "").toLowerCase());
+      const matchesQuery =
+        query === "" ||
+        meal.cafeName.toLowerCase().includes(query) ||
+        dishNames.some((name) => name.includes(query));
+      const matchesMealType =
+        mealTypeFilter === "all" || meal.mealType.toLowerCase() === mealTypeFilter;
+      const matchesBudget =
+        budgetFilter === "all" ||
+        (budgetFilter === "100-300" && meal.price >= 100 && meal.price <= 300) ||
+        (budgetFilter === "300-500" && meal.price > 300 && meal.price <= 500) ||
+        (budgetFilter === "500+" && meal.price > 500);
+      return matchesQuery && matchesMealType && matchesBudget;
+    });
+  }, [savedMeals, searchQuery, mealTypeFilter, budgetFilter]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -92,36 +104,35 @@ const SavedMealsPage = () => {
                   className="pl-10 w-full"
                 />
               </div>
-              <Select>
-                <SelectTrigger>
+              <Select value={mealTypeFilter} onValueChange={setMealTypeFilter}>
+                <SelectTrigger aria-label="Meal type">
                   <SelectValue placeholder="All Meal Types" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">All Meal Types</SelectItem>
                   <SelectItem value="breakfast">Breakfast</SelectItem>
                   <SelectItem value="lunch">Lunch</SelectItem>
                   <SelectItem value="dinner">Dinner</SelectItem>
                   <SelectItem value="snack">Snack</SelectItem>
                 </SelectContent>
               </Select>
-              <Select>
-                <SelectTrigger>
+              <Select value={budgetFilter} onValueChange={setBudgetFilter}>
+                <SelectTrigger aria-label="Budget range">
                   <SelectValue placeholder="Budget Range" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">Any Budget</SelectItem>
                   <SelectItem value="100-300">₱100-300</SelectItem>
                   <SelectItem value="300-500">₱300-500</SelectItem>
                   <SelectItem value="500+">₱500+</SelectItem>
                 </SelectContent>
               </Select>
-              <Select>
-                <SelectTrigger>
+              <Select value="all" disabled>
+                <SelectTrigger aria-label="Cuisine type (coming soon)">
                   <SelectValue placeholder="Cuisine Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="filipino">Filipino</SelectItem>
-                  <SelectItem value="chinese">Chinese</SelectItem>
-                  <SelectItem value="japanese">Japanese</SelectItem>
-                  <SelectItem value="western">Western</SelectItem>
+                  <SelectItem value="all">All Cuisines (coming soon)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
