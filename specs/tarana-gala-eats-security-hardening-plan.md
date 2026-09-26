@@ -136,10 +136,17 @@ do not bulk-fix. Re-run after every dependency change; CI already gates `critica
 5. F6 + F7 + F8: bench alerting/rotation test, stable idempotency keys, log redaction.
 
 ## 5. Verification record (implementation 2026-09-26)
-- `npx tsc --noEmit`: clean after every slice (exit 0); eslint clean.
-- 40/40 pass: Eats route (19, incl. body-cap 413, stats 401, schema 400, reason-strip, poison-drop,
-  cache isolation), Gala routeIdempotency + multiAgentRefund, Eats hook stable-key (2), coordinator.
+- `npx tsc --noEmit`: clean after every slice (exit 0); eslint clean on route, hook, and touched suites.
+- 50/50 pass: Eats route (21, incl. body-cap 413, 413-before-validation, schema 400, stats 401,
+-  reason-strip, instruction-strip, fallback 200, poison-refund-500, cache isolation), Gala
+-  routeIdempotency (7) + multiAgentRefund, Eats hook stable-key (2), benchToken. Shipped as slices
+-  #625-#629: Gala 413/400/401 coverage; Eats catalog fingerprint in the response-cache key;
+-  `__resetFoodRecommendationCachesForTests` test isolation; zero-result refund fail-closed;
+-  413-before-validation, instruction-strip, and catalog-fallback coverage.
 - Slice RED proofs: slice 1 (3 fail without fix), slice 3 (1 fail without), slice 4 (1 fail without, isolated).
+- Follow-up fix: billed generations that ground to zero matches now throw into the
+- refund-and-safe-500 path instead of returning a cached unbilled empty 200 (poison test asserts
+- 500 + one refund + `complete(500)`).
 - `pnpm audit --prod`: 34 findings (unchanged scope; dependency upgrades out of scope for these slices).
 - Browser: not applicable (no UI change; server-route hardening).
 
