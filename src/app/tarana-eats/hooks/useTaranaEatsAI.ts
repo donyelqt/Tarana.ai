@@ -35,7 +35,22 @@ export const useTaranaEatsAI = () => {
           mealType: preferences.mealType
         }
       };
-      const idempotencyKey = globalThis.crypto.randomUUID();
+      // Stable per-form key: identical resubmits (double-click, retry) share
+      // one key so the server dedupes instead of double-charging. Any field
+      // change yields a new key. FNV-1a hex over the canonical form shape.
+      const fingerprintSource = JSON.stringify({
+        budget: preferences.budget ?? null,
+        cuisine: preferences.cuisine ?? null,
+        pax: preferences.pax ?? null,
+        restrictions: [...(preferences.restrictions ?? [])].sort(),
+        mealType: [...(preferences.mealType ?? [])].sort(),
+      });
+      let fingerprintHash = 0x811c9dc5;
+      for (let i = 0; i < fingerprintSource.length; i++) {
+        fingerprintHash ^= fingerprintSource.charCodeAt(i);
+        fingerprintHash = Math.imul(fingerprintHash, 0x01000193);
+      }
+      const idempotencyKey = `eats:${(fingerprintHash >>> 0).toString(16).padStart(8, "0")}`;
 
       // Call the Gemini API
       const response = await fetch('/api/gemini/food-recommendations', {

@@ -36,6 +36,11 @@ export class PipelineCoordinator {
     // The exemption is gated on the bypass being active, not just id
     // equality: a bare UUID match with the bypass disabled must still pay.
     const isBenchUser = benchBypassEnabled() && session.userId === configuredBenchUserId();
+    if (isBenchUser) {
+      // Blast-radius control: a leaked BENCH_HMAC_SECRET converts directly to
+      // free generations, so every skip is a warn-level audit event.
+      logger.warn("[security] bench identity skipped charge", { entryPoint: "pipelineCoordinator", service: "tarana_gala" });
+    }
     const creditService = this.deps.creditService ?? CreditService;
     let charged = false;
     if (!isBenchUser) {

@@ -273,13 +273,14 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       }
     }
     
-    // DEBUG: Log all parsed preferences
-    logger.info("📊 Parsed user preferences:", {
+    // Redacted counters only: raw prompt-derived values can carry PII
+    // (names, hotels, dates) and must not sit at info level.
+    logger.info("Parsed user preferences", {
       entryPoint: LOG_ENTRY_POINT,
-      pax: preferences.pax,
-      budget: preferences.budget,
-      cuisine: preferences.cuisine,
-      restrictions: preferences.restrictions
+      hasPax: preferences.pax != null,
+      hasBudget: preferences.budget != null,
+      hasCuisine: preferences.cuisine != null,
+      restrictionCount: Array.isArray(preferences.restrictions) ? preferences.restrictions.length : 0
     }, requestId);
 
     // Initialize menu indexing service with restaurant data
@@ -854,9 +855,8 @@ function parseUserPreferences(prompt: string, requestId: string): any {
   
   // DEBUG: Log parsed pax value
   if (preferences.pax) {
-    logger.info(`✓ Parsed group size: ${preferences.pax} people from prompt`, {
-      entryPoint: LOG_ENTRY_POINT,
-      pax: preferences.pax
+    logger.debug(`Parsed group size from prompt`, {
+      entryPoint: LOG_ENTRY_POINT
     }, requestId);
   }
   
