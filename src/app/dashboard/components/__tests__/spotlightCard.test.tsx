@@ -40,4 +40,20 @@ describe('SpotlightCard map facade', () => {
     // CTA still works without coordinates
     expect(screen.getByRole('button', { name: 'Visit Spot' })).toBeInTheDocument();
   });
+
+  it('links Visit Spot to our Explore map with the spot as destination', () => {
+    render(<SpotlightCard {...props} />);
+    const link = screen.getByRole('link', { name: 'Visit Spot: Burnham Park' });
+    expect(link.getAttribute('href')).toBe(
+      '/tarana-explore?to=Burnham%20Park&toLat=16.4093&toLon=120.595'
+    );
+    expect(link.getAttribute('target')).toBeNull();
+  });
+
+  it('never links Visit Spot to external Google Maps', () => {
+    const { container } = render(<SpotlightCard {...props} />);
+    const hrefs = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href') ?? '');
+    expect(hrefs.length).toBeGreaterThan(0);
+    for (const href of hrefs) expect(href).not.toContain('google.com');
+  });
 });

@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
 import {
   LocationPoint,
   RoutePreferences,
@@ -38,8 +39,21 @@ const DEFAULT_PREFERENCES: RoutePreferences = {
 }
 
 const ExploreMapView: React.FC = () => {
+  const searchParams = useSearchParams()
   const [origin, setOrigin] = useState<LocationPoint | null>(null)
   const [destination, setDestination] = useState<LocationPoint | null>(null)
+  // Deep-link from Suggested Spots / Recommended Cafes Visit buttons:
+  // ?to=<name>&toLat=<lat>&toLon=<lon> prefills the destination once.
+  // Finite numbers only; anything else is ignored (map renders unprefilled).
+  useEffect(() => {
+    const name = searchParams.get('to')
+    const lat = Number(searchParams.get('toLat'))
+    const lon = Number(searchParams.get('toLon'))
+    if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) return
+    setDestination((prev) =>
+      prev !== null ? prev : { id: `spot:${lat},${lon}`, name, address: name, lat, lng: lon, category: 'Spot' }
+    )
+  }, [searchParams])
   const [preferences, setPreferences] = useState<RoutePreferences>(DEFAULT_PREFERENCES)
   const [mapStyle, setMapStyle] = useState<MapStyle>('main')
   const [isChangingStyle, setIsChangingStyle] = useState(false)
