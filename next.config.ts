@@ -87,6 +87,14 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
+        // No producer in src/ can return this host any more (Tier 1 Google
+        // Places photos were removed in the S4 follow-up: the photo URL
+        // embeds the server key). Kept deliberately: legacy `itineraries`
+        // rows written before that change may still hold such a URL, and
+        // `resolveItineraryImage` does not host-validate, so dropping the
+        // pattern would turn an existing row into a next/image loader throw
+        // (the thumb.wikimedia.org crash class). Remove only after a
+        // migration rewrites stored keyed URLs.
         protocol: 'https',
         hostname: 'maps.googleapis.com',
         pathname: '/maps/api/place/photo/**',

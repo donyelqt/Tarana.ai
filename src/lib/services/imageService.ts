@@ -2,12 +2,12 @@
  * ImageService — Accurate per-location image resolution for PH/World scale
  *
  * Tier 0: Curated Baguio image (fastest, most accurate for known titles)
- * Tier 1: Google Places Photos (requires GOOGLE_PLACES_API_KEY + billing — skipped if not set)
  * Tier 2: Wikimedia Commons (free, landmark-accurate)
  * Tier 2b: Unsplash Search (free tier, no billing — category-accurate for food/cafes)
- * Tier 3: TomTom Static Map snapshot (guaranteed, never 404 — already paid via TOMTOM_API_KEY)
+ * Tier 3: TomTom Static Map snapshot — rejected as a photo, degrades to the logo layer
  *
- * No Google billing? Tier 2 → 2b → 3 still gives location-accurate images (map thumbnail for eateries).
+ * Tier 1 (Google Places Photos) was removed: its photo URL embeds the server
+ * key, so it could never be served to a browser. See the note below.
  * Server-only. Uses 24h in-memory cache.
  */
 
@@ -25,7 +25,6 @@ const IMAGE_CACHE_TTL = 24 * 60 * 60 * 1000 // 24h
  * The drift guard is `src/lib/services/__tests__/imageHosts.test.ts`.
  */
 export const RENDERABLE_IMAGE_HOSTS: readonly string[] = [
-  'maps.googleapis.com',
   'images.unsplash.com',
   'upload.wikimedia.org',
   'thumb.wikimedia.org',
@@ -118,12 +117,6 @@ function getCacheKey(p: PlaceInput): string {
   return `img:${p.title.toLowerCase().trim()}:${p.lat?.toFixed(3) ?? "x"}:${p.lon?.toFixed(3) ?? "x"}`
 }
 
-function getGoogleKey(): string | null {
-  // Only dedicated Places key — requires billing. Gemini key is NOT valid for Places (probe: REQUEST_DENIED).
-  // Without GOOGLE_PLACES_API_KEY, Tier1 is skipped instantly (no wasted 4s fetch).
-  return process.env.GOOGLE_PLACES_API_KEY || null
-}
-
 function getUnsplashKey(): string | null {
   return process.env.UNSPLASH_ACCESS_KEY || process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY || null
 }
@@ -132,69 +125,12 @@ function getTomTomKey(): string | null {
   return process.env.TOMTOM_API_KEY || process.env.NEXT_PUBLIC_TOMTOM_API_KEY || null
 }
 
-// ─────────────────────────────────────────────────────────────
-// Tier 1: Google Places Photos (most accurate per place_id)
-// ─────────────────────────────────────────────────────────────
-async function fetchGooglePhoto(place: PlaceInput): Promise<string | null> {
-  const apiKey = getGoogleKey()
-  if (!apiKey) {
-    console.log(`🖼️ Tier1 Google: skipped "${place.title}" (missing-key: GOOGLE_PLACES_API_KEY not set)`)
-    return null
-  }
-  if (typeof window !== "undefined") return null // server only — key must not leak
-
-  try {
-    const controller = new AbortController()
-    const t = setTimeout(() => controller.abort(), 4000)
-
-    // Step 1: Find place_id via Text Search (biased by coordinates if available)
-    const query = encodeURIComponent(place.city ? `${place.title} ${place.city}` : place.title)
-    let searchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&key=${apiKey}`
-    if (place.lat != null && place.lon != null) {
-      searchUrl += `&location=${place.lat},${place.lon}&radius=5000`
-    }
-
-    const searchRes = await fetch(searchUrl, { signal: controller.signal })
-    if (!searchRes.ok) {
-      clearTimeout(t)
-      return null
-    }
-    const searchData = (await searchRes.json()) as {
-      status: string
-      results?: Array<{ place_id: string; photos?: Array<{ photo_reference: string }> }>
-    }
-
-    const first = searchData.results?.[0]
-    let photoRef: string | null = first?.photos?.[0]?.photo_reference ?? null
-
-    // Step 2: If no photo in search result, fetch details for photos
-    if (!photoRef && first?.place_id) {
-      const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${first.place_id}&fields=photos&key=${apiKey}`
-      const detailsRes = await fetch(detailsUrl, { signal: controller.signal })
-      if (detailsRes.ok) {
-        const detailsData = (await detailsRes.json()) as {
-          status: string
-          result?: { photos?: Array<{ photo_reference: string }> }
-        }
-        photoRef = detailsData.result?.photos?.[0]?.photo_reference ?? null
-      }
-    }
-
-    clearTimeout(t)
-
-    if (!photoRef) return null
-
-    // Never return a keyed Google photo URL: the key rides in the query
-    // string, `maps.googleapis.com` is renderable, and the URL is served in
-    // itinerary/spot JSON to browsers — any authed user could harvest the
-    // Places key for quota burn. Tier 2+ (Wikimedia/Unsplash) cover the miss.
-    // Proper fix: a server /api/images/places byte-proxy (separate slice).
-    void photoRef
-    return null
-  } catch {
-    return null
-  }
-}
+// Tier 1 (Google Places Photos) was removed entirely. It could not return a
+// usable URL: the photo endpoint embeds the server key in the query string and
+// that URL is served in itinerary/spot JSON to browsers, so any authed user
+// could harvest the key. Returning null left a billed Text Search + Details
+// round-trip per uncached place for no result. A server-side byte-proxy
+// (`/api/images/places`) is the way to restore Tier 1 without the leak.
 
 // POIs whose Wikipedia page exists but carries no pageimage thumbnail.
 // Without this, Tier 2 reports a miss and Tier 2b Unsplash happily returns a
@@ -320,14 +256,6 @@ export async function getAccurateImageForPlace(place: PlaceInput): Promise<strin
   if (curated) {
     cache.set(cacheKey, { url: curated, expiry: Date.now() + IMAGE_CACHE_TTL })
     return curated
-  }
-
-  // Tier 1: Google Places Photo (most accurate)
-  const google = await fetchGooglePhoto(place)
-  if (google) {
-    console.log(`🖼️ Image for "${place.title}": tier=google-places`)
-    cache.set(cacheKey, { url: google, expiry: Date.now() + IMAGE_CACHE_TTL })
-    return google
   }
 
   // Tier 2: Wikimedia (landmarks)
