@@ -36,6 +36,9 @@ export const GET = withAuth(async (request: NextRequest, userId: string) => {
 
 export const POST = withAuth(async (request: NextRequest, userId: string) => {
   return timedHttp('/api/saved-itineraries', 'POST', async () => {
+    if (Number(request.headers.get('content-length') ?? 0) > 32 * 1024) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     try {
       const body = await request.json();
       const validation = SaveItinerarySchema.safeParse(body);

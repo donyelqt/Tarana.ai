@@ -18,6 +18,7 @@ interface RateLimitConfig {
  * In-memory rate limiter for API endpoints
  * Production apps should use Redis or similar distributed cache
  */
+const RATE_LIMIT_STORE_CAP = 10000;
 class InMemoryRateLimiter {
   private store = new Map<string, RateLimitEntry>();
   private cleanupInterval: NodeJS.Timeout;
@@ -36,29 +37,24 @@ class InMemoryRateLimiter {
         this.store.delete(key);
       }
     }
+    // Bound memory: spoofed identities create one entry each. Evict oldest
+    // beyond the cap so a single isolate cannot OOM.
+    while (this.store.size > RATE_LIMIT_STORE_CAP) {
+      const oldest = this.store.keys().next();
+      if (oldest.done) break;
+      this.store.delete(oldest.value);
+    }
   }
 
   private getClientIdentifier(request: NextRequest): string {
-    // Use multiple identifiers for better accuracy
+    // x-forwarded-for is attacker-controlled (first entry spoofable) and
+    // User-Agent rotates freely: neither may widen identity. Prefer the
+    // platform-set x-real-ip; fall back to the LAST forwarded hop.
     const forwarded = request.headers.get('x-forwarded-for');
-    const realIp = request.headers.get('x-real-ip');
-    const ip = forwarded?.split(',')[0] || realIp || 'unknown';
-    
-    // Include user agent for additional fingerprinting
-    const userAgent = request.headers.get('user-agent') || '';
-    const userAgentHash = this.simpleHash(userAgent);
-    
-    return `${ip}:${userAgentHash}`;
-  }
+    const hops = (forwarded ?? '').split(',').map((h) => h.trim()).filter(Boolean);
+    const ip = request.headers.get('x-real-ip') || (hops.length > 0 ? hops[hops.length - 1] : null) || 'unknown';
 
-  private simpleHash(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(16);
+    return ip;
   }
 
   checkRateLimit(request: NextRequest, config: RateLimitConfig, key = ''): {

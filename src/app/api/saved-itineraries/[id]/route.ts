@@ -54,6 +54,9 @@ export const GET = withAuth(async (request: NextRequest, userId: string, ...args
 
 export const PATCH = withAuth(async (request: NextRequest, userId: string, ...args: unknown[]) => {
   return timedHttp('/api/saved-itineraries/[id]', 'PATCH', async () => {
+    if (Number(request.headers.get('content-length') ?? 0) > 32 * 1024) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
+    }
     try {
       const { params } = (args[0] ?? {}) as RouteParams;
       const { id } = await params;
