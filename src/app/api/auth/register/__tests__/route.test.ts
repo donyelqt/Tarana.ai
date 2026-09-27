@@ -171,7 +171,7 @@ describe('Register API Route Tests', () => {
     expect(JSON.stringify(mockLogger.error.mock.calls)).not.toContain(sentinel);
   });
 
-  test('should return 409 when user already exists', async () => {
+  test('answers duplicate emails without revealing registration', async () => {
     (validatePasswordStrength as jest.Mock).mockReturnValue({
       isValid: true,
       errors: [],
@@ -201,10 +201,10 @@ describe('Register API Route Tests', () => {
     } as unknown as NextRequest;
 
     const response = await POST(mockRequest);
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(400);
 
     const responseBody = await response.json();
-    expect(responseBody.error).toBe('User with this email already exists');
+    expect(responseBody.error).toBe('Could not create account with the provided details');
   });
 
   test('should validate referral code if provided', async () => {
@@ -257,11 +257,11 @@ describe('Register API Route Tests', () => {
     } as unknown as NextRequest;
 
     const response = await POST(mockRequest);
-    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(response.status).toBe(400);
 
     const responseBody = await response.json();
-    expect(responseBody.error).toBeDefined();
-    expect(mockLogger.error).toHaveBeenCalledWith(
+    expect(responseBody.error).toBe('Could not create account with the provided details');
+    expect(mockLogger.error).not.toHaveBeenCalledWith(
       'Registration error',
       expect.objectContaining({ entryPoint: '/api/auth/register' }),
       expect.any(String)
