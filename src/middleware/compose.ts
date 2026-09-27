@@ -51,17 +51,20 @@ export function composeMiddleware(config: MiddlewareChainConfig): MiddlewareHand
           }
         }
       }
-      
+      // Authenticated API JSON must never sit in a shared cache: a forward
+      // proxy could serve user A's body to user B. Health carves out its
+      // own short public TTL at the route.
+      response.headers.set('Cache-Control', 'no-store');
       return applySecurityHeaders(response);
     } catch (error) {
       console.error('Unhandled middleware error:', error);
-      
+
       // Use custom error handler if provided, otherwise return server error
       if (errorHandler) {
         return errorHandler(error as Error, request);
       }
-      
+
       return new NextResponse('Internal Server Error', { status: 500 });
     }
   };
-} 
+}

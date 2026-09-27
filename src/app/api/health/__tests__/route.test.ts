@@ -53,10 +53,10 @@ describe('GET /api/health contract', () => {
     expect(body.timestamp).toEqual(expect.stringMatching(/^\d{4}-/));
   });
 
-  it('stays 200 with a degraded status when a dependency check fails', async () => {
+  it('answers 503 with a degraded status when a dependency check fails', async () => {
     fetchSpy.mockImplementation(okFetch(500));
     const res = await GET();
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(503);
     const body = (await res.json()) as {
       status?: unknown;
       checks?: Record<string, unknown>;
@@ -82,7 +82,7 @@ describe('GET /api/health contract', () => {
     delete process.env.GOOGLE_GEMINI_API_KEY;
     delete process.env.TOMTOM_API_KEY;
     const res = await GET();
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(503);
     const body = (await res.json()) as { checks?: Record<string, unknown> };
     expect(body.checks).toMatchObject({ geminiKey: 'fail', tomtom: 'fail' });
   });

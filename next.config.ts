@@ -4,9 +4,25 @@ import path from "path";
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname),
   transpilePackages: ['lucide-react'],
-  
-  // Explicitly set distDir to ensure consistent paths across platforms
-  distDir: '.next',
+  // No version fingerprint on responses.
+  poweredByHeader: false,
+  // Middleware matcher skips static/image paths, so these headers would
+  // otherwise ship without HSTS/nosniff/DENY. Apply at the config layer.
+  async headers() {
+    return [
+      { source: '/_next/static/:path*', headers: [
+        { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      ] },
+      { source: '/images/:path*', headers: [
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      ] },
+    ];
+  },
   
   // Webpack configuration to fix Windows HMR issues
   webpack: (config, { dev, isServer }) => {
