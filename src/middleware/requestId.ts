@@ -35,10 +35,16 @@ export function getRequestId(request: NextRequest): string {
 
 export function requestIdMiddleware(request: NextRequest): NextResponse {
   const requestId = getRequestId(request);
-  // Stamp the request itself so downstream handlers see the id without any
-  // shared state — middleware and route handlers are separate invocations.
-  request.headers.set('x-request-id', requestId);
-  const response = NextResponse.next();
+  // Forward the id to the route handler. `NextResponse.next()` alone does NOT
+  // do this: Next only propagates request headers when they are passed as
+  // `next({ request: { headers } })`, which it serialises into
+  // `x-middleware-override-headers` / `x-middleware-request-*` (see
+  // next/dist/server/web/spec-extension/response.js). Without this the
+  // middleware's id and the handler's `getRequestId` diverge, so an incident
+  // report cannot be joined across logs.
+  const headers = new Headers(request.headers);
+  headers.set('x-request-id', requestId);
+  const response = NextResponse.next({ request: { headers } });
   response.headers.set('x-request-id', requestId);
   logger.info('request', { method: request.method, path: request.nextUrl.pathname }, requestId);
   return response;

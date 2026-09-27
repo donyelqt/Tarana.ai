@@ -4,12 +4,16 @@ This directory contains a modular and scalable middleware system for the Tarana.
 
 ## Directory Structure
 
-- `index.ts` - Main composition and export of middleware functions
+- `index.ts` - Main composition and export of middleware functions, plus the rate-limit gate
 - `auth.ts` - Authentication middleware for protected routes
-- `logger.ts` - Request logging middleware
+- `requestId.ts` - Per-request id generation, forwarding, and logging
 - `cors.ts` - CORS (Cross-Origin Resource Sharing) middleware
 - `types.ts` - TypeScript type definitions for middleware
 - `compose.ts` - Utility for composing middleware chains
+
+Rate limiting lives in `@/lib/security/rateLimiter` (buckets + in-memory store) and
+is applied from `index.ts`; there is no `logger.ts` (logging is in
+`requestId.ts` and `@/lib/observability/logger`).
 
 ## How the Architecture Works
 
