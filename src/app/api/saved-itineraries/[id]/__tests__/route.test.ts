@@ -167,6 +167,69 @@ describe('saved-itineraries [id] route', () => {
   });
 });
 
+describe('saved-itineraries [id] DELETE idempotency', () => {
+  function deleteWithKey(key: string, id = 'itin-1') {
+    return DELETE(
+      {
+        headers: { get: (name: string) => (name === 'Idempotency-Key' ? key : null) },
+        json: async () => undefined,
+      } as unknown as NextRequest,
+      params(id)
+    );
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    sessionMock.mockResolvedValue({ user: { id: 'user-1' } });
+    mockedHashIdempotencyPayload.mockReturnValue('hash-1');
+    mockedClaimIdempotency.mockResolvedValue({ kind: 'owner', rowId: 7 });
+    mockedCompleteIdempotency.mockResolvedValue(undefined);
+  });
+
+  test('replays a completed delete instead of deleting twice', async () => {
+    mockedClaimIdempotency.mockResolvedValue({
+      kind: 'replay',
+      replay: { status: 200, body: { success: true } },
+    });
+
+    const res = await deleteWithKey('del-1');
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true });
+    expect(mockedDeleteItineraryById).not.toHaveBeenCalled();
+  });
+
+  test('claims, deletes, and completes the keyed delete', async () => {
+    mockedDeleteItineraryById.mockResolvedValue(true);
+
+    const res = await deleteWithKey('del-1');
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(mockedClaimIdempotency).toHaveBeenCalledWith('user-1', '/api/saved-itineraries/itin-1', 'del-1', 'hash-1');
+    expect(mockedCompleteIdempotency).toHaveBeenCalledWith(7, 200, body);
+  });
+
+  test('caches the 404 so a retry cannot report a different outcome', async () => {
+    mockedDeleteItineraryById.mockResolvedValue(false);
+
+    const res = await deleteWithKey('del-1');
+
+    expect(res.status).toBe(404);
+    expect(mockedCompleteIdempotency).toHaveBeenCalledWith(7, 404, { error: 'Itinerary not found' });
+  });
+
+  test('answers 409 without deleting while a duplicate is in flight', async () => {
+    mockedClaimIdempotency.mockResolvedValue({ kind: 'conflict' });
+
+    const res = await deleteWithKey('del-1');
+
+    expect(res.status).toBe(409);
+    expect(res.headers.get('Retry-After')).toBe('1');
+    expect(mockedDeleteItineraryById).not.toHaveBeenCalled();
+  });
+});
+
 describe('saved-itineraries [id] PATCH idempotency (2.3-R3)', () => {
   function patchWithKey(body: unknown, key: string, id = 'itin-1') {
     return PATCH(

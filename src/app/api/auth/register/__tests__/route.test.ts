@@ -229,6 +229,46 @@ describe('Register API Route Tests', () => {
     expect(responseBody.error).toBe('Invalid referral code');
   });
 
+  test('normalizes a lowercase referral code before validating and creating', async () => {
+    const { ReferralService } = require('@/lib/referral-system');
+    ReferralService.validateReferralCode.mockResolvedValue(true);
+    ReferralService.createReferral.mockResolvedValue({ success: true, referralId: 'ref-1' });
+
+    (validatePasswordStrength as jest.Mock).mockReturnValue({
+      isValid: true, errors: [], score: 2, feedback: [], strengthLevel: 'medium',
+    });
+    (require('@/lib/security/inputSanitizer').sanitizeUserRegistration as jest.Mock)
+      .mockReturnValue({
+        sanitized: { fullName: 'John Doe', email: 'john@example.com', password: 'strongPassword123!' },
+        errors: [],
+      });
+    (createUserInSupabase as jest.Mock).mockResolvedValue({ id: 'test-user-id' });
+
+    const mockRequest = {
+      headers: { get: () => null },
+      json: jest.fn().mockResolvedValue({
+        fullName: 'John Doe',
+        email: 'john@example.com',
+        password: 'strongPassword123!',
+        referralCode: '  abc123  ',
+        agreed: true,
+      }),
+    } as unknown as NextRequest;
+
+    const response = await POST(mockRequest);
+
+    // Both sides of the referral flow must see the same normalized value:
+    // validate and track-referral uppercase, so register has to as well or a
+    // lowercase ?ref passes validation and then fails (or stores a
+    // differently-cased code) at creation.
+    expect(response.status).toBe(201);
+    expect(ReferralService.validateReferralCode).toHaveBeenCalledWith('ABC123');
+    expect(ReferralService.createReferral).toHaveBeenCalledWith({
+      referralCode: 'ABC123',
+      newUserId: 'test-user-id',
+    });
+  });
+
   test('should handle server errors gracefully', async () => {
     (validatePasswordStrength as jest.Mock).mockReturnValue({
       isValid: true,
