@@ -92,6 +92,13 @@ export class ReferralService {
         };
       }
 
+      // Concurrent double-submit: both pass the check-then-insert select,
+      // the loser hits UNIQUE(referrer_id, referee_id) (23505). Map it to
+      // the same benign duplicate outcome as the clean path, not a 500.
+      if (typeof error === 'object' && error !== null && (error as { code?: unknown }).code === '23505') {
+        return { success: false, error: new DuplicateReferralError().message };
+      }
+
       console.error('Error creating referral:', error);
       throw new ReferralSystemError(
         'Failed to create referral',

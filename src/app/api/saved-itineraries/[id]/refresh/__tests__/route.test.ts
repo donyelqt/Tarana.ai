@@ -61,6 +61,19 @@ jest.mock('@/lib/performance/parallelTrafficProcessor', () => ({
   },
 }));
 
+jest.mock('@/lib/services/idempotencyService', () => ({
+  claimIdempotency: jest.fn(),
+  completeIdempotency: jest.fn(),
+  getIdempotencyKey: (request: { headers: { get: (k: string) => string | null } }) => {
+    const raw = request.headers.get('idempotency-key');
+    return raw && raw.trim().length > 0 ? raw.trim() : null;
+  },
+  hashIdempotencyPayload: jest.fn(() => 'hash-1'),
+}));
+
+import { claimIdempotency, completeIdempotency } from '@/lib/services/idempotencyService';
+const mockedClaim = claimIdempotency as unknown as jest.Mock;
+
 const mockLogger = logger as jest.Mocked<typeof logger>;
 const sessionMock = getServerSession as unknown as jest.Mock;
 const mockedList = getSavedItineraries as unknown as jest.Mock;
@@ -128,6 +141,8 @@ describe('saved-itineraries/[id]/refresh route', () => {
       ...storedItinerary,
       refreshMetadata: { refreshCount: 1, trafficSnapshot: null } as never,
     });
+    mockedClaim.mockResolvedValue({ kind: 'owner', rowId: 7 });
+    (completeIdempotency as unknown as jest.Mock).mockResolvedValue(undefined);
   });
 
 
@@ -177,7 +192,7 @@ describe('saved-itineraries/[id]/refresh route', () => {
     expect(serializedLogs).not.toContain('Update the itinerary');
   });
 
-  it('forwards one stable idempotency key for repeated refresh regeneration', async () => {
+  it('claims the caller key on the refresh route and replays instead of re-billing', async () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -187,12 +202,20 @@ describe('saved-itineraries/[id]/refresh route', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
 
     await callPost({ cookie: 'next-auth.session-token=abc123', 'idempotency-key': 'refresh-op-1' });
-    await callPost({ cookie: 'next-auth.session-token=abc123', 'idempotency-key': 'refresh-op-1' });
 
+    // The refresh route now claims the key itself (not just forwards it):
+    // retries must not re-call the billed generator nor rewrite the row.
+    expect(mockedClaim).toHaveBeenCalledWith('user-1', '/api/saved-itineraries/[id]/refresh', 'refresh-op-1', 'hash-1');
     const firstHeaders = (fetchMock.mock.calls[0] as [string, { headers: Record<string, string> }])[1].headers;
-    const secondHeaders = (fetchMock.mock.calls[1] as [string, { headers: Record<string, string> }])[1].headers;
     expect(firstHeaders['Idempotency-Key']).toBe('refresh-op-1');
-    expect(secondHeaders['Idempotency-Key']).toBe('refresh-op-1');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Second identical call: the store replays, so no second generator call.
+    mockedClaim.mockResolvedValue({ kind: 'replay', replay: { status: 200, body: { success: true, message: 'summary' } } });
+    const replayRes = await callPost({ cookie: 'next-auth.session-token=abc123', 'idempotency-key': 'refresh-op-1' });
+
+    expect(replayRes.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('does not synthesize a generator key when the caller is unkeyed', async () => {

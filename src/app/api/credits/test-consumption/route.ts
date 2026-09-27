@@ -126,6 +126,19 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     const creditWasConsumed = balanceAfter === balanceBefore - 1;
     const transactionWasLogged = transactions && transactions.length > 0;
 
+    // The probe must not permanently burn a real credit: refund the test
+    // spend once the balance-after check has observed it.
+    if (creditWasConsumed) {
+      const { CreditService } = await import('@/lib/referral-system');
+      await CreditService.refundCredits({
+        userId,
+        amount: 1,
+        service: 'tarana_gala',
+        description: 'Refund: credit consumption probe',
+        idempotencyKey: `test-consumption:${requestId}`,
+      });
+    }
+
     testResult.finalResult = creditWasConsumed && transactionWasLogged
       ? '✅ SUCCESS - Credit system is working!'
       : '❌ FAILED - Credit was not consumed';
