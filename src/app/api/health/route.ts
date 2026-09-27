@@ -84,9 +84,12 @@ export async function GET(): Promise<NextResponse> {
       tomtom,
     };
     const allOk = Object.values(checks).every((s) => s === 'ok');
+    // Degraded is a state the load balancer must act on: 503 lets it fail
+    // over instead of pinning traffic to a sick instance. Short public TTL
+    // keeps anonymous polling from burning Supabase and TomTom quota.
     return NextResponse.json(
       { status: allOk ? 'ok' : 'degraded', checks, timestamp: new Date().toISOString() },
-      { status: 200 }
+      { status: allOk ? 200 : 503, headers: { 'Cache-Control': 'public, max-age=10, stale-while-revalidate=30' } }
     );
   }, (res) => res.status);
 }

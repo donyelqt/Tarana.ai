@@ -25,14 +25,26 @@ import { GET } from '../route';
 import { observeHttp, resetHttpMetrics } from '@/lib/observability/httpMetrics';
 
 describe('GET /api/metrics', () => {
+  const authed = () => {
+    process.env.METRICS_ADMIN_TOKEN = 'test-metrics-token';
+    return { headers: new Headers({ 'x-admin-token': 'test-metrics-token' }) } as unknown as Parameters<typeof GET>[0];
+  };
   beforeEach(() => {
     resetHttpMetrics();
+  });
+  afterEach(() => {
+    delete process.env.METRICS_ADMIN_TOKEN;
+  });
+
+  it('404s without the admin token', async () => {
+    const res = await GET({ headers: new Headers() } as unknown as Parameters<typeof GET>[0]);
+    expect(res.status).toBe(404);
   });
 
   it('exposes Prometheus text with the observed series', async () => {
     observeHttp({ route: '/api/tiers/all', method: 'GET', statusClass: '2xx', durationSeconds: 0.06 });
 
-    const res = await GET();
+    const res = await GET(authed());
     expect(res.status).toBe(200);
     expect(header(res, 'Content-Type')).toContain('text/plain');
     expect(header(res, 'X-Metrics-Series')).toBe('1');
@@ -43,7 +55,7 @@ describe('GET /api/metrics', () => {
   });
 
   it('renders headers-only exposition with zero series', async () => {
-    const res = await GET();
+    const res = await GET(authed());
     expect(res.status).toBe(200);
     expect(header(res, 'X-Metrics-Series')).toBe('0');
     const text = await res.text();
