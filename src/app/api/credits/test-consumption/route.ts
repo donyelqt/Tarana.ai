@@ -61,7 +61,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     // STEP 3: Try to call consume_credits function
     logger.info(
       'Attempting to consume test credit',
-      { entryPoint: '/api/credits/test-consumption', userId },
+      { entryPoint: '/api/credits/test-consumption' },
       requestId
     );
 
@@ -73,9 +73,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       data: consumeResult,
       error: consumeError ? {
         message: consumeError.message,
-        code: consumeError.code,
-        details: consumeError.details,
-        hint: consumeError.hint
+        code: consumeError.code
       } : null
     });
 

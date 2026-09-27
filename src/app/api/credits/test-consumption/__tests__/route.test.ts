@@ -102,9 +102,31 @@ describe('Test Consumption API Route Tests', () => {
     expect(mockedConsumeTestCredit).toHaveBeenCalledWith('user-1');
     expect(mockLogger.info).toHaveBeenCalledWith(
       'Attempting to consume test credit',
-      expect.objectContaining({ entryPoint: '/api/credits/test-consumption', userId: 'user-1' }),
+      { entryPoint: '/api/credits/test-consumption' },
       expect.any(String)
     );
+  });
+
+  test('does not echo the provider details/hint from a failed probe', async () => {
+    mockedGetUserProfileRow.mockResolvedValue({ profile: profileRow });
+    mockedConsumeTestCredit.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'relation "user_profiles" does not exist',
+        code: '42P01',
+        details: 'SCHEMA_HINT_SENTINEL',
+        hint: 'HINT_SENTINEL',
+      },
+    });
+
+    const response = await POST(authedRequest());
+    const serialized = JSON.stringify(await response.json());
+
+    // Postgres details/hint name constraints and columns; they must not reach
+    // the response body of a dev/preview diagnostic.
+    expect(serialized).not.toContain('SCHEMA_HINT_SENTINEL');
+    expect(serialized).not.toContain('HINT_SENTINEL');
+    expect(serialized).toContain('42P01');
   });
 
   test('surfaces the migration hint when the RPC function is missing', async () => {

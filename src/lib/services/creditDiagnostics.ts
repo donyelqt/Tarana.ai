@@ -20,16 +20,16 @@ import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 export interface ProbeError {
   message: string;
   code?: string;
-  details?: string;
-  hint?: string;
 }
 
-function toProbeError(error: { message: string; code?: string; details?: string; hint?: string }): ProbeError {
+// Postgres `details`/`hint` name constraints, columns, and sometimes values.
+// They are not needed to act on the failure (callers branch on `code`, e.g.
+// 42883 for a missing function), and these probes render their errors into
+// dev/preview responses, so the schema hints are dropped at the source.
+function toProbeError(error: { message: string; code?: string }): ProbeError {
   return {
     message: error.message,
     code: error.code,
-    details: error.details,
-    hint: error.hint,
   };
 }
 
@@ -53,7 +53,7 @@ export async function getUserProfileRow(
 ): Promise<{ profile: Record<string, unknown> | null; error?: ProbeError }> {
   const { data, error } = await supabaseAdmin
     .from('user_profiles')
-    .select('*')
+    .select('id, referral_code, current_tier, daily_credits, credits_used_today, total_referrals, active_referrals')
     .eq('id', userId)
     .single();
 
@@ -106,7 +106,7 @@ export async function getRecentTransactions(
 ): Promise<{ transactions: unknown[]; error?: ProbeError }> {
   let query = supabaseAdmin
     .from('credit_transactions')
-    .select('*')
+    .select('id, transaction_type, amount, service_used, description, balance_after, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(limit);
