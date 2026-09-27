@@ -33,6 +33,22 @@ function cloneAllowedActivity(activity: any) {
 
 const normalizeText = (value: unknown) =>
   typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().toLowerCase() : '';
+// Model desc/reason strings render as card text. Strip URLs, @-handles, and
+// instruction-shaped lines so smuggled directives never reach the UI.
+// Mirrors the Eats sanitizeReasonText contract (second consumer).
+function sanitizeModelText(reason: unknown): string {
+  if (typeof reason !== "string") return "";
+  return reason
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0
+      && !/https?:\/\//i.test(line)
+      && !/www\./i.test(line)
+      && !/^\s*[@#]/.test(line)
+      && !/\b(ignore|disregard|forget|override|system|instruction|prompt)\b/i.test(line))
+    .join(" ")
+    .slice(0, 500);
+}
 
 const humanizeTrafficLevel = (level: string | undefined) => {
   if (!level) return '';
@@ -135,7 +151,7 @@ function enrichActivityDescriptions(itinerary: any) {
       }
 
       const canonical = allowedByTitle.get(key);
-      const currentDesc = typeof activity?.desc === 'string' ? activity.desc.trim() : '';
+      const currentDesc = typeof activity?.desc === 'string' ? sanitizeModelText(activity.desc) : '';
       const canonicalDesc = typeof canonical?.desc === 'string' ? canonical.desc.trim() : '';
 
       const isSameDesc = currentDesc && canonicalDesc
@@ -143,7 +159,7 @@ function enrichActivityDescriptions(itinerary: any) {
         : !currentDesc;
 
       if (!isSameDesc) {
-        return activity;
+        return { ...activity, desc: currentDesc || canonicalDesc };
       }
 
       return {
@@ -284,6 +300,9 @@ const inferSlot = (label: string) => {
 
 export function organizeItineraryByDays(it: any, days: number | null) {
   if (!days || !it || !Array.isArray(it.items) || days <= 0) return it;
+  // Allocation guard: days feeds Array.from({length: days}) below, so an
+  // unclamped duration (e.g. 999999) allocates millions of buckets → CPU/OOM.
+  const safeDays = Math.min(Math.max(Math.floor(days), 1), 14);
   // Collect all activities by inferred slot
   const pool: Record<string, any[]> = { Morning: [], Afternoon: [], Evening: [], Flexible: [] };
   const activityIndex = new Map<string, any>();
@@ -337,10 +356,10 @@ export function organizeItineraryByDays(it: any, days: number | null) {
     queues.Flexible.length > 0;
 
   // Prepare day buckets
-  const daysBuckets = Array.from({ length: days }, () => ({ Morning: [] as any[], Afternoon: [] as any[], Evening: [] as any[] }));
+  const daysBuckets = Array.from({ length: safeDays }, () => ({ Morning: [] as any[], Afternoon: [] as any[], Evening: [] as any[] }));
 
   // First pass: ensure every slot gets at most one best-fit activity
-  for (let dayIndex = 0; dayIndex < days; dayIndex++) {
+  for (let dayIndex = 0; dayIndex < safeDays; dayIndex++) {
     const bucket = daysBuckets[dayIndex];
     slotOrder.forEach(slot => {
       const activity = takeFromQueues(slot, true);
@@ -353,7 +372,7 @@ export function organizeItineraryByDays(it: any, days: number | null) {
   // Additional passes: distribute any remaining activities while maintaining uniqueness
   while (anyQueuesRemaining()) {
     let assignedThisRound = false;
-    for (let dayIndex = 0; dayIndex < days; dayIndex++) {
+    for (let dayIndex = 0; dayIndex < safeDays; dayIndex++) {
       const bucket = daysBuckets[dayIndex];
       for (const slot of slotOrder) {
         const activity = takeFromQueues(slot, false);
@@ -414,31 +433,8 @@ export function organizeItineraryByDays(it: any, days: number | null) {
     return normalized;
   };
 
-  const mergeAllowedActivity = (existing: any | undefined, incoming: any | null) => {
-    if (!existing && !incoming) return null;
-    const merged: Record<string, any> = {
-      ...(incoming || {}),
-      ...(existing || {})
-    };
-
-    if ((!merged.tags || merged.tags.length === 0) && incoming?.tags?.length) {
-      merged.tags = incoming.tags;
-    }
-
-    if (!merged.image && incoming?.image) {
-      merged.image = incoming.image;
-    }
-
-    if (!merged.time && incoming?.time) {
-      merged.time = incoming.time;
-    }
-
-    if (!merged.peakHours && incoming?.peakHours) {
-      merged.peakHours = incoming.peakHours;
-    }
-
-    return merged;
-  };
+  // mergeAllowedActivity removed with the observed-title promotion block:
+  // merging model output into the allowlist is exactly the trust inversion.
 
   const existingAllowedActivities = Array.isArray(it?.searchMetadata?.allowedActivities)
     ? it.searchMetadata.allowedActivities
@@ -460,34 +456,18 @@ export function organizeItineraryByDays(it: any, days: number | null) {
     registerAllowed(key, normalized);
   });
 
-  const observedTitleKeys = new Set(
-    newItems.flatMap((item: any) =>
-      Array.isArray(item.activities)
-        ? item.activities
-            .map((activity: any) =>
-              typeof activity?.title === 'string' ? activity.title.trim().toLowerCase() : null
-            )
-            .filter(Boolean)
-        : []
-    )
-  );
-
-  observedTitleKeys.forEach(titleKey => {
-    const activity = activityIndex.get(titleKey);
-    const normalized = normalizeAllowedActivity(activity);
-    const merged = mergeAllowedActivity(allowedMap.get(titleKey), normalized);
-    if (merged) {
-      registerAllowed(titleKey, merged);
-    }
-  });
+  // Never promote model-observed titles: a hallucinated "Evil Cafe" merged
+  // here would become a first-class card and poison allowedActivities. Only
+  // pre-model server entries certify names.
+  void activityIndex
 
   const allowedActivities = orderedKeys
     .map(key => allowedMap.get(key))
     .filter(Boolean);
 
   // Server-truth image re-attach: the LLM is instructed to copy image URLs,
-  // but any hallucinated /images/ path (or empty) is overwritten here with the
-  // enriched server image matched by title. Never Blank — comingsoon fallback.
+  // but any model-supplied URL is untrusted (tracker/phishing). Only an
+  // allowlisted server image wins; anything else degrades to comingsoon.
   for (const item of newItems) {
     if (!Array.isArray(item.activities)) continue;
     for (const activity of item.activities) {
@@ -500,7 +480,7 @@ export function organizeItineraryByDays(it: any, days: number | null) {
           : null;
       if (serverImage) {
         activity.image = allowed.image;
-      } else if (typeof activity.image !== 'string' || !activity.image.trim()) {
+      } else {
         activity.image = '/images/comingsoon.png';
       }
     }
@@ -733,7 +713,7 @@ function hasMissingPeriods(itinerary: any, durationDays: number): boolean {
     periodsPerDay.get(day)!.push({ period: item.period, hasActivities: Array.isArray(item.activities) && item.activities.length > 0 });
   });
 
-  for (let i = 1; i <= durationDays; i++) {
+  for (let i = 1; i <= Math.min(Math.max(Math.floor(durationDays), 1), 14); i++) {
     const key = `Day ${i}`;
     const slots = periodsPerDay.get(key) || [];
     const missingSlot = slots.some(slot => !slot.hasActivities);

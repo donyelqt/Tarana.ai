@@ -248,7 +248,10 @@ const getCachedItinerary = unstable_cache(
             const durationDays = (() => {
                 if (!duration) return null;
                 const match = duration.toString().match(/\d+/);
-                return match ? parseInt(match[0], 10) : null;
+                if (!match) return null;
+                // Allocation guard: durationDays feeds Array.from({length})
+                // in organizeItineraryByDays — clamp before it can OOM.
+                return Math.min(Math.max(parseInt(match[0], 10), 1), 14);
             })();
 
             const weatherId = weatherData?.weather?.[0]?.id || 0;
@@ -476,7 +479,9 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
                 const durationDays = (() => {
                     if (!duration) return null;
                     const match = duration.toString().match(/\d+/);
-                    return match ? parseInt(match[0], 10) : null;
+                    if (!match) return null;
+                    // Same allocation guard as the classic path above.
+                    return Math.min(Math.max(parseInt(match[0], 10), 1), 14);
                 })();
 
                 const weatherId = weatherData?.weather?.[0]?.id || 0;
