@@ -10,6 +10,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: the workflow only reads the repo. Without this the default
+# GITHUB_TOKEN is write-capable, so a compromised action tag would inherit push
+# rights over the repo and its cache.
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -26,13 +32,13 @@ jobs:
       GOOGLE_GEMINI_API_KEY: ci-gemini-key
       UNSPLASH_ACCESS_KEY: ci-unsplash-key
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         # No `version:` input — single source of truth is package.json
         # `packageManager` (pnpm/action-setup errors when both are set).
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: pnpm
@@ -40,10 +46,21 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm exec next lint --max-warnings=1000
+        # Ratcheted budget: the tree carries a small count of unused-disable
+        # warnings today. 1000 let new debt land silently; keep the ceiling
+        # just above the current count and lower it as warnings are fixed.
+        run: pnpm exec next lint --max-warnings=20
 
       - name: Dependency audit
+        # Blocking gate stays at critical+prod: the repo carries 20 known high
+        # advisories (mostly tarana-mobile's react-navigation/metro chain) that
+        # are not reachable from the web runtime, so a blocking high gate would
+        # fail on every push. Informational step below surfaces them.
         run: pnpm audit --audit-level=critical --prod
+
+      - name: Dependency audit (informational, high)
+        continue-on-error: true
+        run: pnpm audit --audit-level=high
 
       - name: Lockfile hygiene
         run: node scripts/check-lockfile-integrity.mjs
@@ -95,11 +112,11 @@ jobs:
       GOOGLE_GEMINI_API_KEY: ci-gemini-key
       UNSPLASH_ACCESS_KEY: ci-unsplash-key
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: pnpm

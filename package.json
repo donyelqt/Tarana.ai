@@ -20,7 +20,7 @@
     "test": "jest",
     "test:e2e": "playwright test",
     "bench": "k6 run --env BASE_URL=http://localhost:3000 bench/k6-itinerary.js",
-    "bench:staging": "k6 run --env BASE_URL=https://tarana-ai.vercel.app bench/k6-itinerary.js"
+    "bench:staging": "node scripts/run-bench-staging.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.21.0",

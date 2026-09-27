@@ -88,3 +88,13 @@ tarana-mobile/build/
 /.lsp.json
 /.dap.json
 .idea/
+
+# Competing lockfiles: pnpm is the single source of truth (pnpm-lock.yaml,
+# packageManager pnpm@9.5.0). A stray npm/yarn/bun lock from a one-off install
+# would otherwise be committed and diverge the install tree.
+package-lock.json
+npm-shrinkwrap.json
+yarn.lock
+bun.lock
+bun.lockb
+

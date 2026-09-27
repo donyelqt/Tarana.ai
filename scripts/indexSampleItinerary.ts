@@ -14,7 +14,30 @@ loadEnv({ path: ".env.local", override: true });
 import { upsertActivityEmbedding } from "../src/lib/search/vectorSearch";
 import { sampleItinerary } from "../src/app/itinerary-generator/data/itineraryData";
 
+const PRODUCTION_SUPABASE_REFS = (process.env.PROD_SUPABASE_REFS ?? '')
+  .split(',')
+  .map((ref) => ref.trim())
+  .filter(Boolean);
+
+function assertNotProduction(): void {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const refusal = (reason: string) => {
+    console.error(`Refusing to write: ${reason}`);
+    console.error('This script upserts embeddings with the service-role key.');
+    console.error('Set STAGING_OK=yes and point NEXT_PUBLIC_SUPABASE_URL at a staging project.');
+    process.exit(2);
+  };
+
+  if (process.env.STAGING_OK !== 'yes') {
+    refusal('STAGING_OK is not "yes".');
+  }
+  if (PRODUCTION_SUPABASE_REFS.some((ref) => supabaseUrl.includes(ref))) {
+    refusal('NEXT_PUBLIC_SUPABASE_URL matches a known production project ref.');
+  }
+}
+
 async function main() {
+  assertNotProduction();
   const activities = sampleItinerary.items.flatMap((section) => section.activities);
   console.log(`Indexing ${activities.length} activities…`);
 
