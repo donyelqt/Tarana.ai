@@ -692,11 +692,12 @@ function hydrateMatchFromRestaurant(
     enhancedReason += ` Be sure to try ${itemsList}.`;
   }
 
+  // Server-registry image or placeholder only. The model-controlled
+  // match.image is never trusted: a tracker or phishing URL served here
+  // renders in FoodMatchCard without any allowlist check.
   const restaurantImage = restaurant.image && restaurant.image.trim().length > 0
     ? restaurant.image
-    : match.image && match.image.trim().length > 0
-      ? match.image
-      : DEFAULT_PLACEHOLDER_IMAGE;
+    : DEFAULT_PLACEHOLDER_IMAGE;
 
   return {
     ...match,
