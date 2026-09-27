@@ -22,7 +22,6 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
     try {
     const diagnostics: any = {
       timestamp: new Date().toISOString(),
-      userId,
       checks: {},
       errors: [],
     };
