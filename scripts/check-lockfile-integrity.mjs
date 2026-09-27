@@ -29,7 +29,7 @@ const ROOT = process.cwd();
 const LOCKFILE = join(ROOT, 'pnpm-lock.yaml');
 const PACKAGE_JSON = join(ROOT, 'package.json');
 // Competing lockfiles at the same installation boundary.
-const COMPETING = ['package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock'];
+const COMPETING = ['package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'bun.lock', 'bun.lockb'];
 const EXPECTED_MANAGER_PREFIX = 'pnpm@9.';
 
 const failures = [];
@@ -71,6 +71,15 @@ if (!existsSync(LOCKFILE)) {
   }
   if (/(^|\s)tarball:\s*\S/m.test(text)) {
     fail('`tarball:` URL present (default registry tarballs only)');
+  }
+  // Local-path and git specifiers bypass registry integrity entirely: a
+  // file:/link: dependency resolves to whatever sits on the build machine,
+  // and a git: dependency pins nothing verifiable against the registry.
+  if (/^\s+specifier:\s*(?:file|link):/m.test(text)) {
+    fail('`file:`/`link:` dependency specifier present (registry packages only)');
+  }
+  if (/^\s+specifier:\s*git(?:\+[a-z]+)?:\S/m.test(text)) {
+    fail('`git:` dependency specifier present (registry packages only)');
   }
 }
 

@@ -6,7 +6,7 @@
 
 ## Context
 
-Deployment is Vercel serverless (evidence: `bench:staging` targets `tarana-ai.vercel.app`; the `maxDuration` export documents the plan). The user ruled on 2026-09-18: **Vercel Hobby**.
+Deployment is Vercel serverless (evidence: the `maxDuration` exports and the Vercel-specific env guards in `src/lib/auth/benchToken.ts` — `VERCEL_ENV === "production"` refuses the bench bypass; the `bench:staging` script now requires an explicit non-production `BENCH_BASE_URL`). The user ruled on 2026-09-18: **Vercel Hobby**.
 
 **Correction 2026-09-20:** the original ruling recorded a 60s function cap. That is stale — Vercel's Fluid compute limits (verified against https://vercel.com/docs/functions/limitations, `last_updated: 2026-08-24`) give Hobby **300s default and maximum** (5 minutes), not 60s. The verified Hobby limits:
 
