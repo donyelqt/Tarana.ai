@@ -56,6 +56,18 @@ type EffectiveItinerary = {
 
 // Initialize unified intelligent search engine
 const intelligentSearchEngine = new IntelligentSearchEngine();
+// Retrieved POI fields are third-party data interpolated into the model
+// prompt: strip instruction keywords, URLs, and control chars, cap length.
+function sanitizePoiField(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(/[\r\n\t<>]/g, ' ')
+    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/\b(ignore|disregard|forget|override|system|instruction|prompt)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120);
+}
 
 export async function findAndScoreActivities(
   prompt: string, 
@@ -284,12 +296,12 @@ export async function findAndScoreActivities(
 
               if (merged.length > 0) {
                 filteredSimilar = merged.slice(0, 20).map(r => ({
-                  activity_id: r.name,
+                  activity_id: sanitizePoiField(r.name) || r.name,
                   similarity: (r.relevanceScore ?? 50) / 100,
                   metadata: {
-                    title: r.name,
-                    desc: r.address || `${r.category} in ${city.name}`,
-                    tags: [r.category || "Travel", ...(Array.isArray(interests) ? interests.slice(0,2) : [])].slice(0,4),
+                    title: sanitizePoiField(r.name) || r.name,
+                    desc: sanitizePoiField(r.address) || sanitizePoiField(`${r.category} in ${city.name}`),
+                    tags: [sanitizePoiField(r.category) || "Travel", ...(Array.isArray(interests) ? interests.slice(0,2) : [])].slice(0,4),
                     time: "Anytime",
                     image: "",
                     peakHours: "",
