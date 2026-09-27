@@ -146,7 +146,46 @@ export const DELETE = withAuth(async (request: NextRequest, userId: string, ...a
       const { params } = (args[0] ?? {}) as RouteParams;
       const { id } = await params;
 
+      // A retried DELETE must not delete twice. Claim before the mutation so
+      // a client retry gets the cached response instead of a second
+      // deleteItineraryById call — which would 404 after the first
+      // already succeeded. Mirrors the saved-meals DELETE contract.
+      const key = getIdempotencyKey(request);
+      const claim = key
+        ? await claimIdempotency(userId, `/api/saved-itineraries/${id}`, key, hashIdempotencyPayload({ id }))
+        : null;
+
+      if (claim?.kind === 'replay') {
+        return NextResponse.json(claim.replay.body, { status: claim.replay.status });
+      }
+
+      if (claim?.kind === 'conflict') {
+        const response = NextResponse.json(
+          { error: 'Request is already being processed' },
+          { status: 409 }
+        );
+        response.headers.set('Retry-After', '1');
+        return response;
+      }
+
+      if (claim?.kind === 'payload-mismatch') {
+        return NextResponse.json(
+          { error: 'Idempotency key was already used with a different payload' },
+          { status: 422 }
+        );
+      }
+
       const deleted = await deleteItineraryById(id, userId);
+
+      if (claim?.kind === 'owner') {
+        await completeIdempotency(
+          claim.rowId,
+          deleted ? 200 : 404,
+          deleted ? { success: true } : { error: 'Itinerary not found' }
+        ).catch(() => {
+          logger.error('[idempotency] failed to complete key', { route: `/api/saved-itineraries/${id}`, rowId: claim.rowId }, getRequestId(request));
+        });
+      }
 
       if (!deleted) {
         return NextResponse.json({ error: 'Itinerary not found' }, { status: 404 });

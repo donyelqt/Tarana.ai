@@ -11,10 +11,15 @@ import { timedHttp } from '@/lib/observability/httpMetrics';
 export const GET = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/credits/history', 'GET', async () => {
     try {
-      // Get limit from query params (default: 20, max: 100)
+      // Get limit from query params (default: 20, max: 100). parseInt('abc')
+      // is NaN and Math.min(NaN, 100) stays NaN, which reached
+      // `.limit(NaN)`; negatives passed through unclamped.
       const url = new URL(req.url);
       const limitParam = url.searchParams.get('limit');
-      const limit = Math.min(parseInt(limitParam || '20'), 100);
+      const parsedLimit = Number.parseInt(limitParam ?? '20', 10);
+      const limit = Number.isFinite(parsedLimit)
+        ? Math.min(Math.max(parsedLimit, 1), 100)
+        : 20;
 
       // Get credit history
       const history = await CreditService.getCreditHistory(userId, limit);

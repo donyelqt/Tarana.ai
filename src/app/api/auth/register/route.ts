@@ -53,9 +53,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Normalize the referral code once, up front. `validate`/`track-referral`
+    // both uppercase; register previously validated the raw value and then
+    // created the referral with it, so a lowercase `?ref=abc123` could pass
+    // validation and still fail (or store a differently-cased code) later.
+    const normalizedReferralCode = typeof referralCode === 'string'
+      ? referralCode.trim().toUpperCase()
+      : '';
+
     // Validate referral code if provided
-    if (referralCode) {
-      const isValidReferralCode = await ReferralService.validateReferralCode(referralCode);
+    if (normalizedReferralCode) {
+      const isValidReferralCode = await ReferralService.validateReferralCode(normalizedReferralCode);
       if (!isValidReferralCode) {
         return NextResponse.json(
           { error: 'Invalid referral code' },
@@ -97,9 +105,9 @@ export async function POST(request: NextRequest) {
           }
 
           // Create referral relationship if referral code provided
-          if (referralCode) {
+          if (normalizedReferralCode) {
             const referralResult = await ReferralService.createReferral({
-              referralCode,
+              referralCode: normalizedReferralCode,
               newUserId: newUser.id,
             });
 
