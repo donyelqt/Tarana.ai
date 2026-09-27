@@ -32,6 +32,27 @@ export async function storeResetToken(
 }
 
 /**
+ * Null expired reset tokens. Retention control: a requested-but-never-used
+ * token otherwise lives until the next request overwrites it, extending the
+ * takeover window past intent. Called opportunistically by the reset routes;
+ * a cron can also invoke it.
+ */
+export async function clearExpiredResetTokens(): Promise<number> {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .update({ reset_token: null, reset_token_expiry: null })
+    .lt('reset_token_expiry', new Date().toISOString())
+    .not('reset_token', 'is', null)
+    .select('id');
+
+  if (error) {
+    throw new Error(`Failed to clear expired reset tokens: ${error.message}`);
+  }
+
+  return data?.length ?? 0;
+}
+
+/**
  * Find a user by their reset token. Returns null when no match — the route
  * treats that as an invalid/expired token (400), never as a 500.
  */
@@ -40,7 +61,7 @@ export async function findUserByResetToken(
 ): Promise<ResetTokenUser | null> {
   const { data, error } = await supabaseAdmin
     .from('users')
-    .select('id, reset_token, reset_token_expiry')
+    .select('id, reset_token_expiry')
     .eq('reset_token', token)
     .single();
 

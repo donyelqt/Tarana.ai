@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { storeResetToken } from '@/lib/services/passwordService';
+import { storeResetToken, clearExpiredResetTokens } from '@/lib/services/passwordService';
 import { findUserByEmailFromSupabase } from '@/lib/auth';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import { sanitizeEmail } from '@/lib/security/inputSanitizer';
@@ -65,6 +65,14 @@ export async function POST(request: NextRequest) {
       // Generate secure reset token
       const resetToken = crypto.randomBytes(32).toString('hex');
       const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
+
+      // Retention: clear stale tokens (requested-never-used) so they cannot
+      // outlive their window. Best-effort; the request must still proceed.
+      try {
+        await clearExpiredResetTokens();
+      } catch (sweepError) {
+        logger.warn('Expired reset-token sweep failed', { entryPoint: '/api/auth/forgot-password', ...getSafeErrorMetadata(sweepError) }, requestId);
+      }
 
       // Store reset token in database
       try {
