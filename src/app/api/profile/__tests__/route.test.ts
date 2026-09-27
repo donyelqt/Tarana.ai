@@ -193,7 +193,7 @@ describe('profile PATCH idempotency (2.3-R4)', () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(mockedClaimIdempotency).toHaveBeenCalledWith('Test@Example.com', '/api/profile', 'key-1', expect.any(String));
+    expect(mockedClaimIdempotency).toHaveBeenCalledWith('user-1', '/api/profile', 'key-1', expect.any(String));
     expect(mockedUpdateProfileByEmail).toHaveBeenCalledTimes(1);
     expect(mockedCompleteIdempotency).toHaveBeenCalledWith(7, 200, body);
   });

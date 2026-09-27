@@ -13,12 +13,19 @@ import { getRequestId } from '@/middleware/requestId';
 import { getSavedItineraries, updateItinerary, SavedItinerary } from '@/lib/data/savedItineraries';
 import { fetchWeatherFromAPI } from '@/lib/core/utils';
 import { timedHttp } from '@/lib/observability/httpMetrics';
-import { 
-  itineraryRefreshService, 
-  ChangeDetectionResult 
+import {
+  itineraryRefreshService,
+  ChangeDetectionResult
 } from '@/lib/services/itineraryRefreshService';
 import { parallelTrafficProcessor } from '@/lib/performance/parallelTrafficProcessor';
-import { getIdempotencyKey } from '@/lib/services/idempotencyService';
+import {
+  claimIdempotency,
+  completeIdempotency,
+  getIdempotencyKey,
+  hashIdempotencyPayload,
+  type IdempotencyClaim,
+} from '@/lib/services/idempotencyService';
+import { z } from 'zod';
 import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 
 // ============================================================================
@@ -66,6 +73,9 @@ interface RefreshRequest {
   force?: boolean; // Force refresh even if no significant changes
   evaluateOnly?: boolean; // Only evaluate, don't regenerate
 }
+
+const IDEMPOTENCY_ROUTE = '/api/saved-itineraries/[id]/refresh';
+const refreshBodySchema = z.object({ force: z.boolean().optional(), evaluateOnly: z.boolean().optional() }).strict();
 
 interface RefreshResponse {
   success: boolean;
@@ -167,6 +177,18 @@ export const POST = withAuth(async (
   logger.info('Itinerary refresh requested', { itineraryIdLength: id.length }, requestId);
 
   return timedHttp('/api/saved-itineraries/[id]/refresh', 'POST', async () => {
+  // Declared outside the try so the outer catch can complete a claimed key.
+  let refreshClaim: IdempotencyClaim | null = null;
+  const completeRefresh = async (status: number, body: unknown): Promise<void> => {
+    if (refreshClaim?.kind === 'owner') {
+      try {
+        await completeIdempotency(refreshClaim.rowId, status, body);
+      } catch (error) {
+        logger.error('[idempotency] failed to complete refresh key', { entryPoint: 'refresh', ...getSafeErrorMetadata(error) }, requestId);
+        throw error;
+      }
+    }
+  };
   try {
     // ========================================================================
     // 1. AUTHENTICATION (withAuth resolved the session identity)
@@ -176,13 +198,36 @@ export const POST = withAuth(async (
     // 2. PARSE REQUEST BODY
     // ========================================================================
     let requestBody: RefreshRequest = {};
-    
+
     try {
-      requestBody = await request.json();
+      const raw = await request.json();
+      const parsed = refreshBodySchema.safeParse(raw);
+      if (!parsed.success) {
+        return NextResponse.json({ success: false, message: 'Invalid input', error: 'Invalid refresh options' }, { status: 400 });
+      }
+      requestBody = parsed.data;
       logger.info('Refresh request options received', { force: requestBody.force === true, evaluateOnly: requestBody.evaluateOnly === true }, requestId);
     } catch {
       // Empty body is OK for force refresh
       logger.info('Empty refresh request body - using defaults', {}, requestId);
+    }
+
+    // Idempotency: retries must not double-bill the downstream generator
+    // nor rewrite the row twice. Claim after validation, before evaluation.
+    const refreshKey = getIdempotencyKey(request);
+    refreshClaim = refreshKey
+      ? await claimIdempotency(userId, IDEMPOTENCY_ROUTE, refreshKey, hashIdempotencyPayload({ id, ...requestBody }))
+      : null;
+    if (refreshClaim?.kind === 'replay') {
+      return NextResponse.json(refreshClaim.replay.body as RefreshResponse, { status: refreshClaim.replay.status });
+    }
+    if (refreshClaim?.kind === 'conflict') {
+      const res = NextResponse.json({ success: false, message: 'Request is already being processed' } as RefreshResponse, { status: 409 });
+      res.headers.set('Retry-After', '1');
+      return res;
+    }
+    if (refreshClaim?.kind === 'payload-mismatch') {
+      return NextResponse.json({ success: false, message: 'Idempotency key was already used with a different payload' } as RefreshResponse, { status: 422 });
     }
 
     // ========================================================================
@@ -264,15 +309,18 @@ export const POST = withAuth(async (
     // ========================================================================
     // 7. DETERMINE ACTION
     // ========================================================================
+    if (requestBody.evaluateOnly) {
+      const body = { success: true, message: itineraryRefreshService.getChangeSummary(evaluation), evaluation };
+      await completeRefresh(200, body);
+      return NextResponse.json(body);
+    }
     const shouldRefresh = requestBody.force || evaluation.needsRefresh;
-    
+
     if (!shouldRefresh) {
+      const body = { success: true, message: itineraryRefreshService.getChangeSummary(evaluation), evaluation };
       logger.info('✅ No refresh needed - returning evaluation only', {}, requestId);
-      return NextResponse.json({
-        success: true,
-        message: itineraryRefreshService.getChangeSummary(evaluation),
-        evaluation
-      });
+      await completeRefresh(200, body);
+      return NextResponse.json(body);
     }
 
     logger.info(`\n🔄 Proceeding with itinerary refresh...`, {}, requestId);
@@ -295,31 +343,29 @@ export const POST = withAuth(async (
       );
     } catch (regenerationError) {
       logger.error('Regeneration failed', { entryPoint: 'refresh', ...getSafeErrorMetadata(regenerationError) }, requestId);
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Generation failed', 
-          error: 'Failed to generate an updated itinerary',
-          details: { phase: 'regeneration' }
-        },
-        { status: 500 }
-      );
+      const regenFailure = {
+        success: false,
+        message: 'Generation failed',
+        error: 'Failed to generate an updated itinerary',
+        details: { phase: 'regeneration' }
+      };
+      await completeRefresh(500, regenFailure);
+      return NextResponse.json(regenFailure, { status: 500 });
     }
 
     if (!regeneratedItinerary || !regeneratedItinerary.items) {
       logger.error('Invalid regenerated itinerary structure', {}, requestId);
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Generation failed',
-          error: 'Generated itinerary has invalid structure. Please try again.',
-          details: {
-            phase: 'validation',
-            received: regeneratedItinerary ? 'partial data' : 'null'
-          }
-        },
-        { status: 500 }
-      );
+      const invalidBody = {
+        success: false,
+        message: 'Generation failed',
+        error: 'Generated itinerary has invalid structure. Please try again.',
+        details: {
+          phase: 'validation',
+          received: regeneratedItinerary ? 'partial data' : 'null'
+        }
+      };
+      await completeRefresh(500, invalidBody);
+      return NextResponse.json(invalidBody, { status: 500 });
     }
 
     logger.info('✅ Itinerary regenerated successfully', {}, requestId);
@@ -400,14 +446,13 @@ export const POST = withAuth(async (
 
     if (!updatedItinerary) {
       logger.info('❌ Failed to update itinerary in database', {}, requestId);
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Update failed', 
-          error: 'Failed to save updated itinerary. Please try again.' 
-        },
-        { status: 500 }
-      );
+      const updateFailure = {
+        success: false,
+        message: 'Update failed',
+        error: 'Failed to save updated itinerary. Please try again.'
+      };
+      await completeRefresh(500, updateFailure);
+      return NextResponse.json(updateFailure, { status: 500 });
     }
 
     logger.info(`✅ Itinerary updated in database`, {}, requestId);
@@ -430,12 +475,14 @@ export const POST = withAuth(async (
     logger.info(`   Refresh Count: ${updatedItinerary.refreshMetadata?.refreshCount || 0}`, {}, requestId);
     logger.info('', {}, requestId);
 
-    return NextResponse.json({
+    const successBody: RefreshResponse = {
       success: true,
       message: itineraryRefreshService.getChangeSummary(evaluation),
       evaluation,
       updatedItinerary
-    });
+    };
+    await completeRefresh(200, successBody);
+    return NextResponse.json(successBody);
 
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -447,16 +494,15 @@ export const POST = withAuth(async (
       category,
       timestamp: new Date().toISOString()
     };
-    
-    return NextResponse.json(
-      { 
-        success: false, 
-        message: 'Refresh failed', 
-        error: 'Internal server error',
-        details: safeDetails
-      },
-      { status: 500 }
-    );
+
+    const failureBody = {
+      success: false,
+      message: 'Refresh failed',
+      error: 'Internal server error',
+      details: safeDetails
+    };
+    await completeRefresh(500, failureBody);
+    return NextResponse.json(failureBody, { status: 500 });
   }
   }, (res) => res.status);
 });

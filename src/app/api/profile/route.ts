@@ -43,7 +43,7 @@ export const GET = withAuthEmail(async (req: NextRequest, { email }) => {
   }, (res) => res.status);
 });
 // PATCH - Update user profile
-export const PATCH = withAuthEmail(async (req: NextRequest, { email }) => {
+export const PATCH = withAuthEmail(async (req: NextRequest, { userId, email }) => {
   return timedHttp('/api/profile', 'PATCH', async () => {
   try {
 
@@ -90,8 +90,10 @@ export const PATCH = withAuthEmail(async (req: NextRequest, { email }) => {
     };
 
     const key = getIdempotencyKey(req);
+    // The idempotency store keys user_id as uuid: claim by the stable user
+    // id (not the session email) or every keyed PATCH 500s on insert.
     const claim = key
-      ? await claimIdempotency(email, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload(sanitizedUpdate))
+      ? await claimIdempotency(userId, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload(sanitizedUpdate))
       : null;
 
     if (claim?.kind === 'replay') {
