@@ -184,13 +184,13 @@ async function fetchGooglePhoto(place: PlaceInput): Promise<string | null> {
 
     if (!photoRef) return null
 
-    // Construct photo URL — client can fetch this directly (no key leak if we proxy, but URL contains key)
-    // We return the Google photo URL; Next.js Image with `unoptimized` or `remotePatterns` will handle it.
-    // To avoid leaking key to client, we proxy via our own API if needed — for now return the direct URL
-    // and let the caller decide to proxy.
-    const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoRef}&key=${apiKey}`
-    if (!isRenderableImageUrl(photoUrl)) return null
-    return photoUrl
+    // Never return a keyed Google photo URL: the key rides in the query
+    // string, `maps.googleapis.com` is renderable, and the URL is served in
+    // itinerary/spot JSON to browsers — any authed user could harvest the
+    // Places key for quota burn. Tier 2+ (Wikimedia/Unsplash) cover the miss.
+    // Proper fix: a server /api/images/places byte-proxy (separate slice).
+    void photoRef
+    return null
   } catch {
     return null
   }
