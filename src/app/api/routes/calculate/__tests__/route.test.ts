@@ -136,7 +136,7 @@ describe('POST /api/routes/calculate', () => {
     const response = await POST(request({ preferences: { routeType: 'fastest' } }));
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: 'Origin and destination are required' });
+    expect(await response.json()).toEqual({ error: 'Valid coordinates are required for origin and destination' });
     expect(mockLogger.info).not.toHaveBeenCalled();
     expect(mockLogger.warn).not.toHaveBeenCalled();
   });

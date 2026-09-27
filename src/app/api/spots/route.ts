@@ -10,6 +10,7 @@ import { tomtomTrafficService } from '@/lib/traffic/tomtomTraffic';
 import { getTrafficLevelFromScore } from '@/lib/utils/trafficColors';
 import { enrichActivitiesWithImages } from '@/lib/services/imageService';
 import { rotateByDay } from '@/lib/utils/dailyRotation';
+import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import {
   activityToPayload,
   isSpotScopeId,
@@ -61,7 +62,14 @@ function isRealPhoto(image: unknown): boolean {
  */
 export async function GET(request: Request) {
   return timedHttp('/api/spots', 'GET', async () => {
-  const requestId = getRequestId(request as NextRequest);
+  const req = request as NextRequest;
+  const limited = createRateLimitMiddleware(rateLimitConfigs.api)(req);
+  if (!limited.allowed) {
+    const res = NextResponse.json({ error: 'Rate limit exceeded. Please slow down your requests.' }, { status: 429 });
+    if (limited.retryAfter) res.headers.set('Retry-After', String(limited.retryAfter));
+    return res;
+  }
+  const requestId = getRequestId(req);
   const city = new URL(request.url).searchParams.get('city') ?? 'baguio';
 
   if (!isSpotScopeId(city) || !SUPPORTED.includes(city)) {

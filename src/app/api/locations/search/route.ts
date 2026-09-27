@@ -5,7 +5,7 @@ import { handleApiError } from '@/lib/errors/handleApiError';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
-
+import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 /**
  * GET /api/locations/search
  * Search for locations with autocomplete functionality
@@ -13,13 +13,21 @@ import { getRequestId } from '@/middleware/requestId';
 export async function GET(request: NextRequest) {
   return timedHttp('/api/locations/search', 'GET', async () => {
     const requestId = getRequestId(request);
+    const limited = createRateLimitMiddleware(rateLimitConfigs.api)(request);
+    if (!limited.allowed) {
+      const res = NextResponse.json({ error: 'Rate limit exceeded. Please slow down your requests.' }, { status: 429 });
+      if (limited.retryAfter) res.headers.set('Retry-After', String(limited.retryAfter));
+      return res;
+    }
     try {
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('q');
+    const rawQuery = searchParams.get('q');
     const boundsParam = searchParams.get('bounds');
-    
+
+    // Bound the query: unbounded q fans out to paid TomTom on every keystroke.
+    const query = (rawQuery ?? '').trim().slice(0, 200);
     // Validate query parameter
-    if (!query || query.trim().length < 2) {
+    if (!query || query.length < 2) {
       return NextResponse.json(
         { error: 'Query parameter "q" is required and must be at least 2 characters' },
         { status: 400 }
@@ -28,15 +36,16 @@ export async function GET(request: NextRequest) {
 
     logger.info(
       'Location search started',
-      { entryPoint: '/api/locations/search', queryLength: query.trim().length },
+      { entryPoint: '/api/locations/search', queryLength: query.length },
       requestId
     );
-
     // Parse bounds if provided
     let bounds: BoundingBox | undefined;
     if (boundsParam) {
       try {
         const boundsData = JSON.parse(boundsParam);
+        const nums = [boundsData?.topLeft?.lat, boundsData?.topLeft?.lng, boundsData?.bottomRight?.lat, boundsData?.bottomRight?.lng];
+        if (!nums.every((n) => typeof n === 'number' && Number.isFinite(n))) throw new Error('non-numeric bounds');
         bounds = {
           topLeft: { lat: boundsData.topLeft.lat, lng: boundsData.topLeft.lng },
           bottomRight: { lat: boundsData.bottomRight.lat, lng: boundsData.bottomRight.lng }

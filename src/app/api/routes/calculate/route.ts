@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import {
   RouteRequest,
   RouteCalculationResponse,
@@ -12,8 +13,17 @@ import { handleApiError } from '@/lib/errors/handleApiError';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
+import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 
 const LOG_ENTRY_POINT = '/api/routes/calculate';
+const MAX_CALCULATE_BYTES = 256 * 1024;
+
+const coordinateSchema = z.object({ lat: z.number().finite().min(-90).max(90), lng: z.number().finite().min(-180).max(180) }).passthrough();
+const calculateSchema = z.object({
+  origin: coordinateSchema,
+  destination: coordinateSchema,
+  waypoints: z.array(coordinateSchema).max(10).optional(),
+}).passthrough();
 
 /**
  * POST /api/routes/calculate
@@ -22,24 +32,26 @@ const LOG_ENTRY_POINT = '/api/routes/calculate';
 export async function POST(request: NextRequest) {
   return timedHttp(LOG_ENTRY_POINT, 'POST', async () => {
   const correlationId = getRequestId(request);
+  const limited = createRateLimitMiddleware(rateLimitConfigs.heavy)(request);
+  if (!limited.allowed) {
+    const res = NextResponse.json({ error: 'Rate limit exceeded. Please slow down your requests.' }, { status: 429 });
+    if (limited.retryAfter) res.headers.set('Retry-After', String(limited.retryAfter));
+    return res;
+  }
   try {
-    const body = await request.json();
-    const routeRequest: RouteRequest = body;
-    // Validate required fields
-    if (!routeRequest.origin || !routeRequest.destination) {
-      return NextResponse.json(
-        { error: 'Origin and destination are required' },
-        { status: 400 }
-      );
+    const contentLength = Number(request.headers.get('content-length') ?? 0);
+    if (contentLength > MAX_CALCULATE_BYTES) {
+      return NextResponse.json({ error: 'Request body too large' }, { status: 413 });
     }
-
-    if (!routeRequest.origin.lat || !routeRequest.origin.lng ||
-        !routeRequest.destination.lat || !routeRequest.destination.lng) {
+    const body = await request.json();
+    const parsed = calculateSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
         { error: 'Valid coordinates are required for origin and destination' },
         { status: 400 }
       );
     }
+    const routeRequest: RouteRequest = { ...(body as object), ...parsed.data } as unknown as RouteRequest;
 
     const responseRequestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     logger.info(

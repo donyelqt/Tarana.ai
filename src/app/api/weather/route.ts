@@ -4,6 +4,7 @@ import { handleApiError } from '@/lib/errors/handleApiError';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
 import { timedHttp } from '@/lib/observability/httpMetrics';
+import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 
 /**
  * Map an upstream status to a fixed client-safe class message.
@@ -36,6 +37,12 @@ function safeUpstreamMessage(upstreamStatus: string): string {
 export async function GET(request: NextRequest) {
   const requestId = getRequestId(request);
   return timedHttp('/api/weather', 'GET', async () => {
+  const limited = createRateLimitMiddleware(rateLimitConfigs.api)(request);
+  if (!limited.allowed) {
+    const res = NextResponse.json({ error: 'Rate limit exceeded. Please slow down your requests.' }, { status: 429 });
+    if (limited.retryAfter) res.headers.set('Retry-After', String(limited.retryAfter));
+    return res;
+  }
   try {
     // Get coordinates from query parameters or use defaults
     const url = new URL(request.url);
