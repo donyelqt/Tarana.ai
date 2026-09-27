@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { handleApiError } from '@/lib/errors/handleApiError';
 import { timedHttp } from '@/lib/observability/httpMetrics';
-import { createUserProfile } from '@/lib/services/userService';
 
 import {
   checkConsumeCreditsFunction,
@@ -98,23 +97,21 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       diagnostics.errors.push(`Transaction fetch failed: ${error}`);
     }
 
-    // CHECK 6: Test profile creation
-    if (!diagnostics.checks.userProfileExists && diagnostics.checks.userProfilesTableExists) {
-      try {
-        await createUserProfile(userId);
-        diagnostics.checks.profileCreated = true;
-      } catch (error) {
-        diagnostics.errors.push(`Profile creation failed: ${(error as Error).message}`);
-      }
+    // CHECK 6: report readiness only. A GET must not create rows — prefetch
+    // or a crawler would silently provision profiles. The caller runs the
+    // explicit POST /api/credits/init-profile when creation is wanted.
+    diagnostics.checks.profileCreated = false;
+    if (!diagnostics.checks.userProfileExists) {
+      diagnostics.hint = 'Run POST /api/credits/init-profile to create the profile';
     }
 
     // SUMMARY
     diagnostics.summary = {
-      migrationRun: diagnostics.checks.userProfilesTableExists && 
+      migrationRun: diagnostics.checks.userProfilesTableExists &&
                     diagnostics.checks.creditTransactionsTableExists &&
                     diagnostics.checks.consumeCreditsFunctionExists,
-      userSetup: diagnostics.checks.userProfileExists || diagnostics.checks.profileCreated,
-      readyToUse: diagnostics.checks.userProfileExists && 
+      userSetup: diagnostics.checks.userProfileExists,
+      readyToUse: diagnostics.checks.userProfileExists &&
                   diagnostics.checks.consumeCreditsFunctionExists,
       errorCount: diagnostics.errors.length,
     };

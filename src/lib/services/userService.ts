@@ -40,6 +40,40 @@ export async function createUserProfile(userId: string): Promise<void> {
 }
 
 /**
+ * Delete a user account and every row that hangs off it.
+ *
+ * The privacy page promises "delete or anonymize your personal data"; this is
+ * that deletion path. FKs cascade from users for user_profiles, referrals,
+ * credit tables and saved_meals (ON DELETE CASCADE), but `itineraries` has no
+ * in-repo FK, so its rows are deleted explicitly first. The users row goes
+ * last: if any earlier step fails nothing is half-deleted from the caller's
+ * point of view (they still exist and can retry).
+ *
+ * Returns the number of itinerary rows removed. Throws on DB error.
+ */
+export async function deleteUserAccount(userId: string): Promise<number> {
+  const { error: itineraryError, count } = await supabaseAdmin
+    .from('itineraries')
+    .delete({ count: 'exact' })
+    .eq('user_id', userId);
+
+  if (itineraryError) {
+    throw new Error(`Failed to delete itineraries: ${itineraryError.message}`);
+  }
+
+  const { error: userError } = await supabaseAdmin
+    .from('users')
+    .delete()
+    .eq('id', userId);
+
+  if (userError) {
+    throw new Error(`Failed to delete account: ${userError.message}`);
+  }
+
+  return count ?? 0;
+}
+
+/**
  * Check whether a user profile row exists. Lives next to
  * `createUserProfile` (same table, same owner) so callers needing
  * check-then-create (init-profile, diagnostics) don't reimplement the

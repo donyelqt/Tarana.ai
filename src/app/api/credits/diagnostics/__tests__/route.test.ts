@@ -103,17 +103,19 @@ describe('Diagnostics API Route Tests', () => {
     expect(body.errors).toHaveLength(0);
   });
 
-  test('creates the profile when missing and marks setup complete', async () => {
+  test('reports a missing profile without creating one on a GET', async () => {
     mockedGetUserProfileRow.mockResolvedValue({ profile: null });
-    mockedCreateUserProfile.mockResolvedValue(undefined);
 
     const response = await GET(authedRequest());
     expect(response.status).toBe(200);
 
     const body = await response.json();
-    expect(mockedCreateUserProfile).toHaveBeenCalledWith('user-1');
-    expect(body.checks.profileCreated).toBe(true);
-    expect(body.summary.userSetup).toBe(true);
+    // A GET must not write: prefetch/crawler traffic would silently
+    // provision profiles. The caller runs init-profile explicitly.
+    expect(mockedCreateUserProfile).not.toHaveBeenCalled();
+    expect(body.checks.profileCreated).toBe(false);
+    expect(body.summary.userSetup).toBe(false);
+    expect(body.hint).toContain('init-profile');
   });
 
   test('records a failed table check as an error', async () => {
