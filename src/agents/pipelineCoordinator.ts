@@ -48,7 +48,7 @@ export class PipelineCoordinator {
       userId: session.userId,
       amount: 1,
       service: "tarana_gala",
-      description: `Generated itinerary: ${session.prompt.substring(0, 50)}`,
+      description: "Generated itinerary",
       });
       charged = true;
     }

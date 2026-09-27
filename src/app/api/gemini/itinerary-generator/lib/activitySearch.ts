@@ -95,7 +95,8 @@ export async function findAndScoreActivities(
         
         // Use intelligent search engine
         const availableActivities = sampleItineraryCombined.items[0].activities;
-        logger.info(`\n🔍 INTELLIGENT SEARCH: Starting search for "${prompt}" with ${availableActivities.length} activities`, { entryPoint: 'activitySearch', prompt: prompt });
+        // Log shape only: verbatim prompts carry PII (names, hotels, dates).
+        logger.info(`\n🔍 INTELLIGENT SEARCH: Starting search`, { entryPoint: 'activitySearch', promptLength: prompt.length });
         const intelligentResults = await intelligentSearchEngine.search(prompt, searchContext);
         logger.info(`✅ INTELLIGENT SEARCH: Found ${intelligentResults.length} results with traffic-aware scoring`, { entryPoint: 'activitySearch' });
         
