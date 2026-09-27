@@ -22,6 +22,15 @@
     "bench": "k6 run --env BASE_URL=http://localhost:3000 bench/k6-itinerary.js",
     "bench:staging": "node scripts/run-bench-staging.mjs"
   },
+  "pnpm": {
+    "//": "Build scripts run only for these four. Every other dependency's pre/install/postinstall hook is refused, so a compromised (or typosquatted) transitive package cannot execute code at CI/dev/Vercel install time. All four are native/binary builders that legitimately need it: protobufjs (via @google/genai, prod), sharp (via next, prod), esbuild + unrs-resolver (build/test chain, dev). Adding a package here is a reviewed decision.",
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "protobufjs",
+      "sharp",
+      "unrs-resolver"
+    ]
+  },
   "dependencies": {
     "@google/genai": "^2.21.0",
     "@google/generative-ai": "^0.24.1",
