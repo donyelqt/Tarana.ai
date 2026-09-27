@@ -7,108 +7,12 @@ import { supabaseAdmin } from '../data/supabaseAdmin';
 import { ReferralService } from '../referral-system/ReferralService';
 import { logger } from '@/lib/observability/logger';
 import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
-
-interface LoginAttemptEntry {
-  attempts: number;
-  firstAttemptAt: number;
-  blockedUntil?: number;
-}
-
-const LOGIN_RATE_LIMIT_CONFIG = {
-  windowMs: 15 * 60 * 1000, // 15 minutes window
-  maxAttempts: 5, // 5 attempts per window
-  blockDurationMs: 30 * 60 * 1000, // Block for 30 minutes
-};
-
-const loginAttempts = new Map<string, LoginAttemptEntry>();
-
-function extractHeader(headers: any, name: string): string | undefined {
-  if (!headers) return undefined;
-
-  if (typeof headers.get === 'function') {
-    return headers.get(name) ?? headers.get(name.toLowerCase());
-  }
-
-  const lowerName = name.toLowerCase();
-  const value = headers[name] ?? headers[lowerName];
-
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-
-  return value;
-}
-
-function getClientIdentifier(email?: string | null, req?: any): string {
-  const normalizedEmail = email?.toLowerCase() || 'unknown_email';
-
-  const ipHeader = extractHeader(req?.headers, 'x-forwarded-for');
-  const realIpHeader = extractHeader(req?.headers, 'x-real-ip');
-  const ipFromHeader = ipHeader?.split(',')[0]?.trim() || realIpHeader?.trim();
-  const ip = ipFromHeader || req?.ip || 'unknown_ip';
-
-  return `${normalizedEmail}:${ip}`;
-}
-
-function cleanupLoginEntry(identifier: string, entry: LoginAttemptEntry, now: number) {
-  if (entry.firstAttemptAt + LOGIN_RATE_LIMIT_CONFIG.windowMs < now) {
-    loginAttempts.delete(identifier);
-  }
-}
-
-function getLoginBlockStatus(identifier: string): { blocked: boolean; retryAfter?: number } {
-  const entry = loginAttempts.get(identifier);
-  if (!entry) {
-    return { blocked: false };
-  }
-
-  const now = Date.now();
-
-  // Reset window if enough time passed
-  cleanupLoginEntry(identifier, entry, now);
-  const updatedEntry = loginAttempts.get(identifier);
-  if (!updatedEntry) {
-    return { blocked: false };
-  }
-
-  if (updatedEntry.blockedUntil && updatedEntry.blockedUntil > now) {
-    return {
-      blocked: true,
-      retryAfter: Math.ceil((updatedEntry.blockedUntil - now) / 1000),
-    };
-  }
-
-  return { blocked: false };
-}
-
-function registerFailedLogin(identifier: string): { blocked: boolean; retryAfter?: number } {
-  const now = Date.now();
-  const entry = loginAttempts.get(identifier);
-
-  if (!entry || entry.firstAttemptAt + LOGIN_RATE_LIMIT_CONFIG.windowMs < now) {
-    loginAttempts.set(identifier, {
-      attempts: 1,
-      firstAttemptAt: now,
-    });
-  } else {
-    entry.attempts += 1;
-
-    if (entry.attempts >= LOGIN_RATE_LIMIT_CONFIG.maxAttempts) {
-      entry.blockedUntil = now + LOGIN_RATE_LIMIT_CONFIG.blockDurationMs;
-    }
-
-    loginAttempts.set(identifier, entry);
-  }
-
-  const status = getLoginBlockStatus(identifier);
-  return status;
-}
-
-function resetLoginAttempts(identifier: string) {
-  if (loginAttempts.has(identifier)) {
-    loginAttempts.delete(identifier);
-  }
-}
+import {
+  getClientIdentifier,
+  getLoginBlockStatus,
+  registerFailedLogin,
+  resetLoginAttempts,
+} from './loginThrottle';
 
 // Interface for user data from Supabase (align with your 'users' table structure)
 interface SupabaseUser {
