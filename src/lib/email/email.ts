@@ -7,7 +7,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
   const emailConfig = validateEmailConfig();
   
   if (!transportConfig || !emailConfig) {
-    console.log('Password reset link (SMTP not configured):', resetUrl);
+    // Never log the reset URL: it embeds a live takeover-capable token.
     return true; // Return true for development
   }
 
@@ -88,7 +88,6 @@ The Tarana.ai Team`,
     };
 
     await transporter.sendMail(mailOptions);
-    console.log('Password reset email sent successfully to:', email);
     return true;
   } catch (error) {
     console.error('Error sending password reset email:', error);

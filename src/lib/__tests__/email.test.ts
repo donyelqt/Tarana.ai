@@ -40,7 +40,7 @@ describe('Email Service', () => {
     const testEmail = 'test@example.com';
     const testResetUrl = 'https://tarana.ai/auth/reset-password?token=abc123';
 
-    it('should return true and log URL when SMTP is not configured', async () => {
+    it('returns true without logging the reset URL when SMTP is not configured', async () => {
       // Mock no email configuration
       jest.spyOn(emailConfig, 'getEmailTransportConfig').mockReturnValue(null);
       jest.spyOn(emailConfig, 'validateEmailConfig').mockReturnValue(null);
@@ -48,9 +48,11 @@ describe('Email Service', () => {
       const result = await sendPasswordResetEmail(testEmail, testResetUrl);
 
       expect(result).toBe(true);
-      expect(consoleSpy.log).toHaveBeenCalledWith(
-        'Password reset link (SMTP not configured):',
-        testResetUrl
+      // The reset URL embeds a live takeover-capable token and must never
+      // reach stdout, even in dev.
+      expect(consoleSpy.log).not.toHaveBeenCalledWith(
+        expect.stringContaining('Password reset link'),
+        expect.anything()
       );
       expect(mockCreateTransport).not.toHaveBeenCalled();
     });
@@ -95,9 +97,9 @@ describe('Email Service', () => {
         html: expect.stringContaining(testResetUrl),
         text: expect.stringContaining(testResetUrl),
       });
-      expect(consoleSpy.log).toHaveBeenCalledWith(
-        'Password reset email sent successfully to:',
-        testEmail
+      expect(consoleSpy.log).not.toHaveBeenCalledWith(
+        expect.stringContaining('sent successfully to'),
+        expect.anything()
       );
     });
 
