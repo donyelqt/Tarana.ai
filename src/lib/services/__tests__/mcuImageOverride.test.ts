@@ -45,12 +45,9 @@ describe('Manila Central University image override', () => {
 
     expect(wikiFetch).toHaveBeenCalled();
   });
-  it('never returns a keyed Google photo URL (server key must not leak)', async () => {
+  it('never calls Google Places, even with a key configured', async () => {
     process.env.GOOGLE_PLACES_API_KEY = 'test-places-key';
-    const googleFetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'OK', results: [{ place_id: 'p1', photos: [{ photo_reference: 'ref1' }] }] }),
-    });
+    const googleFetch = jest.fn();
     const wikiFetch = jest.fn().mockResolvedValue({ ok: false, status: 404 });
     const unsplashFetch = jest.fn().mockResolvedValue({ ok: false, status: 404 });
     (global as unknown as { fetch: unknown }).fetch = jest.fn((url: unknown) => {
@@ -63,8 +60,10 @@ describe('Manila Central University image override', () => {
 
     const url = await getAccurateImageForPlace({ title: 'Some Unknown Place XYZ', lat: 14.6, lon: 120.98 });
 
+    // Tier 1 is gone: no billed Places round-trip, and no keyed URL can be
+    // served. The tier chain falls through to Wikimedia/Unsplash/null.
+    expect(googleFetch).not.toHaveBeenCalled();
     expect(url === null || !String(url).includes('test-places-key')).toBe(true);
-    if (url !== null) expect(url).not.toContain('maps.googleapis.com/maps/api/place/photo');
     delete process.env.GOOGLE_PLACES_API_KEY;
   });
 });
