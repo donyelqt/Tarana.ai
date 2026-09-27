@@ -9,16 +9,17 @@ Prior plan: `specs/tarana-gala-eats-security-hardening-plan.md` (IMPLEMENTED, §
 - [x] Slice S1 (#631): register oracle + DB passthrough closed
 - [x] Slice S2 (#632): reset-URL / recipient log leak closed
 - [x] Slice S3 (#633): Eats model-image fallback closed
-- [ ] Slice S4: Places keyed-photo-URL leak (branch `fix/places-keyed-url-leak` exists, EMPTY — no edits yet)
-- [ ] Slice S5: Gala grounding holes (allowlist promotion + duration clamp + desc sanitize)
-- [ ] Slice S6: Prompt/POI delimit + safety settings
-- [ ] Slice S7: PII billing/log redaction (routes + CreditService)
-- [ ] Slice S8: Rate-limit identity/store + public-proxy limits + mutation body caps
-- [ ] Slice S9: Edge/infra (headers, CORS, Cache-Control, request-id, health/metrics)
-- [ ] Slice S10: Refresh/profile/credits/referral correctness
-- [ ] Slice S11: Data retention + deletion + diagnostic narrowing
-- [ ] Slice S12: Supply chain + CI gates + operator guards
-- [ ] Full verify: tsc + focused suites + lint + plan checkboxes ticked
+- [x] Slice S4 (#635): Places keyed-photo-URL leak closed (byte-proxy still open, non-blocking)
+- [x] Slice S5 (#636): Gala grounding holes (allowlist promotion + duration clamp + desc sanitize)
+- [x] Slice S6 (#637): Prompt/POI delimit + safety settings
+- [x] Slice S7 (#638): PII billing/log redaction (routes + CreditService)
+- [x] Slice S8 (#639): Rate-limit identity/store + public-proxy limits + mutation body caps
+- [x] Slice S9 (#640): Edge/infra (headers, CORS, Cache-Control, health/metrics)
+- [x] Slice S10 (#641): Refresh/profile/credits/referral correctness
+- [x] Slice S11 (#642): Account deletion + reset-token retention + diagnostics read-only
+- [x] Slice S12 (#643): Supply chain + CI gates + operator guards
+- [x] Test gap (#644): account-deletion route suite
+- [x] Full verify: tsc + 58 suites / 462 tests + lint 0 errors + lockfile gate + plan checkboxes ticked
 
 ## 0. Threat model (STRIDE, system-wide)
 
@@ -158,10 +159,27 @@ Fix: replicate the generator content-length pre-check (32KB; traffic-analysis pr
 - [x] S2 (#632, `4d09841` → `468569c`): email + forgot-password suites 21/21 green; no-leak contract asserted.
 - [x] S3 (#633, `43e62ff` → `932cc2d`): Eats suite 21/21 green; registry-or-placeholder only.
 - [x] Prior Gala/Eats stack #625–#630 on `main`: tsc clean, 50/50 across 5 suites, eslint clean.
-- [ ] S4–S12: tsc + focused suites + eslint per slice; RED proof per behavior fix; `pnpm audit` re-run after dependency changes.
-- [ ] Browser: applies only to slices touching rendered output (S5 desc sanitize visual no-op; verify card text unchanged in normal path).
+- [x] S4 (#635, `e421387` → `e7639d8`): image suites 7/7; regression test asserts no served URL carries the Places key.
+- [x] S5 (#636, `1bbb249` → `a243921`): RED 3/3 failing pre-fix; 37/37 green with it (grounding, idempotency, refunds, concierge); eslint clean.
+- [x] S6 (#637, `7737817` → `b2e8a6f`): delimiter tests plus existing suites green; eslint 0 errors.
+- [x] S7 (#638, `4b90cf9` → `d1f2379`): 51/51 across Eats, Gala, concierge, coordinator; eslint 0 errors.
+- [x] S8 (#639, `6b1583e` → `536b68c`): 57/57 across proxies, calculate, and mutation suites; eslint 0 errors.
+- [x] S9 (#640, `7203bd9` → `ec48be9`): 33/33 health, metrics, middleware; CI smoke accepts 200 or 503; eslint clean.
+- [x] S10 (#641, `d5d1753` → `acb3485`): 52/52 across refresh, profile, probe, itineraries, referrals; refresh test rewritten to the claim-then-replay contract.
+- [x] S11 (#642, `def6635` → `98b09ff`): 110/110 across 12 suites; eslint clean.
+- [x] S12 (#643, `02fe94b` → `5edad58`): lockfile gate OK, lint exit 0 at `--max-warnings=20` (18 today), bench guard exits 1 on unset and prod URL.
+- [x] Test gap (#644, `6c28fd1` → `dec708b`): account-deletion suite 6/6.
+- [x] Final on `main@dec708b`: tsc clean; 58 suites / 462 tests green; `next lint` exit 0; lockfile hygiene OK.
+- [x] `pnpm audit`: 34 findings with `--prod` (4/10/20), 43 without (5/11/27). Blocking gate stays critical+prod; high is informational. Dependency upgrades out of scope per-slice.
 
-## 6. What is intentionally not touched
+## 6. Known remaining (not regressions, deliberately deferred)
+
+- Places photo byte-proxy (`/api/images/places`): Tier 1 now returns null so no key leaves, but Places photos are unused. Non-blocking.
+- Rate-limit store is still per-instance: an in-memory ceiling remains on serverless. Needs Vercel KV/Upstash (M) — tracked in S8's finding, not shipped.
+- 20–27 high dependency advisories, mostly `tarana-mobile`'s react-navigation/metro chain, not reachable from the web runtime. Triage per advisory before upgrading.
+- RLS posture unchanged: deny-all for anon, service-role bypass + app-level `.eq()` filters in prod. Architectural, not a bug.
+
+## 7. What is intentionally not touched
 
 - Credit ledger internals, refund math, idempotency store schema (covered by money-correctness plans in specs/).
 - Bench bypass removal (load testing needs it; S12 adds controls, preserves capability).
