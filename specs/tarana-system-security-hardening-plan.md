@@ -177,7 +177,7 @@ Fix: replicate the generator content-length pre-check (32KB; traffic-analysis pr
 - Places photo byte-proxy (`/api/images/places`): Tier 1 now returns null so no key leaves, but Places photos are unused. Non-blocking.
 - Rate-limit store is still per-instance: an in-memory ceiling remains on serverless. Needs Vercel KV/Upstash (M) — tracked in S8's finding, not shipped.
 - 20–27 high dependency advisories, mostly `tarana-mobile`'s react-navigation/metro chain, not reachable from the web runtime. Triage per advisory before upgrading.
-- RLS posture unchanged: deny-all for anon, service-role bypass + app-level `.eq()` filters in prod. Architectural, not a bug.
+- Request-id forwarding still unshipped: S9 shipped headers/CORS/cache/health/metrics but left `requestId.ts` returning a bare `next()` and `compose.ts` dropping the id between steps, so middleware and handler ids can still diverge. Log correlation is degraded, not broken; needs `next({request:{headers}})` plus a merge pass in compose (S). Not a security control — tracing quality only.
 
 ## 7. What is intentionally not touched
 
