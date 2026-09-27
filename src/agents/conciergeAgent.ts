@@ -122,7 +122,9 @@ export class ConciergeAgent {
   private extractPreferences(data: ConciergePayload): RequestPreferences {
     const durationValue = data.duration != null ? String(data.duration) : null;
     const durationMatch = durationValue ? durationValue.match(/\d+/) : null;
-    const durationDays = durationMatch ? parseInt(durationMatch[0], 10) : null;
+    // Same allocation guard as the Gala route: durationDays feeds
+    // Array.from({length}) downstream — clamp before it can OOM.
+    const durationDays = durationMatch ? Math.min(Math.max(parseInt(durationMatch[0], 10), 1), 14) : null;
 
     const interests: string[] = Array.isArray(data.interests) ? data.interests : [];
 
