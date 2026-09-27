@@ -117,7 +117,7 @@ export class CreditService {
         dailyLimit: profile.daily_credits,
       };
     } catch (error) {
-      console.error('Error getting credit balance:', error);
+      logger.error('Error getting credit balance', { entryPoint: 'credit-service', ...getSafeErrorMetadata(error) });
       throw new ReferralSystemError(
         'Failed to get credit balance',
         'BALANCE_ERROR',
@@ -146,14 +146,14 @@ export class CreditService {
     const { userId, amount, service, description } = request;
 
     try {
-      console.log(`[CreditService] Starting credit consumption for user ${userId}, amount: ${amount}, service: ${service}`);
-      
+      // No userIds, no RPC internals on stdout: the log store must not
+      // become a per-user activity ledger.
+      logger.debug('Credit consumption started', { entryPoint: 'credit-service', service, amount });
+
       // Ensure user profile exists before consuming credits
       await this.ensureUserProfile(userId);
-      console.log(`[CreditService] User profile check completed for ${userId}`);
 
       // Call the database function to consume credits atomically
-      console.log(`[CreditService] Calling consume_credits RPC function...`);
       const { data, error } = await supabaseAdmin.rpc('consume_credits', {
         p_user_id: userId,
         p_amount: amount,
@@ -162,20 +162,12 @@ export class CreditService {
       });
 
       if (error) {
-        console.error(`[CreditService] RPC Error:`, {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
+        logger.error('[CreditService] RPC Error', { entryPoint: 'credit-service', ...getSafeErrorMetadata(error) });
         throw error;
       }
 
-      console.log(`[CreditService] RPC Response:`, { data });
-
       // Check if consumption was successful
       if (!data) {
-        console.log(`[CreditService] Consumption returned false - insufficient credits`);
         const balance = await this.getCurrentBalance(userId);
         throw new InsufficientCreditsError(
           amount,
@@ -186,7 +178,6 @@ export class CreditService {
 
       // Get updated balance
       const newBalance = await this.getCurrentBalance(userId);
-      console.log(`[CreditService] ✅ Credit consumption successful. New balance:`, newBalance);
 
       return {
         success: true,
@@ -194,17 +185,9 @@ export class CreditService {
       };
     } catch (error: any) {
       if (error instanceof InsufficientCreditsError) {
-        console.log(`[CreditService] Insufficient credits error`, error);
         throw error;
       }
-      console.error('[CreditService] Credit consumption error:', {
-        error: error?.message || error,
-        code: error?.code,
-        details: error?.details,
-        userId,
-        amount,
-        service
-      });
+      logger.error('[CreditService] Credit consumption error', { entryPoint: 'credit-service', ...getSafeErrorMetadata(error) });
       throw new ReferralSystemError(
         `Failed to consume credits: ${error?.message || 'Unknown error'}`,
         'CONSUME_ERROR',
@@ -234,7 +217,7 @@ export class CreditService {
     if (unlimitedIds.has(request.userId)) return true;
 
     if (!supabaseAdmin) {
-      console.warn(`[CreditService] refundCredits skipped: supabaseAdmin not available for ${request.userId}`);
+      logger.warn('[CreditService] refundCredits skipped: database unavailable', { entryPoint: 'credit-service' });
       recordRefund('failed');
       return false;
     }
@@ -242,8 +225,6 @@ export class CreditService {
     const { userId, amount, service, description, idempotencyKey } = request;
 
     try {
-      console.log(`[CreditService] Refunding ${amount} credit(s) for ${userId} (${service})`);
-
       const { data, error } = await supabaseAdmin.rpc('refund_credits', {
         p_user_id: userId,
         p_amount: amount,
@@ -253,7 +234,7 @@ export class CreditService {
       });
 
       if (error) {
-        console.error(`[CreditService] refund_credits RPC failed for ${userId}:`, error);
+        logger.error('[CreditService] refund_credits RPC failed', { entryPoint: 'credit-service', ...getSafeErrorMetadata(error) });
         recordRefund('failed');
         return false;
       }
@@ -262,16 +243,15 @@ export class CreditService {
         // No-op: unknown profile or replayed idempotency key. Warn (not
         // silent) with the key so replays vs missing users stay
         // distinguishable in logs.
-        console.warn(`[CreditService] refund no-op for ${userId} (key ${idempotencyKey})`);
+        logger.warn('[CreditService] refund no-op', { entryPoint: 'credit-service' });
         recordRefund('noop');
         return false;
       }
 
-      console.log(`[CreditService] ✅ Refunded credits for ${userId}`);
       recordRefund('refunded');
       return true;
     } catch (error: any) {
-      console.error(`[CreditService] ❌ Exception during refundCredits for ${userId}:`, error?.message || error);
+      logger.error('[CreditService] Exception during refundCredits', { entryPoint: 'credit-service', ...getSafeErrorMetadata(error) });
       recordRefund('failed');
       return false;
     }
@@ -331,7 +311,7 @@ export class CreditService {
         newBalance,
       };
     } catch (error) {
-      console.error('Error refreshing credits:', error);
+      logger.error('Error refreshing credits', { entryPoint: 'credit-service', ...getSafeErrorMetadata(error) });
       throw new ReferralSystemError(
         'Failed to refresh credits',
         'REFRESH_ERROR',
@@ -372,7 +352,7 @@ export class CreditService {
         createdAt: new Date(tx.created_at),
       }));
     } catch (error) {
-      console.error('Error getting credit history:', error);
+      logger.error('Error getting credit history', { entryPoint: 'credit-service', ...getSafeErrorMetadata(error) });
       throw new ReferralSystemError(
         'Failed to get credit history',
         'HISTORY_ERROR',
@@ -392,7 +372,7 @@ export class CreditService {
       const balance = await this.getCurrentBalance(userId);
       return balance.remainingToday >= requiredAmount;
     } catch (error) {
-      console.error('Error checking credits:', error);
+      logger.error('Error checking credits', { entryPoint: 'credit-service', ...getSafeErrorMetadata(error) });
       return false;
     }
   }
@@ -405,7 +385,7 @@ export class CreditService {
       const balance = await this.getCurrentBalance(userId);
       return balance.remainingToday;
     } catch (error) {
-      console.error('Error getting available credits:', error);
+      logger.error('Error getting available credits', { entryPoint: 'credit-service', ...getSafeErrorMetadata(error) });
       return 0;
     }
   }

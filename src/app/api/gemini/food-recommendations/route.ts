@@ -246,7 +246,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         userId,
         amount: 1,
         service: 'tarana_eats',
-        description: `Food recommendation: ${prompt?.substring(0, 50) || 'Food search'}`,
+        description: 'Food recommendation',
       });
     } catch (creditError) {
       if (creditError instanceof InsufficientCreditsError) {

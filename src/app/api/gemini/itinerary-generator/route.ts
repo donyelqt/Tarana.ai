@@ -79,13 +79,14 @@ export const maxDuration = 60;
 const USE_MULTI_AGENT = isFlagEnabled('USE_MULTI_AGENT');
 const IDEMPOTENCY_ROUTE = '/api/gemini/itinerary-generator';
 
-async function consumeCredit(userId: string, prompt: string) {
-    // Fail-closed: propagate so the caller can refuse to serve output it could not charge for.
+async function consumeCredit(userId: string) {
+    // Billing descriptions persist to credit_transactions and surface via
+    // history: prompt bytes (names, hotels, dates) must never land there.
     await CreditService.consumeCredits({
         userId,
         amount: 1,
         service: "tarana_gala",
-        description: `Generated itinerary: ${prompt?.substring(0, 50) || "Itinerary generation"}`,
+        description: "Generated itinerary",
     });
 }
 
@@ -437,7 +438,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
                 userId,
                 amount: 1,
                 service: 'tarana_gala',
-                description: `Generated itinerary: ${prompt?.substring(0, 50) || 'Itinerary generation'}`,
+                description: 'Generated itinerary',
             });
             charged = true;
         } catch (creditErr: any) {
