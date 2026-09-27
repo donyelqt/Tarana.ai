@@ -140,22 +140,22 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     } catch (userError: unknown) {
-      // Handle specific user creation errors
-      if (userError instanceof Error) {
-        if (userError.message === 'User with this email already exists') {
-          return NextResponse.json(
-            { error: userError.message },
-            { status: 409 } // Conflict status code
-          );
-        }
-        // For other errors thrown by createUserInSupabase
-        return NextResponse.json(
-          { error: userError.message },
-          { status: 400 }
-        );
-      }
-      // If it's not an Error instance, re-throw for the outer catch block to handle as 500
-      throw userError;
+      // Anti-enumeration: duplicate emails answer with the same neutral
+      // outcome as any other creation failure, so unauthenticated callers
+      // cannot sweep for registered addresses via 409-vs-201. Raw DB error
+      // text stays server-side in the structured log below.
+      logger.warn(
+        'Account creation did not complete',
+        {
+          entryPoint: '/api/auth/register',
+          ...getSafeErrorMetadata(userError),
+        },
+        requestId
+      );
+      return NextResponse.json(
+        { error: 'Could not create account with the provided details' },
+        { status: 400 }
+      );
     }
   } catch (error) {
     logger.error(
