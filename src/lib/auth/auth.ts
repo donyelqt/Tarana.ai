@@ -13,6 +13,12 @@ import {
   registerFailedLogin,
   resetLoginAttempts,
 } from './loginThrottle';
+import {
+  PASSWORD_CHANGED_CLAIM,
+  isSessionTokenCurrent,
+  readPasswordChangedAt,
+  resolveTokenUserId,
+} from './sessionValidity';
 
 // Interface for user data from Supabase (align with your 'users' table structure)
 interface SupabaseUser {
@@ -319,6 +325,22 @@ export const authOptions: NextAuthOptions = {
         token.picture = user.image ?? token.picture;
         token.email = user.email ?? token.email;
         token.name = resolvedName ?? token.name;
+
+        // Pin the current credential-change instant onto this session. `iat`
+        // cannot serve this purpose: next-auth re-stamps it on every re-encode
+        // (verified), so it records the last cookie write, not the sign-in.
+        //
+        // The sign-in request performs exactly one read (this one): the
+        // `session` callback never runs on the sign-in route (the callback
+        // route calls `callbacks.jwt` only), so nothing reads twice here.
+        //
+        // Null-out is deliberate: when the read fails, a null stamp on a never
+        // -changed account still compares equal to the live null. For an
+        // account that HAS changed its credential, the next readable refresh
+        // rejects the session — fail-closed in the safe direction, and
+        // self-healing: a fresh sign-in re-stamps from the live value.
+        (token as unknown as Record<string, unknown>)[PASSWORD_CHANGED_CLAIM] =
+          (await readPasswordChangedAt(token.id as string)) ?? null;
       }
 
       if (!token.name && token.email) {
@@ -338,9 +360,64 @@ export const authOptions: NextAuthOptions = {
         token.accessToken = `custom_${token.id}_${Date.now()}`;
       }
 
+      // The credential-change gate is NOT here. Returning null from this
+      // callback only denies a session by accident: the session route still
+      // calls the `session` callback with the ORIGINAL decoded token and
+      // dereferences `session.user.id` from it, so the denial depends on that
+      // dereference throwing (a swallowed TypeError -> JWT_SESSION_ERROR), not
+      // on any documented contract. Verified in
+      // `scripts/prove-session-invalidation.ts`: a null token is returned to
+      // the caller as a live session as soon as the session callback tolerates
+      // it. Enforcement lives in the `session` callback, which decides the
+      // body explicitly.
       return token;
     },
     async session({ session, token }) {
+      // Reject a session whose credential stamp no longer matches the account.
+      // Every authorization path in the app resolves identity through
+      // `getServerSession`, so returning a user-less session here signs the
+      // holder out everywhere at once — web page, API handler, and the mobile
+      // synthetic cookie — while the JWT itself stays intact (no DB write, no
+      // clock dependence).
+      //
+      // Checked in `session` rather than in `jwt` because next-auth ignores a
+      // null `jwt` return on the session route; it only honours the session
+      // callback's body. See the note in `jwt`.
+      // Cost, stated plainly: one indexed `users` SELECT per session
+      // resolution (server-side, via the `getServerSession` call sites; edge
+      // middleware stays a pure decode with no DB import). The sign-in route
+      // reads only the single stamp above. No cache by design — a cached value
+      // re-opens the window this gate exists to close, and the unreadable read
+      // already fails open, so a slow database degrades auth gracefully instead
+      // of signing users out.
+      const sessionUserId = resolveTokenUserId(token as unknown as Record<string, unknown>);
+      if (sessionUserId) {
+        const currentChangedAt = await readPasswordChangedAt(sessionUserId);
+        const stillValid = isSessionTokenCurrent(
+          {
+            id: sessionUserId,
+            pwdChangedAt:
+              ((token as unknown as Record<string, unknown>)[PASSWORD_CHANGED_CLAIM] as
+                | string
+                | null
+                | undefined) ?? null,
+          },
+          currentChangedAt
+        );
+        if (!stillValid) {
+          logger.warn('Session rejected: token predates the password change', {
+            entryPoint: 'auth',
+          });
+          // An empty object is the only shape that makes next-auth treat the
+          // session as absent: `getServerSession` returns null (not a body
+          // with `expires` only, which the client would still report as
+          // authenticated), and the client's `getSession` maps a key-less
+          // body to null -> `status: 'unauthenticated'`. The declared return
+          // type cannot express "no session" (it requires `user`/`expires`),
+          // so the cast is confined to this one statement.
+          return {} as unknown as typeof session;
+        }
+      }
       if (session.user) {
         session.user.id = token.id as string;
         session.user.image = (token.picture as string) ?? session.user.image;

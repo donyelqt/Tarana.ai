@@ -36,9 +36,18 @@ jest.mock('@/lib/auth/mobileToken', () => ({
   MOBILE_TOKEN_MAX_AGE_SECONDS: 900,
 }));
 
+jest.mock('@/lib/auth/sessionValidity', () => ({
+  PASSWORD_CHANGED_CLAIM: 'pwdChangedAt',
+  readPasswordChangedAt: jest.fn(),
+  isSessionTokenCurrent: jest.fn(),
+}));
+
 const mockedGetToken = getToken as unknown as jest.Mock;
 const mockedRateLimit = rateLimiter.checkRateLimit as unknown as jest.Mock;
 const mockedEncode = encodeMobileToken as unknown as jest.Mock;
+const { readPasswordChangedAt, isSessionTokenCurrent } = jest.requireMock(
+  '@/lib/auth/sessionValidity'
+) as { readPasswordChangedAt: jest.Mock; isSessionTokenCurrent: jest.Mock };
 
 function makeRequest(headers: Record<string, string> = {}): NextRequest {
   const url = new URL('http://localhost/api/auth/mobile-token', 'http://localhost');
@@ -50,6 +59,8 @@ describe('POST /api/auth/mobile-token', () => {
     jest.clearAllMocks();
     process.env.NEXTAUTH_SECRET = 'test-secret';
     mockedRateLimit.mockReturnValue({ allowed: true, remaining: 4, retryAfter: 60 });
+    readPasswordChangedAt.mockResolvedValue(null);
+    isSessionTokenCurrent.mockReturnValue(true);
   });
 
   it('returns 429 when rate limited', async () => {
@@ -109,7 +120,18 @@ describe('POST /api/auth/mobile-token', () => {
       email: 'u@example.com',
       tosAccepted: true,
       mobile: true,
+      pwdChangedAt: null,
     });
+  });
+
+  it('refuses to issue a token from a session that predates a password change', async () => {
+    mockedGetToken.mockResolvedValue({ sub: 'user-1', id: 'user-1', email: 'u@example.com', tosAccepted: true });
+    isSessionTokenCurrent.mockReturnValue(false);
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(401);
+    expect(mockedEncode).not.toHaveBeenCalled();
   });
 
   it('returns 500 when encoding fails', async () => {

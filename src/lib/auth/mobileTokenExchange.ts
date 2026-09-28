@@ -19,6 +19,11 @@ import {
   MobileTokenPayload,
   MOBILE_TOKEN_MAX_AGE_SECONDS,
 } from '@/lib/auth/mobileToken';
+import {
+  PASSWORD_CHANGED_CLAIM,
+  isSessionTokenCurrent,
+  readPasswordChangedAt,
+} from '@/lib/auth/sessionValidity';
 import { logger } from '@/lib/observability/logger';
 import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 import { getRequestId } from '@/middleware/requestId';
@@ -131,12 +136,49 @@ export async function runMobileTokenExchange({
     };
   }
 
+  // `getToken` only verifies signature and expiry, so it will happily hand
+  // back a session the `jwt` callback would have discarded. Re-run the same
+  // credential-change check here, or a reset would still mint a fresh 15-minute
+  // bearer token from the very session it just invalidated.
+  const currentChangedAt = await readPasswordChangedAt(userId);
+  if (
+    !isSessionTokenCurrent(
+      {
+        id: userId,
+        pwdChangedAt:
+          ((token as unknown as Record<string, unknown>)[PASSWORD_CHANGED_CLAIM] as
+            | string
+            | null
+            | undefined) ?? null,
+      },
+      currentChangedAt
+    )
+  ) {
+    logger.warn('Mobile token exchange rejected: session predates the password change', {
+      entryPoint: 'auth/mobile-token',
+    });
+    return {
+      response: NextResponse.json(
+        { error: 'Session is no longer valid. Please sign in again.' },
+        { status: 401 }
+      ),
+    };
+  }
+  // `undefined` means the lookup failed; the token is still minted, but it
+  // must carry "never changed" rather than the unreadable value, so a later
+  // successful read does not reject a token that was issued in good faith.
+  const lastPasswordChangeAt = currentChangedAt ?? null;
+
   const payload: MobileTokenPayload = {
     sub: (token.sub as string) ?? userId,
     id: userId,
     email,
     tosAccepted: true,
     mobile: true,
+    // Carry the web session's credential stamp so the mobile token inherits
+    // the invalidation the web session is subject to; a token minted from a
+    // pre-reset session would otherwise stay valid for its full 15 minutes.
+    pwdChangedAt: lastPasswordChangeAt,
   };
 
   let mobileToken: string;

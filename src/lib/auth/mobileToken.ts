@@ -21,6 +21,15 @@ export interface MobileTokenPayload {
   email: string;
   tosAccepted: boolean;
   mobile: true;
+  /**
+   * Credential-change instant that was current when the web session this token
+   * was exchanged from was established. Carried so the session callback can
+   * reject a mobile token whose source session predates a password change —
+   * without it, a reset would invalidate the web session but leave the derived
+   * bearer token working until its (15-minute) expiry. `null` = the account
+   * had never changed its credential when the token was minted.
+   */
+  pwdChangedAt: string | null;
 }
 
 export function isMobileTokenPayload(value: unknown): value is MobileTokenPayload {
@@ -31,7 +40,8 @@ export function isMobileTokenPayload(value: unknown): value is MobileTokenPayloa
     typeof payload.id === 'string' &&
     typeof payload.email === 'string' &&
     payload.tosAccepted === true &&
-    payload.mobile === true
+    payload.mobile === true &&
+    (payload.pwdChangedAt === null || typeof payload.pwdChangedAt === 'string')
   );
 }
 
