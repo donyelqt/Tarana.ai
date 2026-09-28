@@ -22,8 +22,16 @@ test('dashboard rejects unauthenticated access', async ({ page }) => {
 
 test('health endpoint answers without depending on upstream state', async ({ request }) => {
   const response = await request.get('/api/health');
-  expect(response.status()).toBe(200);
+  // Both statuses mean "the endpoint answered", which is what this test is
+  // about. 200 is every dependency healthy; 503 is the deliberate degraded
+  // signal so a load balancer fails over instead of pinning traffic to a sick
+  // instance (see the contract note in src/app/api/health/route.ts, pinned by
+  // src/app/api/health/__tests__/route.test.ts). The CI stub env points
+  // Supabase at http://localhost:54321 with no instance, so 503 is the
+  // expected healthy-run outcome there. The sibling health smoke in ci.yml
+  // already accepts `200 || 503`; this assertion had drifted from that.
+  expect([200, 503]).toContain(response.status());
   const body = (await response.json()) as { status?: unknown; checks?: unknown };
-  expect(body.status).toBeDefined();
+  expect(body.status).toMatch(/^(ok|degraded)$/);
   expect(body.checks).toBeDefined();
 });
