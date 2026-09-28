@@ -22,47 +22,21 @@ import { join } from 'node:path';
 const DIR = 'supabase/migrations';
 const NAME = /^\d{14}_[a-z0-9][a-z0-9_-]*\.sql$/;
 
-/**
- * File-level allowances. Every entry here is a known, evidenced exception, not a
- * convenience: the check still runs on it, and the gate still fails on any new
- * violation of the same rule.
- *
- * `xxxxxx_create_saved_meals.sql` cannot be renamed. Its version string is a key
- * in supabase_migrations.schema_migrations, and 20260919000000_saved_meals_rls_
- * remediation.sql records that this file's policies were NEVER applied while a
- * hand-applied FIX_SAVED_MEALS_RLS_FINAL.sql was (deleted in PR #482 with no
- * remediation). Renaming would mint a new pending migration that replays
- * `create table` plus a drop/create of all four policies against a live,
- * populated table. That is a database change, and it needs a DB session and a
- * rollback plan — not a rename in a lint pass.
- */
-const ALLOWLIST = new Map([
-  [
-    'xxxxxx_create_saved_meals.sql',
-    'placeholder version, deliberately not renamed — see check-migration-hygiene.mjs',
-  ],
-]);
-
 const files = readdirSync(DIR)
   .filter((f) => f.endsWith('.sql'))
   .sort();
 
 const failures = [];
-const allowed = [];
 const seen = new Map();
 
 for (const file of files) {
   const path = join(DIR, file);
 
   if (!NAME.test(file)) {
-    if (ALLOWLIST.has(file)) {
-      allowed.push({ file, why: ALLOWLIST.get(file) });
-    } else {
-      failures.push(
+          failures.push(
         `${file}\n    does not match <14-digit version>_<slug>.sql — it will sort by its literal name, ` +
           `not by when the change happened, and supabase db push will treat it as never-applied work.`
       );
-    }
     continue;
   }
 
@@ -90,7 +64,3 @@ if (failures.length) {
 }
 
 console.log(`Migration hygiene OK: ${files.length} files, all versioned and uniquely ordered.`);
-if (allowed.length) {
-  console.log(`\n${allowed.length} known exception(s), grandfathered:`);
-  for (const { file, why } of allowed) console.log(`  - ${file}: ${why}`);
-}
