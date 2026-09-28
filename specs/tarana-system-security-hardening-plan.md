@@ -140,6 +140,33 @@ Fix: replicate the generator content-length pre-check (32KB; traffic-analysis pr
 - Hygiene: redact `bench/baseline.json:10` Gemini key prefix `BXDB` (XS); ignore competing lockfiles in `.gitignore` (XS); `check-lockfile-integrity.mjs:32` already gates in CI only.
 - Clean (explicit): `.env.example` placeholders only; no `.env` committed; `prove-*`/k6 secrets env-only fail-closed; single `pnpm-lock.yaml` v9.0 frozen installs; dev-only `glob`/`uuid` advisories triaged out (non-reachable/non-CVE). `pnpm audit --prod`: 34 findings (4 low / 10 moderate / 20 high) at last run — dependency upgrades out of scope per-slice, triage by reachability.
 
+### S13 HIGH — session invalidation on credential change (shipped with this plan edit)
+
+- [x] Fixed + proven
+Stateless 30-day JWTs (`auth.ts` `session.maxAge`) outlived a password reset: `resetPassword` changed `hashed_password` and cleared the reset token but nothing else, so an attacker holding a session kept access for up to 30 days after the victim performed the one action meant to evict them. OWASP treats session invalidation on credential change as required.
+Fix: `users.password_changed_at` (migration `20260928000000`), written in the same statement as the credential (`passwordService.ts`), pinned onto the session at sign-in, and re-compared on every `getServerSession`.
+- Enforcement point is the `session` callback, NOT `jwt`. Verified end to end (`scripts/prove-session-invalidation.ts`): a null `jwt` return denies only by accident — the session route passes the ORIGINAL token to the `session` callback and dereferences `session.user.id` from it, so the denial depends on that dereference throwing (a swallowed TypeError -> JWT_SESSION_ERROR), not on any documented contract. `session` returning `{}` denies deliberately (`getServerSession` -> `null`; client `getSession` -> `status: 'unauthenticated'`).
+- Mobile path closed twice: the exchanged bearer token now carries the source session's stamp, AND the exchange refuses to mint from a session it would have invalidated (`getToken` verifies only signature + expiry, so it hands back a stale session that the callbacks would reject).
+- Token identity resolves `id` ONLY (`resolveTokenUserId`); a token without it is unscoped and returns without a read — plus `withAuth` already 401s it on the missing `user.id`.
+- Fails open on a read error (missing row/DB blip) so it cannot become a site-wide sign-out; `undefined` means "cannot evaluate".
+- Verification: RED proven (3 cases fail against pre-fix `auth.ts`); 18 sessionValidity cases + 4 exchange+route cases added; full suite **107/108 suites, 854 passed / 6 skipped** (baseline at HEAD: 106/107, 832 passed / 6 skipped); `tsc` clean; `next lint` exit 0 (18/20 warnings); `npx tsx scripts/prove-session-invalidation.ts` exit 0 — 8 library+identity assertions hold.
+
+### S14 HIGH — verified Google email required for OAuth account linking (shipped with this plan edit)
+
+- [x] Fixed + tested
+Google sign-in matched the `users` row on the provider-supplied email and linked the OAuth identity to whatever row it found — including an existing password-holder row — without ever reading `email_verified`. Any Google identity asserting the victim's address (Workspace-administered domain, or any account asserting that string) took over the victim row with no password. No adapter, no `OAuthAccountNotLinked` gate, no `allowDangerousEmailAccountLinking` — the stock mapper drops `email_verified`, so only the raw userinfo `profile` carries it.
+Fix: the `signIn` callback reads `email_verified` off the raw provider profile (never the mapped `user`) and returns `false` for anything but `=== true`, BEFORE any row lookup, update, or insert. First-time Google users with unverified mail are refused too — fail closed, with `AccessDenied`, pending a verified address. An email-less Google identity is refused outright.
+- JWT branch (`auth.ts:269+`) needs no second gate: with no adapter, next-auth's callback route invokes `callbacks.jwt` only after `callbacks.signIn` returns truthy, so a refused handshake never reaches row read or token mint. Verified in next-auth 4.24.15 `core/routes/callback.js:77-125`.
+- Verification: RED proven (4 signIn link cases fail pre-fix); 5 signIn cases added (unverified-over-row, unverified-no-row, verified-link, verified-insert, missing-email); focused 15 suites 156/156 green; `tsc` clean; `next lint` exit 0 at ceiling 20.
+
+### Adversarial review reconciled (S13 + S14)
+
+- Per-request `users` SELECT on the session path: ACKNOWLEDGED, documented in `auth.ts` (`session` callback) as one indexed read per resolution with no cache by design (a cache re-opens the exact window the gate closes) and fail-open on the unreadable read. Edge middleware stays decode-only; no DB import.
+- Proof harness mirrors callbacks instead of importing `authOptions`: ACKNOWLEDGED, rescoped in the harness header — it proves the LIBRARY premise (`jwt`-null is ignored; key-less body is "no session"), while the app's real `session` callback is pinned in `src/lib/auth/__tests__/sessionValidity.test.ts` ("session() credential-change gate", 9 cases incl. a foreign-`sub` shape that must skip the gate with zero reads) and the real exchange in `mobileTokenExchange.test.ts`.
+- Vacuous mobile self-assertion in step 6: FIXED by deletion — the step now says only what it can prove from hand-built JWEs (the stamp round-trips through the same encode/getToken path the middleware uses). The real validator-shape guard (`isMobileTokenPayload` must reject a stamp-less pre-deploy shape and admit the two stamped shapes) lives where it can fail the build: `mobileToken.test.ts` (3 cases: absent → rejected, null + ISO → admitted).
+- Read-failure-at-sign-in collapses to null: DOCUMENTED as a one-bounce edge (requires a DB error in the sign-in window on an account that has reset); recovery is a fresh sign-in.
+- Pre-deploy mobile tokens hard-rejected for ≤15 min: ACCEPTED — fail-closed on the unverifiable stamp, self-healing on re-exchange, consistent with the reset semantics.
+
 ## 3. Dependency audit (verified 2026-09-28)
 
 `pnpm audit --audit-level=high --prod`: 34 findings (4 low / 10 moderate / 20 high), paths dominated by `tarana-mobile` react-navigation/metro chains (`image-size@1.2.1` GHSA-w3rx-r6r6-pgpr, 178 paths). Triage per skill decision tree: map each high to Gala/Eats/runtime reachability before fixing; do not bulk-fix. CI gates `critical --prod` (see S12 to tighten).
@@ -158,7 +185,6 @@ Fix: replicate the generator content-length pre-check (32KB; traffic-analysis pr
 10. S12: Supply chain + CI + operator guards.
 
 ## 5. Verification record
-
 - [x] `npx tsc --noEmit` clean at S1–S3 commits (exit 0).
 - [x] S1 (#631, `3960f77` → `c01d503`): register suite 8/8 green; duplicate + server-error tests assert neutral 400.
 - [x] S2 (#632, `4d09841` → `468569c`): email + forgot-password suites 21/21 green; no-leak contract asserted.
@@ -173,6 +199,7 @@ Fix: replicate the generator content-length pre-check (32KB; traffic-analysis pr
 - [x] S10 (#641, `d5d1753` → `acb3485`): 52/52 across refresh, profile, probe, itineraries, referrals; refresh test rewritten to the claim-then-replay contract.
 - [x] S11 (#642, `def6635` → `98b09ff`): 110/110 across 12 suites; eslint clean.
 - [x] S12 (#643, `02fe94b` → `5edad58`): lockfile gate OK, lint exit 0 at `--max-warnings=20` (18 today), bench guard exits 1 on unset and prod URL.
+- [x] S13 (branch `fix/session-invalidation-on-password-change`, uncommitted at plan-edit time): RED proven against pre-fix `auth.ts` (3/17 fail); +26 net-new cases — sessionValidity 18→19 new (+id-less skip), mobileToken +2 (stamp-shape), exchange+route 17→21 (+4), auth signIn 5 new (verified-email gate); `tsc` clean; `next lint` exit 0 (18/20 warnings); full suite **107/108 suites, 861 passed / 6 skipped** (baseline at HEAD: 106/107, 832 passed / 6 skipped); `npx tsx scripts/prove-session-invalidation.ts` exit 0 — 8 library assertions hold (the pre-deploy/current validator triple moved to `mobileToken.test.ts` where it can fail the build).
 - [x] Test gap (#644, `6c28fd1` → `dec708b`): account-deletion suite 6/6.
 - [x] Final on `main@dec708b`: tsc clean; 58 suites / 462 tests green; `next lint` exit 0; lockfile hygiene OK.
 
