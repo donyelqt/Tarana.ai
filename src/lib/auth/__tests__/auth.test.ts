@@ -23,10 +23,13 @@ function mockUsersSelectSequence(
   for (const impl of singleImpls) {
     mockSingle.mockResolvedValueOnce(impl);
   }
+  const mockUpdateEq = jest.fn().mockResolvedValue({ error: null });
+  const mockUpdate = jest.fn(() => ({ eq: mockUpdateEq }));
+  const mockInsert = jest.fn().mockResolvedValue({ error: null });
   const mockEq = jest.fn(() => ({ single: mockSingle }));
   const mockSelect = jest.fn(() => ({ eq: mockEq }));
-  mockedFrom.mockReturnValue({ select: mockSelect });
-  return { mockSingle, mockEq, mockSelect };
+  mockedFrom.mockReturnValue({ select: mockSelect, update: mockUpdate, insert: mockInsert });
+  return { mockSingle, mockEq, mockSelect, mockUpdate, mockInsert };
 }
 
 function googleJwtArgs(email = 'Someone@Example.com') {
@@ -43,6 +46,23 @@ function googleJwtArgs(email = 'Someone@Example.com') {
       type: 'oauth',
       providerAccountId: 'google-sub-123',
     },
+  } as any;
+}
+
+function googleSignInArgs(email = 'Someone@Example.com', emailVerified = true) {
+  return {
+    user: {
+      id: 'google-sub-123',
+      name: 'Google User',
+      email,
+      image: 'https://example.com/avatar.png',
+    },
+    account: {
+      provider: 'google',
+      type: 'oauth',
+      providerAccountId: 'google-sub-123',
+    },
+    profile: { email_verified: emailVerified },
   } as any;
 }
 
@@ -121,5 +141,102 @@ describe('auth jwt() Google branch — no id-less sessions', () => {
     expect(token.name).toBe('Retry User');
     // NULL tos_accepted_at (first-time OAuth) stays falsy for the consent gate.
     expect((token as any).tosAccepted).toBe(false);
+  });
+});
+
+describe('auth signIn() Google branch — verified email gates account linking', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'test-google-id';
+    process.env.GOOGLE_CLIENT_SECRET =
+      process.env.GOOGLE_CLIENT_SECRET || 'test-google-secret';
+  });
+
+  const signIn = () =>
+    authOptions.callbacks?.signIn as unknown as (args: any) => Promise<boolean>;
+
+  test('Google identity with no usable email -> denied, no lookup', async () => {
+    // `email_verified` cannot redeem a missing address: there is nothing to
+    // match, link, or provision.
+    const { mockSingle } = mockUsersSelectSequence([]);
+
+    const allowed = await signIn()({
+      user: { id: 'google-sub-123', name: 'No Email', email: undefined },
+      account: { provider: 'google', type: 'oauth', providerAccountId: 'google-sub-123' },
+      profile: { email_verified: true },
+    });
+
+    expect(allowed).toBe(false);
+    expect(mockSingle).toHaveBeenCalledTimes(0);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Google sign-in refused: missing email',
+      expect.objectContaining({ entryPoint: 'auth' })
+    );
+  });
+
+  test('unverified Google email over an existing password row -> denied, no write', async () => {
+    // No email_verified anywhere in the Google handshake below the raw
+    // userinfo profile, so the check must live in this callback and run
+    // BEFORE any row lookup, insert, or update. A Google identity can assert
+    // any address; linking without proof of ownership hands an attacker the
+    // account the row belongs to.
+    const { mockSingle } = mockUsersSelectSequence([
+      { data: { id: 'uuid-victim', image: null }, error: null },
+    ]);
+
+    const allowed = await signIn()(googleSignInArgs('victim@example.com', false));
+
+    expect(allowed).toBe(false);
+    // Refused before touching the database: zero reads, zero writes.
+    expect(mockSingle).toHaveBeenCalledTimes(0);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Google sign-in refused: email not verified',
+      expect.objectContaining({ entryPoint: 'auth' })
+    );
+    const serialized = JSON.stringify(mockLogger.error.mock.calls);
+    expect(serialized).not.toContain('victim@example.com');
+  });
+
+  test('unverified Google email with no row -> denied, no insert', async () => {
+    const { mockSingle } = mockUsersSelectSequence([
+      { data: null, error: { code: 'PGRST116' } },
+    ]);
+
+    const allowed = await signIn()(googleSignInArgs('new@example.com', false));
+
+    expect(allowed).toBe(false);
+    // Refused before touching the database: nothing created for an unproven
+    // address.
+    expect(mockSingle).toHaveBeenCalledTimes(0);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Google sign-in refused: email not verified',
+      expect.objectContaining({ entryPoint: 'auth' })
+    );
+  });
+
+  test('verified Google email over an existing row -> proceeds (links)', async () => {
+    const { mockSingle, mockUpdate, mockInsert } = mockUsersSelectSequence([
+      { data: { id: 'uuid-member', image: null }, error: null },
+    ]);
+
+    const allowed = await signIn()(googleSignInArgs('member@example.com', true));
+
+    expect(allowed).toBe(true);
+    expect(mockSingle).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  test('verified Google email with no row -> inserts a new row', async () => {
+    const { mockSingle, mockUpdate, mockInsert } = mockUsersSelectSequence([
+      { data: null, error: { code: 'PGRST116' } },
+    ]);
+
+    const allowed = await signIn()(googleSignInArgs('fresh@example.com', true));
+
+    expect(allowed).toBe(true);
+    expect(mockSingle).toHaveBeenCalledTimes(1);
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 });
