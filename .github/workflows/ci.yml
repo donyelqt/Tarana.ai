@@ -161,6 +161,15 @@ jobs:
           psql -v ON_ERROR_STOP=1 -tAc \
             "select count(*) from information_schema.columns where table_schema='public' and table_name='users' and column_name='password_changed_at'" \
             | grep -qx 1 || { echo "users.password_changed_at missing after replay"; exit 1; }
+          # RLS role scoping is a security posture, not formatting. A policy that
+          # omits `TO` applies to PUBLIC -- every role, present and future -- where
+          # production scopes it to `authenticated` only. Production is the source
+          # of truth here: read live, all four itineraries policies are
+          # `to authenticated`. This assertion exists so the two cannot drift
+          # again without CI saying so.
+          psql -v ON_ERROR_STOP=1 -tAc \
+            "select count(*) from pg_policies where schemaname='public' and tablename='itineraries' and roles = '{authenticated}'" \
+            | grep -qx 4 || { echo "expected all 4 itineraries policies scoped to {authenticated}; check for a missing TO clause"; exit 1; }
           echo "schema assertions passed"
 
   e2e-smoke:
