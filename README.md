@@ -285,13 +285,27 @@ src/
    ```
 
 4. **Set up Supabase database**
+
+   > **`supabase db reset` does not work yet.** The migration chain cannot replay
+   > from an empty database: `public.users` and `public.itineraries` exist in
+   > production but are not created by any file in `supabase/migrations/` — they
+   > were built by hand through the dashboard SQL editor. Applying the chain from
+   > scratch fails on the very first migration with
+   > `ERROR: relation "itineraries" does not exist`.
+   >
+   > Capture them once with
+   > `pg_dump <connection-string> --schema-only -t public.users -t public.itineraries`
+   > and commit the result as `supabase/migrations/20231231000000_baseline_*.sql`
+   > (it must sort *before* `20240101000000_create_rls_policies.sql`). Until then,
+   > point `NEXT_PUBLIC_SUPABASE_URL` at an existing project.
+
    ```bash
    # Run database migrations
    npx supabase db reset
-   
+
     # Index sample activities (optional)
-    pnpm run index-embeddings
-    ```
+   pnpm run index-embeddings
+   ```
 
 5. **Run the development server**
     ```bash
