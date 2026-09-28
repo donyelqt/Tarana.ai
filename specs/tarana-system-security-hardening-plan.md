@@ -1,6 +1,6 @@
 # Tarana System Security Hardening Plan (beyond Gala/Eats features)
 
-Status: AUDITED and SHIPPED on `main`. Slices #631–#633, #635–#643, #647–#651, #653–#655 MERGED (one branch/PR each), plus the #657 e2e assertion fix. (#652/#656 were docs-only revisions of this file.) §2 dispositions reflect verified shipping state. Last reconciled against `main@8c81e2a`.
+Status: AUDITED and SHIPPED on `main`. Slices #631–#633, #635–#643, #647–#651, #653–#655 MERGED (one branch/PR each), plus the #657 e2e assertion fix and the #659 migration-integrity gate. (#652/#656 were docs-only revisions of this file.) §2 dispositions reflect verified shipping state. Last reconciled against `main@eaa0db0`.
 Scope: whole system — auth/session, API input + money paths, data/RLS/privacy, edge/infra (headers/CORS/rate-limit/cache), supply chain/secrets/CI, LLM trust boundary. Gala/Eats feature slices #625-#630 are prior work, not re-planned except where this audit found holes in them.
 Prior plan: `specs/tarana-gala-eats-security-hardening-plan.md` (IMPLEMENTED, §§1-6).
 
@@ -28,6 +28,7 @@ Prior plan: `specs/tarana-gala-eats-security-hardening-plan.md` (IMPLEMENTED, §
 - [x] S14 (#654): verified Google email required for OAuth linking
 - [x] S13 (#655): session invalidation on credential change
 - [x] E2E (#657): health smoke stopped asserting 200 (job had been red on `main` since #651)
+- [x] S16 (#659): migration chain made replayable; live-vs-repo schema drift closed; replay is now a required CI gate
 - [x] Full verify on `main@8c81e2a`: tsc clean + **107/108 suites, 861 passed, 6 skipped, 867 total** + `next lint` exit 0 at `--max-warnings=20` (18 today) + lockfile gate. Measured, not carried forward.
 
 ## 0. Threat model (STRIDE, system-wide)
@@ -40,7 +41,11 @@ Abuse cases: account enumeration/takeover, unbilled/double-billed generations, q
 
 1. `withAuth`/`withAuthEmail` on every mutation except the four public proxies (audited `src/app/api`, 37 handlers). No unauthenticated mutation found.
 2. Gala/Eats charge-first holds with no regression (`itinerary-generator/route.ts:373-375` claim, `:431-439` consume; `food-recommendations/route.ts:181-183` 413, `:245-263` consume, `:534-538` refund; zero-result refund #628).
-3. RLS deny-all for anon holds: no `USING(true)` in any migration; zero-policy tables deny by default (`20260924000000` places/embeddings/users; `20260923010000` idempotency_keys); credit/embedding RPCs revoked from PUBLIC+anon (`20260918000000`).
+3. RLS deny-all for anon holds — **but not for the reason this line previously gave. CORRECTED 2026-09-29 against live.**
+   - Genuinely zero-policy (RLS enabled, 0 policies each): `places`, `itinerary_embeddings` (`20260924000000`), `idempotency_keys` (`20260923010000`).
+   - **`users` is NOT zero-policy.** Live carries **six** policies that appear in no migration: `Select own user`, `select_own_users` (`to public`), `Select own user record`, `Insert user record`, `Update own user record`, `Delete own user record` (`to authenticated`). Two are `with check (true)`.
+   - The anon conclusion still holds, for a different reason: **the app mints no Supabase JWT.** No `auth.admin`, `auth.signUp` or `.auth.createUser` appears anywhere in `src/`; `createUserInSupabase` (`auth.ts:35`) inserts into `public.users` through the service-role client. So `auth.uid()` is always null — the two `public` SELECT policies match 0 rows and the `authenticated` policies are unreachable. **Inert today; latent the moment Supabase Auth is enabled.** See S16.
+   - Credit/embedding RPCs revoked from PUBLIC+anon (`20260918000000`): unchanged, re-verified.
 4. Per-user isolation app-enforced via `.eq(user_id)` / `.eq(id)` on itinerary/meal/profile/credit-history paths; cross-user reads map to indistinguishable 404.
 5. Cron Bearer (`cron/evaluate-refreshes/route.ts:35-52`, sha256 + `timingSafeEqual`) and reindex `x-admin-token` (`reindex/route.ts:17-34`) correct; debug/dev routes 404 in production.
 6. Mobile token bridge: 15-min TTL (`mobileToken.ts:16`), rate-limited exchange (`mobileTokenExchange.ts:54-58`), bearer-rejected at exchange (`:81-90`), no refresh chain (`:103-112`), ToS gate (`:114-121`).
@@ -170,6 +175,40 @@ HIGH: the credentials provider's lockout derived its identity from the FIRST `x-
 - Residual, documented NOT closed: a caller rotating genuine IPs (a botnet) still gets a fresh bucket per address. Closing that needs an email-scoped or global counter, which trades into account-lockout denial of service — a product decision, not taken here. The generic `/api/` middleware bucket still caps per-IP volume on `/api/auth/*` as a second layer.
 - Numbering note: merged BEFORE #654/#655 by PR number, but numbered S15 because S13/S14 were already assigned. Merge order is #653 → #654 → #655; slice numbering is not merge order.
 
+### S16 HIGH — migration chain never replayed; live schema had drifted from the repo (#659, merged as `eaa0db0`)
+
+- [x] Fixed + verified
+HIGH: nothing in the repository had ever applied `supabase/migrations/` to an empty database. `verify` runs Jest against mocks; `e2e-smoke` boots with `SUPABASE_URL=http://localhost:54321` and nothing listening. The chain could therefore say anything, and it did:
+
+```
+[1] 20240101000000_create_rls_policies.sql
+psql:...:3: ERROR: relation "itineraries" does not exist
+```
+
+`public.users` and `public.itineraries` are referenced throughout the chain and created by **none** of its files. The reason is now established from live:
+
+```
+repo migration files : 20
+recorded in prod     : 20
+SHARED VERSIONS      : 0        <- zero overlap
+```
+
+Production's `supabase_migrations.schema_migrations` holds an entirely different set, every entry stamped `20250615…` by the SQL Editor in one sitting (`update_users_table_schema`, `rls_for_users_table`, `apply_rls_policies_20240101`, `add_missing_rls_policies_itineraries`, …). **The repo's `20240101000000`-style chain has never been applied to production.** The live schema was built by hand — the same process that produced the deleted root-level `FIX_ITINERARIES_RLS.sql`, `FIX_SAVED_MEALS_RLS.sql`, `FIX_SAVED_MEALS_RLS_FINAL.sql`.
+
+Fix (one PR, #659):
+- `20231231000000_baseline_users_and_itineraries.sql` — both tables captured from the live catalogue (columns, constraints, indexes, grants, policies), versioned to sort before `20240101000000`.
+- `20240726000000_add_image_to_users.sql` — `ADD COLUMN image` was the one of 13 without `IF NOT EXISTS`; against the new baseline it aborts the chain.
+- `xxxxxx_create_saved_meals.sql` → `20250615000000_create_saved_meals.sql`. It sorted last, so `20260919000000_saved_meals_rls_remediation.sql` (which does `ALTER TABLE public.saved_meals` at its line 42) ran before the table existed. The rename is safe on evidence: nothing `saved_meals`-related is recorded in `schema_migrations`.
+- New `migration-replay` CI job; now a **required** check alongside `verify` and `e2e-smoke`.
+
+**The six `users` policies are a latent HIGH, not merely an inconsistency.** `Insert user record` is `for insert to authenticated with check (true)` — any authenticated role could insert an arbitrary row, including a chosen `id` and `hashed_password`. `Update own user record` is `using (auth.uid() = id) with check (true)`. Both are unreachable today because no Supabase JWT is ever issued, but they are precisely the policies that make enabling Supabase Auth dangerous. Recommended disposition: **drop all six** — they serve no purpose while `public.users` is a NextAuth table and Supabase Auth is unused. NOT done here: that is a live RLS change needing the same evidence trail as S13, not a side effect of a CI PR.
+
+Also found: `20260924000000`'s header says users "gets no policy either" and is meant to be service-role only, but its body only runs `ENABLE ROW LEVEL SECURITY` — it never drops these six. Two files disagree about the intended posture.
+
+Verification: 20/20 files replayed, `schema assertions passed` (run `109141017168`); hygiene gate exercised three ways (valid / rogue filename / duplicate version); baseline validated against live by read-only introspection. No critical-path cost — the job has no `needs:` and runs in 39s.
+
+
+
 ### Adversarial review reconciled (S13 + S14)
 
 - Per-request `users` SELECT on the session path: ACKNOWLEDGED, documented in `auth.ts` (`session` callback) as one indexed read per resolution with no cache by design (a cache re-opens the exact window the gate closes) and fail-open on the unreadable read. Edge middleware stays decode-only; no DB import.
@@ -198,6 +237,7 @@ HIGH: the credentials provider's lockout derived its identity from the FIRST `x-
 12. S14: verified Google email required for OAuth linking (#654).
 13. S15: login throttle keyed on a non-spoofable address (#653).
 14. E2E (#657): health smoke assertion corrected — CI gate, not a product slice.
+15. S16 (#659): migration chain made replayable + `migration-replay` required gate.
 
 ## 5. Verification record
 - [x] `npx tsc --noEmit` clean at S1–S3 commits (exit 0).
@@ -219,6 +259,7 @@ HIGH: the credentials provider's lockout derived its identity from the FIRST `x-
 - [x] S15 (#653, branch `fix/login-throttle-identity`, merged as `05394e1`): throttle identity moved off the client-settable first `x-forwarded-for` entry to `${email}:${ip}` preferring `x-real-ip`; derivation extracted to `loginThrottle.ts` with a reset seam. `loginThrottle.test.ts` + `sessionValidity.test.ts` = **25/25** green; `tsc` clean; `next lint` exit 0.
 - [x] E2E (#657, branch `fix/e2e-smoke-health-contract`, merged as `8c81e2a`): `tests/e2e/smoke.spec.ts:25` asserted `status === 200` while the test was named "answers without depending on upstream state" — it failed in CI by construction, since the job boots with `NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321` and nothing listens. Test-only change, no product code. Now accepts 200 or 503 and requires the `ok`/`degraded` envelope, so the 503 failover signal is preserved rather than weakened. CI `e2e-smoke` went 10 passed / 1 failed → **11 passed**, with `[health] supabase check failed` still in the log (the degraded state still occurs; the assertion now matches the contract). Local proof drove the real route handler through both states: 200/`ok` and 503/`degraded` both accepted, while the removed `toBe(200)` would have failed the second.
 - [x] Test gap (#644, `6c28fd1` → `dec708b`): account-deletion suite 6/6.
+- [x] S16 (#659, branch `ci/migration-replay-gate`, merged as `eaa0db0`): replay green — `replayed 20 migration(s)`, `schema assertions passed`. The failure sequence is recorded because each red run exposed the next obstacle: run 1 was the job's own port mapping (`54322:54322` while Postgres listens on 5432 inside the image — masked because `pg_isready` runs container-side), run 2 `itineraries` missing at file 1, run 3 `saved_meals` missing at file 14. Hygiene gate mutation-tested after its allowlist was deleted: rogue filename → exit 1, duplicate version → exit 1, clean tree → exit 0. `migration-replay` was promoted to a required check only once genuinely green.
 - [x] Final on `main@dec708b` (superseded by the `main@8c81e2a` row at the end of §5): tsc clean; 58 suites / 462 tests green; `next lint` exit 0; lockfile hygiene OK.
 
 ### Follow-up slices (T1–T5, from the §2 leftovers)
@@ -230,7 +271,9 @@ HIGH: the credentials provider's lockout derived its identity from the FIRST `x-
 - [x] T5 (#651, `c514b53` → `94cf97f`): request-id forwarding across the middleware chain, including the replace-all override semantics that were silently dropping `injectMobileCookie`'s synthetic cookie. Removed the unreferenced `middleware/config.ts` and the README's non-existent `logger.ts`. New suite models the wire contract; 2 of 4 cases are a RED proof. 78/78.
 - [x] Final on `main@94cf97f` (final for T1–T5 only; superseded by the `main@8c81e2a` row at the end of §5): tsc clean; **88 suites / 711 passed, 5 skipped, 716 total**; `next lint` exit 0 at `--max-warnings=20`; lockfile hygiene OK; `onlyBuiltDependencies` present with the four verified names.
 - [x] `pnpm audit`: 34 findings with `--prod` (4/10/20), 43 without (5/11/27). Blocking gate stays critical+prod; high is informational. Dependency upgrades out of scope per-slice.
-- [x] **Measured on `main@8c81e2a` (current):** `npx tsc --noEmit` exit 0; `npx jest` **107 passed / 1 skipped of 108 suites, 861 passed / 6 skipped, 867 total, 14.5s**; `next lint` exit 0 at `--max-warnings=20` (18 warnings); lockfile hygiene OK. CI on `8c81e2a`: `verify` pass 3m9s, `e2e-smoke` pass 2m7s, Vercel pass.
+- [x] **Measured on `main@8c81e2a`:** `npx tsc --noEmit` exit 0; `npx jest` **107 passed / 1 skipped of 108 suites, 861 passed / 6 skipped, 867 total, 14.5s**; `next lint` exit 0 at `--max-warnings=20` (18 warnings); lockfile hygiene OK. CI on `8c81e2a`: `verify` pass 3m9s, `e2e-smoke` pass 2m7s, Vercel pass.
+- [x] **Required checks on `main` after #659** (`main@eaa0db0`): `verify` + `e2e-smoke` + `migration-replay`, branch protection applied 2026-09-29 with `enforce_admins=false` so an owner can never be locked out. All three green: `migration-replay` pass 39s, `e2e-smoke` pass 1m42s, `verify` pass 3m24s.
+- [x] **Migrations on `main`:** 20 files, zero unversioned. `node scripts/check-migration-hygiene.mjs` → exit 0.
 
 ## 6. Known remaining (not regressions, deliberately deferred)
 
@@ -240,6 +283,9 @@ HIGH: the credentials provider's lockout derived its identity from the FIRST `x-
 - 20–27 high dependency advisories, mostly `tarana-mobile`'s react-navigation/metro chain, not reachable from the web runtime. Triage per advisory before upgrading.
 - Request-id forwarding: SHIPPED (#651). `requestId.ts` now forwards the id via `next({request:{headers}})` and `compose.ts` accumulates the forwarded union across the chain. The plan's earlier note that this was merely "tracing quality" understated it: Next's `x-middleware-override-headers` contract is replace-all, so any middleware returning a bare `next()` deleted every request header an earlier middleware had forwarded — including `injectMobileCookie`'s synthetic session cookie (mobile auth). That made it a correctness fix, not just log correlation.
 - Install-scripts allowlist: SHIPPED (#648). `pnpm.onlyBuiltDependencies` names the four packages that genuinely build (esbuild, protobufjs, sharp, unrs-resolver), so every other pre/install/postinstall hook is refused at CI/dev/Vercel install time. An earlier revision of this plan claimed pnpm 9.5 does not read that field; that was wrong — verified empirically in an isolated probe (a non-allowlisted name makes pnpm report the script as ignored) and by a frozen install with zero ignored scripts.
+- Migration chain vs live history (S16): the repo's `20240101000000`-style chain and production's `20250615…` record still differ — 0 shared versions. The two now describe the same *shape*, which is what dev/CI/staging need, but production's own history remains the hand-applied one and `supabase db push` against production would be a live decision. Reconciling means either recording the repo chain as applied or accepting the divergence permanently.
+- Six `users` RLS policies (defined as a latent HIGH in S16): live-only, unreachable today because no Supabase JWT is issued, recommended for removal before Supabase Auth is ever enabled. Needs a decision, not a CI PR.
+- Four `itineraries` policies land as `{public}` on replay where live has `{authenticated}`, because `20240101000000_create_rls_policies.sql` omits the `TO` clause. The deleted `FIX_ITINERARIES_RLS.sql` used `TO authenticated`, so the migration is likely wrong. One-line fix, deferred as a live RLS-semantics change.
 
 ## 7. What is intentionally not touched
 
