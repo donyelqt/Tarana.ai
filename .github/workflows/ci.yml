@@ -96,6 +96,66 @@ jobs:
           kill $SERVER_PID
           exit 1
 
+  # Nothing in CI ever applied the migration chain to a fresh database, so a
+  # migration that only breaks on replay — bad ordering, an undeclared
+  # extension, non-idempotent DDL — was discoverable only by running it against
+  # production. This replays every file in lexicographic order onto an empty
+  # supabase/postgres instance and fails on the first error.
+  #
+  # The image is pinned to an exact tag for the same reason the actions are
+  # pinned by SHA in this workflow: a floating tag would change the database
+  # under the test without changing the commit.
+  migration-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      db:
+        image: supabase/postgres:15.14.1.178
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 54322:54322
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Replay every migration onto an empty database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          export PGHOST=localhost PGPORT=54322 PGUSER=postgres PGDATABASE=postgres
+          total=0
+          for f in $(ls supabase/migrations/*.sql | sort); do
+            total=$((total + 1))
+            echo "::group::[$total] $f"
+            psql -v ON_ERROR_STOP=1 -q -f "$f"
+            echo "::endgroup::"
+          done
+          echo "replayed $total migration(s)"
+
+      - name: Assert the replay produced the expected schema
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          export PGHOST=localhost PGPORT=54322 PGUSER=postgres PGDATABASE=postgres
+          # A migration that silently does nothing still exits 0, so assert the
+          # two objects this chain is known to produce: the base table, and the
+          # column added by the newest migration.
+          psql -v ON_ERROR_STOP=1 -tAc \
+            "select count(*) from information_schema.tables where table_schema='public' and table_name in ('users','saved_meals')" \
+            | grep -qx 2 || { echo "expected users + saved_meals to exist after replay"; exit 1; }
+          psql -v ON_ERROR_STOP=1 -tAc \
+            "select count(*) from information_schema.columns where table_schema='public' and table_name='users' and column_name='password_changed_at'" \
+            | grep -qx 1 || { echo "users.password_changed_at missing after replay"; exit 1; }
+          echo "schema assertions passed"
+
   e2e-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 10
