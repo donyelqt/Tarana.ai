@@ -114,8 +114,12 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: postgres
+        # Postgres listens on 5432 *inside* this image; 54322 is only the host
+        # port `supabase start` chooses to publish it on. Mapping 54322:54322
+        # pointed the host port at nothing while the container-side health
+        # check still passed, so the first run failed at connect, not at SQL.
         ports:
-          - 54322:54322
+          - 54322:5432
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
