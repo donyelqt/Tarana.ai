@@ -1,4 +1,8 @@
-ALTER TABLE public.users ADD COLUMN image TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS image TEXT;
+-- IF NOT EXISTS so the chain can replay. Every other ADD COLUMN in this
+-- directory has it; this one did not, so replaying onto a database that
+-- already has `image` failed with a duplicate-column error and stopped the
+-- whole chain. Seen in CI: migration-replay run 36469361627.
 
 -- Assuming RLS is enabled on your users table, you might need to adjust policies.
 -- However, since the auth.ts logic uses supabaseAdmin, it should bypass RLS.
