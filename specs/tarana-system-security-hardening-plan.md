@@ -1,6 +1,6 @@
 # Tarana System Security Hardening Plan (beyond Gala/Eats features)
 
-Status: AUDITED and SHIPPED on `main`. Slices #631–#633, #635–#643, #647–#651 MERGED (one branch/PR each). §2 dispositions reflect verified shipping state.
+Status: AUDITED and SHIPPED on `main`. Slices #631–#633, #635–#643, #647–#651, #653–#655 MERGED (one branch/PR each), plus the #657 e2e assertion fix. (#652/#656 were docs-only revisions of this file.) §2 dispositions reflect verified shipping state. Last reconciled against `main@8c81e2a`.
 Scope: whole system — auth/session, API input + money paths, data/RLS/privacy, edge/infra (headers/CORS/rate-limit/cache), supply chain/secrets/CI, LLM trust boundary. Gala/Eats feature slices #625-#630 are prior work, not re-planned except where this audit found holes in them.
 Prior plan: `specs/tarana-gala-eats-security-hardening-plan.md` (IMPLEMENTED, §§1-6).
 
@@ -24,7 +24,11 @@ Prior plan: `specs/tarana-gala-eats-security-hardening-plan.md` (IMPLEMENTED, §
 - [x] T3 (#649): credit-history clamp, referral normalization, idempotent itinerary DELETE
 - [x] T4 (#650): probe/diagnostic schema-hint and user-id leaks closed
 - [x] T5 (#651): request-id forwarded across the middleware chain; dead config removed
-- [x] Full verify on `main`: tsc + 88 suites / 711 passed (5 skipped) + lint 0 errors + lockfile gate + plan checkboxes ticked
+- [x] S15 (#653): login throttle keyed on a non-spoofable address
+- [x] S14 (#654): verified Google email required for OAuth linking
+- [x] S13 (#655): session invalidation on credential change
+- [x] E2E (#657): health smoke stopped asserting 200 (job had been red on `main` since #651)
+- [x] Full verify on `main@8c81e2a`: tsc clean + **107/108 suites, 861 passed, 6 skipped, 867 total** + `next lint` exit 0 at `--max-warnings=20` (18 today) + lockfile gate. Measured, not carried forward.
 
 ## 0. Threat model (STRIDE, system-wide)
 
@@ -140,7 +144,7 @@ Fix: replicate the generator content-length pre-check (32KB; traffic-analysis pr
 - Hygiene: redact `bench/baseline.json:10` Gemini key prefix `BXDB` (XS); ignore competing lockfiles in `.gitignore` (XS); `check-lockfile-integrity.mjs:32` already gates in CI only.
 - Clean (explicit): `.env.example` placeholders only; no `.env` committed; `prove-*`/k6 secrets env-only fail-closed; single `pnpm-lock.yaml` v9.0 frozen installs; dev-only `glob`/`uuid` advisories triaged out (non-reachable/non-CVE). `pnpm audit --prod`: 34 findings (4 low / 10 moderate / 20 high) at last run — dependency upgrades out of scope per-slice, triage by reachability.
 
-### S13 HIGH — session invalidation on credential change (shipped with this plan edit)
+### S13 HIGH — session invalidation on credential change (#655, merged as `cfe3dab`)
 
 - [x] Fixed + proven
 Stateless 30-day JWTs (`auth.ts` `session.maxAge`) outlived a password reset: `resetPassword` changed `hashed_password` and cleared the reset token but nothing else, so an attacker holding a session kept access for up to 30 days after the victim performed the one action meant to evict them. OWASP treats session invalidation on credential change as required.
@@ -149,15 +153,22 @@ Fix: `users.password_changed_at` (migration `20260928000000`), written in the sa
 - Mobile path closed twice: the exchanged bearer token now carries the source session's stamp, AND the exchange refuses to mint from a session it would have invalidated (`getToken` verifies only signature + expiry, so it hands back a stale session that the callbacks would reject).
 - Token identity resolves `id` ONLY (`resolveTokenUserId`); a token without it is unscoped and returns without a read — plus `withAuth` already 401s it on the missing `user.id`.
 - Fails open on a read error (missing row/DB blip) so it cannot become a site-wide sign-out; `undefined` means "cannot evaluate".
-- Verification: RED proven (3 cases fail against pre-fix `auth.ts`); 18 sessionValidity cases + 4 exchange+route cases added; full suite **107/108 suites, 854 passed / 6 skipped** (baseline at HEAD: 106/107, 832 passed / 6 skipped); `tsc` clean; `next lint` exit 0 (18/20 warnings); `npx tsx scripts/prove-session-invalidation.ts` exit 0 — 8 library+identity assertions hold.
+- Verification: RED proven (3 cases fail against pre-fix `auth.ts`); sessionValidity + exchange/route cases added; full suite on `main@8c81e2a` **107/108 suites, 861 passed / 6 skipped, 867 total**; `tsc` clean; `next lint` exit 0 (18/20 warnings); `npx tsx scripts/prove-session-invalidation.ts` exit 0 — 8 library+identity assertions hold.
 
-### S14 HIGH — verified Google email required for OAuth account linking (shipped with this plan edit)
+### S14 HIGH — verified Google email required for OAuth account linking (#654, merged as `11bc3f2`)
 
 - [x] Fixed + tested
 Google sign-in matched the `users` row on the provider-supplied email and linked the OAuth identity to whatever row it found — including an existing password-holder row — without ever reading `email_verified`. Any Google identity asserting the victim's address (Workspace-administered domain, or any account asserting that string) took over the victim row with no password. No adapter, no `OAuthAccountNotLinked` gate, no `allowDangerousEmailAccountLinking` — the stock mapper drops `email_verified`, so only the raw userinfo `profile` carries it.
 Fix: the `signIn` callback reads `email_verified` off the raw provider profile (never the mapped `user`) and returns `false` for anything but `=== true`, BEFORE any row lookup, update, or insert. First-time Google users with unverified mail are refused too — fail closed, with `AccessDenied`, pending a verified address. An email-less Google identity is refused outright.
 - JWT branch (`auth.ts:269+`) needs no second gate: with no adapter, next-auth's callback route invokes `callbacks.jwt` only after `callbacks.signIn` returns truthy, so a refused handshake never reaches row read or token mint. Verified in next-auth 4.24.15 `core/routes/callback.js:77-125`.
-- Verification: RED proven (4 signIn link cases fail pre-fix); 5 signIn cases added (unverified-over-row, unverified-no-row, verified-link, verified-insert, missing-email); focused 15 suites 156/156 green; `tsc` clean; `next lint` exit 0 at ceiling 20.
+- Verification: RED proven (4 signIn link cases fail pre-fix); 5 signIn cases added (unverified-over-row, unverified-no-row, verified-link, verified-insert, missing-email); `tsc` clean; `next lint` exit 0 at ceiling 20. The focused-run count previously recorded here (156/156) contradicted PR #654 (134 passed) and is withdrawn as unreproducible; the verifiable figure is the measured full suite on `main@8c81e2a` above.
+
+### S15 HIGH — login throttle keyed on a client-settable address (#653, merged as `05394e1`)
+
+- [x] Fixed + tested
+HIGH: the credentials provider's lockout derived its identity from the FIRST `x-forwarded-for` entry, which is caller-supplied. Rotating that header minted a fresh bucket per attempt, so the 5-attempt / 30-minute lockout never fired and password guessing ran effectively unthrottled against a known email. Identity is now `${email}:${ip}` (`loginThrottle.ts:78-79`), where the IP prefers the platform-set `x-real-ip` and falls back to the LAST `x-forwarded-for` hop (the one appended nearest the origin); leading entries are never trusted. The derivation and the lockout window were extracted out of `auth.ts` into `loginThrottle.ts` so both are directly testable — the state is process-local and needed a reset seam, otherwise assertions depend on test order.
+- Residual, documented NOT closed: a caller rotating genuine IPs (a botnet) still gets a fresh bucket per address. Closing that needs an email-scoped or global counter, which trades into account-lockout denial of service — a product decision, not taken here. The generic `/api/` middleware bucket still caps per-IP volume on `/api/auth/*` as a second layer.
+- Numbering note: merged BEFORE #654/#655 by PR number, but numbered S15 because S13/S14 were already assigned. Merge order is #653 → #654 → #655; slice numbering is not merge order.
 
 ### Adversarial review reconciled (S13 + S14)
 
@@ -183,6 +194,10 @@ Fix: the `signIn` callback reads `email_verified` off the raw provider profile (
 8. S10: Refresh/profile/credits/referral correctness.
 9. S11: Retention/deletion/diagnostics.
 10. S12: Supply chain + CI + operator guards.
+11. S13: session invalidation on credential change (#655).
+12. S14: verified Google email required for OAuth linking (#654).
+13. S15: login throttle keyed on a non-spoofable address (#653).
+14. E2E (#657): health smoke assertion corrected — CI gate, not a product slice.
 
 ## 5. Verification record
 - [x] `npx tsc --noEmit` clean at S1–S3 commits (exit 0).
@@ -195,13 +210,16 @@ Fix: the `signIn` callback reads `email_verified` off the raw provider profile (
 - [x] S6 (#637, `7737817` → `b2e8a6f`): delimiter tests plus existing suites green; eslint 0 errors.
 - [x] S7 (#638, `4b90cf9` → `d1f2379`): 51/51 across Eats, Gala, concierge, coordinator; eslint 0 errors.
 - [x] S8 (#639, `6b1583e` → `536b68c`): 57/57 across proxies, calculate, and mutation suites; eslint 0 errors.
-- [x] S9 (#640, `7203bd9` → `ec48be9`): 33/33 health, metrics, middleware; CI smoke accepts 200 or 503; eslint clean.
+- [x] S9 (#640, `7203bd9` → `ec48be9`): 33/33 health, metrics, middleware; eslint clean. NOTE: this line previously read "CI smoke accepts 200 or 503", which described `ci.yml`'s inline health smoke only — it did not mean the Playwright smoke passed. That Playwright assertion (`expect 200`) was in fact failing on `main` from #651 until #657; see the #657 row.
 - [x] S10 (#641, `d5d1753` → `acb3485`): 52/52 across refresh, profile, probe, itineraries, referrals; refresh test rewritten to the claim-then-replay contract.
 - [x] S11 (#642, `def6635` → `98b09ff`): 110/110 across 12 suites; eslint clean.
 - [x] S12 (#643, `02fe94b` → `5edad58`): lockfile gate OK, lint exit 0 at `--max-warnings=20` (18 today), bench guard exits 1 on unset and prod URL.
-- [x] S13 (branch `fix/session-invalidation-on-password-change`, uncommitted at plan-edit time): RED proven against pre-fix `auth.ts` (3/17 fail); +26 net-new cases — sessionValidity 18→19 new (+id-less skip), mobileToken +2 (stamp-shape), exchange+route 17→21 (+4), auth signIn 5 new (verified-email gate); `tsc` clean; `next lint` exit 0 (18/20 warnings); full suite **107/108 suites, 861 passed / 6 skipped** (baseline at HEAD: 106/107, 832 passed / 6 skipped); `npx tsx scripts/prove-session-invalidation.ts` exit 0 — 8 library assertions hold (the pre-deploy/current validator triple moved to `mobileToken.test.ts` where it can fail the build).
+- [x] S13 (#655, branch `fix/password-reset-session-invalidation-v2`, merged as `cfe3dab`): RED proven against pre-fix `auth.ts` (3/17 fail); sessionValidity + mobileToken stamp-shape + exchange/route cases added; `tsc` clean; `next lint` exit 0 (18/20 warnings); `npx tsx scripts/prove-session-invalidation.ts` exit 0 — 8 library assertions hold (the pre-deploy/current validator triple moved to `mobileToken.test.ts` where it can fail the build). Measured on `main@8c81e2a`: **107/108 suites, 861 passed / 6 skipped, 867 total**. Two earlier counts recorded for this slice (854 in §2, 856 in PR #655) were never run against the merged commit and are withdrawn.
+- [x] S14 (#654, branch `fix/verified-google-email-linking`, merged as `11bc3f2`): RED proven (4 signIn link cases fail pre-fix); 5 signIn cases added; `tsc` clean; `next lint` exit 0 at ceiling 20; CI `verify` green on all 16 steps. See §5 final line for the measured full suite.
+- [x] S15 (#653, branch `fix/login-throttle-identity`, merged as `05394e1`): throttle identity moved off the client-settable first `x-forwarded-for` entry to `${email}:${ip}` preferring `x-real-ip`; derivation extracted to `loginThrottle.ts` with a reset seam. `loginThrottle.test.ts` + `sessionValidity.test.ts` = **25/25** green; `tsc` clean; `next lint` exit 0.
+- [x] E2E (#657, branch `fix/e2e-smoke-health-contract`, merged as `8c81e2a`): `tests/e2e/smoke.spec.ts:25` asserted `status === 200` while the test was named "answers without depending on upstream state" — it failed in CI by construction, since the job boots with `NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321` and nothing listens. Test-only change, no product code. Now accepts 200 or 503 and requires the `ok`/`degraded` envelope, so the 503 failover signal is preserved rather than weakened. CI `e2e-smoke` went 10 passed / 1 failed → **11 passed**, with `[health] supabase check failed` still in the log (the degraded state still occurs; the assertion now matches the contract). Local proof drove the real route handler through both states: 200/`ok` and 503/`degraded` both accepted, while the removed `toBe(200)` would have failed the second.
 - [x] Test gap (#644, `6c28fd1` → `dec708b`): account-deletion suite 6/6.
-- [x] Final on `main@dec708b`: tsc clean; 58 suites / 462 tests green; `next lint` exit 0; lockfile hygiene OK.
+- [x] Final on `main@dec708b` (superseded by the `main@8c81e2a` row at the end of §5): tsc clean; 58 suites / 462 tests green; `next lint` exit 0; lockfile hygiene OK.
 
 ### Follow-up slices (T1–T5, from the §2 leftovers)
 
@@ -210,13 +228,15 @@ Fix: the `signIn` callback reads `email_verified` off the raw provider profile (
 - [x] T3 (#649, `18c11d1` → `c5da5e8`): credit-history limit clamp (NaN and negatives), register referral-code normalization (RED proof: test fails pre-fix), idempotent itinerary DELETE with 4 new tests. 49/49 saved-itineraries, 9/9 register.
 - [x] T4 (#650, `730e291` → `d0ba5dd`): `ProbeError` drops Postgres `details`/`hint`, both probe queries select explicit columns, diagnostics no longer echoes `userId` and the probe no longer logs it. Leak test is a RED proof. 81/81 credits suites.
 - [x] T5 (#651, `c514b53` → `94cf97f`): request-id forwarding across the middleware chain, including the replace-all override semantics that were silently dropping `injectMobileCookie`'s synthetic cookie. Removed the unreferenced `middleware/config.ts` and the README's non-existent `logger.ts`. New suite models the wire contract; 2 of 4 cases are a RED proof. 78/78.
-- [x] Final on `main@94cf97f`: tsc clean; **88 suites / 711 passed, 5 skipped, 716 total**; `next lint` exit 0 at `--max-warnings=20`; lockfile hygiene OK; `onlyBuiltDependencies` present with the four verified names.
+- [x] Final on `main@94cf97f` (final for T1–T5 only; superseded by the `main@8c81e2a` row at the end of §5): tsc clean; **88 suites / 711 passed, 5 skipped, 716 total**; `next lint` exit 0 at `--max-warnings=20`; lockfile hygiene OK; `onlyBuiltDependencies` present with the four verified names.
 - [x] `pnpm audit`: 34 findings with `--prod` (4/10/20), 43 without (5/11/27). Blocking gate stays critical+prod; high is informational. Dependency upgrades out of scope per-slice.
+- [x] **Measured on `main@8c81e2a` (current):** `npx tsc --noEmit` exit 0; `npx jest` **107 passed / 1 skipped of 108 suites, 861 passed / 6 skipped, 867 total, 14.5s**; `next lint` exit 0 at `--max-warnings=20` (18 warnings); lockfile hygiene OK. CI on `8c81e2a`: `verify` pass 3m9s, `e2e-smoke` pass 2m7s, Vercel pass.
 
 ## 6. Known remaining (not regressions, deliberately deferred)
 
 - Places photo byte-proxy (`/api/images/places`): Tier 1 was removed outright (#647), so no billed Places call is made and no key can leave. Restoring Places *photos* needs a server-side byte-proxy that streams the image and never exposes the keyed URL. Non-blocking; Tier 2 (Wikimedia) and 2b (Unsplash) cover the chain.
 - Rate-limit store is still per-instance: an in-memory ceiling remains on serverless. Needs Vercel KV/Upstash (M) — tracked in S8's finding, not shipped.
+- Login-throttle botnet residual: SHIPPED as far as it goes (#653 removed the client-settable IP, so header-rotation no longer defeats the lockout). What remains is a caller rotating *genuine* IPs, which still earns a fresh bucket per address. Closing it needs an email-scoped or global counter, which converts brute-force protection into an account-lockout denial-of-service lever — a product decision (lockout policy, admin unlock path) rather than a code fix, so it is deliberately not taken here. Second layer today is the generic `/api/` middleware bucket capping per-IP volume on `/api/auth/*`.
 - 20–27 high dependency advisories, mostly `tarana-mobile`'s react-navigation/metro chain, not reachable from the web runtime. Triage per advisory before upgrading.
 - Request-id forwarding: SHIPPED (#651). `requestId.ts` now forwards the id via `next({request:{headers}})` and `compose.ts` accumulates the forwarded union across the chain. The plan's earlier note that this was merely "tracing quality" understated it: Next's `x-middleware-override-headers` contract is replace-all, so any middleware returning a bare `next()` deleted every request header an earlier middleware had forwarded — including `injectMobileCookie`'s synthetic session cookie (mobile auth). That made it a correctness fix, not just log correlation.
 - Install-scripts allowlist: SHIPPED (#648). `pnpm.onlyBuiltDependencies` names the four packages that genuinely build (esbuild, protobufjs, sharp, unrs-resolver), so every other pre/install/postinstall hook is refused at CI/dev/Vercel install time. An earlier revision of this plan claimed pnpm 9.5 does not read that field; that was wrong — verified empirically in an isolated probe (a non-allowlisted name makes pnpm report the script as ignored) and by a frozen install with zero ignored scripts.
