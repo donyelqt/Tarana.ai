@@ -25,11 +25,8 @@
 --   20240101000000_create_rls_policies.sql creates policies with the same four
 --   names and has no `DROP POLICY IF EXISTS` ahead of them, so creating them
 --   here would make that migration fail with "policy already exists" and the
---   chain still would not replay. That migration owns those policies.
---
---   The consequence is recorded, not hidden: in a replay those four policies
---   end up with roles = {public} rather than live's {authenticated}, because
---   the migration omits the TO clause. See the note at the end of this file.
+--   chain still would not replay. That migration owns those policies, and it
+--   now carries the same `TO authenticated` scoping live has.
 -- ============================================================================
 
 
@@ -164,20 +161,30 @@ grant all on public.itineraries to anon, authenticated, service_role;
 
 
 -- ============================================================================
--- KNOWN DIVERGENCE, left visible on purpose
+-- DIVERGENCE CLOSED 2026-09-29
 --
--- Replaying this chain will NOT reproduce live exactly, in one respect:
+-- This file previously ended with a KNOWN DIVERGENCE note recording that a
+-- replay produced the four itineraries policies as `{public}` while live had
+-- them at `{authenticated}`, because 20240101000000_create_rls_policies.sql
+-- omitted the TO clause.
 --
---   20240101000000_create_rls_policies.sql creates the four itineraries
---   policies without a TO clause, so they end up owned by PUBLIC. Live has
---   them at TO authenticated.
+-- That migration now carries `to authenticated` on all four, and the replay
+-- gate asserts the result:
 --
--- Adding `to authenticated` to that migration would close the gap and is almost
--- certainly the correct fix — the deleted FIX_ITINERARIES_RLS.sql used
--- `TO authenticated`. It is not done here because this file's job is to make
--- the chain replay, and that edit belongs in the migration it corrects.
+--   select count(*) from pg_policies
+--   where schemaname='public' and tablename='itineraries'
+--     and roles = '{authenticated}'        -- must be 4
 --
--- Likewise, 20260924000000 would look like it drops the six users policies
--- above. It does not — it only enables RLS. Reconciling the two is a follow-up
--- that needs a decision about whether users should keep any policies at all.
+-- so the two cannot drift apart again without CI failing. See the
+-- "Assert the replay produced the expected schema" step in ci.yml.
+--
+-- Direction, stated because it was misread three times: the MIGRATION was
+-- edited to match a database that was already correct. The baseline was not
+-- changed and production was never touched.
+--
+-- STILL OPEN, and genuinely so: 20260924000000 would look like it drops the
+-- six users policies above and does not -- it only enables RLS. Reconciling
+-- those two files needs a decision about whether `users` should carry any
+-- policies at all, given the app mints no Supabase JWT and they filter every
+-- row either way. Documentation-only; no action implied.
 -- ============================================================================
