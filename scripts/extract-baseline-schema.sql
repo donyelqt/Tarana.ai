@@ -41,7 +41,7 @@ cols as (
 cons as (
   select t.relname as table_name,
          con.conname as item,
-         con.contype as kind,
+         con.contype::text as con_kind,   -- "char" -> text, so || is unambiguous
          pg_get_constraintdef(con.oid) as definition
   from tbl t
   join pg_constraint con on con.conrelid = t.oid
@@ -73,7 +73,10 @@ select '2_CONSTRAINT',
        table_name,
        0,
        item,
-       kind || '  ' || definition
+       -- contype is Postgres's internal "char" type, not text. Without the cast,
+       -- `"char" || unknown` is ambiguous and Postgres raises
+       -- 42725 operator is not unique. Seen live in the Supabase SQL Editor.
+       con_kind || '  ' || definition
 from cons
 
 union all
