@@ -194,8 +194,25 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days default
   },
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "google" && !user.email) {
+        // No address to match, link, or provision: deny before any lookup.
+        logger.error('Google sign-in refused: missing email', { entryPoint: 'auth' });
+        return false;
+      }
       if (account?.provider === "google" && user.email) {
+        // The row match below is by email alone, so an unverified address
+        // would hand an attacker the victim's row (account takeover): the
+        // Google userinfo profile asserts `email_verified`, and only a
+        // verified address may link to an existing row OR create a new one.
+        // Read it from the raw provider profile (`profile`, the userinfo
+        // response), not from the mapped `user` (the stock mapper drops it).
+        const emailVerified =
+          (profile as { email_verified?: unknown } | null | undefined)?.email_verified === true;
+        if (!emailVerified) {
+          logger.error('Google sign-in refused: email not verified', { entryPoint: 'auth' });
+          return false;
+        }
         try {
           const { data: dbUser, error: fetchError } = await supabaseAdmin
             .from('users')
