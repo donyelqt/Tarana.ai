@@ -16,7 +16,7 @@
  * in well under a second, so it can fail a push long before the replay job needs
  * to spend a container on the problem.
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const DIR = 'supabase/migrations';
@@ -47,12 +47,8 @@ for (const file of files) {
     seen.set(version, file);
   }
 
-  if (statSync(path).size === 0) {
-    failures.push(`${file}\n    is empty.`);
-  }
-
   if (!readFileSync(path, 'utf8').trim()) {
-    failures.push(`${file}\n    contains only whitespace.`);
+    failures.push(`${file}\n    is empty. A migration that does nothing is either a mistake or belongs in a comment.`);
   }
 }
 
