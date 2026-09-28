@@ -18,6 +18,7 @@ async function main() {
     email: 'user@example.com',
     tosAccepted: true,
     mobile: true,
+    pwdChangedAt: null,
   });
   console.log('1. encoded mobile token length:', token.length);
 

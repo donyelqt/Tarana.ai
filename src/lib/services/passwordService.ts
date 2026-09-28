@@ -80,12 +80,18 @@ export async function resetPassword(
   userId: string,
   hashedPassword: string
 ): Promise<boolean> {
+  // `password_changed_at` is written in the same statement as the credential:
+  // the session callback rejects tokens stamped before it, so every session
+  // that predates this reset (including an attacker's) stops being accepted.
+  // Doing it here rather than in the route keeps the invariant at the single
+  // write point, so a future second caller cannot change the password without it.
   const { error } = await supabaseAdmin
     .from('users')
     .update({
       hashed_password: hashedPassword,
       reset_token: null,
       reset_token_expiry: null,
+      password_changed_at: new Date().toISOString(),
     })
     .eq('id', userId);
 

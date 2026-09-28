@@ -200,6 +200,8 @@ describe('authMiddleware ToS consent gate', () => {
       email: 'user@example.com',
       tosAccepted: false,
       mobile: true,
+
+      pwdChangedAt: null,
     });
 
     const res = await authMiddleware(
@@ -219,6 +221,8 @@ describe('authMiddleware ToS consent gate', () => {
       email: 'user@example.com',
       tosAccepted: true,
       mobile: true,
+
+      pwdChangedAt: null,
     });
 
     const res = await authMiddleware(
@@ -239,6 +243,8 @@ describe('authMiddleware ToS consent gate', () => {
       email: 'user@example.com',
       tosAccepted: true,
       mobile: true,
+
+      pwdChangedAt: null,
     });
 
     const res = await authMiddleware(
@@ -287,6 +293,8 @@ describe('authMiddleware ToS consent gate', () => {
       email: 'user@example.com',
       tosAccepted: true,
       mobile: true,
+
+      pwdChangedAt: null,
     });
 
     const res = await authMiddleware(
@@ -310,6 +318,8 @@ describe('authMiddleware ToS consent gate', () => {
       email: 'user@example.com',
       tosAccepted: true,
       mobile: true,
+
+      pwdChangedAt: null,
     });
 
     const res = await authMiddleware(
@@ -331,6 +341,8 @@ describe('authMiddleware ToS consent gate', () => {
       email: 'user@example.com',
       tosAccepted: true,
       mobile: true,
+
+      pwdChangedAt: null,
     });
 
     const res = await authMiddleware(

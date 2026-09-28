@@ -110,15 +110,21 @@ describe('auth jwt() Google branch — no id-less sessions', () => {
         },
         error: null,
       },
+      // Sign-in also pins the credential-change instant onto the session.
+      { data: { password_changed_at: null }, error: null },
     ]);
     const jwt = authOptions.callbacks?.jwt as unknown as (args: any) => Promise<any>;
 
     const token = await jwt(googleJwtArgs());
 
-    expect(mockSingle).toHaveBeenCalledTimes(2);
+    // Two user-row reads (initial + exactly one retry) plus the credential
+    // stamp read: the retry stays bounded at one.
+    expect(mockSingle).toHaveBeenCalledTimes(3);
     expect(token.id).toBe('uuid-retry-456');
     expect(token.id).not.toBe('google-sub-123');
     expect(token.name).toBe('Retry User');
+    // The sign-in path stamps the credential instant it read.
+    expect(token.pwdChangedAt).toBeNull();
     // NULL tos_accepted_at (first-time OAuth) stays falsy for the consent gate.
     expect((token as any).tosAccepted).toBe(false);
   });

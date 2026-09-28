@@ -56,9 +56,18 @@ jest.mock('@/lib/auth/mobileToken', () => ({
   MOBILE_TOKEN_MAX_AGE_SECONDS: 900,
 }));
 
+jest.mock('@/lib/auth/sessionValidity', () => ({
+  PASSWORD_CHANGED_CLAIM: 'pwdChangedAt',
+  readPasswordChangedAt: jest.fn(),
+  isSessionTokenCurrent: jest.fn(),
+}));
+
 const mockedGetToken = getToken as unknown as jest.Mock;
 const mockedEncode = encodeMobileToken as unknown as jest.Mock;
 const mockedCheck = rateLimiter.checkRateLimit as unknown as jest.Mock;
+const { readPasswordChangedAt, isSessionTokenCurrent } = jest.requireMock(
+  '@/lib/auth/sessionValidity'
+) as { readPasswordChangedAt: jest.Mock; isSessionTokenCurrent: jest.Mock };
 
 const SESSION = { id: 'user-1', sub: 'user-1', email: 'u@example.com', tosAccepted: true, mobile: false };
 
@@ -72,6 +81,9 @@ describe('runMobileTokenExchange', () => {
     process.env.NEXTAUTH_SECRET = 'test-secret';
     mockedCheck.mockReturnValue({ allowed: true, remaining: 4, resetTime: 0 });
     mockedEncode.mockResolvedValue('issued-jwt');
+    // Default: the source session is current. Individual tests override.
+    readPasswordChangedAt.mockResolvedValue(null);
+    isSessionTokenCurrent.mockReturnValue(true);
   });
 
   it('issues a token in JSON form when no redirectUrl is given', async () => {
@@ -148,6 +160,40 @@ describe('runMobileTokenExchange', () => {
     const result = await runMobileTokenExchange({ req: makeRequest() });
     if (!('response' in result)) throw new Error('expected response');
     expect(result.response.status).toBe(401);
+  });
+
+  it('refuses to mint a token from a session that predates a password change', async () => {
+    // `getToken` only verifies signature + expiry, so it hands back the very
+    // session the jwt/session callbacks would reject. Without this check the
+    // reset would still yield a working 15-minute bearer token.
+    mockedGetToken.mockResolvedValue(SESSION);
+    isSessionTokenCurrent.mockReturnValue(false);
+
+    const result = await runMobileTokenExchange({ req: makeRequest() });
+
+    if (!('response' in result)) throw new Error('expected response');
+    expect(result.response.status).toBe(401);
+    expect(mockedEncode).not.toHaveBeenCalled();
+  });
+
+  it('carries the source session credential stamp onto the issued token', async () => {
+    mockedGetToken.mockResolvedValue(SESSION);
+    readPasswordChangedAt.mockResolvedValue('2026-09-20T12:00:00.000Z');
+
+    await runMobileTokenExchange({ req: makeRequest() });
+
+    expect(mockedEncode).toHaveBeenCalledWith(
+      expect.objectContaining({ pwdChangedAt: '2026-09-20T12:00:00.000Z' })
+    );
+  });
+
+  it('stamps null when the credential-change value cannot be read', async () => {
+    mockedGetToken.mockResolvedValue(SESSION);
+    readPasswordChangedAt.mockResolvedValue(undefined);
+
+    await runMobileTokenExchange({ req: makeRequest() });
+
+    expect(mockedEncode).toHaveBeenCalledWith(expect.objectContaining({ pwdChangedAt: null }));
   });
 
   it('returns 429 when rate-limited', async () => {
