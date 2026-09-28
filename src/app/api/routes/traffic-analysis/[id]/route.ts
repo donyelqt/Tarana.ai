@@ -4,6 +4,7 @@ import { timedHttp } from '@/lib/observability/httpMetrics'
 import { logger } from '@/lib/observability/logger'
 import { getRequestId } from '@/middleware/requestId'
 import { routeTrafficAnalyzer } from '@/lib/services/routeTrafficAnalysis'
+import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter'
 
 const MAX_REQUEST_BYTES = 256 * 1024
 const MAX_COORDINATES = 1_000
@@ -37,6 +38,21 @@ export async function POST(
   const requestId = getRequestId(request)
 
   return timedHttp('/api/routes/traffic-analysis/[id]', 'POST', async () => {
+    // Rate limit FIRST, before parsing, so a refused caller cannot make the
+    // handler reach the billed upstream. This route has no auth gate -- it is
+    // reached by the Explore hook from any browser -- so the limit is the only
+    // thing standing between an anonymous caller and TomTom spend. S8b applied
+    // exactly this to routes/calculate; this route was never enumerated.
+    const limited = createRateLimitMiddleware(rateLimitConfigs.heavy)(request)
+    if (!limited.allowed) {
+      const res = NextResponse.json(
+        { error: 'Rate limit exceeded. Please slow down your requests.' },
+        { status: 429 }
+      )
+      if (limited.retryAfter) res.headers.set('Retry-After', String(limited.retryAfter))
+      return res
+    }
+
     const contentLengthHeader = request.headers.get('content-length')
     const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0
 

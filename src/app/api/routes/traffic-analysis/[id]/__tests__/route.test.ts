@@ -139,4 +139,26 @@ describe('POST /api/routes/traffic-analysis/[id]', () => {
     )
     expect(JSON.stringify(mockLogger.error.mock.calls)).not.toContain('TOMTOM_SECRET_LEAK')
   })
+
+  // This route calls tomtomTrafficService.getLocationTrafficData() -- a billed
+  // upstream -- with no auth gate, and it is reachable by any browser (the
+  // Explore hook posts to it). S8b closed four sibling public proxies
+  // (spots, weather, locations/search, routes/calculate) and never enumerated
+  // this fifth, so it kept the unmetered shape S8b existed to remove.
+  it('rate limits repeated anonymous calls before reaching the paid analyzer', async () => {
+    // Exhaust the bucket, then assert the next call is refused WITHOUT
+    // touching the analyzer. Identity is per-IP; every request here shares the
+    // same (absent) IP, so they share one bucket.
+    for (let i = 0; i < 12; i++) {
+      await POST(request(), { params: { id: validRoute.id } })
+    }
+    mockedAnalyzer.mockClear()
+
+    const response = await POST(request(), { params: { id: validRoute.id } })
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Retry-After')).toBeTruthy()
+    // The point of the limit: the paid call must not happen.
+    expect(mockedAnalyzer).not.toHaveBeenCalled()
+  })
 })
