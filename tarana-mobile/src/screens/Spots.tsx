@@ -36,7 +36,7 @@ const TOP_PICKS = 3;
  * rows (browse preserved). Null-coord entries never reach the list
  * (dropped in the seam, like `toSpotCard` → null → filtered).
  */
-const SPOT_CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao'];
+const SPOT_CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao', 'boracay', 'el_nido'];
 
 export default function Spots() {
   const [city, setCity] = useState<CityId>('baguio');

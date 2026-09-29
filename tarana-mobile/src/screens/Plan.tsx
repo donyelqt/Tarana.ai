@@ -7,7 +7,7 @@ import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 
 const BLUE = '#0066FF';
 
-const PLAN_CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao'];
+const PLAN_CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao', 'boracay', 'el_nido'];
 const INTERESTS = ['Food', 'Nature', 'Culture', 'Adventure', 'Cafes', 'History', 'Nightlife', 'Shopping'];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
