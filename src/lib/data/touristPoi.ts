@@ -1,9 +1,9 @@
 import { isWithinCityBounds } from '@/lib/data/cityConfig';
 import type { SearchResult } from '@/types/route-optimization';
 
-export type TargetCityId = 'cebu' | 'manila' | 'davao';
+export type TargetCityId = 'cebu' | 'manila' | 'davao' | 'boracay' | 'el_nido';
 
-export const TARGET_CITY_IDS: readonly TargetCityId[] = ['cebu', 'manila', 'davao'];
+export const TARGET_CITY_IDS: readonly TargetCityId[] = ['cebu', 'manila', 'davao', 'boracay', 'el_nido'];
 
 /** Candidate pool target; consumers keep their own smaller render/enrichment caps. */
 export const TOURIST_POI_TARGET = 50;

@@ -1,4 +1,4 @@
-export type CityId = "baguio" | "cebu" | "manila" | "davao" | "ph-wide" | "world"
+export type CityId = "baguio" | "cebu" | "manila" | "davao" | "boracay" | "el_nido" | "ph-wide" | "world"
 
 export interface CityBounds {
   north: number
@@ -54,6 +54,26 @@ export const CITY_CONFIGS: Record<CityId, CityConfig> = {
     name: "Davao City",
     center: { lat: 7.1907, lon: 125.4553 },
     bounds: { north: 7.35, south: 7.05, east: 125.6, west: 125.3 },
+    timezone: "Asia/Manila",
+    countrySet: "PH",
+    language: "en-US",
+    defaultRadiusMeters: 50000,
+  },
+  boracay: {
+    id: "boracay",
+    name: "Boracay",
+    center: { lat: 11.9674, lon: 121.9248 },
+    bounds: { north: 11.995, south: 11.935, east: 121.955, west: 121.895 },
+    timezone: "Asia/Manila",
+    countrySet: "PH",
+    language: "en-US",
+    defaultRadiusMeters: 50000,
+  },
+  el_nido: {
+    id: "el_nido",
+    name: "El Nido",
+    center: { lat: 11.194, lon: 119.393 },
+    bounds: { north: 11.32, south: 11.05, east: 119.55, west: 119.15 },
     timezone: "Asia/Manila",
     countrySet: "PH",
     language: "en-US",

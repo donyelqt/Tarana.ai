@@ -22,6 +22,8 @@ export const generateItinerary = async (
       cebu: "Cebu City, Philippines",
       manila: "Manila, Philippines",
       davao: "Davao City, Philippines",
+      boracay: "Boracay, Philippines",
+      el_nido: "El Nido, Palawan, Philippines",
       "ph-wide": "the Philippines",
       world: "the selected destination",
     }

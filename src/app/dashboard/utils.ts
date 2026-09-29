@@ -150,6 +150,8 @@ export const SPOT_SCOPES = [
   { id: 'cebu', label: 'Cebu' },
   { id: 'manila', label: 'Manila' },
   { id: 'davao', label: 'Davao' },
+  { id: 'boracay', label: 'Boracay' },
+  { id: 'el_nido', label: 'El Nido' },
 ] as const;
 
 export type SpotScopeId = (typeof SPOT_SCOPES)[number]['id'];

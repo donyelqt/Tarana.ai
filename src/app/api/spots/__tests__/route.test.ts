@@ -388,6 +388,34 @@ describe('GET /api/spots', () => {
     expect(await res.json()).toEqual({ success: true, city: 'davao', spots: [] });
   });
 
+  it('routes boracay and el_nido through the shared service without a Baguio fallback', async () => {
+    touristPoiMock.mockImplementation(async (city: unknown) => {
+      if (city === 'boracay') return [poiResult('White Beach', 11.9674, 121.9248)];
+      if (city === 'el_nido') return [poiResult('Big Lagoon', 11.194, 119.393)];
+      return [];
+    });
+    trafficMock.mockResolvedValue({ congestionScore: 10 });
+
+    const boracayRes = await get('boracay');
+    expect(boracayRes.status).toBe(200);
+    const boracayBody = await boracayRes.json();
+    expect(boracayBody).toMatchObject({ success: true, city: 'boracay' });
+    expect(boracayBody.spots[0].name).toBe('White Beach');
+
+    const elNidoRes = await get('el_nido');
+    expect(elNidoRes.status).toBe(200);
+    const elNidoBody = await elNidoRes.json();
+    expect(elNidoBody).toMatchObject({ success: true, city: 'el_nido' });
+    expect(elNidoBody.spots[0].name).toBe('Big Lagoon');
+
+    // No Baguio-curated row may appear under either new scope.
+    for (const spots of [boracayBody.spots, elNidoBody.spots]) {
+      for (const spot of spots as { name: string }[]) {
+        expect(spot.name).not.toBe('Burnham Park');
+      }
+    }
+  });
+
   it('returns up to 50 non-Baguio POIs', async () => {
     touristPoiMock.mockResolvedValue(
       Array.from({ length: 50 }, (_, i) => poiResult(`S${i}`, 10.2 + i * 0.002, 123.8 + i * 0.002))

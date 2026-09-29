@@ -625,6 +625,8 @@ export class GuaranteedJsonEngine {
       [/for Cebu/i, "Cebu City"],
       [/for Manila/i, "Manila"],
       [/for Davao/i, "Davao City"],
+      [/for Boracay/i, "Boracay"],
+      [/for El Nido/i, "El Nido"],
       [/for the Philippines|Anywhere PH|ph-wide/i, "Philippines"],
       [/for Baguio/i, "Baguio City"],
     ];

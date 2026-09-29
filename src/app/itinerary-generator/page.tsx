@@ -51,7 +51,7 @@ export default function ItineraryGenerator() {
   // Traffic-aware mode toggle state
   const [trafficAware, setTrafficAware] = useState<boolean>(true);
   // Geographic scope — strict city selection (default Baguio, preserves existing behavior)
-  const [selectedCity, setSelectedCity] = useState<"baguio"|"cebu"|"manila"|"davao"|"ph-wide"|"world">("baguio");
+  const [selectedCity, setSelectedCity] = useState<"baguio"|"cebu"|"manila"|"davao"|"boracay"|"el_nido"|"ph-wide"|"world">("baguio");
   
   // Initialize itinerary generator hook
   const {

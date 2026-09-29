@@ -28,6 +28,28 @@ describe('touristPoi', () => {
     expect(isTouristPoi(base({ coordinates: { lat: 16.4, lng: 120.6 } }), 'cebu')).toBe(false);
   });
 
+  it('treats boracay and el_nido as independent bounded scopes', () => {
+    const boracayPoi = base({
+      id: 'white-beach',
+      name: 'White Beach',
+      category: 'beach',
+      categories: ['beach'],
+      coordinates: { lat: 11.9674, lng: 121.9248 },
+    });
+    const elNidoPoi = base({
+      id: 'big-lagoon',
+      name: 'Big Lagoon',
+      category: 'lake',
+      categories: ['lake'],
+      coordinates: { lat: 11.194, lng: 119.393 },
+    });
+    // Each in-bounds row passes only its own scope — no cross-city bleed.
+    expect(isTouristPoi(boracayPoi, 'boracay')).toBe(true);
+    expect(isTouristPoi(boracayPoi, 'el_nido')).toBe(false);
+    expect(isTouristPoi(elNidoPoi, 'el_nido')).toBe(true);
+    expect(isTouristPoi(elNidoPoi, 'boracay')).toBe(false);
+  });
+
   it('rejects a generic business category', () => {
     expect(isTouristPoi(base({ category: 'office', categories: ['office'] }), 'cebu')).toBe(false);
     expect(isTouristPoi(base({ category: 'restaurant', categories: ['restaurant'] }), 'cebu')).toBe(false);

@@ -50,7 +50,7 @@ const itineraryRequestSchema = z.object({
     duration: z.union([z.string().max(100), z.number().int().positive()]).optional(),
     budget: z.string().max(100).optional(),
     pax: z.union([z.string().max(50), z.number().int().positive()]).optional(),
-    cityId: z.enum(["baguio","cebu","manila","davao","ph-wide","world"]).optional(),
+    cityId: z.enum(["baguio","cebu","manila","davao","boracay","el_nido","ph-wide","world"]).optional(),
     options: z.object({
         trafficAware: z.boolean().default(true).optional(),
     }).optional(),

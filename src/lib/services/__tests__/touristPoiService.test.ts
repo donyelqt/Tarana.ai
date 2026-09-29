@@ -148,8 +148,48 @@ describe('touristPoiService.getTouristPois', () => {
 
     await expect(getTouristPois('davao', 50, d)).resolves.toEqual([]);
   });
-});
+  it('accepts boracay and el_nido through the shared tourist path (bounds independent)', async () => {
+    const boracayPoi = poi({
+      id: 'boracay-white-beach',
+      name: 'White Beach',
+      category: 'beach',
+      categories: ['beach'],
+      coordinates: { lat: 11.9674, lng: 121.9248 },
+    });
+    const elNidoPoi = poi({
+      id: 'elnido-big-lagoon',
+      name: 'Big Lagoon',
+      category: 'lake',
+      categories: ['lake'],
+      coordinates: { lat: 11.194, lng: 119.393 },
+    });
+    const d = deps({ searchPois: jest.fn().mockResolvedValue([boracayPoi, elNidoPoi]) });
 
+    // Boracay accepts White Beach; El Nido data must not leak into the Boracay pool.
+    const boracay = await getTouristPois('boracay', 50, d);
+    expect(boracay.map((r) => r.id)).toEqual(['boracay-white-beach']);
+
+    const elnido = await getTouristPois('el_nido', 50, d);
+    expect(elnido.map((r) => r.id)).toEqual(['elnido-big-lagoon']);
+  });
+
+  it('rejects cross-city rows between the new scopes', async () => {
+    const d = deps({
+      searchPois: jest.fn().mockResolvedValue([
+        poi({
+          id: 'wrong-boracay',
+          name: 'Cebu Spot In Boracay Box',
+          category: 'beach',
+          categories: ['beach'],
+          coordinates: { lat: 10.3157, lng: 123.8854 },
+        }),
+      ]),
+    });
+
+    // Cebu coordinates cannot pass Boracay bounds — same strict-city rule as existing scopes.
+    await expect(getTouristPois('boracay', 50, d)).resolves.toEqual([]);
+  });
+});
 describe('touristPoiService.getInterestPois', () => {
   it('queries the interest term and returns non-tourist POIs the allowlist would reject', async () => {
     const d = deps({
