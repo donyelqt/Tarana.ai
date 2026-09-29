@@ -32,7 +32,7 @@ import { manilaDaypart, SpotPhoto, spotCardStyles, TrafficBadge, GRADIENT } from
 import { MapPinIcon, SearchIcon, ChevronRightIcon, UtensilsIcon } from './icons';
 import Thumb from './Thumb';
 
-const CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao'];
+const CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao', 'boracay', 'el_nido'];
 
 /**
  * City pills share one vector signifier (MapPin, system stroke 2.0) instead
