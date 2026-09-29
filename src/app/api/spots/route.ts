@@ -19,7 +19,7 @@ import {
   type SpotScopeId,
 } from '@/app/dashboard/utils';
 
-const SUPPORTED: SpotScopeId[] = ['baguio', 'cebu', 'manila', 'davao'];
+const SUPPORTED: SpotScopeId[] = ['baguio', 'cebu', 'manila', 'davao', 'boracay', 'el_nido'];
 
 /** Spots enriched per scope change — photos + traffic for the visible head. */
 const ENRICH_LIMIT = 6;

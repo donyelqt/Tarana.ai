@@ -12,11 +12,13 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { ChevronDown, MapPin, Mountain, Waves, Building2, Map, Globe, Activity } from "lucide-react";
 import { DollarSign, PiggyBank, CreditCard, Wallet, Coins, Gem } from "lucide-react";
 
-const CITY_OPTIONS: { id: "baguio"|"cebu"|"manila"|"davao"|"ph-wide"|"world"; label: string; sublabel: string; Icon: any }[] = [
+const CITY_OPTIONS: { id: "baguio"|"cebu"|"manila"|"davao"|"boracay"|"el_nido"|"ph-wide"|"world"; label: string; sublabel: string; Icon: any }[] = [
   { id: "baguio", label: "Baguio", sublabel: "City of Pines", Icon: Mountain },
   { id: "cebu", label: "Cebu", sublabel: "Queen City", Icon: Waves },
   { id: "manila", label: "Manila", sublabel: "Capital", Icon: Building2 },
   { id: "davao", label: "Davao", sublabel: "Durian City", Icon: MapPin },
+  { id: "boracay", label: "Boracay", sublabel: "Island, Aklan", Icon: Waves },
+  { id: "el_nido", label: "El Nido", sublabel: "Palawan", Icon: MapPin },
   { id: "ph-wide", label: "Philippines", sublabel: "Anywhere PH", Icon: Map },
   { id: "world", label: "World", sublabel: "Global", Icon: Globe },
 ]

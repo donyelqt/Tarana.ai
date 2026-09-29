@@ -1,7 +1,7 @@
 import { StaticImageData } from "next/image";
 import { WeatherData } from "@/lib/core";
 
-export type CityId = "baguio" | "cebu" | "manila" | "davao" | "ph-wide" | "world"
+export type CityId = "baguio" | "cebu" | "manila" | "davao" | "boracay" | "el_nido" | "ph-wide" | "world"
 
 export interface FormData {
   budget: string;
