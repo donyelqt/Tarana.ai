@@ -1,8 +1,13 @@
 import {
   mergeRegionPools,
   regionCardKey,
+  withSpotOverlays,
+  SPOT_OVERLAYS,
+  SPOT_SCOPES,
   REGION_MEMBERS,
+  LUZON_MEMBERS,
   type RegionSpotPool,
+  type SpotPayload,
 } from '../../utils';
 
 const pool = (city: string, names: string[]): RegionSpotPool => ({
@@ -51,10 +56,13 @@ describe('mergeRegionPools', () => {
     ]);
   });
 
-  it('REGION_MEMBERS pins exactly the two Visayas scopes (el_nido excluded)', () => {
-    // El Nido is Palawan (Mimaropa) with its own city pill — a "Visayas" tab
-    // containing Luzon would be a mislabel, not a region.
+  it('REGION_MEMBERS pins exactly the two Visayas scopes', () => {
     expect([...REGION_MEMBERS]).toEqual(['boracay', 'cebu']);
+  });
+
+  it('LUZON_MEMBERS pins baguio + manila (el_nido gone, no Luzon mislabel)', () => {
+    expect([...LUZON_MEMBERS]).toEqual(['baguio', 'manila']);
+    expect(SPOT_SCOPES.map((s) => s.id)).toEqual(['baguio', 'manila', 'davao', 'luzon']);
   });
 
   it('keys same-title rows from different pools distinctly (Boracay Island dup)', () => {
@@ -66,5 +74,31 @@ describe('mergeRegionPools', () => {
     const b = { ...island, lat: 11.9674, lon: 121.9248 };
     expect(regionCardKey('boracay', a)).not.toBe(regionCardKey('cebu', b));
     expect(regionCardKey('boracay', a)).toBe(regionCardKey('boracay', { ...b }));
+  });
+});
+
+describe('withSpotOverlays', () => {
+  const row = (name: string): SpotPayload => ({ name, image: null, lat: 1, lon: 1, peakHours: null });
+
+  it('prepends provider-pinned mall rows to the member pool', () => {
+    const out = withSpotOverlays('cebu', [row('Live Spot')]);
+    expect(out[0]).toMatchObject({ name: 'SM Seaside City Cebu', lat: 10.281732, lon: 123.880608 });
+    const manila = withSpotOverlays('manila', [row('Live Spot')]);
+    expect(manila.slice(0, 2).map((s) => s.name)).toEqual(['SM Mall of Asia', 'Bonifacio High Street']);
+  });
+
+  it('yields to live rows on title collision (no duplicates)', () => {
+    const out = withSpotOverlays('manila', [row('SM Mall of Asia'), row('Live')]);
+    expect(out.filter((s) => s.name === 'SM Mall of Asia')).toHaveLength(1);
+    expect(out).toHaveLength(3);
+  });
+
+  it('leaves cities without overlays untouched', () => {
+    const pool = [row('A')];
+    expect(withSpotOverlays('davao', pool)).toBe(pool);
+  });
+
+  it('pins exactly the three reviewed overlays', () => {
+    expect(SPOT_OVERLAYS).toHaveLength(3);
   });
 });

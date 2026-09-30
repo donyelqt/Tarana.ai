@@ -147,11 +147,9 @@ export interface RecommendationCard {
 /** City scopes with curated-or-searchable spot coverage. */
 export const SPOT_SCOPES = [
   { id: 'baguio', label: 'Baguio' },
-  { id: 'cebu', label: 'Cebu' },
   { id: 'manila', label: 'Manila' },
   { id: 'davao', label: 'Davao' },
-  { id: 'boracay', label: 'Boracay' },
-  { id: 'el_nido', label: 'El Nido' },
+  { id: 'luzon', label: 'Luzon' },
 ] as const;
 
 export type SpotScopeId = (typeof SPOT_SCOPES)[number]['id'];
@@ -175,7 +173,49 @@ export interface SpotPayload {
   traffic?: TrafficLevel;
 }
 
-export const SPOT_PLACEHOLDER_IMAGE = '/images/comingsoon.png';
+/**
+ * Spots-only curated overlay: venues the provider miscategorizes (malls come
+ * back as `shop`/`shopping center`, never a tourist term) but users expect
+ * in Suggested Spots. Coordinates are provider-pinned (TomTom Search,
+ * 2026-09-30): SM Seaside 10.281732,123.880608 / SM MOA 14.534844,120.98284 /
+ * Bonifacio High Street 14.550612,121.050053 (Bo's anchor; BGC is a district,
+ * not a POI, so the pin is the district's representative point).
+ * Display name ≠ provider name on purpose: the card shows the venue users
+ * recognize, not the charging-station row the provider returns.
+ * Spots-only: the route prepends these to the member pool (dedupe by title
+ * guards the day TomTom fixes its categories). Gala, cache, touristPoi, and
+ * the allowlist are untouched — mall traffic in itineraries stays rejected.
+ */
+export interface SpotOverlay {
+  /** Route scope this overlay joins (`cebu` or `manila`). */
+  city: 'cebu' | 'manila';
+  /** Card title — what the user reads. */
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+export const SPOT_OVERLAYS: readonly SpotOverlay[] = [
+  { city: 'cebu', name: 'SM Seaside City Cebu', lat: 10.281732, lon: 123.880608 },
+  { city: 'manila', name: 'SM Mall of Asia', lat: 14.534844, lon: 120.98284 },
+  { city: 'manila', name: 'Bonifacio High Street', lat: 14.550612, lon: 121.050053 },
+];
+
+/**
+ * Prepend the city's curated overlays to a member pool. Overlay rows carry
+ * null image/peakHours so the head-6 enrichment dresses them like any other
+ * head row (photo tier-chain + measured traffic); rows TomTom already
+ * returned (same normalized title) win and the overlay yields to them.
+ */
+export function withSpotOverlays(city: string, pool: SpotPayload[]): SpotPayload[] {
+  const overlays = SPOT_OVERLAYS.filter((o) => o.city === city);
+  if (overlays.length === 0) return pool;
+  const have = new Set(pool.map((s) => s.name.trim().toLowerCase()));
+  const rows: SpotPayload[] = overlays
+    .filter((o) => !have.has(o.name.trim().toLowerCase()))
+    .map((o) => ({ name: o.name, image: null, lat: o.lat, lon: o.lon, peakHours: null }));
+  return [...rows, ...pool];
+}
 
 /** City driving average used for "~N min" estimates. */
 export const AVG_CITY_KMH = 20;
@@ -332,16 +372,15 @@ export function toSpotCard(
     lon: coords.lon,
   };
 }
-
 /**
- * Region-view members: the two genuine Visayas scopes. El Nido is Palawan
- * (Mimaropa), keeps its own city pill, and is deliberately excluded — a
- * "Visayas" that contains Luzon is a mislabel, not a region. Not a
- * SpotScopeId: no route, service, cache, or Gala path may ever read this
- * list. The only consumer is the SuggestedSpots region tab, which fires one
- * ordinary per-city query per member.
+ * Region-view members: the two genuine Visayas scopes. Not a SpotScopeId:
+ * no route, service, cache, or Gala path may ever read these lists. The only
+ * consumers are the SuggestedSpots region tabs, which fire one ordinary
+ * per-city query per member.
  */
 export const REGION_MEMBERS = ['boracay', 'cebu'] as const;
+/** Luzon union: baguio + manila keep standalone pills AND feed the region. */
+export const LUZON_MEMBERS = ['baguio', 'manila'] as const;
 
 export interface RegionSpotPool {
   city: string;
@@ -418,7 +457,8 @@ export const SPOTS_STALE_TIME_MS = 60 * 60 * 1000;
 
 /** Fetch + map GET /api/spots?city=. Throws on HTTP error so retry engages. */
 export async function fetchSpots(
-  city: SpotScopeId,
+  // string, not SpotScopeId: the route serves boracay (region member) with no pill.
+  city: string,
   fetcher: typeof fetch = fetch
 ): Promise<SpotPayload[] | null> {
   const r = await fetcher(`/api/spots?city=${encodeURIComponent(city)}`);
@@ -449,7 +489,8 @@ export async function fetchSpots(
 
 /** Shipped spots config: POIs barely move — 1hr stale (matches TomTom cache). */
 export function spotsQueryOptions(
-  city: SpotScopeId,
+  // string, not SpotScopeId: the region tab queries boracay, which has pills nowhere.
+  city: string,
   status: string,
   queryFn: () => Promise<SpotPayload[] | null> = () => fetchSpots(city)
 ): UseQueryOptions<SpotPayload[] | null> {

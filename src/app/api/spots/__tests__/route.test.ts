@@ -101,6 +101,15 @@ describe('GET /api/spots', () => {
     expect(touristPoiMock).not.toHaveBeenCalled();
   });
 
+  it('serves region members with no pill (boracay/cebu stay 200)', async () => {
+    touristPoiMock.mockResolvedValue([poiResult('Union Row', 10.31, 123.91)]);
+    for (const city of ['boracay', 'cebu']) {
+      const res = await get(city);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ success: true, city });
+    }
+  });
+
   it('serves the full Baguio pool with daily rotation (curated-only when zero extras survive)', async () => {
     const curated = spotPool().map(activityToPayload);
     baguioSearchMock.mockResolvedValue([]);
@@ -347,13 +356,15 @@ describe('GET /api/spots', () => {
     expect((await res.json()).city).toBe('baguio');
   });
 
-  it('maps shared-service POIs for other cities', async () => {
+  it('maps shared-service POIs for other cities (overlays prepended)', async () => {
     touristPoiMock.mockResolvedValue([poiResult('Cebu Spot', 10.3, 123.9)]);
     trafficMock.mockResolvedValue({ congestionScore: 10 });
     const res = await get('cebu');
     expect(res.status).toBe(200);
     const body = await res.json();
+    // SM Seaside overlay first, live row behind it; both get head-6 enrichment.
     expect(body.spots).toEqual([
+      { name: 'SM Seaside City Cebu', image: null, lat: 10.281732, lon: 123.880608, peakHours: null, traffic: 'Low' },
       { name: 'Cebu Spot', image: null, lat: 10.3, lon: 123.9, peakHours: null, traffic: 'Low' },
     ]);
     expect(baguioSearchMock).not.toHaveBeenCalled();
@@ -368,6 +379,7 @@ describe('GET /api/spots', () => {
     const res = await get('cebu');
     const body = await res.json();
     expect(body.spots).toEqual([
+      { name: 'SM Seaside City Cebu', image: 'https://photos.example/busy.jpg', lat: 10.281732, lon: 123.880608, peakHours: null, traffic: 'High' },
       { name: 'Busy Spot', image: 'https://photos.example/busy.jpg', lat: 10.31, lon: 123.91, peakHours: null, traffic: 'High' },
     ]);
   });
@@ -377,8 +389,10 @@ describe('GET /api/spots', () => {
     trafficMock.mockRejectedValue(new Error('flow down'));
     const res = await get('cebu');
     const body = await res.json();
+    // Overlay is prepended: spots[0] is SM Seaside, spots[1] the live row.
     expect(body.spots[0].traffic).toBeUndefined();
     expect(body.spots[0].image).toBeNull();
+    expect(body.spots[1].traffic).toBeUndefined();
   });
 
   it('degrades to an empty pool when shared-service coverage is unavailable', async () => {
@@ -416,14 +430,14 @@ describe('GET /api/spots', () => {
     }
   });
 
-  it('returns up to 50 non-Baguio POIs', async () => {
+  it('returns up to 50 non-Baguio POIs plus the cebu overlay', async () => {
     touristPoiMock.mockResolvedValue(
       Array.from({ length: 50 }, (_, i) => poiResult(`S${i}`, 10.2 + i * 0.002, 123.8 + i * 0.002))
     );
     trafficMock.mockResolvedValue({ congestionScore: 10 });
     const res = await get('cebu');
     const body = await res.json();
-    expect(body.spots).toHaveLength(50);
+    expect(body.spots).toHaveLength(51);
     expect(touristPoiMock).toHaveBeenCalledWith('cebu');
   });
 
@@ -439,7 +453,7 @@ describe('GET /api/spots', () => {
     try {
       nowSpy.mockReturnValue(day1);
       const first = await names();
-      expect(first).toHaveLength(12);
+      expect(first).toHaveLength(13);
       nowSpy.mockReturnValue(day1);
       expect(await names()).toEqual(first);
       nowSpy.mockReturnValue(day1 + 86400000);
