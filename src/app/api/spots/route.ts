@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
-import { getCityConfig, isWithinCityBounds } from '@/lib/data/cityConfig';
+import { getCityConfig, isWithinCityBounds, type CityId } from '@/lib/data/cityConfig';
 import { getTouristPois } from '@/lib/services/touristPoiService';
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import type { BoundingBox } from '@/types/route-optimization';
@@ -127,7 +127,7 @@ export async function GET(request: Request) {
             lon: s.lon ?? undefined,
             image: undefined as unknown,
           })),
-          { city: cfg.name }
+          { city: cfg.name, cityId: city as CityId }
         );
         await Promise.all(
           candidates.map(async (s, i) => {
@@ -239,7 +239,7 @@ export async function GET(request: Request) {
         lon: s.lon ?? undefined,
         image: undefined as unknown,
       })),
-      { city: cfg.name }
+      { city: cfg.name, cityId: city as CityId }
     );
     await Promise.all(
       head.map(async (s, i) => {

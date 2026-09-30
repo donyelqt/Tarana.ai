@@ -4,7 +4,7 @@ import Image, { StaticImageData } from "next/image";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/core";
 import { ItineraryPreviewProps, Activity } from "../types";
-import { sampleItinerary } from "../data/itineraryData";
+
 import { getWeatherIconUrl, getWeatherDescription } from "../utils/weatherUtils";
 import { TrafficCone } from "lucide-react";
 import { isCurrentlyPeakHours } from "@/lib/traffic";
@@ -203,13 +203,17 @@ export default function ItineraryPreview({
         <div className="bg-white rounded-2xl shadow-md p-6 h-full flex flex-col items-center justify-center">
           <Image src={taranaaiLogo} alt="Plan your trip icon" width={100} height={100} className="text-gray-300 mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">Plan Your Perfect Trip</h3>
-          <p className="text-gray-500 text-center">Fill in the details on the left to generate your personalized Baguio itinerary.</p>
+          <p className="text-gray-500 text-center">Fill in the details on the left to generate your personalized {cityName || "Baguio"} itinerary.</p>
         </div>
       </aside>
     );
   }
 
-  const displayItinerary = generatedItinerary || sampleItinerary;
+  // `generatedItinerary` is guaranteed non-null here (the branch above returns
+  // early otherwise). Kept explicit: the old `generatedItinerary || sampleItinerary`
+  // made the Baguio-only catalog a fallback for every city, and the unreachable
+  // `||` was one early-return edit away from reintroducing that leak.
+  const displayItinerary = generatedItinerary;
 
   // Handle the case where the itinerary is valid but has no items (e.g., no activities found)
   if (displayItinerary && (!displayItinerary.items || displayItinerary.items.length === 0)) {
