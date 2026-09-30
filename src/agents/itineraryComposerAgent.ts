@@ -42,11 +42,13 @@ export class ItineraryComposerAgent {
         session.id
       );
 
+      const serverAllowed = (sampleItinerary as any)?.searchMetadata?.allowedActivities;
       const finalItinerary = await handleItineraryProcessing(
         guaranteed,
         session.prompt,
         session.preferences.durationDays,
-        peakHoursContext
+        peakHoursContext,
+        serverAllowed
       );
 
       const itinerary: GeneratedItinerary = {

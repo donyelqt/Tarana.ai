@@ -18,13 +18,34 @@ describe('Gala grounding (S5)', () => {
     expect(titles).toContain('Burnham Park');
   });
 
-  test('replaces untrusted model images with comingsoon', () => {
+  test('replaces untrusted model images with the Gala logo fallback', () => {
     const it = itineraryWith(
       [{ period: 'Day 1 - Morning', activities: [{ title: 'Burnham Park', desc: 'Canonical desc.', image: 'https://evil.example/pixel.jpg' }] }],
       [{ title: 'Burnham Park', desc: 'Canonical desc.' }]
     );
     const out = organizeItineraryByDays(it, 1);
-    expect(out.items[0].activities[0].image).toBe('/images/comingsoon.png');
+    expect(out.items[0].activities[0].image).toBe('/images/taranaai.png');
+  });
+
+  test('preserves the enriched server image via injected allowlist (model output has no searchMetadata)', () => {
+    const serverImage = 'https://images.unsplash.com/photo-boracay-test';
+    const modelOutput = {
+      items: [{ period: 'Day 1 - Morning', activities: [{ title: 'Boracay Island', desc: 'Canonical desc.', image: 'model-guessed.jpg' }] }],
+    };
+    const out = organizeItineraryByDays(modelOutput, 1, [serverAllowed('Boracay Island', serverImage)]);
+    expect(out.items[0].activities[0].image).toBe(serverImage);
+  });
+
+  test('injected null server image degrades to Gala logo, not the model URL', () => {
+    const modelOutput = {
+      items: [{ period: 'Day 1 - Morning', activities: [{ title: 'Diniwid Beach', desc: 'Canonical desc.', image: 'https://images.unsplash.com/photo-model' }] }],
+    };
+    const out = organizeItineraryByDays(
+      modelOutput,
+      1,
+      [{ title: 'Diniwid Beach', desc: 'Canonical desc.', image: null as unknown as string }]
+    );
+    expect(out.items[0].activities[0].image).toBe('/images/taranaai.png');
   });
 
   test('clamps 999999 days to 14 buckets', () => {
