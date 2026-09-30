@@ -10,6 +10,8 @@ import {
   SPOT_SCOPES,
   REGION_MEMBERS,
   mergeRegionPools,
+  regionCardKey,
+  type RegionCard,
   type SpotPayload,
   type SpotScopeId,
 } from "../utils";
@@ -43,22 +45,25 @@ const SuggestedSpots = () => {
     enabled: authed && view === REGION_ID,
   });
 
-  const { cards, subtitle } = useMemo(() => {
+  const { cards, subtitle, keys } = useMemo(() => {
     if (view === REGION_ID) {
       const pools = [
         { city: REGION_MEMBERS[0], spots: regionBoracay.data ?? [] },
         { city: REGION_MEMBERS[1], spots: regionCebu.data ?? [] },
       ];
       const merged = mergeRegionPools(pools);
-      // Each card is ranked from its own member-city center — never recentered.
+      // toSpotCard returns RecommendationCard (no poolCity); the region key
+      // is computed from the merged payload BEFORE ranking, so the render
+      // never depends on a field the card type omits.
       const ranked = merged
-        .map((p) => {
-          const owner = pools.find((pool) => pool.spots.includes(p))?.city ?? 'cebu';
-          return toSpotCard(p, getCityCenter(owner));
-        })
-        .filter((c): c is NonNullable<typeof c> => c !== null)
+        .map((p) => ({ card: toSpotCard(p, getCityCenter(p.poolCity)), key: regionCardKey(p.poolCity, p) }))
+        .filter((entry): entry is { card: NonNullable<typeof entry.card>; key: string } => entry.card !== null)
         .slice(0, 3);
-      return { cards: ranked, subtitle: `Top picks across the ${REGION_LABEL}` };
+      return {
+        cards: ranked.map((entry) => entry.card),
+        keys: ranked.map((entry) => entry.key),
+        subtitle: `Top picks across the ${REGION_LABEL}`,
+      };
     }
     const label = SPOT_SCOPES.find((s) => s.id === view)?.label ?? view;
     const origin = getCityCenter(view);
@@ -66,7 +71,7 @@ const SuggestedSpots = () => {
       .map((p: SpotPayload) => toSpotCard(p, origin))
       .filter((c): c is NonNullable<typeof c> => c !== null)
       .slice(0, 3);
-    return { cards, subtitle: `Top picks in ${label}` };
+    return { cards, subtitle: `Top picks in ${label}`, keys: cards.map((c) => c.name) };
   }, [view, citySpots.data, regionBoracay.data, regionCebu.data]);
   return (
     <div className="mb-8">
@@ -116,8 +121,8 @@ const SuggestedSpots = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cards.map((spot) => (
-              <SpotlightCard key={spot.name} {...spot} ctaText="Visit Spot" />
+            {cards.map((spot, i) => (
+              <SpotlightCard key={keys[i] ?? spot.name} {...spot} ctaText="Visit Spot" />
             ))}
           </div>
         )
