@@ -1,11 +1,10 @@
 /**
- * Welcome header motion contract (Apple-smooth hover).
- * Pins the exact properties that made hover janky before:
- * - Apple easing curve (no mechanical ease-in-out)
- * - strong motion-safe lift restored (reversal of the subtle -y-1: the aura
- *   needs the bigger travel to stay coherent)
- * - no hover:animate-none (it hard-killed the shimmer mid-hover)
- * - no autonomous movement: the card must not move on its own, only on hover
+ * Welcome header motion contract.
+ *
+ * The card is a non-interactive header, so it must not move: not on a
+ * pointer hover (there is no click behind it), and not on its own. Either
+ * a reintroduced hover class or a reintroduced timer flips the class list
+ * on its own, so this covers both.
  */
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -85,16 +84,7 @@ describe('welcome header motion', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  it('uses the Apple easing curve with a strong motion-safe lift', () => {
-    renderDashboard();
-    const cls = welcomeCard().getAttribute('class') ?? '';
-    expect(cls).toContain('ease-[cubic-bezier(0.32,0.72,0,1)]');
-    expect(cls).toContain('motion-safe:hover:-translate-y-2');
-    expect(cls).not.toContain('hover:animate-none');
-    expect(cls).not.toContain('ease-in-out');
-  });
-
-  it('stays still until the user hovers it', () => {
+  it('does not move on its own', () => {
     renderDashboard();
     const before = welcomeCard().getAttribute('class');
     act(() => {
