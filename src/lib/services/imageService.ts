@@ -302,20 +302,31 @@ export async function enrichActivitiesWithImages<T extends { title: string; lat?
 ): Promise<T[]> {
   const concurrency = options.concurrency ?? 5
 
-  // Fast path: if all have curated images, return immediately (Baguio)
-  const needsFetch = activities.filter((a) => !CURATED_IMAGE_MAP[a.title])
-  if (needsFetch.length === 0) return activities
+  // Tier 0 applies to EVERY curated title on EVERY path. Baguio activities
+  // arrive from vector search / the TomTom supplement with `image: ""`, so
+  // the old "already curated → skip" shortcut was never actually correct:
+  // it returned before attaching the photo, leaving the empty string in
+  // place and dropping the card to the logo fallback.
+  const applyCurated = (act: T): T => {
+    const curated = CURATED_IMAGE_MAP[act.title]
+    return curated ? { ...act, image: curated } : act
+  }
 
-  const results: T[] = [...activities]
-  const queue = activities.map((act, idx) => ({ act, idx }))
+  const results: T[] = activities.map(applyCurated)
+
+  // Fast path: nothing left to fetch, curated photos already attached.
+  const needsFetch = activities.filter((a) => !CURATED_IMAGE_MAP[a.title])
+  if (needsFetch.length === 0) return results
+
+  const queue = activities
+    .map((act, idx) => ({ act, idx }))
+    .filter(({ act }) => !CURATED_IMAGE_MAP[act.title])
 
   // Process in batches of `concurrency` to respect rate limits
   for (let i = 0; i < queue.length; i += concurrency) {
     const batch = queue.slice(i, i + concurrency)
     await Promise.all(
       batch.map(async ({ act, idx }) => {
-        // Skip if already has curated image
-        if (CURATED_IMAGE_MAP[act.title]) return
         try {
           const url = await withGlobalImageLimit(() => getAccurateImageForPlace({
             title: act.title,
