@@ -334,11 +334,14 @@ export function toSpotCard(
 }
 
 /**
- * Region-view members. Not a SpotScopeId: no route, service, cache, or Gala
- * path may ever read this list. The only consumer is the SuggestedSpots
- * region tab, which fires one ordinary per-city query per member.
+ * Region-view members: the two genuine Visayas scopes. El Nido is Palawan
+ * (Mimaropa), keeps its own city pill, and is deliberately excluded — a
+ * "Visayas" that contains Luzon is a mislabel, not a region. Not a
+ * SpotScopeId: no route, service, cache, or Gala path may ever read this
+ * list. The only consumer is the SuggestedSpots region tab, which fires one
+ * ordinary per-city query per member.
  */
-export const REGION_MEMBERS = ['boracay', 'cebu', 'el_nido'] as const;
+export const REGION_MEMBERS = ['boracay', 'cebu'] as const;
 
 export interface RegionSpotPool {
   city: string;
