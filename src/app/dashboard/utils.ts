@@ -149,7 +149,6 @@ export const SPOT_SCOPES = [
   { id: 'baguio', label: 'Baguio' },
   { id: 'manila', label: 'Manila' },
   { id: 'davao', label: 'Davao' },
-  { id: 'luzon', label: 'Luzon' },
 ] as const;
 
 export type SpotScopeId = (typeof SPOT_SCOPES)[number]['id'];
@@ -373,10 +372,12 @@ export function toSpotCard(
   };
 }
 /**
- * Region-view members: the two genuine Visayas scopes. Not a SpotScopeId:
- * no route, service, cache, or Gala path may ever read these lists. The only
- * consumers are the SuggestedSpots region tabs, which fire one ordinary
- * per-city query per member.
+ * Region-tab members. Neither list is a SpotScopeId: no route, service,
+ * cache, or Gala path may ever read them. The only consumers are the
+ * SuggestedSpots region tabs, which fire one ordinary per-city query per
+ * member (all four members have route + CITY_CONFIG + TargetCityId rows).
+ * Pills are Baguio/Manila/Davao + the two region tabs; boracay/cebu surface
+ * only through Visayas, never as standalone pills.
  */
 export const REGION_MEMBERS = ['boracay', 'cebu'] as const;
 /** Luzon union: baguio + manila keep standalone pills AND feed the region. */
