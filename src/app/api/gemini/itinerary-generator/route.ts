@@ -295,8 +295,11 @@ const getCachedItinerary = unstable_cache(
                 requestId
             );
             
-            // Process the guaranteed valid itinerary
-            const finalItinerary = await handleItineraryProcessing(guaranteedItinerary, prompt, durationDays, peakHoursContext);
+            // Server-truth images: the model output carries no searchMetadata,
+            // so thread the pre-model enriched allowlist explicitly. The
+            // re-attach step trusts ONLY this list (model URLs → Gala logo).
+            const serverAllowed = (effectiveSampleItinerary as any)?.searchMetadata?.allowedActivities;
+            const finalItinerary = await handleItineraryProcessing(guaranteedItinerary, prompt, durationDays, peakHoursContext, serverAllowed);
             return { text: JSON.stringify(finalItinerary) };
         }, 3, 1000); // 3 retries with 1 second base delay
     },
@@ -524,7 +527,8 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
                     requestId
                 );
                 
-                const finalItinerary = await handleItineraryProcessing(guaranteedItinerary, prompt, durationDays, peakHoursContext);
+                const serverAllowedRefresh = (effectiveSampleItinerary as any)?.searchMetadata?.allowedActivities;
+                const finalItinerary = await handleItineraryProcessing(guaranteedItinerary, prompt, durationDays, peakHoursContext, serverAllowedRefresh);
                 return { text: JSON.stringify(finalItinerary) };
             }, 3, 1000);
             

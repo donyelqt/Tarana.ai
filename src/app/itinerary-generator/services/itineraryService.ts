@@ -177,8 +177,9 @@ export const enhanceItinerary = (
         }
         
         // Include relevance score in the enhanced activity if it exists.
-        // Never render a falsy/placeholder-less src — fall back to comingsoon.
-        const finalImage = matchingImage || "/images/comingsoon.png";
+        // Never render a falsy src — the Gala logo is the last-resort
+        // fallback (matches the server re-attach contract).
+        const finalImage = matchingImage || "/images/taranaai.png";
         return relevanceScore !== null
           ? { ...activity, image: finalImage, tags, relevanceScore }
           : { ...activity, image: finalImage, tags };

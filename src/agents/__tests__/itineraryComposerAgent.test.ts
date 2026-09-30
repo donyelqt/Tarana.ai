@@ -41,7 +41,14 @@ describe("ItineraryComposerAgent", () => {
         expandedQueries: [],
         coverageScore: 1,
         metadata: {
-          sampleItinerary: { id: "sample" },
+          sampleItinerary: {
+            id: "sample",
+            searchMetadata: {
+              allowedActivities: [
+                { title: "Boracay Island", image: "https://images.unsplash.com/photo-boracay" },
+              ],
+            },
+          },
         },
       },
       context: {
@@ -61,13 +68,22 @@ describe("ItineraryComposerAgent", () => {
     expect(buildDetailedPrompt).toHaveBeenCalled();
     expect(GuaranteedJsonEngine.generateGuaranteedJson).toHaveBeenCalledWith(
       "COMPOSED_PROMPT",
-      { id: "sample" },
+      expect.objectContaining({ id: "sample" }),
       expect.any(String),
       "peak",
       expect.any(String),
       session.id
     );
-    expect(handleItineraryProcessing).toHaveBeenCalledWith({ structured: true }, "Plan", 2, "peak");
+    // The pre-model enriched allowlist must reach processing: the model output
+    // carries no searchMetadata, so without it every activity image degrades
+    // to the Gala logo (this was the 2026-10-01 Boracay bug).
+    expect(handleItineraryProcessing).toHaveBeenCalledWith(
+      { structured: true },
+      "Plan",
+      2,
+      "peak",
+      expect.arrayContaining([expect.objectContaining({ title: "Boracay Island" })])
+    );
     expect(updated.itinerary?.json).toEqual({ title: "Final" });
     expect(updated.status).toBe("completed");
   });

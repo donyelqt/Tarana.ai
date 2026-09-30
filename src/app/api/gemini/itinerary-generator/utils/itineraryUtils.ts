@@ -298,7 +298,8 @@ const inferSlot = (label: string) => {
 
 
 
-export function organizeItineraryByDays(it: any, days: number | null) {
+export function organizeItineraryByDays(it: any, days: number | null, serverAllowedActivities?: unknown) {
+  const injectedAllowList = Array.isArray(serverAllowedActivities) ? serverAllowedActivities : null;
   if (!days || !it || !Array.isArray(it.items) || days <= 0) return it;
   // Allocation guard: days feeds Array.from({length: days}) below, so an
   // unclamped duration (e.g. 999999) allocates millions of buckets → CPU/OOM.
@@ -436,9 +437,10 @@ export function organizeItineraryByDays(it: any, days: number | null) {
   // mergeAllowedActivity removed with the observed-title promotion block:
   // merging model output into the allowlist is exactly the trust inversion.
 
-  const existingAllowedActivities = Array.isArray(it?.searchMetadata?.allowedActivities)
-    ? it.searchMetadata.allowedActivities
-    : [];
+  const existingAllowedActivities = injectedAllowList
+    ?? (Array.isArray(it?.searchMetadata?.allowedActivities)
+      ? it.searchMetadata.allowedActivities
+      : []);
 
   const allowedMap = new Map<string, any>();
   const orderedKeys: string[] = [];
@@ -467,7 +469,8 @@ export function organizeItineraryByDays(it: any, days: number | null) {
 
   // Server-truth image re-attach: the LLM is instructed to copy image URLs,
   // but any model-supplied URL is untrusted (tracker/phishing). Only an
-  // allowlisted server image wins; anything else degrades to comingsoon.
+  // allowlisted server image wins; anything else degrades to the Gala logo
+  // (last resort — the card base layer already renders the same mark).
   for (const item of newItems) {
     if (!Array.isArray(item.activities)) continue;
     for (const activity of item.activities) {
@@ -481,7 +484,7 @@ export function organizeItineraryByDays(it: any, days: number | null) {
       if (serverImage) {
         activity.image = allowed.image;
       } else {
-        activity.image = '/images/comingsoon.png';
+        activity.image = '/images/taranaai.png';
       }
     }
   }
@@ -567,9 +570,9 @@ export async function validateAndEnrichActivity(activity: any): Promise<any | nu
   };
 }
 
-export async function processItinerary(parsed: any, prompt: string, durationDays: number | null, model: any, peakHoursContext: string) {
+export async function processItinerary(parsed: any, prompt: string, durationDays: number | null, model: any, peakHoursContext: string, serverAllowedActivities?: unknown) {
   let processed = removeDuplicateActivities(parsed);
-  processed = organizeItineraryByDays(processed, durationDays);
+  processed = organizeItineraryByDays(processed, durationDays, serverAllowedActivities);
 
   processed = distributeRemainingAllowedActivities(processed, durationDays);
   processed = enrichActivityDescriptions(processed);
