@@ -76,8 +76,8 @@ export async function generateItinerary(detailedPrompt: string, prompt: string, 
     }
 }
 
-export async function handleItineraryProcessing(parsed: any, prompt: string, durationDays: number | null, peakHoursContext: string) {
-    let processed = await processItinerary(parsed, prompt, durationDays, geminiModel, peakHoursContext);
+export async function handleItineraryProcessing(parsed: any, prompt: string, durationDays: number | null, peakHoursContext: string, serverAllowedActivities?: unknown) {
+    let processed = await processItinerary(parsed, prompt, durationDays, geminiModel, peakHoursContext, serverAllowedActivities);
 
     if (!processed || !processed.items || processed.items.length === 0) {
         const isReasonProvided = processed.subtitle && processed.subtitle.toLowerCase().includes("could not find");
