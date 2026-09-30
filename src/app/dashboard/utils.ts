@@ -333,6 +333,55 @@ export function toSpotCard(
   };
 }
 
+/**
+ * Region-view members. Not a SpotScopeId: no route, service, cache, or Gala
+ * path may ever read this list. The only consumer is the SuggestedSpots
+ * region tab, which fires one ordinary per-city query per member.
+ */
+export const REGION_MEMBERS = ['boracay', 'cebu', 'el_nido'] as const;
+
+export interface RegionSpotPool {
+  city: string;
+  spots: SpotPayload[];
+}
+
+/**
+ * Union member pools for a region view: round-robin top-1 per pool, then
+ * fill, capped at three — so one strong city cannot swallow the tab, and
+ * scores never need to be comparable across pools.
+ *
+ * Rows without finite coordinates are dropped (same rule as `toSpotCard`).
+ * An all-empty input returns an empty region, never a fallback.
+ */
+export function mergeRegionPools(pools: readonly RegionSpotPool[]): SpotPayload[] {
+  const finite = pools.map((pool) => ({
+    city: pool.city,
+    spots: (pool.spots ?? []).filter(
+      (s) =>
+        !!s &&
+        typeof s.name === 'string' &&
+        typeof s.lat === 'number' &&
+        Number.isFinite(s.lat) &&
+        typeof s.lon === 'number' &&
+        Number.isFinite(s.lon)
+    ),
+  }));
+  const out: SpotPayload[] = [];
+  let progressed = true;
+  while (out.length < 3 && progressed) {
+    progressed = false;
+    for (const pool of finite) {
+      if (out.length >= 3) break;
+      const next = pool.spots.shift();
+      if (next) {
+        out.push(next);
+        progressed = true;
+      }
+    }
+  }
+  return out;
+}
+
 export const SPOTS_STALE_TIME_MS = 60 * 60 * 1000;
 
 /** Fetch + map GET /api/spots?city=. Throws on HTTP error so retry engages. */
