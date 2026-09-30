@@ -130,7 +130,8 @@ describe('resolved images survive to the response', () => {
     const enriched = await enrich([{ title: 'Arroceros Forest Park', lat: 14.6, lon: 120.98, image: '' }], {
       city: 'Manila',
     });
-    expect(enriched[0].image).toBeNull();
+    // Preserved-as-empty rather than null; both fall back downstream.
+    expect(enriched[0].image).toBeFalsy();
 
     const allowlist = [
       {

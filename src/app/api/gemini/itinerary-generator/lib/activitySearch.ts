@@ -8,7 +8,7 @@ import { trafficAwareActivitySearch, createDefaultTrafficOptions } from "@/lib/t
 import { IntelligentSearchEngine, type IntelligentSearchResult } from "@/lib/search";
 import { enrichActivitiesWithImages } from "@/lib/services/imageService";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getCityConfig, isWithinCityBounds } from "@/lib/data/cityConfig";
+import { getCityConfig, isWithinCityBounds, type CityId } from "@/lib/data/cityConfig";
 import { rotateByDay } from "@/lib/utils/dailyRotation";
 import { extractMatchTerms, matchLocalActivities } from "@/lib/utils/localMatch";
 import type { SearchResult, BoundingBox } from "@/types/route-optimization";
@@ -506,7 +506,7 @@ export async function findAndScoreActivities(
                 finalActivities = trafficFilteredActivities.slice(0, Math.min(20, trafficFilteredActivities.length));
                 // Enrich with accurate per-location images (Tier 0 curated for Baguio, Tier 1-3 for PH/world)
                 try {
-                    finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5, city: getCityConfig(cityId).name }) as unknown as typeof finalActivities
+                    finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5, city: getCityConfig(cityId).name, cityId: cityId as CityId }) as unknown as typeof finalActivities
                 } catch (e) {
                     logger.warn(`Image enrichment failed, keeping original images`, { entryPoint: 'activitySearch', error: e })
                 }
@@ -538,7 +538,7 @@ export async function findAndScoreActivities(
 
                 // Enrich fast-mode images as well (curated stays, new places get fetched)
                 try {
-                    finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5, city: getCityConfig(cityId).name }) as unknown as typeof finalActivities
+                    finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5, city: getCityConfig(cityId).name, cityId: cityId as CityId }) as unknown as typeof finalActivities
                 } catch (e) {
                     logger.warn(`Image enrichment (fast mode) failed`, { entryPoint: 'activitySearch', error: e })
                 }
