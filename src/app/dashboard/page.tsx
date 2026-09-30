@@ -10,7 +10,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { BAGUIO_COORDINATES, WeatherData, getWeatherIconUrl } from "@/lib/core/utils"
-import { Bookmark, Plus, MapPin, Car, Utensils, Wand2, Link, Share2 } from "lucide-react"
+import { Bookmark, Plus, MapPin, Car, Utensils, Wand2, Link, Share2, ChevronRight } from "lucide-react"
+import NextLink from "next/link"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { noProfile } from "public"
@@ -188,19 +189,30 @@ const DashboardContent = () => {
       <main className={`${contentClass('md:pl-64')} flex-1 flex flex-col md:flex-row`}>
         {/* Center Content */}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
-          {/* Static header. The card is a plain div with no onClick, href,
-              role, or tabIndex, so a hover lift advertised a click target
-              that does not exist, was unreachable by keyboard, and never
-              fired on touch. The transition existed only to animate that
-              hover, so it left with it. */}
-          <div className="bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center mb-8 shadow-[0_0_18px_rgba(59,130,246,0.35),0_0_55px_rgba(59,130,246,0.22)]">
-            <Image src={session?.user?.image || noProfile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
-            <div className="flex-grow">
-              <h1 className="text-xl font-bold text-white text-balance">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="wave ml-1 text-3xl" aria-hidden="true">👋</span></h1>
-              <div className="text-gray-200 text-sm">Ready to plan your next adventure?</div>
-              {/*<div className="text-gray-500 text-sm">{session?.user?.email}</div>*/}
+          {/*
+            A real control: this navigates to profile settings, so the hover
+            lift, focus ring, and chevron below are honest affordances rather
+            than decoration implying a click that does not exist.
+
+            The 2s self-hover timer stays gone. Motion here responds only to a
+            real pointer or keyboard focus, and the transition is scoped to
+            transform and box-shadow so it never animates layout.
+          */}
+          <NextLink
+            href="/settings"
+            className="group block rounded-2xl mb-8 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-2 motion-safe:hover:shadow-[0_0_28px_rgba(96,165,250,0.65),0_0_80px_rgba(59,130,246,0.4),0_16px_48px_rgba(29,78,216,0.5)] transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+          >
+            <div className="bg-gradient-to-br from-blue-300 to-blue-600 rounded-2xl p-6 flex items-center shadow-[0_0_18px_rgba(59,130,246,0.35),0_0_55px_rgba(59,130,246,0.22)]">
+              <Image src={session?.user?.image || noProfile} alt="Profile" width={48} height={48} className="rounded-full mr-4" />
+              <div className="flex-grow">
+                <h1 className="text-xl font-bold text-white text-balance">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="wave ml-1 text-3xl" aria-hidden="true">👋</span></h1>
+                <div className="text-gray-200 text-sm">Ready to plan your next adventure?</div>
+                <span className="sr-only">Open profile settings</span>
+                {/*<div className="text-gray-500 text-sm">{session?.user?.email}</div>*/}
+              </div>
+              <ChevronRight size={22} aria-hidden="true" className="shrink-0 text-white/70 transition-transform duration-200 motion-safe:group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:transform-none" />
             </div>
-          </div> 
+          </NextLink>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Popover>
               <PopoverTrigger asChild>
