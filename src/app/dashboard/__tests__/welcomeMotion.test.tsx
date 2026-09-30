@@ -1,10 +1,10 @@
 /**
- * Welcome header motion contract.
+ * Welcome header contract.
  *
- * The card is a non-interactive header, so it must not move: not on a
- * pointer hover (there is no click behind it), and not on its own. Either
- * a reintroduced hover class or a reintroduced timer flips the class list
- * on its own, so this covers both.
+ * The card is a link to profile settings, so it must be reachable and
+ * labeled as one. It must not, however, move on its own: the 2s self-hover
+ * timer is gone, and hover is a response to a real pointer. A reintroduced
+ * timer flips the class list without input, so advancing time covers it.
  */
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -75,14 +75,22 @@ function renderDashboard() {
 
 function welcomeCard(): HTMLElement {
   const heading = screen.getByRole('heading', { name: /welcome back/i });
-  const card = heading.closest('div.rounded-2xl');
-  if (!card) throw new Error('welcome card not found');
+  const card = heading.closest('a');
+  if (!card) throw new Error('welcome card link not found');
   return card as HTMLElement;
 }
 
 describe('welcome header motion', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
+
+  it('is a link to profile settings', () => {
+    renderDashboard();
+    const link = welcomeCard();
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAttribute('href', '/settings');
+    expect(link).toHaveTextContent(/open profile settings/i);
+  });
 
   it('does not move on its own', () => {
     renderDashboard();
