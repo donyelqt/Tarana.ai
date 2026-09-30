@@ -60,9 +60,13 @@ describe('mergeRegionPools', () => {
     expect([...REGION_MEMBERS]).toEqual(['boracay', 'cebu']);
   });
 
-  it('LUZON_MEMBERS pins baguio + manila (el_nido gone, no Luzon mislabel)', () => {
+  it('LUZON_MEMBERS pins baguio + manila (luzon is region-only, not a pill)', () => {
     expect([...LUZON_MEMBERS]).toEqual(['baguio', 'manila']);
-    expect(SPOT_SCOPES.map((s) => s.id)).toEqual(['baguio', 'manila', 'davao', 'luzon']);
+    // Single-pill invariant: luzon renders once, from the region loop — never
+    // from SPOT_SCOPES (that double-render was the two-Luzon-tabs bug).
+    const pillIds: string[] = SPOT_SCOPES.map((s) => s.id);
+    expect(pillIds).toEqual(['baguio', 'manila', 'davao']);
+    expect(pillIds).not.toContain('luzon');
   });
 
   it('keys same-title rows from different pools distinctly (Boracay Island dup)', () => {
