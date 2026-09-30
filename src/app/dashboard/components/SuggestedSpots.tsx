@@ -42,17 +42,12 @@ const SuggestedSpots = () => {
     ...spotsQueryOptions('cebu', status),
     enabled: authed && view === REGION_ID,
   });
-  const regionElNido = useQuery({
-    ...spotsQueryOptions('el_nido', status),
-    enabled: authed && view === REGION_ID,
-  });
 
   const { cards, subtitle } = useMemo(() => {
     if (view === REGION_ID) {
       const pools = [
         { city: REGION_MEMBERS[0], spots: regionBoracay.data ?? [] },
         { city: REGION_MEMBERS[1], spots: regionCebu.data ?? [] },
-        { city: REGION_MEMBERS[2], spots: regionElNido.data ?? [] },
       ];
       const merged = mergeRegionPools(pools);
       // Each card is ranked from its own member-city center — never recentered.
@@ -72,7 +67,7 @@ const SuggestedSpots = () => {
       .filter((c): c is NonNullable<typeof c> => c !== null)
       .slice(0, 3);
     return { cards, subtitle: `Top picks in ${label}` };
-  }, [view, citySpots.data, regionBoracay.data, regionCebu.data, regionElNido.data]);
+  }, [view, citySpots.data, regionBoracay.data, regionCebu.data]);
   return (
     <div className="mb-8">
       <div className="flex justify-between items-center mb-4 px-1">
@@ -113,7 +108,7 @@ const SuggestedSpots = () => {
         </button>
       </div>
       {view === REGION_ID ? (
-        regionBoracay.isLoading || regionCebu.isLoading || regionElNido.isLoading ? (
+        regionBoracay.isLoading || regionCebu.isLoading ? (
           <div className="text-sm text-gray-500 px-1" role="status">Finding spots…</div>
         ) : cards.length === 0 ? (
           <div className="text-sm text-gray-500 px-1" role="status">

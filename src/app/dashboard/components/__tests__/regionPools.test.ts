@@ -20,23 +20,21 @@ describe('mergeRegionPools', () => {
     const out = mergeRegionPools([
       pool('boracay', ['B1', 'B2']),
       pool('cebu', ['C1', 'C2']),
-      pool('el_nido', ['E1', 'E2']),
     ]);
-    expect(out.map((s) => s.name)).toEqual(['B1', 'C1', 'E1']);
+    expect(out.map((s) => s.name)).toEqual(['B1', 'C1', 'B2']);
   });
 
   it('a member with 0 rows contributes 0 without breaking the order', () => {
     const out = mergeRegionPools([
       pool('boracay', []),
       pool('cebu', ['C1', 'C2']),
-      pool('el_nido', ['E1']),
     ]);
-    expect(out.map((s) => s.name)).toEqual(['C1', 'E1', 'C2']);
+    expect(out.map((s) => s.name)).toEqual(['C1', 'C2']);
   });
 
   it('all-empty pools produce an empty region', () => {
     expect(
-      mergeRegionPools([pool('boracay', []), pool('cebu', []), pool('el_nido', [])])
+      mergeRegionPools([pool('boracay', []), pool('cebu', [])])
     ).toEqual([]);
   });
 
@@ -51,8 +49,9 @@ describe('mergeRegionPools', () => {
       expect.objectContaining({ name: 'C1' }),
     ]);
   });
-
-  it('REGION_MEMBERS pins exactly the three probed scopes', () => {
-    expect([...REGION_MEMBERS]).toEqual(['boracay', 'cebu', 'el_nido']);
+  it('REGION_MEMBERS pins exactly the two Visayas scopes (el_nido excluded)', () => {
+    // El Nido is Palawan (Mimaropa) with its own city pill — a "Visayas" tab
+    // containing Luzon would be a mislabel, not a region.
+    expect([...REGION_MEMBERS]).toEqual(['boracay', 'cebu']);
   });
 });
