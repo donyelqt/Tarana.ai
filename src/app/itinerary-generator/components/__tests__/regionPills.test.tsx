@@ -77,11 +77,13 @@ describe("Gala region pills", () => {
       }
     });
 
-    it("names the real destination in the sublabel, so a region tile never overpromises", () => {
-      const visayas = CITY_PILLS.find((p) => p.label === "Visayas");
-      const luzon = CITY_PILLS.find((p) => p.label === "Luzon");
-      expect(visayas?.sublabel).toContain("Boracay");
-      expect(luzon?.sublabel).toContain("Manila");
+    it("carries no sublabel, so the tile stays one clean line of text", () => {
+      // A sublabel was where the real destination used to be spelled out. It is
+      // gone, so the heading is now the only place the alias can be caught
+      // being an alias -- asserted in the picker behaviour block below.
+      for (const pill of CITY_PILLS) {
+        expect(pill).not.toHaveProperty("sublabel");
+      }
     });
 
     it("resolves Visayas and Luzon inside the dashboard's own member sets", () => {
@@ -130,16 +132,23 @@ describe("Gala region pills", () => {
       expect(luzon).toHaveAttribute("aria-pressed", "false");
       expect(manila).toHaveAttribute("aria-pressed", "true");
     });
-
-    it("reflects the picked pill in the heading", () => {
-      render(
-        <ToastProvider>
-          <ItineraryForm {...baseProps} selectedCity="baguio" />
-        </ToastProvider>
-      );
+    it("names the real destination in the heading, not the pill alias", () => {
+      // Tiles lost their sublabel, so the heading is the last place a user can
+      // learn that "Visayas" plans Boracay. It must not echo the alias.
+      // Controlled harness: the heading reads the selectedCity prop, so the
+      // click has to propagate the way the real page wires it.
+      function Harness() {
+        const [city, setCity] = React.useState<CityId>("baguio");
+        return (
+          <ToastProvider>
+            <ItineraryForm {...baseProps} selectedCity={city} setSelectedCity={setCity} />
+          </ToastProvider>
+        );
+      }
+      render(<Harness />);
 
       fireEvent.click(screen.getByRole("button", { name: /^Visayas/i }));
-      expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Plan Your Visayas Adventure");
+      expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Plan Your Boracay Adventure");
     });
   });
 });

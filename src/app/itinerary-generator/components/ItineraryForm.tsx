@@ -11,6 +11,8 @@ import { useEffect, useState } from "react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ChevronDown, MapPin, Mountain, Waves, Building2, Map, Globe, Activity } from "lucide-react";
 import { DollarSign, PiggyBank, CreditCard, Wallet, Coins, Gem } from "lucide-react";
+import { CITY_CONFIGS } from "@/lib/data/cityConfig";
+
 
 export interface DestinationPill {
   /** Stable UI key. Two pills may share a cityId, so this is what drives the pressed state. */
@@ -19,7 +21,6 @@ export interface DestinationPill {
   label: string;
   /** The city that is ACTUALLY generated. Never a region name. */
   cityId: CityId;
-  sublabel: string;
   Icon: any;
 }
 
@@ -32,20 +33,21 @@ export interface DestinationPill {
  * union would have to route a day across members that sit 282 km apart over
  * open water (boracay->cebu) or 206 km apart on land (baguio->manila), against
  * a 50 km city search radius. So each region pill resolves to its member with
- * the best coverage, and the sublabel names that city so the tile never
- * promises more than it delivers.
+ * the best coverage.
  *
- * The cityId sent to the API is always a real member id, so no route, zod
- * enum, CITY_CONFIGS row, TargetCityId entry, or persistence change is needed.
+ * Tiles carry no sublabel, so the heading is where the real destination is
+ * named: picking Visayas reads "Plan Your Boracay Adventure". The alias never
+ * reaches the API — cityId is always a real member id, so no route, zod enum,
+ * CITY_CONFIGS row, TargetCityId entry, or persistence change is needed.
  */
 export const CITY_PILLS: DestinationPill[] = [
-  { key: "baguio", label: "Baguio", cityId: "baguio", sublabel: "City of Pines", Icon: Mountain },
-  { key: "manila", label: "Manila", cityId: "manila", sublabel: "Capital", Icon: Building2 },
-  { key: "davao", label: "Davao", cityId: "davao", sublabel: "Durian City", Icon: MapPin },
-  { key: "visayas", label: "Visayas", cityId: "boracay", sublabel: "Boracay, Aklan", Icon: Waves },
-  { key: "luzon", label: "Luzon", cityId: "manila", sublabel: "Metro Manila", Icon: Building2 },
-  { key: "ph-wide", label: "Philippines", cityId: "ph-wide", sublabel: "Anywhere PH", Icon: Map },
-  { key: "world", label: "World", cityId: "world", sublabel: "Global", Icon: Globe },
+  { key: "baguio", label: "Baguio", cityId: "baguio", Icon: Mountain },
+  { key: "manila", label: "Manila", cityId: "manila", Icon: Building2 },
+  { key: "davao", label: "Davao", cityId: "davao", Icon: MapPin },
+  { key: "visayas", label: "Visayas", cityId: "boracay", Icon: Waves },
+  { key: "luzon", label: "Luzon", cityId: "manila", Icon: Building2 },
+  { key: "ph-wide", label: "Philippines", cityId: "ph-wide", Icon: Map },
+  { key: "world", label: "World", cityId: "world", Icon: Globe },
 ]
 
 export default function ItineraryForm({
@@ -166,8 +168,10 @@ export default function ItineraryForm({
           <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-600">
             Tarana Gala
           </p>
+          {/* Names the city actually generated, not the pill alias: picking
+              Visayas reads "Plan Your Boracay Adventure". */}
           <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-[1.75rem]">
-            Plan Your {CITY_PILLS.find((p) => p.key === activePillKey)?.label ?? "Baguio"} Adventure
+            Plan Your {CITY_CONFIGS[selectedCity]?.name ?? "Baguio"} Adventure
           </h2>
         </div>
         <label
@@ -250,12 +254,12 @@ export default function ItineraryForm({
                 >
                   <pill.Icon className={cn("h-5 w-5", isSelected ? "text-white" : "text-gray-500")} />
                   <span className="text-xs font-semibold leading-none">{pill.label}</span>
-                  <span className={cn("text-[10px] leading-none", isSelected ? "text-blue-100" : "text-gray-400")}>{pill.sublabel}</span>
+
                 </button>
               )
             })}
           </div>
-          <p className="text-[10px] text-gray-400 mt-2">Visayas plans Boracay and Luzon plans Metro Manila — a trip is always one city.</p>
+          <p className="text-[10px] text-gray-400 mt-2">Visayas plans Boracay, Luzon plans Metro Manila — a trip is always one city.</p>
         </div>
         {/* Budget Range */}
         <div>
