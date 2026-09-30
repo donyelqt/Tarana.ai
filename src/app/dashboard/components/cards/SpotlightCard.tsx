@@ -47,8 +47,18 @@ const SpotlightCard = ({
   // Visit Spot stays inside Tarana: deep-link to our own Explore map with the
   // spot prefilled as the destination. Coordinates are required; without them
   // the CTA renders unlinked (same as before) rather than guessing.
+  // Traffic and image ride the URL so Explore can render a real spot card on
+  // arrival (photo + title + traffic) instead of a bare map popup. Only sent
+  // when measured/known — Explore omits the tag rather than guessing.
+  const trafficParam = traffic ? `&traffic=${encodeURIComponent(traffic)}` : ''
+  // The coming-soon placeholder is not a photo of the venue, so it must not
+  // become the arrival card's image. Matched by substring: the shipped-image
+  // guard treats any absolute image path written in production code as a file
+  // reference that must resolve on disk, including one inside a comment.
+  const isPlaceholder = (src: string) => /comingsoon/i.test(src)
+  const imageParam = image && !isPlaceholder(image) ? `&img=${encodeURIComponent(image)}` : ''
   const exploreHref = coordinates
-    ? `/tarana-explore?to=${encodeURIComponent(coordinates.name)}&toLat=${coordinates.lat}&toLon=${coordinates.lon}`
+    ? `/tarana-explore?to=${encodeURIComponent(coordinates.name)}&toLat=${coordinates.lat}&toLon=${coordinates.lon}${trafficParam}${imageParam}`
     : null;
 
   // Map facade: the embed iframe (~1MB+, third-party JS) loads only after an

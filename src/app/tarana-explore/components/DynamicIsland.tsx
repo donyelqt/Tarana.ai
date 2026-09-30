@@ -98,7 +98,16 @@ const DynamicIsland: React.FC<DynamicIslandProps> = ({
       className="relative mx-auto"
       style={{
         borderRadius: 9999,
-        overflow: clip ? "hidden" : "visible",
+        // Clip ONLY while collapsed. Expanded content must never be clipped:
+        // during the width/height morph the container is still narrower than
+        // the card, so `overflow:hidden` pushed the "To" field's clear button
+        // outside the hit area and made it untappable. Clip was previously
+        // driven purely by animation start/complete, so any interrupted or
+        // not-yet-run animation left the card clipped indefinitely.
+        // Collapsed content is opacity:0 + pointer-events:none, so clipping it
+        // costs nothing; expanded content is visible and interactive, and the
+        // suggestion dropdown needs `visible` to escape the rounded clip.
+        overflow: expanded ? "visible" : clip ? "hidden" : "visible",
         background: "rgba(255,255,255,0.92)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
