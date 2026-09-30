@@ -11,6 +11,8 @@
  * Server-only. Uses 24h in-memory cache.
  */
 
+import type { CityId } from '@/lib/data/cityConfig';
+
 const IMAGE_CACHE_TTL = 24 * 60 * 60 * 1000 // 24h
 
 /**
@@ -48,9 +50,23 @@ type PlaceInput = {
   lat?: number
   lon?: number
   city?: string
+  cityId?: CityId
   placeId?: string
 }
 
+/**
+ * Tier 0 is the Baguio-only curated catalog, keyed by bare place title.
+ *
+ * It must only ever answer for Baguio. Several of its titles are ordinary
+ * venue names that also exist elsewhere ("The Mansion", "Botanical Garden",
+ * "Wright Park"), so an ungated lookup hands a Manila or Cebu place a Baguio
+ * photo the moment a name collides. Unknown city => no curated answer, fall
+ * through to the real tiers.
+ */
+function curatedImageFor(title: string, cityId?: CityId): string | undefined {
+  if (cityId !== 'baguio') return undefined
+  return CURATED_IMAGE_MAP[title]
+}
 type CachedEntry = { url: string; expiry: number }
 
 // In-memory cache (per-instance). For prod, back with Supabase `place_images` table.
@@ -114,7 +130,10 @@ const CURATED_IMAGE_MAP: Record<string, string> = {
 }
 
 function getCacheKey(p: PlaceInput): string {
-  return `img:${p.title.toLowerCase().trim()}:${p.lat?.toFixed(3) ?? "x"}:${p.lon?.toFixed(3) ?? "x"}`
+  // cityId is part of the key, not decoration: the curated tier is
+  // Baguio-only, so a cached Baguio answer for "The Mansion" must never be
+  // served to a Manila request for the same title.
+  return `img:${p.cityId ?? "none"}:${p.title.toLowerCase().trim()}:${p.lat?.toFixed(3) ?? "x"}:${p.lon?.toFixed(3) ?? "x"}`
 }
 
 function getUnsplashKey(): string | null {
@@ -251,8 +270,9 @@ export async function getAccurateImageForPlace(place: PlaceInput): Promise<strin
   const cached = cache.get(cacheKey)
   if (cached && Date.now() < cached.expiry) return cached.url
 
-  // Tier 0: Curated Baguio — instant, no network
-  const curated = CURATED_IMAGE_MAP[place.title]
+  // Tier 0: Curated Baguio — instant, no network. Baguio-only: see
+  // curatedImageFor. A same-named place in another city must not inherit it.
+  const curated = curatedImageFor(place.title, place.cityId);
   if (curated) {
     cache.set(cacheKey, { url: curated, expiry: Date.now() + IMAGE_CACHE_TTL })
     return curated
@@ -298,9 +318,10 @@ export async function getAccurateImageForPlace(place: PlaceInput): Promise<strin
  */
 export async function enrichActivitiesWithImages<T extends { title: string; lat?: number; lon?: number; image?: unknown }>(
   activities: T[],
-  options: { concurrency?: number; city?: string } = {}
+  options: { concurrency?: number; city?: string; cityId?: CityId } = {}
 ): Promise<T[]> {
   const concurrency = options.concurrency ?? 5
+  const cityId = options.cityId
 
   // Tier 0 applies to EVERY curated title on EVERY path. Baguio activities
   // arrive from vector search / the TomTom supplement with `image: ""`, so
@@ -308,19 +329,19 @@ export async function enrichActivitiesWithImages<T extends { title: string; lat?
   // it returned before attaching the photo, leaving the empty string in
   // place and dropping the card to the logo fallback.
   const applyCurated = (act: T): T => {
-    const curated = CURATED_IMAGE_MAP[act.title]
+    const curated = curatedImageFor(act.title, cityId)
     return curated ? { ...act, image: curated } : act
   }
 
   const results: T[] = activities.map(applyCurated)
 
   // Fast path: nothing left to fetch, curated photos already attached.
-  const needsFetch = activities.filter((a) => !CURATED_IMAGE_MAP[a.title])
+  const needsFetch = activities.filter((a) => !curatedImageFor(a.title, cityId))
   if (needsFetch.length === 0) return results
 
   const queue = activities
     .map((act, idx) => ({ act, idx }))
-    .filter(({ act }) => !CURATED_IMAGE_MAP[act.title])
+    .filter(({ act }) => !curatedImageFor(act.title, cityId))
 
   // Process in batches of `concurrency` to respect rate limits
   for (let i = 0; i < queue.length; i += concurrency) {
@@ -333,8 +354,12 @@ export async function enrichActivitiesWithImages<T extends { title: string; lat?
             lat: act.lat,
             lon: act.lon,
             city: options.city,
+            cityId,
           }))
-          results[idx] = { ...act, image: url }
+          // Only overwrite on a real hit. Assigning unconditionally meant a
+          // chain that resolved nothing replaced a good server image with
+          // null — the same "log says resolved, card shows fallback" class.
+          if (url) results[idx] = { ...act, image: url }
         } catch {
           // Keep original image on failure
         }

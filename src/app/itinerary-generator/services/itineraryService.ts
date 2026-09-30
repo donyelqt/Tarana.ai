@@ -1,5 +1,5 @@
 import { WeatherData } from "@/lib/core";
-import { ItineraryData, FormData } from "../types";
+import { ItineraryData, FormData, CityId } from "../types";
 import { sampleItinerary } from "../data/itineraryData";
 
 /**
@@ -120,7 +120,13 @@ export const generateItinerary = async (
  */
 export const enhanceItinerary = (
   itinerary: ItineraryData,
-  weatherData: WeatherData | null
+  weatherData: WeatherData | null,
+  // No `= "baguio"` default: a defaulted scope silently re-enabled the
+  // Baguio-only catalog match for any caller that forgot the argument, which
+  // is the exact bug this gate closes. Omitting it now fails CLOSED (no
+  // curated match) instead of open, so the worst case is a fallback image
+  // rather than another city's photo.
+  cityId?: CityId
 ): ItineraryData => {
   return {
     ...itinerary,
@@ -131,10 +137,15 @@ export const enhanceItinerary = (
         const relevanceScore = activity.relevanceScore !== undefined ? activity.relevanceScore : null;
         
         // Preserve the server-provided accurate image (curated Baguio / Unsplash / Wikimedia /
-        // TomTom map). Fuzzy-match against the local catalog ONLY when the server sent no image,
-        // otherwise Manila/Cebu places get overwritten with unrelated Baguio photos.
+        // TomTom map). Fuzzy-match against the local catalog ONLY when the server sent no image
+        // AND the itinerary is Baguio: `sampleItinerary` is titled "A personalized Baguio
+        // Experience", so matching a Manila/Cebu activity against it hands the user another
+        // city's photo ("Poblacion Market" was rendered with Baguio Night Market's image
+        // because both contain "market"; "Robinsons Supermarket Tutuban" matched Mines View
+        // Park on shared tags alone). The dashboard's SuggestedSpots path is the correct
+        // reference — it renders the API image verbatim and never consults a catalog.
         let matchingImage: any = activity.image || null;
-        if (!matchingImage) {
+        if (!matchingImage && cityId === "baguio") {
           let bestMatchScore = 0;
           for (const sampleSection of sampleItinerary.items) {
             for (const sampleActivity of sampleSection.activities) {
