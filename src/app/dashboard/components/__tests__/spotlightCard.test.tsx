@@ -41,13 +41,24 @@ describe('SpotlightCard map facade', () => {
     expect(screen.getByRole('button', { name: 'Visit Spot' })).toBeInTheDocument();
   });
 
-  it('links Visit Spot to our Explore map with the spot as destination', () => {
+  it('links Visit Spot to our Explore map, carrying the card content across', () => {
+    // The arrival card on Explore is built from these params: photo, title and
+    // measured traffic. Dropping traffic would silently hide the tag there.
     render(<SpotlightCard {...props} />);
     const link = screen.getByRole('link', { name: 'Visit Spot: Burnham Park' });
     expect(link.getAttribute('href')).toBe(
-      '/tarana-explore?to=Burnham%20Park&toLat=16.4093&toLon=120.595'
+      '/tarana-explore?to=Burnham%20Park&toLat=16.4093&toLon=120.595&traffic=Low&img=%2Fimages%2Fburnham.png'
     );
     expect(link.getAttribute('target')).toBeNull();
+  });
+
+  it('omits traffic when nothing was measured and skips the placeholder photo', () => {
+    // Never invent a traffic level, and never ship the coming-soon placeholder
+    // as the arrival card's image.
+    render(<SpotlightCard {...props} traffic={undefined} image="/images/comingsoon.png" />);
+    const href = screen.getByRole('link', { name: 'Visit Spot: Burnham Park' }).getAttribute('href') ?? '';
+    expect(href).not.toContain('traffic=');
+    expect(href).not.toContain('img=');
   });
 
   it('never links Visit Spot to external Google Maps', () => {

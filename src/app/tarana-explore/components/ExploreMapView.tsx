@@ -13,6 +13,7 @@ import FloatingSearchCard from './FloatingSearchCard'
 import BottomRouteSheet from './BottomRouteSheet'
 import TrafficBadge from './TrafficBadge'
 import MapControls from './MapControls'
+import SpotPreviewCard, { type SpotTraffic } from './SpotPreviewCard'
 import { useRouteCalculation } from '../hooks/useRouteCalculation'
 
 // Map must be client-only and skip SSR (TomTom uses window)
@@ -42,9 +43,12 @@ const ExploreMapView: React.FC = () => {
   const searchParams = useSearchParams()
   const [origin, setOrigin] = useState<LocationPoint | null>(null)
   const [destination, setDestination] = useState<LocationPoint | null>(null)
+  const [recenterSignal, setRecenterSignal] = useState(0)
   // Deep-link from Suggested Spots / Recommended Cafes Visit buttons:
-  // ?to=<name>&toLat=<lat>&toLon=<lon> prefills the destination once.
+  // ?to=<name>&toLat=<lat>&toLon=<lon> prefills the destination once, with the
+  // optional &traffic= and &img= params that feed the arrival card.
   // Finite numbers only; anything else is ignored (map renders unprefilled).
+  const [spotPreview, setSpotPreview] = useState<{ traffic: SpotTraffic | null; image: string | null } | null>(null)
   useEffect(() => {
     const name = searchParams.get('to')
     const lat = Number(searchParams.get('toLat'))
@@ -53,11 +57,22 @@ const ExploreMapView: React.FC = () => {
     setDestination((prev) =>
       prev !== null ? prev : { id: `spot:${lat},${lon}`, name, address: name, lat, lng: lon, category: 'Spot' }
     )
+    // Only measured traffic is honoured; an unrecognised value hides the tag.
+    const rawTraffic = searchParams.get('traffic')
+    const traffic = rawTraffic === 'Low' || rawTraffic === 'Moderate' || rawTraffic === 'High' ? rawTraffic : null
+    // Remote-URL only. A scheme-relative or javascript: src must never reach
+    // next/image from a URL the user can hand-edit.
+    const rawImage = searchParams.get('img')
+    const image = rawImage && /^https:\/\/[^\s]+$/i.test(rawImage) ? rawImage : null
+    setSpotPreview({ traffic, image })
+    // Bump the recenter signal so the map frames the destination even when it
+    // finished loading before this effect committed.
+    setRecenterSignal((n) => n + 1)
   }, [searchParams])
   const [preferences, setPreferences] = useState<RoutePreferences>(DEFAULT_PREFERENCES)
   const [mapStyle, setMapStyle] = useState<MapStyle>('main')
   const [isChangingStyle, setIsChangingStyle] = useState(false)
-  const [recenterSignal, setRecenterSignal] = useState(0)
+
   const [tiltOn, setTiltOn] = useState(true)
   const styleControlRef = useRef<{ changeStyle: (style: MapStyle) => void } | null>(null);
 
@@ -89,7 +104,12 @@ const ExploreMapView: React.FC = () => {
     clear()
     setOrigin(null)
     setDestination(null)
+    setSpotPreview(null)
   }, [clear])
+
+  // Dismissing the card keeps the destination (it is a routing seed the user
+  // can still plan from) and only hides the photo/title chrome.
+  const handleDismissPreview = useCallback(() => setSpotPreview(null), [])
 
   const handleRecenter = useCallback(() => {
     setRecenterSignal((n) => n + 1)
@@ -160,6 +180,15 @@ const ExploreMapView: React.FC = () => {
         onClose={handleClose}
         lastUpdated={state.lastUpdated}
       />
+
+      {spotPreview && (
+        <SpotPreviewCard
+          name={destination?.name ?? ''}
+          image={spotPreview.image}
+          traffic={spotPreview.traffic}
+          onDismiss={handleDismissPreview}
+        />
+      )}
 
       {/* Subtle map error toast (non-blocking) */}
       {state.error && (

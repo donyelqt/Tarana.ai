@@ -741,15 +741,24 @@ export default function InteractiveRouteMap({
         }
       });
 
-      // Auto-fit map to show all markers with enhanced padding for modern UI
-      if ((origin || destination || waypoints.length > 0) && window.tt.LngLatBounds) {
-        const bounds = new window.tt.LngLatBounds();
 
-        if (origin) bounds.extend([origin.lng, origin.lat]);
-        if (destination) bounds.extend([destination.lng, destination.lat]);
-        waypoints.forEach(waypoint => {
-          if (waypoint) bounds.extend([waypoint.lng, waypoint.lat]);
-        });
+      // Auto-fit map to show all markers with enhanced padding for modern UI.
+      // A single point (a deep-linked destination with no origin) is a
+      // degenerate bounds box that TomTom cannot fit — easeTo that point
+      // instead, otherwise the map stays wherever it was initialised and the
+      // spot marker lands off-screen.
+      const points: [number, number][] = [];
+      if (origin) points.push([origin.lng, origin.lat]);
+      if (destination) points.push([destination.lng, destination.lat]);
+      waypoints.forEach((waypoint) => {
+        if (waypoint) points.push([waypoint.lng, waypoint.lat]);
+      });
+
+      if (points.length === 1 && window.tt.LngLatBounds) {
+        map.easeTo?.({ center: points[0], zoom: ZOOM_LEVELS.STREET, duration: 1500, essential: true });
+      } else if (points.length > 1 && window.tt.LngLatBounds) {
+        const bounds = new window.tt.LngLatBounds();
+        points.forEach(([lng, lat]) => bounds.extend([lng, lat]));
 
         // Fit map to bounds with generous padding for modern marker visibility
         map.fitBounds(bounds, {
@@ -758,8 +767,6 @@ export default function InteractiveRouteMap({
           duration: 1500,
           essential: true
         });
-
-        console.log('🗺️ Map fitted to modern marker bounds with smooth animation');
       }
 
     } catch (error) {
