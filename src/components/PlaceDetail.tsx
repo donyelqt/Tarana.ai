@@ -48,7 +48,7 @@ const PlaceDetail = ({ place, initialTab = 'description' }: PlaceDetailProps) =>
           <div className="w-full md:w-1/3 flex justify-center items-center">
             <div className="relative w-full max-w-[240px] sm:max-w-[300px] h-[160px] sm:h-[200px]">
               <Image 
-                src={place.images[0] || '/images/placeholder.png'} 
+                src={place.images[0] || '/images/placeholders/default-itinerary.jpg'}
                 alt={place.name}
                 fill
                 className="object-contain"

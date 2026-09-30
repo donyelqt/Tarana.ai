@@ -571,7 +571,7 @@ function transformItineraryStructure(apiResponse: any): any {
           tags: baseTags,
           image: typeof activity.image === 'string'
             ? activity.image
-            : (activity.image?.src || activity.image || "/images/default.jpg"),
+            : (activity.image?.src || activity.image || "/images/placeholders/default-itinerary.jpg"),
           trafficAnalysis,
           trafficData: activity.trafficData,
           trafficLevel,
