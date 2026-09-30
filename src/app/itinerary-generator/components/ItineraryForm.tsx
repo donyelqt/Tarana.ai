@@ -6,21 +6,44 @@ import { cn } from "@/lib/core";
 import { useToast } from "@/components/ui/use-toast";
 import { DatePicker } from "@/components/ui/date-picker";
 import Link from "next/link";
-import { ItineraryFormProps, FormData } from "../types";
+import { ItineraryFormProps, FormData, CityId } from "../types";
 import { useEffect, useState } from "react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ChevronDown, MapPin, Mountain, Waves, Building2, Map, Globe, Activity } from "lucide-react";
 import { DollarSign, PiggyBank, CreditCard, Wallet, Coins, Gem } from "lucide-react";
 
-const CITY_OPTIONS: { id: "baguio"|"cebu"|"manila"|"davao"|"boracay"|"el_nido"|"ph-wide"|"world"; label: string; sublabel: string; Icon: any }[] = [
-  { id: "baguio", label: "Baguio", sublabel: "City of Pines", Icon: Mountain },
-  { id: "cebu", label: "Cebu", sublabel: "Queen City", Icon: Waves },
-  { id: "manila", label: "Manila", sublabel: "Capital", Icon: Building2 },
-  { id: "davao", label: "Davao", sublabel: "Durian City", Icon: MapPin },
-  { id: "boracay", label: "Boracay", sublabel: "Island, Aklan", Icon: Waves },
-  { id: "el_nido", label: "El Nido", sublabel: "Palawan", Icon: MapPin },
-  { id: "ph-wide", label: "Philippines", sublabel: "Anywhere PH", Icon: Map },
-  { id: "world", label: "World", sublabel: "Global", Icon: Globe },
+export interface DestinationPill {
+  /** Stable UI key. Two pills may share a cityId, so this is what drives the pressed state. */
+  key: string;
+  /** What the user reads on the tile. */
+  label: string;
+  /** The city that is ACTUALLY generated. Never a region name. */
+  cityId: CityId;
+  sublabel: string;
+  Icon: any;
+}
+
+/**
+ * Destination pills mirror the dashboard's Suggested Spots row
+ * (Baguio / Manila / Davao / Visayas / Luzon).
+ *
+ * Visayas and Luzon are ALIASES, not scopes. A Gala itinerary is strictly
+ * single-city: one cityId, one POI bounds box, one map viewport. A region
+ * union would have to route a day across members that sit 282 km apart over
+ * open water (boracay->cebu) or 206 km apart on land (baguio->manila), against
+ * a 50 km city search radius. So each region pill resolves to its member with
+ * the best coverage, and the sublabel names that city so the tile never
+ * promises more than it delivers.
+ *
+ * The cityId sent to the API is always a real member id, so no route, zod
+ * enum, CITY_CONFIGS row, TargetCityId entry, or persistence change is needed.
+ */
+export const CITY_PILLS: DestinationPill[] = [
+  { key: "baguio", label: "Baguio", cityId: "baguio", sublabel: "City of Pines", Icon: Mountain },
+  { key: "manila", label: "Manila", cityId: "manila", sublabel: "Capital", Icon: Building2 },
+  { key: "davao", label: "Davao", cityId: "davao", sublabel: "Durian City", Icon: MapPin },
+  { key: "visayas", label: "Visayas", cityId: "boracay", sublabel: "Boracay, Aklan", Icon: Waves },
+  { key: "luzon", label: "Luzon", cityId: "manila", sublabel: "Metro Manila", Icon: Building2 },
 ]
 
 export default function ItineraryForm({
@@ -52,6 +75,11 @@ export default function ItineraryForm({
   setSelectedCity,
 }: ItineraryFormProps) {
   const { toast } = useToast();
+  // Pill identity is UI-only: Manila and Luzon both anchor to Metro Manila, so
+  // the pressed tile follows the pill the user pressed, not the city id.
+  const [activePillKey, setActivePillKey] = useState(
+    CITY_PILLS.find((p) => p.cityId === selectedCity)?.key ?? CITY_PILLS[0].key
+  );
   // Local state to control the budget popover
   const [openBudget, setOpenBudget] = useState(false);
 
@@ -137,7 +165,7 @@ export default function ItineraryForm({
             Tarana Gala
           </p>
           <h2 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-[1.75rem]">
-            Plan Your {CITY_OPTIONS.find(c => c.id === selectedCity)?.label ?? "Baguio"} Adventure
+            Plan Your {CITY_PILLS.find((p) => p.key === activePillKey)?.label ?? "Baguio"} Adventure
           </h2>
         </div>
         <label
@@ -192,15 +220,22 @@ export default function ItineraryForm({
         {/* Destination — strict city scope */}
         <div>
           <Label className="block font-medium mb-2 text-gray-900">Destination</Label>
-          <p className="text-xs text-gray-500 mb-3">Choose where to generate — Baguio uses curated guides, others use live locations + accurate images. Strict: only the selected area is used.</p>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-            {CITY_OPTIONS.map(({ id, label, sublabel, Icon }) => {
-              const isSelected = selectedCity === id
+          <p className="text-xs text-gray-500 mb-3">Choose where to generate — Baguio uses curated guides, others use live locations + accurate images. Each tile generates one city, named in the subtitle.</p>
+          {/* Pills mirror the dashboard's Suggested Spots row. Visayas and
+              Luzon are aliases that resolve to a real member city id, so the
+              API never receives a region. */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+            {CITY_PILLS.map((pill) => {
+              const isSelected = activePillKey === pill.key
               return (
                 <button
                   type="button"
-                  key={id}
-                  onClick={() => !(showPreview || disabled) && setSelectedCity(id)}
+                  key={pill.key}
+                  onClick={() => {
+                    if (showPreview || disabled) return
+                    setActivePillKey(pill.key)
+                    setSelectedCity(pill.cityId)
+                  }}
                   disabled={showPreview || disabled}
                   aria-pressed={isSelected}
                   className={cn(
@@ -211,14 +246,14 @@ export default function ItineraryForm({
                     (showPreview || disabled) && "cursor-not-allowed opacity-60"
                   )}
                 >
-                  <Icon className={cn("h-5 w-5", isSelected ? "text-white" : "text-gray-500")} />
-                  <span className="text-xs font-semibold leading-none">{label}</span>
-                  <span className={cn("text-[10px] leading-none", isSelected ? "text-blue-100" : "text-gray-400")}>{sublabel}</span>
+                  <pill.Icon className={cn("h-5 w-5", isSelected ? "text-white" : "text-gray-500")} />
+                  <span className="text-xs font-semibold leading-none">{pill.label}</span>
+                  <span className={cn("text-[10px] leading-none", isSelected ? "text-blue-100" : "text-gray-400")}>{pill.sublabel}</span>
                 </button>
               )
             })}
           </div>
-          <p className="text-[10px] text-gray-400 mt-2">Strict scope: Cebu shows only Cebu, Baguio only Baguio. `ph-wide` searches anywhere in PH.</p>
+          <p className="text-[10px] text-gray-400 mt-2">Visayas plans Boracay and Luzon plans Metro Manila — a trip is always one city.</p>
         </div>
         {/* Budget Range */}
         <div>
