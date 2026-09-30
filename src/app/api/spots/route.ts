@@ -13,13 +13,15 @@ import { rotateByDay } from '@/lib/utils/dailyRotation';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 import {
   activityToPayload,
-  isSpotScopeId,
   spotPool,
+  withSpotOverlays,
   type SpotPayload,
-  type SpotScopeId,
 } from '@/app/dashboard/utils';
 
-const SUPPORTED: SpotScopeId[] = ['baguio', 'cebu', 'manila', 'davao', 'boracay', 'el_nido'];
+// Retrieval stays wider than the pill row: boracay + cebu have no standalone
+// pills (they surface through the Visayas tab) but the route still serves
+// them, so direct ?city=boracay/?city=cebu calls and the region union work.
+const SUPPORTED = ['baguio', 'cebu', 'manila', 'davao', 'boracay', 'el_nido'] as const;
 
 /** Spots enriched per scope change — photos + traffic for the visible head. */
 const ENRICH_LIMIT = 6;
@@ -72,7 +74,7 @@ export async function GET(request: Request) {
   const requestId = getRequestId(req);
   const city = new URL(request.url).searchParams.get('city') ?? 'baguio';
 
-  if (!isSpotScopeId(city) || !SUPPORTED.includes(city)) {
+  if (!(SUPPORTED as readonly string[]).includes(city)) {
     return NextResponse.json(
       { error: 'Unsupported city', supported: SUPPORTED },
       { status: 400 }
@@ -195,14 +197,17 @@ export async function GET(request: Request) {
     // Re-deduping by coordinates alone here would collapse distinct venues that
     // legitimately share a building or gate.
     const touristPois = await getTouristPois(city);
-    const spots: SpotPayload[] = touristPois.map((r) => ({
+    const live: SpotPayload[] = touristPois.map((r) => ({
       name: r.name,
       image: null,
       lat: r.coordinates.lat,
       lon: r.coordinates.lng,
       peakHours: null,
     }));
-
+    // Spots-only curated overlays (malls the allowlist rejects): prepended so
+    // they rotate WITH the pool, not pinned at head. Yields to live rows on
+    // title collision; enrichment below dresses them like any head row.
+    const spots = withSpotOverlays(city, live);
     // Daily rotation (Gala strict-city parity): TomTom order is deterministic,
     // so without rotation the same 3 surface every day. Rotates the pool before
     // head-6 enrichment so every head is fully dressed. Baguio untouched.
