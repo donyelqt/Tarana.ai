@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { ToastProvider } from "@/components/ui/use-toast";
 import ItineraryForm, { CITY_PILLS } from "../ItineraryForm";
 import type { CityId } from "../../types";
+import { REGION_MEMBERS, LUZON_MEMBERS } from "@/app/dashboard/utils";
 
 window.HTMLElement.prototype.scrollIntoView = jest.fn();
 window.HTMLElement.prototype.hasPointerCapture = jest.fn();
@@ -53,13 +54,17 @@ const ROUTE_CITY_IDS: readonly CityId[] = [
 
 describe("Gala region pills", () => {
   describe("the alias contract", () => {
-    it("shows exactly the dashboard row: Baguio, Manila, Davao, Visayas, Luzon", () => {
+    it("shows the dashboard region row plus the pre-existing wide scopes", () => {
+      // ph-wide and world were on the picker before this change and stay put;
+      // only the city list narrows and gains the two region aliases.
       expect(CITY_PILLS.map((p) => p.label)).toEqual([
         "Baguio",
         "Manila",
         "Davao",
         "Visayas",
         "Luzon",
+        "Philippines",
+        "World",
       ]);
     });
 
@@ -77,6 +82,20 @@ describe("Gala region pills", () => {
       const luzon = CITY_PILLS.find((p) => p.label === "Luzon");
       expect(visayas?.sublabel).toContain("Boracay");
       expect(luzon?.sublabel).toContain("Manila");
+    });
+
+    it("resolves Visayas and Luzon inside the dashboard's own member sets", () => {
+      // Visayas = boracay + cebu, Luzon = baguio + manila, as the dashboard
+      // declares. Gala cannot import those constants (dashboard/utils pulls the
+      // curated itinerary catalog into the client bundle), so this test is
+      // what stops the two surfaces from drifting apart.
+      const visayas = CITY_PILLS.find((p) => p.label === "Visayas");
+      const luzon = CITY_PILLS.find((p) => p.label === "Luzon");
+
+      expect([...REGION_MEMBERS].sort()).toEqual(["boracay", "cebu"]);
+      expect([...LUZON_MEMBERS].sort()).toEqual(["baguio", "manila"]);
+      expect(REGION_MEMBERS).toContain(visayas?.cityId);
+      expect(LUZON_MEMBERS).toContain(luzon?.cityId);
     });
   });
 

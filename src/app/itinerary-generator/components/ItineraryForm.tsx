@@ -44,6 +44,8 @@ export const CITY_PILLS: DestinationPill[] = [
   { key: "davao", label: "Davao", cityId: "davao", sublabel: "Durian City", Icon: MapPin },
   { key: "visayas", label: "Visayas", cityId: "boracay", sublabel: "Boracay, Aklan", Icon: Waves },
   { key: "luzon", label: "Luzon", cityId: "manila", sublabel: "Metro Manila", Icon: Building2 },
+  { key: "ph-wide", label: "Philippines", cityId: "ph-wide", sublabel: "Anywhere PH", Icon: Map },
+  { key: "world", label: "World", cityId: "world", sublabel: "Global", Icon: Globe },
 ]
 
 export default function ItineraryForm({
@@ -224,7 +226,7 @@ export default function ItineraryForm({
           {/* Pills mirror the dashboard's Suggested Spots row. Visayas and
               Luzon are aliases that resolve to a real member city id, so the
               API never receives a region. */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
             {CITY_PILLS.map((pill) => {
               const isSelected = activePillKey === pill.key
               return (
