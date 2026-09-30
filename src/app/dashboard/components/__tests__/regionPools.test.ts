@@ -1,5 +1,6 @@
 import {
   mergeRegionPools,
+  regionCardKey,
   REGION_MEMBERS,
   type RegionSpotPool,
 } from '../../utils';
@@ -49,9 +50,21 @@ describe('mergeRegionPools', () => {
       expect.objectContaining({ name: 'C1' }),
     ]);
   });
+
   it('REGION_MEMBERS pins exactly the two Visayas scopes (el_nido excluded)', () => {
     // El Nido is Palawan (Mimaropa) with its own city pill — a "Visayas" tab
     // containing Luzon would be a mislabel, not a region.
     expect([...REGION_MEMBERS]).toEqual(['boracay', 'cebu']);
+  });
+
+  it('keys same-title rows from different pools distinctly (Boracay Island dup)', () => {
+    // Regression: two TomTom results named "Boracay Island" in one 0.01° cell
+    // rendered under key={spot.name} and React dropped one. The render key
+    // must carry the owning city, so identical titles stay distinct rows.
+    const island = { name: 'Boracay Island', image: null, peakHours: null };
+    const a = { ...island, lat: 11.9674, lon: 121.9248 };
+    const b = { ...island, lat: 11.9674, lon: 121.9248 };
+    expect(regionCardKey('boracay', a)).not.toBe(regionCardKey('cebu', b));
+    expect(regionCardKey('boracay', a)).toBe(regionCardKey('boracay', { ...b }));
   });
 });

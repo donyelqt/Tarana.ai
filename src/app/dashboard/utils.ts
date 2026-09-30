@@ -354,9 +354,18 @@ export interface RegionSpotPool {
  * scores never need to be comparable across pools.
  *
  * Rows without finite coordinates are dropped (same rule as `toSpotCard`).
+ * Every emitted row carries its source city in `poolCity`, because the route
+ * payload has no provider id and the renderer needs an identity stabler than
+ * the display name. Same title from two pools stays two rows; same title
+ * twice from one pool collapses to one (matching upstream dedupe).
  * An all-empty input returns an empty region, never a fallback.
  */
-export function mergeRegionPools(pools: readonly RegionSpotPool[]): SpotPayload[] {
+export interface RegionCard extends SpotPayload {
+  /** Owning pool city — part of the render key, not display content. */
+  poolCity: string;
+}
+
+export function mergeRegionPools(pools: readonly RegionSpotPool[]): RegionCard[] {
   const finite = pools.map((pool) => ({
     city: pool.city,
     spots: (pool.spots ?? []).filter(
@@ -369,20 +378,40 @@ export function mergeRegionPools(pools: readonly RegionSpotPool[]): SpotPayload[
         Number.isFinite(s.lon)
     ),
   }));
-  const out: SpotPayload[] = [];
+  const out: RegionCard[] = [];
+  const seen = new Set<string>();
   let progressed = true;
   while (out.length < 3 && progressed) {
     progressed = false;
     for (const pool of finite) {
       if (out.length >= 3) break;
       const next = pool.spots.shift();
-      if (next) {
-        out.push(next);
-        progressed = true;
-      }
+      if (!next) continue;
+      const key = regionCardKey(pool.city, next);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      progressed = true;
+      out.push({ ...next, poolCity: pool.city });
     }
   }
   return out;
+}
+/**
+ * Render key for one region card: owning city plus normalized title, with a
+ * 4-decimal coordinate cell only when the same city contributes the same
+ * title twice. In practice the upstream dedupe makes the suffix dead code;
+ * it exists so the key can never silently collide.
+ */
+export function regionCardKey(city: string, spot: Pick<SpotPayload, 'name' | 'lat' | 'lon'>): string {
+  const base = `${city}:${spot.name.trim().toLowerCase()}`;
+  const coords =
+    typeof spot.lat === 'number' &&
+    Number.isFinite(spot.lat) &&
+    typeof spot.lon === 'number' &&
+    Number.isFinite(spot.lon)
+      ? `:${spot.lat.toFixed(4)},${spot.lon.toFixed(4)}`
+      : '';
+  return `${base}${coords}`;
 }
 
 export const SPOTS_STALE_TIME_MS = 60 * 60 * 1000;
