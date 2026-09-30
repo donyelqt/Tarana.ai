@@ -6,21 +6,51 @@ import { cn } from "@/lib/core";
 import { useToast } from "@/components/ui/use-toast";
 import { DatePicker } from "@/components/ui/date-picker";
 import Link from "next/link";
-import { ItineraryFormProps, FormData } from "../types";
+import { ItineraryFormProps, FormData, CityId } from "../types";
 import { useEffect, useState } from "react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ChevronDown, MapPin, Mountain, Waves, Building2, Map, Globe, Activity } from "lucide-react";
 import { DollarSign, PiggyBank, CreditCard, Wallet, Coins, Gem } from "lucide-react";
 
-const CITY_OPTIONS: { id: "baguio"|"cebu"|"manila"|"davao"|"boracay"|"el_nido"|"ph-wide"|"world"; label: string; sublabel: string; Icon: any }[] = [
+export interface CityOption {
+  id: CityId;
+  label: string;
+  sublabel: string;
+  Icon: any;
+}
+
+export const CITY_OPTIONS: CityOption[] = [
   { id: "baguio", label: "Baguio", sublabel: "City of Pines", Icon: Mountain },
-  { id: "cebu", label: "Cebu", sublabel: "Queen City", Icon: Waves },
   { id: "manila", label: "Manila", sublabel: "Capital", Icon: Building2 },
-  { id: "davao", label: "Davao", sublabel: "Durian City", Icon: MapPin },
+  { id: "cebu", label: "Cebu", sublabel: "Queen City", Icon: Waves },
   { id: "boracay", label: "Boracay", sublabel: "Island, Aklan", Icon: Waves },
+  { id: "davao", label: "Davao", sublabel: "Durian City", Icon: MapPin },
   { id: "el_nido", label: "El Nido", sublabel: "Palawan", Icon: MapPin },
   { id: "ph-wide", label: "Philippines", sublabel: "Anywhere PH", Icon: Map },
   { id: "world", label: "World", sublabel: "Global", Icon: Globe },
+]
+
+/**
+ * Destination groups are DISPLAY ONLY — wayfinding for the picker, not
+ * scopes. No group label is ever sent as `cityId`; no group has a
+ * CITY_CONFIGS row, a route branch, or a TomTom bounds box. Selecting a group
+ * member sets the real member city id, exactly as before.
+ *
+ * Geography matches the dashboard's region tabs on purpose (Luzon =
+ * baguio+manila, Visayas = cebu+boracay) so the same place is filed the same
+ * way on both surfaces.
+ *
+ * Why grouping and not a region itinerary: a cross-member day would have to
+ * route over open water or a 200km gap (boracay->cebu 282km, baguio->manila
+ * 206km) against a 50km city search radius. Gala stays strictly single-city.
+ */
+export const CITY_GROUPS: { label: string; cities: CityOption[] }[] = [
+  { label: "Luzon", cities: CITY_OPTIONS.filter((c) => c.id === "baguio" || c.id === "manila") },
+  { label: "Visayas", cities: CITY_OPTIONS.filter((c) => c.id === "cebu" || c.id === "boracay") },
+  {
+    label: "Other destinations",
+    cities: CITY_OPTIONS.filter((c) => c.id === "davao" || c.id === "el_nido" || c.id === "ph-wide" || c.id === "world"),
+  },
 ]
 
 export default function ItineraryForm({
@@ -193,30 +223,41 @@ export default function ItineraryForm({
         <div>
           <Label className="block font-medium mb-2 text-gray-900">Destination</Label>
           <p className="text-xs text-gray-500 mb-3">Choose where to generate — Baguio uses curated guides, others use live locations + accurate images. Strict: only the selected area is used.</p>
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-            {CITY_OPTIONS.map(({ id, label, sublabel, Icon }) => {
-              const isSelected = selectedCity === id
-              return (
-                <button
-                  type="button"
-                  key={id}
-                  onClick={() => !(showPreview || disabled) && setSelectedCity(id)}
-                  disabled={showPreview || disabled}
-                  aria-pressed={isSelected}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-1 rounded-xl border py-3 px-2 text-center transition",
-                    isSelected
-                      ? "bg-gradient-to-b from-blue-700 to-blue-500 text-white border-blue-500 shadow-md"
-                      : "bg-white border-gray-300 text-gray-700 hover:border-blue-300 hover:text-blue-600",
-                    (showPreview || disabled) && "cursor-not-allowed opacity-60"
-                  )}
-                >
-                  <Icon className={cn("h-5 w-5", isSelected ? "text-white" : "text-gray-500")} />
-                  <span className="text-xs font-semibold leading-none">{label}</span>
-                  <span className={cn("text-[10px] leading-none", isSelected ? "text-blue-100" : "text-gray-400")}>{sublabel}</span>
-                </button>
-              )
-            })}
+          {/* Groups are wayfinding only — each tile still sets a real single
+              city id. Group labels are never sent as cityId. */}
+          <div className="space-y-4">
+            {CITY_GROUPS.map((group) => (
+              <fieldset key={group.label}>
+                <legend className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+                  {group.label}
+                </legend>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {group.cities.map(({ id, label, sublabel, Icon }) => {
+                    const isSelected = selectedCity === id
+                    return (
+                      <button
+                        type="button"
+                        key={id}
+                        onClick={() => !(showPreview || disabled) && setSelectedCity(id)}
+                        disabled={showPreview || disabled}
+                        aria-pressed={isSelected}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-1 rounded-xl border py-3 px-2 text-center transition",
+                          isSelected
+                            ? "bg-gradient-to-b from-blue-700 to-blue-500 text-white border-blue-500 shadow-md"
+                            : "bg-white border-gray-300 text-gray-700 hover:border-blue-300 hover:text-blue-600",
+                          (showPreview || disabled) && "cursor-not-allowed opacity-60"
+                        )}
+                      >
+                        <Icon className={cn("h-5 w-5", isSelected ? "text-white" : "text-gray-500")} />
+                        <span className="text-xs font-semibold leading-none">{label}</span>
+                        <span className={cn("text-[10px] leading-none", isSelected ? "text-blue-100" : "text-gray-400")}>{sublabel}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </fieldset>
+            ))}
           </div>
           <p className="text-[10px] text-gray-400 mt-2">Strict scope: Cebu shows only Cebu, Baguio only Baguio. `ph-wide` searches anywhere in PH.</p>
         </div>
