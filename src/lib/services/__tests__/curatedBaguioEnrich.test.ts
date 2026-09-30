@@ -1,7 +1,7 @@
 /**
  * Regression: Baguio Gala cards rendered the logo fallback even though
  * `CURATED_IMAGE_MAP` holds a verified photo for every curated place
- * (e.g. "K-Flavors Buffet" → /images/kflavors_taranagala.JPG).
+ * (e.g. "K-Flavors Buffet" → /images/kflavors_taranagala.jpg).
  *
  * Root cause: `enrichActivitiesWithImages` had two exits that skipped Tier 0
  * entirely — the "all curated" fast path returned the input array untouched,
@@ -30,7 +30,7 @@ describe('curated Baguio images survive batch enrichment', () => {
       { title: 'Burnham Park', image: '' },
     ]);
 
-    expect(out[0].image).toBe('/images/kflavors_taranagala.JPG');
+    expect(out[0].image).toBe('/images/kflavors_taranagala.jpg');
     expect(out[1].image).toBe('/images/burnham.png');
     expect(fetchMock).not.toHaveBeenCalled();
   });

@@ -108,8 +108,8 @@ const CURATED_IMAGE_MAP: Record<string, string> = {
   "Hill Station": "/images/hillstation.png",
   "Hiraya Cafe": "/images/hiraya_cafe.jpg",
   "Uji-Matcha Cafe": "/images/ujimatcha_taranagala.jpg",
-  "K-Flavors Buffet": "/images/kflavors_taranagala.JPG",
-  "Korean Palace Kung Jeon": "/images/kj_korean_palace_baguio_taranagala.jpg",
+  "K-Flavors Buffet": "/images/kflavors_taranagala.jpg",
+  "Korean Palace Kung Jeon": "/images/kj_korean_palace_baguio_taranagala.JPG",
   "Myeong Dong Jjigae Restaurant": "/images/MyeongDongJjigae_taranagala.jpg",
 }
 
