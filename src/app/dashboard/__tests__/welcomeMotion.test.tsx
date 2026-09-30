@@ -5,11 +5,11 @@
  * - strong motion-safe lift restored (reversal of the subtle -y-1: the aura
  *   needs the bigger travel to stay coherent)
  * - no hover:animate-none (it hard-killed the shimmer mid-hover)
- * - 2s auto-toggle pauses while hovered (no class flips mid-flight)
+ * - no autonomous movement: the card must not move on its own, only on hover
  */
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { ToastProvider } from '@/components/ui/use-toast';
 import { SoundProvider } from '@/lib/sound/SoundProvider';
 import { SidebarProvider } from '@/components/Sidebar';
@@ -94,15 +94,12 @@ describe('welcome header motion', () => {
     expect(cls).not.toContain('ease-in-out');
   });
 
-  it('pauses the auto-toggle while hovered (no mid-hover flips)', () => {
+  it('stays still until the user hovers it', () => {
     renderDashboard();
-    const card = welcomeCard();
-    const before = card.getAttribute('class');
-    fireEvent.mouseEnter(card);
+    const before = welcomeCard().getAttribute('class');
     act(() => {
-      jest.advanceTimersByTime(5000);
+      jest.advanceTimersByTime(6000);
     });
     expect(welcomeCard().getAttribute('class')).toBe(before);
-    fireEvent.mouseLeave(card);
   });
 });
