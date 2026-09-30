@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import SpotlightCard from "./cards/SpotlightCard";
@@ -34,8 +34,25 @@ function isRegionView(view: SpotsView): view is RegionId {
   return view === VISAYAS_ID || view === LUZON_ID;
 }
 
+/**
+ * Cities and regions share one list so the row is a single carousel instead
+ * of two parallel maps. Order is the ship order: cities, then regions.
+ */
+const PILLS: ReadonlyArray<{ id: SpotsView; label: string }> = [
+  ...SPOT_SCOPES,
+  ...([VISAYAS_ID, LUZON_ID] as const).map((id) => ({ id, label: REGION_META[id].label })),
+];
+
+const pillClass = (active: boolean): string =>
+  `shrink-0 snap-start touch-manipulation px-4 py-1.5 rounded-full text-sm font-medium border transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+    active
+      ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white border-blue-600'
+      : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+  }`;
+
 const SuggestedSpots = () => {
   const [view, setView] = useState<SpotsView>('baguio');
+  const pillsRef = useRef<HTMLDivElement>(null);
   const { data: session, status } = useSession();
   void session;
   const authed = status === 'authenticated';
@@ -97,44 +114,50 @@ const SuggestedSpots = () => {
       .slice(0, 3);
     return { cards, subtitle: `Top picks in ${label}`, keys: cards.map((c) => c.name) };
   }, [view, citySpots.data, regionBoracay.data, regionCebu.data, regionBaguio.data, regionManila.data]);
+
+  // Mobile renders the pills as a horizontal carousel, so the last pills
+  // (Visayas, Luzon) start outside the visible area. Bring the active pill
+  // into view when the selection changes. When the row does not overflow
+  // (desktop) scrollWidth === clientWidth and this does nothing.
+  useEffect(() => {
+    const track = pillsRef.current;
+    if (!track || track.scrollWidth <= track.clientWidth) return;
+    const pill = track.querySelector<HTMLElement>(`[data-spot-pill="${view}"]`);
+    if (!pill) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    pill.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest', inline: 'start' });
+  }, [view]);
   return (
     <div className="mb-8">
       <div className="flex justify-between items-center mb-4 px-1">
         <h2 className="font-medium text-xl text-gray-900">Suggested Spots</h2>
         <p className="text-sm text-gray-500">{subtitle}</p>
       </div>
-      <div className="flex gap-2 mb-6 px-1" role="group" aria-label="Destination city">
-        {SPOT_SCOPES.map((s) => {
-          const active = s.id === view;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setView(s.id)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                active
-                  ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
-              }`}
-            >
-              {s.label}
-            </button>
-          );
-        })}
-        {([VISAYAS_ID, LUZON_ID] as const).map((regionId) => (
+      {/*
+        Mobile: horizontal scroll-snap carousel. Negative margin + matching
+        padding bleeds the scroller to the screen edge so pills are not cut
+        mid-word, while px-8 keeps them aligned with the card grid below.
+        scroll-pl-8 makes snap and scrollIntoView respect that same inset.
+        md+ restores the original single in-flow row (no bleed, px-1).
+        py-1 gives the focus ring vertical room: overflow-x-auto forces
+        overflow-y to auto, which would otherwise clip the 2px ring.
+      */}
+      <div
+        ref={pillsRef}
+        role="group"
+        aria-label="Destination city"
+        className="-mx-8 mb-5 flex snap-x snap-mandatory gap-2 overflow-x-auto px-8 py-1 scroll-pl-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:mb-6 md:px-1 md:scroll-pl-1"
+      >
+        {PILLS.map((pill) => (
           <button
-            key={regionId}
+            key={pill.id}
             type="button"
-            aria-pressed={view === regionId}
-            onClick={() => setView(regionId)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-              view === regionId
-                ? 'bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white border-blue-600'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
-            }`}
+            data-spot-pill={pill.id}
+            aria-pressed={pill.id === view}
+            onClick={() => setView(pill.id)}
+            className={pillClass(pill.id === view)}
           >
-            {REGION_META[regionId].label}
+            {pill.label}
           </button>
         ))}
       </div>
