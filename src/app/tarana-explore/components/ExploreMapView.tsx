@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -61,45 +61,54 @@ export function isSafeImageSrc(src: string): boolean {
     .slice(2)
     .every((seg) => seg.length > 0 && seg !== '.' && seg !== '..' && /^[A-Za-z0-9._-]+$/.test(seg))
 }
+/**
+ * Parses a Visit Spot deep link. Pure so the arrival behaviour is testable
+ * without mounting a map, and so the caller can use it during render to seed
+ * the map's first camera position.
+ */
+export function parseDeepLink(params: URLSearchParams): {
+  destination: LocationPoint | null
+  preview: { traffic: SpotTraffic | null; image: string | null } | null
+} {
+  const name = params.get('to')
+  const lat = Number(params.get('toLat'))
+  const lon = Number(params.get('toLon'))
+  // Number(null) is 0, which is finite — require the raw values to be present
+  // so a name-only link cannot silently land the map on Null Island.
+  if (!name || params.get('toLat') === null || params.get('toLon') === null) {
+    return { destination: null, preview: null }
+  }
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { destination: null, preview: null }
+
+  // Only measured traffic is honoured; an unrecognised value hides the tag.
+  const rawTraffic = params.get('traffic')
+  const traffic =
+    rawTraffic === 'Low' || rawTraffic === 'Moderate' || rawTraffic === 'High' ? rawTraffic : null
+  const rawImage = params.get('img')
+  const image = rawImage && isSafeImageSrc(rawImage) ? rawImage : null
+
+  return {
+    destination: { id: `spot:${lat},${lon}`, name, address: name, lat, lng: lon, category: 'Spot' },
+    preview: { traffic, image },
+  }
+}
 
 const ExploreMapView: React.FC = () => {
   const searchParams = useSearchParams()
+  // Parsed during render, NOT in an effect. `useSearchParams` is available
+  // synchronously inside this Suspense boundary, so the destination exists on
+  // the FIRST render and can seed the map's initial camera. Parsing it in an
+  // effect meant the map initialised on Baguio and could only jump to the spot
+  // after the SDK finished loading — the visible "wrong place first, then
+  // slide over" delay.
+  const deepLink = useMemo(() => parseDeepLink(searchParams), [searchParams])
   const [origin, setOrigin] = useState<LocationPoint | null>(null)
-  const [destination, setDestination] = useState<LocationPoint | null>(null)
+  const [destination, setDestination] = useState<LocationPoint | null>(deepLink.destination)
   const [recenterSignal, setRecenterSignal] = useState(0)
   // Deep-link from Suggested Spots / Recommended Cafes Visit buttons:
   // ?to=<name>&toLat=<lat>&toLon=<lon> prefills the destination once, with the
   // optional &traffic= and &img= params that feed the arrival card.
-  // Finite numbers only; anything else is ignored (map renders unprefilled).
-  const [spotPreview, setSpotPreview] = useState<{ traffic: SpotTraffic | null; image: string | null } | null>(null)
-  useEffect(() => {
-    const name = searchParams.get('to')
-    const lat = Number(searchParams.get('toLat'))
-    const lon = Number(searchParams.get('toLon'))
-    if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) return
-    setDestination((prev) =>
-      prev !== null ? prev : { id: `spot:${lat},${lon}`, name, address: name, lat, lng: lon, category: 'Spot' }
-    )
-    // Only measured traffic is honoured; an unrecognised value hides the tag.
-    const rawTraffic = searchParams.get('traffic')
-    const traffic = rawTraffic === 'Low' || rawTraffic === 'Moderate' || rawTraffic === 'High' ? rawTraffic : null
-    // Both shapes reach this link. Baguio's curated catalogue and the cafe
-    // registry store site-relative paths; only enriched TomTom POIs carry
-    // remote https URLs. The earlier https-only guard silently dropped every
-    // local path, so the arrival card showed the brand mark for spots that
-    // had a real photo on disk.
-    //
-    // Still strict: `javascript:`, `data:`, protocol-relative `//host` and
-    // traversal (`..`) are rejected, because this value comes from a URL the
-    // user can hand-edit and is handed straight to next/image.
-    const rawImage = searchParams.get('img')
-    const image = rawImage && isSafeImageSrc(rawImage) ? rawImage : null
-    setSpotPreview({ traffic, image })
-    // No recenterSignal bump here on purpose. The map already reacts to
-    // `destination` changing, and bumping the signal used to invoke a
-    // hardcoded Baguio fallback that undid the framing. The camera decision now
-    // lives in one resolver, so arrival needs no nudge.
-  }, [searchParams])
+  const [spotPreview, setSpotPreview] = useState(deepLink.preview)
   const [preferences, setPreferences] = useState<RoutePreferences>(DEFAULT_PREFERENCES)
   const [mapStyle, setMapStyle] = useState<MapStyle>('main')
   const [isChangingStyle, setIsChangingStyle] = useState(false)
@@ -162,6 +171,9 @@ const ExploreMapView: React.FC = () => {
   return (
     <div className="relative h-full w-full overflow-hidden">
       <InteractiveRouteMap
+        // Arriving from a deep link: the map's very first paint is already on
+        // the spot, so there is no Baguio flash and no post-load slide.
+        initialCenter={destination ? [destination.lng, destination.lat] : null}
         currentRoute={state.currentRoute}
         alternativeRoutes={state.alternativeRoutes}
         trafficConditions={state.trafficConditions}
