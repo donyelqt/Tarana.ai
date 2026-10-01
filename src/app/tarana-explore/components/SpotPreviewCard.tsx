@@ -86,9 +86,6 @@ const SpotPreviewCard: React.FC<SpotPreviewCardProps> = ({ name, image, traffic,
             </p>
           )}
 
-          <p className="mt-3 text-xs text-gray-500">
-            Drop a &ldquo;From&rdquo; above to plan a route to this spot.
-          </p>
         </div>
       </div>
     </div>

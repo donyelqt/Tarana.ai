@@ -65,9 +65,10 @@ const ExploreMapView: React.FC = () => {
     const rawImage = searchParams.get('img')
     const image = rawImage && /^https:\/\/[^\s]+$/i.test(rawImage) ? rawImage : null
     setSpotPreview({ traffic, image })
-    // Bump the recenter signal so the map frames the destination even when it
-    // finished loading before this effect committed.
-    setRecenterSignal((n) => n + 1)
+    // No recenterSignal bump here on purpose. The map already reacts to
+    // `destination` changing, and bumping the signal used to invoke a
+    // hardcoded Baguio fallback that undid the framing. The camera decision now
+    // lives in one resolver, so arrival needs no nudge.
   }, [searchParams])
   const [preferences, setPreferences] = useState<RoutePreferences>(DEFAULT_PREFERENCES)
   const [mapStyle, setMapStyle] = useState<MapStyle>('main')
