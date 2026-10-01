@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { RouteData, RouteTrafficAnalysis, LocationPoint } from '@/types/route-optimization';
 import { createTomTomMap, getTomTomSDKStatus, resetTomTomService, changeMapStyle, type TomTomMapConfig, type MapStyle, MAP_STYLES, BAGUIO_CITY_COORDINATES, ZOOM_LEVELS, DEFAULT_MAP_PITCH } from '@/lib/integrations/tomtomMapUtils';
 import RouteAnalysisLoader from './RouteAnalysisLoader';
+import { resolveCameraTarget, applyCameraTarget } from './cameraTarget';
 import { Loader2 } from 'lucide-react';
 
 interface InteractiveRouteMapProps {
@@ -65,28 +66,31 @@ export default function InteractiveRouteMap({
   const plottedRouteCountRef = useRef(0);
   const markersRef = useRef<any[]>([]);
 
-
-  // Recenter to Baguio (or refit active route) when the signal changes
+  // Where the camera should be. ONE decision for both triggers — the recenter
+  // control and the overlay pass — so they cannot disagree. The previous
+  // hardcoded-Baguio fallback here fought the endpoint framing: the deep link
+  // bumped the signal, this effect snapped back to Baguio, and the selected spot
+  // was left off-centre (5km for Great Wall) or entirely off-screen (Cebu).
   useEffect(() => {
     if (recenterSignal === undefined || !mapInstanceRef.current || !isMapLoaded) return;
     const map = mapInstanceRef.current;
-    if (currentRoute?.legs && Array.isArray(currentRoute.legs)) {
-      const coords = currentRoute.legs
-        .flatMap((leg) => leg.geometry?.coordinates?.map((c) => [c.lng, c.lat]) || [])
-        .filter((c) => c.length === 2 && !isNaN(c[0]) && !isNaN(c[1]));
-      if (coords.length > 0) {
-        const bounds = new window.tt.LngLatBounds();
-        coords.forEach((c) => bounds.extend(c));
-        map.fitBounds(bounds, { padding: 60, duration: 600 });
-        return;
-      }
-    }
-    map.easeTo?.({
-      center: [BAGUIO_CITY_COORDINATES[0], BAGUIO_CITY_COORDINATES[1]],
-      zoom: ZOOM_LEVELS.CITY,
+    applyCameraTarget(map, resolveCameraTarget({
+      origin,
+      destination,
+      waypoints,
+      routeCoords: currentRoute?.legs
+        ?.flatMap((leg) => leg.geometry?.coordinates?.map((c) => [c.lng, c.lat]) || []) ?? [],
+      singleZoom: ZOOM_LEVELS.STREET,
+      homeCenter: BAGUIO_CITY_COORDINATES,
+      homeZoom: ZOOM_LEVELS.CITY,
+      maxFitZoom: 15,
+    }), {
+      homeCenter: BAGUIO_CITY_COORDINATES,
+      homeZoom: ZOOM_LEVELS.CITY,
+      maxFitZoom: 15,
       duration: 600,
     });
-  }, [recenterSignal, isMapLoaded, currentRoute]);
+  }, [recenterSignal, isMapLoaded, currentRoute, origin, destination, waypoints]);
 
   // Apply or remove the camera tilt (3D perspective) when the tilt toggle changes
   useEffect(() => {
@@ -742,32 +746,23 @@ export default function InteractiveRouteMap({
       });
 
 
-      // Auto-fit map to show all markers with enhanced padding for modern UI.
-      // A single point (a deep-linked destination with no origin) is a
-      // degenerate bounds box that TomTom cannot fit — easeTo that point
-      // instead, otherwise the map stays wherever it was initialised and the
-      // spot marker lands off-screen.
-      const points: [number, number][] = [];
-      if (origin) points.push([origin.lng, origin.lat]);
-      if (destination) points.push([destination.lng, destination.lat]);
-      waypoints.forEach((waypoint) => {
-        if (waypoint) points.push([waypoint.lng, waypoint.lat]);
+      // Same resolver the recenter control uses — one source of truth for the
+      // camera, so the two triggers can never disagree.
+      applyCameraTarget(map, resolveCameraTarget({
+        origin,
+        destination,
+        waypoints,
+        singleZoom: ZOOM_LEVELS.STREET,
+        homeCenter: BAGUIO_CITY_COORDINATES,
+        homeZoom: ZOOM_LEVELS.CITY,
+        maxFitZoom: 15,
+      }), {
+        homeCenter: BAGUIO_CITY_COORDINATES,
+        homeZoom: ZOOM_LEVELS.CITY,
+        maxFitZoom: 15,
+        padding: 80,
+        duration: 1500,
       });
-
-      if (points.length === 1 && window.tt.LngLatBounds) {
-        map.easeTo?.({ center: points[0], zoom: ZOOM_LEVELS.STREET, duration: 1500, essential: true });
-      } else if (points.length > 1 && window.tt.LngLatBounds) {
-        const bounds = new window.tt.LngLatBounds();
-        points.forEach(([lng, lat]) => bounds.extend([lng, lat]));
-
-        // Fit map to bounds with generous padding for modern marker visibility
-        map.fitBounds(bounds, {
-          padding: { top: 80, bottom: 80, left: 80, right: 80 },
-          maxZoom: 15,
-          duration: 1500,
-          essential: true
-        });
-      }
 
     } catch (error) {
       console.warn('Error adding modern markers:', error);

@@ -356,6 +356,21 @@ describe('GET /api/spots', () => {
     expect((await res.json()).city).toBe('baguio');
   });
 
+  // Frozen clock: /api/spots rotates the pool by UTC day, so a two-row pool
+  // comes back in a date-dependent order. Asserting a hard-coded order here
+  // passed only on even days. These tests cover mapping and enrichment, not
+  // rotation, so the day is pinned to offset 0 and the order is stable.
+  const FROZEN_DAY = Date.UTC(2026, 0, 1); // an exact multiple of 86400000
+  let nowSpy: jest.SpyInstance<number, []>;
+
+  beforeEach(() => {
+    nowSpy = jest.spyOn(Date, 'now').mockReturnValue(FROZEN_DAY);
+  });
+
+  afterEach(() => {
+    nowSpy.mockRestore();
+  });
+
   it('maps shared-service POIs for other cities (overlays prepended)', async () => {
     touristPoiMock.mockResolvedValue([poiResult('Cebu Spot', 10.3, 123.9)]);
     trafficMock.mockResolvedValue({ congestionScore: 10 });

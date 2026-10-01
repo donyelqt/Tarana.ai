@@ -101,7 +101,6 @@ describe('Explore arrival from a Suggested Spots deep link', () => {
   beforeEach(() => {
     ;(global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({ results: [] }) })
   })
-
   it('seeds the destination from the deep link', () => {
     render(<DeepLinkHarness />)
     expect(screen.getByTestId('destination')).toHaveTextContent('SM Seaside City Cebu')
@@ -170,5 +169,12 @@ describe('SpotPreviewCard (arrival card)', () => {
 
     await user.click(screen.getByRole('button', { name: /dismiss spot preview/i }))
     expect(onDismiss).toHaveBeenCalled()
+  })
+
+  it('shows no instructional copy — the card states facts, not instructions', () => {
+    render(<SpotPreviewCard name="Burnham Park" image={null} traffic={null} onDismiss={jest.fn()} />)
+
+    expect(screen.queryByText(/plan a route to this spot/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/drop a/i)).not.toBeInTheDocument()
   })
 })
