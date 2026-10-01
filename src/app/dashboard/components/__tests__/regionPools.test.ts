@@ -1,5 +1,6 @@
 import {
   mergeRegionPools,
+  dedupeByDisplayName,
   regionCardKey,
   withSpotOverlays,
   SPOT_OVERLAYS,
@@ -78,6 +79,79 @@ describe('mergeRegionPools', () => {
     const b = { ...island, lat: 11.9674, lon: 121.9248 };
     expect(regionCardKey('boracay', a)).not.toBe(regionCardKey('cebu', b));
     expect(regionCardKey('boracay', a)).toBe(regionCardKey('boracay', { ...b }));
+  });
+
+  it('collapses same-titled rows inside ONE pool to a single card', () => {
+    // Reported: the Visayas tab rendered "Boracay Island" twice. TomTom really
+    // does return that name ten times across the query buckets, at two
+    // coordinates ~500m apart (11.941303 and 11.936777). Upstream keeps them
+    // because they are different places, but as cards they are
+    // indistinguishable — two identical titles and two identical photos.
+    const dup = (name: string, lat: number, lon: number): SpotPayload => ({
+      name,
+      image: null,
+      lat,
+      lon,
+      peakHours: null,
+    });
+    const out = mergeRegionPools([
+      {
+        city: 'boracay',
+        spots: [
+          dup('Boracay Island', 11.941303, 121.9248),
+          dup('Boracay Island', 11.936777, 121.9248),
+          dup("Mountain View Nature's Park", 10.370782, 123.9101),
+          dup("Mountain View Nature's Park", 10.370782, 123.9101),
+        ],
+      },
+      { city: 'cebu', spots: [dup('Cebu Spot', 10.3, 123.9)] },
+    ]);
+
+    expect(out.filter((s) => s.name === 'Boracay Island')).toHaveLength(1);
+    expect(out.filter((s) => s.name === "Mountain View Nature's Park")).toHaveLength(1);
+    // 5 rows in, 3 distinct names, cap 3 -> three distinct cards.
+    expect(out.map((s) => s.name)).toEqual([
+      'Boracay Island',
+      'Cebu Spot',
+      "Mountain View Nature's Park",
+    ]);
+  });
+
+  it('still keeps a same-named row from a DIFFERENT pool', () => {
+    // Two cities may legitimately both have an "SM City"; cross-pool identity
+    // is the render key's job and must not be collapsed here.
+    const dup = (name: string, lat: number, lon: number): SpotPayload => ({
+      name,
+      image: null,
+      lat,
+      lon,
+      peakHours: null,
+    });
+    const out = mergeRegionPools([
+      { city: 'boracay', spots: [dup('SM City', 11.9674, 121.9248)] },
+      { city: 'cebu', spots: [dup('SM City', 10.3157, 123.8854)] },
+    ]);
+
+    expect(out.map((s) => s.poolCity)).toEqual(['boracay', 'cebu']);
+  });
+});
+
+describe('dedupeByDisplayName', () => {
+  const row = (name: string): SpotPayload => ({ name, image: null, lat: 1, lon: 1, peakHours: null });
+
+  it('keeps the first row for a name and preserves input order', () => {
+    const out = dedupeByDisplayName([row('Boracay Island'), row('White Beach'), row('Boracay Island')]);
+    expect(out.map((s) => s.name)).toEqual(['Boracay Island', 'White Beach']);
+  });
+
+  it('treats case and whitespace runs as the same display identity', () => {
+    const out = dedupeByDisplayName([row('Boracay  Island'), row('boracay island')]);
+    expect(out).toHaveLength(1);
+  });
+
+  it('never empties a real pool', () => {
+    expect(dedupeByDisplayName([row('A'), row('B')])).toHaveLength(2);
+    expect(dedupeByDisplayName([])).toEqual([]);
   });
 });
 

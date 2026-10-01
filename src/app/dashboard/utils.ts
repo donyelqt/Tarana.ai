@@ -408,14 +408,23 @@ export interface RegionCard extends SpotPayload {
 export function mergeRegionPools(pools: readonly RegionSpotPool[]): RegionCard[] {
   const finite = pools.map((pool) => ({
     city: pool.city,
-    spots: (pool.spots ?? []).filter(
-      (s) =>
-        !!s &&
-        typeof s.name === 'string' &&
-        typeof s.lat === 'number' &&
-        Number.isFinite(s.lat) &&
-        typeof s.lon === 'number' &&
-        Number.isFinite(s.lon)
+    // Collapse same-titled rows inside one pool. TomTom genuinely holds several
+    // distinct POIs sharing a name — "Boracay Island" comes back ten times
+    // across the query buckets at two different coordinates ~500m apart, and
+    // "Mountain View Nature's Park" twice at one point. Upstream keeps them
+    // (correctly: they are different places), so the renderer received two
+    // cards that were indistinguishable to the user. A card is identified by
+    // what it shows, and that is the name.
+    spots: dedupeByDisplayName(
+      (pool.spots ?? []).filter(
+        (s) =>
+          !!s &&
+          typeof s.name === 'string' &&
+          typeof s.lat === 'number' &&
+          Number.isFinite(s.lat) &&
+          typeof s.lon === 'number' &&
+          Number.isFinite(s.lon)
+      )
     ),
   }));
   const out: RegionCard[] = [];
@@ -427,12 +436,31 @@ export function mergeRegionPools(pools: readonly RegionSpotPool[]): RegionCard[]
       if (out.length >= 3) break;
       const next = pool.spots.shift();
       if (!next) continue;
+      // A name already shown from ANOTHER pool stays visible: two cities may
+      // legitimately both have a "SM City", and cross-pool identity is the
+      // render key's job. Only within-pool duplicates collapse above.
       const key = regionCardKey(pool.city, next);
       if (seen.has(key)) continue;
       seen.add(key);
       progressed = true;
       out.push({ ...next, poolCity: pool.city });
     }
+  }
+  return out;
+}
+
+/**
+ * Case- and whitespace-insensitive display identity. The first row wins, so
+ * the ordering the pool arrived in decides which coordinates are kept.
+ */
+export function dedupeByDisplayName<T extends { name: string }>(spots: readonly T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const spot of spots) {
+    const key = spot.name.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(spot);
   }
   return out;
 }
