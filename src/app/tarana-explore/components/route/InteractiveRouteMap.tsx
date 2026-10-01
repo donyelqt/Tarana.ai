@@ -8,6 +8,12 @@ import { resolveCameraTarget, applyCameraTarget } from './cameraTarget';
 import { Loader2 } from 'lucide-react';
 
 interface InteractiveRouteMapProps {
+  /**
+   * Where the map should open when a deep link preselects a destination.
+   * Null keeps the Baguio home view. Only read once, at initialization —
+   * later changes go through the camera resolver, not a re-init.
+   */
+  initialCenter?: [number, number] | null;
   currentRoute: RouteData | null;
   alternativeRoutes: RouteData[];
   trafficConditions: RouteTrafficAnalysis | null;
@@ -40,6 +46,7 @@ const TOMTOM_CONFIG = {
 };
 
 export default function InteractiveRouteMap({
+  initialCenter = null,
   currentRoute,
   alternativeRoutes,
   trafficConditions,
@@ -56,6 +63,10 @@ export default function InteractiveRouteMap({
   styleControlRef,
 }: InteractiveRouteMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
+  // Read once at initialization. initializeMap has an empty dep list on
+  // purpose (it must not re-run on prop changes), so a ref is how it reaches
+  // the first-render deep-link centre without a stale closure.
+  const initialCenterRef = useRef<[number, number] | null>(initialCenter);
   const mapInstanceRef = useRef<any>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -117,15 +128,15 @@ export default function InteractiveRouteMap({
         throw new Error('TomTom API key is required');
       }
 
-      // Create optimized world map configuration with Baguio City as default location
+      // A deep link opens on the spot; otherwise Baguio city is the home view.
+
+      const openOn = initialCenterRef.current;
       const mapConfig: TomTomMapConfig = {
         apiKey,
         container: mapRef.current,
-        center: BAGUIO_CITY_COORDINATES, // Precise Baguio City coordinates
-        zoom: ZOOM_LEVELS.CITY, // Optimal city-level zoom for initial view
+        center: openOn ?? BAGUIO_CITY_COORDINATES,
+        zoom: openOn ? ZOOM_LEVELS.STREET : ZOOM_LEVELS.CITY,
         style: currentMapStyle,
-        enableTraffic: true,
-        enableControls: true,
         enable3D: false,
         enableTerrain: false,
         worldView: true, // Enable world map optimizations
