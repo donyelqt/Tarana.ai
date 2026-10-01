@@ -4,9 +4,11 @@ export interface SavedMealInput {
   cafe_name: string;
   meal_type: string;
   price: number;
-  good_for?: string;
-  location?: string;
-  image?: string;
+  // Nullable: the client sends null when the model reports no headcount, the
+  // route schema accepts it, and the column is nullable.
+  good_for?: string | null;
+  location?: string | null;
+  image?: string | null;
   tags?: string[];
   menu_items?: unknown[];
 }

@@ -65,6 +65,53 @@ const validMeal = {
   price: 250,
 };
 
+// The catalog stores site-relative image paths (`/images/comingsoon.png`).
+// Requiring an absolute URL here rejected 20 of 20 real save payloads, so the
+// Tarana Eats save button always failed. These pin both directions: the shapes
+// the app really sends must pass, and active-content URLs must still fail.
+describe('POST image handling', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedGetServerSession.mockResolvedValue({ user: { id: 'user-1' } });
+    mockedCreateMeal.mockResolvedValue({ id: 'm1' });
+  });
+
+  const withImage = (image: unknown) => ({ ...validMeal, image });
+
+  test.each([
+    ['site-relative catalog path', '/images/comingsoon.png'],
+    ['site-relative jpg', '/images/goodsheperd.jpg'],
+    ['placeholder svg', '/images/placeholders/hero-placeholder.svg'],
+    ['absolute https url', 'https://images.example.com/a.jpg'],
+    ['absolute http url', 'http://images.example.com/a.jpg'],
+    ['empty string', ''],
+    ['null image', null],
+  ])('accepts %s', async (_label, image) => {
+    const response = await POST(authedRequest(withImage(image)));
+
+    expect(response.status).toBe(200);
+    expect(mockedCreateMeal).toHaveBeenCalledTimes(1);
+  });
+
+  test.each([
+    ['javascript url', 'javascript:alert(1)'],
+    ['data url', 'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='],
+    ['protocol-relative url', '//evil.example.com/a.jpg'],
+  ])('rejects %s', async (_label, image) => {
+    const response = await POST(authedRequest(withImage(image)));
+
+    expect(response.status).toBe(400);
+    expect(mockedCreateMeal).not.toHaveBeenCalled();
+  });
+
+  test('accepts a null good_for, which the client sends when headcount is unknown', async () => {
+    const response = await POST(authedRequest({ ...validMeal, good_for: null }));
+
+    expect(response.status).toBe(200);
+    expect(mockedCreateMeal).toHaveBeenCalledWith('user-1', expect.objectContaining({ good_for: null }));
+  });
+});
+
 describe('Saved Meals API Route Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
