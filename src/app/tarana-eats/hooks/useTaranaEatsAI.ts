@@ -23,10 +23,18 @@ export const useTaranaEatsAI = () => {
       // Create a prompt for Gemini API
       const prompt = createFoodPrompt(preferences);
       
-      // Prepare the request payload with both prompt and direct preferences
+      // Only the prompt and the user's choices go over the wire.
+      //
+      // This used to ship `combinedFoodData`, a 129KB copy of the restaurant
+      // catalog. The route imports that same catalog server-side
+      // (`@/app/tarana-eats/data/restaurants`) and cross-checks any
+      // client-supplied list against its registry, so the client's copy was
+      // redundant: `serverKnownRestaurants` dropped every entry anyway and
+      // fell back to the server catalog. At 130KB the request blew past the
+      // route's 32KB body cap and every generation failed with a 413 before
+      // reaching the model.
       const payload = {
         prompt,
-        foodData: combinedFoodData,
         preferences: {
           pax: preferences.pax,
           budget: preferences.budget,

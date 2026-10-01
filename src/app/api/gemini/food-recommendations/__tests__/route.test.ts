@@ -297,6 +297,29 @@ describe('food-recommendations idempotency', () => {
     expect(claimMock).not.toHaveBeenCalled();
   });
 
+  // The web client stopped shipping `foodData` because the route already
+  // imports the same catalog server-side. This pins that the catalog-less
+  // shape the client now sends is accepted end to end, so dropping the field
+  // can never silently degrade into a rejection.
+  test('accepts the catalog-less payload the web client now sends', async () => {
+    const clientPayload = {
+      prompt: 'coffee for 2',
+      preferences: { pax: 2, budget: '500', cuisine: 'Cafe' },
+    };
+    const body = JSON.stringify(clientPayload);
+    const req = {
+      headers: {
+        get: (name: string) => (name === 'content-length' ? String(Buffer.byteLength(body)) : null),
+      },
+      json: async () => clientPayload,
+    } as unknown as NextRequest;
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(consumeMock).toHaveBeenCalledTimes(1);
+  });
+
   test('rejects instruction-shaped reason lines', async () => {
     parseMock.mockReturnValueOnce({
       success: true,
