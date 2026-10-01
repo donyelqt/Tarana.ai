@@ -10,6 +10,7 @@ import {
   SPOT_SCOPES,
   REGION_MEMBERS,
   LUZON_MEMBERS,
+  dedupeByDisplayName,
   mergeRegionPools,
   regionCardKey,
   type SpotPayload,
@@ -108,7 +109,10 @@ const SuggestedSpots = () => {
     }
     const label = SPOT_SCOPES.find((s) => s.id === view)?.label ?? view;
     const origin = getCityCenter(view);
-    const cards = (citySpots.data ?? [])
+    // Same display-identity collapse as the region path: a single-pool POI feed
+    // carries its own same-name duplicates, and keying on the name would hand
+    // React two identical keys and silently drop a card.
+    const cards = dedupeByDisplayName(citySpots.data ?? [])
       .map((p: SpotPayload) => toSpotCard(p, origin))
       .filter((c): c is NonNullable<typeof c> => c !== null)
       .slice(0, 3);
