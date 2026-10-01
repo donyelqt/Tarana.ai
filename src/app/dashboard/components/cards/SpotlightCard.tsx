@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { MapPin, Clock, TrafficCone, Map as MapIcon } from "lucide-react"
+import { MapPin, Clock, TrafficCone } from "lucide-react"
 import { getActivityCoordinates } from "@/lib/data/baguioCoordinates"
 
 const trafficStyles: { [key: string]: string } = {
@@ -40,10 +40,6 @@ const SpotlightCard = ({
     ? { lat, lon, name: mapLabel ?? name }
     : getActivityCoordinates(name);
 
-  const mapEmbedUrl = coordinates
-    ? `https://www.google.com/maps?q=${coordinates.lat},${coordinates.lon}&z=15&output=embed`
-    : null;
-
   // Visit Spot stays inside Tarana: deep-link to our own Explore map with the
   // spot prefilled as the destination. Coordinates are required; without them
   // the CTA renders unlinked (same as before) rather than guessing.
@@ -60,11 +56,6 @@ const SpotlightCard = ({
   const exploreHref = coordinates
     ? `/tarana-explore?to=${encodeURIComponent(coordinates.name)}&toLat=${coordinates.lat}&toLon=${coordinates.lon}${trafficParam}${imageParam}`
     : null;
-
-  // Map facade: the embed iframe (~1MB+, third-party JS) loads only after an
-  // explicit tap — six eager iframes used to load on every dashboard view.
-  const [mapLoaded, setMapLoaded] = useState(false);
-
   const [imageFailed, setImageFailed] = useState(false);
   const showPhoto = !!image && !imageFailed;
 
@@ -108,29 +99,7 @@ const SpotlightCard = ({
             {traffic} Traffic
           </div>
         )}
-        {coordinates && mapEmbedUrl && !mapLoaded && (
-          <button
-            type="button"
-            onClick={() => setMapLoaded(true)}
-            className="rounded-xl overflow-hidden border border-gray-200 mb-4 w-full bg-gray-50 hover:bg-gray-100 transition-colors duration-200 p-4 flex items-center justify-center gap-2 text-sm text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            aria-label={`Load map for ${coordinates.name}`}
-          >
-            <MapIcon size={16} aria-hidden="true" />
-            Show map
-          </button>
-        )}
-        {coordinates && mapEmbedUrl && mapLoaded && (
-          <div className="rounded-xl overflow-hidden border border-gray-200 mb-4">
-            <iframe
-              title={`${coordinates.name} map`}
-              src={mapEmbedUrl}
-              loading="lazy"
-              allowFullScreen
-              referrerPolicy="no-referrer-when-downgrade"
-              className="w-full h-40"
-            />
-          </div>
-        )}
+
         <div className="mt-auto">
           {exploreHref ? (
             <a href={exploreHref} className="block" aria-label={`${ctaText}: ${coordinates?.name}`}>
