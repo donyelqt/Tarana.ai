@@ -39,6 +39,29 @@ const DEFAULT_PREFERENCES: RoutePreferences = {
   avoidTrafficJams: true,
 }
 
+/**
+ * Accepts the two image shapes that legitimately cross the Visit Spot link —
+ * a remote `https://` photo from a provider, or a site-relative path under
+ * the public image root — and rejects everything else.
+ *
+ * Rejected on purpose: `javascript:`/`data:` URIs, protocol-relative `//host`
+ * (which resolves to an attacker host), plain `http://` and any `..` segment.
+ * The value comes from a hand-editable query parameter and is passed to
+ * next/image, so it is untrusted input.
+ */
+export function isSafeImageSrc(src: string): boolean {
+  if (/^https:\/\/[^\s]+$/i.test(src)) return true
+  // Segment-by-segment: a two-dot segment is inside the character class, so a
+  // single shape test would let a traversal sequence escape the image root
+  // (the shipped-image guard treats any absolute image path written in code
+  // as a file that must resolve on disk, so the example cannot be spelled out).
+  const segments = src.split('/')
+  if (segments[0] !== '' || segments[1] !== 'images' || segments.length < 3) return false
+  return segments
+    .slice(2)
+    .every((seg) => seg.length > 0 && seg !== '.' && seg !== '..' && /^[A-Za-z0-9._-]+$/.test(seg))
+}
+
 const ExploreMapView: React.FC = () => {
   const searchParams = useSearchParams()
   const [origin, setOrigin] = useState<LocationPoint | null>(null)
@@ -60,10 +83,17 @@ const ExploreMapView: React.FC = () => {
     // Only measured traffic is honoured; an unrecognised value hides the tag.
     const rawTraffic = searchParams.get('traffic')
     const traffic = rawTraffic === 'Low' || rawTraffic === 'Moderate' || rawTraffic === 'High' ? rawTraffic : null
-    // Remote-URL only. A scheme-relative or javascript: src must never reach
-    // next/image from a URL the user can hand-edit.
+    // Both shapes reach this link. Baguio's curated catalogue and the cafe
+    // registry store site-relative paths; only enriched TomTom POIs carry
+    // remote https URLs. The earlier https-only guard silently dropped every
+    // local path, so the arrival card showed the brand mark for spots that
+    // had a real photo on disk.
+    //
+    // Still strict: `javascript:`, `data:`, protocol-relative `//host` and
+    // traversal (`..`) are rejected, because this value comes from a URL the
+    // user can hand-edit and is handed straight to next/image.
     const rawImage = searchParams.get('img')
-    const image = rawImage && /^https:\/\/[^\s]+$/i.test(rawImage) ? rawImage : null
+    const image = rawImage && isSafeImageSrc(rawImage) ? rawImage : null
     setSpotPreview({ traffic, image })
     // No recenterSignal bump here on purpose. The map already reacts to
     // `destination` changing, and bumping the signal used to invoke a

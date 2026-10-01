@@ -13,22 +13,14 @@ const props = {
   lon: 120.595,
 };
 
-describe('SpotlightCard map facade', () => {
-  it('shows a Show map button instead of an eager iframe', () => {
+describe('SpotlightCard', () => {
+  it('renders no map facade — Visit Spot is the only way onto the map', () => {
+    // The Google Maps embed was the app's last external Google dependency and
+    // duplicated Visit Spot. Removed: one map, one route, one privacy surface.
     const { container } = render(<SpotlightCard {...props} />);
-    expect(
-      screen.getByRole('button', { name: 'Load map for Burnham Park' })
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /load map/i })).not.toBeInTheDocument();
     expect(container.querySelector('iframe')).toBeNull();
-  });
-
-  it('loads the embed only after tap, with the right coords', () => {
-    const { container } = render(<SpotlightCard {...props} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Load map for Burnham Park' }));
-    const iframe = container.querySelector('iframe');
-    expect(iframe).not.toBeNull();
-    expect(iframe?.getAttribute('src')).toContain('16.4093');
-    expect(iframe?.getAttribute('title')).toBe('Burnham Park map');
+    expect(container.innerHTML).not.toContain('google.com');
   });
 
   it('renders no map UI for unmapped places', () => {
@@ -36,7 +28,7 @@ describe('SpotlightCard map facade', () => {
       <SpotlightCard {...props} name="No Such Place Xyz" lat={undefined} lon={undefined} />
     );
     expect(container.querySelector('iframe')).toBeNull();
-    expect(queryByRole('button', { name: /Load map/ })).toBeNull();
+    expect(queryByRole('button', { name: /load map/i })).toBeNull();
     // CTA still works without coordinates
     expect(screen.getByRole('button', { name: 'Visit Spot' })).toBeInTheDocument();
   });
@@ -61,10 +53,12 @@ describe('SpotlightCard map facade', () => {
     expect(href).not.toContain('img=');
   });
 
-  it('never links Visit Spot to external Google Maps', () => {
+  it('never references Google Maps anywhere in the rendered card', () => {
+    // Was `<a>` hrefs only, which let the iframe slip through. The embed is
+    // gone now; this guards against any future reintroduction in any element.
     const { container } = render(<SpotlightCard {...props} />);
-    const hrefs = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href') ?? '');
-    expect(hrefs.length).toBeGreaterThan(0);
-    for (const href of hrefs) expect(href).not.toContain('google.com');
+    expect(container.innerHTML).not.toContain('google.com');
+    expect(container.innerHTML).not.toContain('googleapis');
+    expect(container.querySelector('iframe')).toBeNull();
   });
 });
