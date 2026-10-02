@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react'
-import { Compass, Map as MapIcon, Loader2, Box, Square } from 'lucide-react'
+import { Compass, Map as MapIcon, Loader2, Box, Square, Route } from 'lucide-react'
 import { MapStyle, MAP_STYLES } from '@/lib/integrations/tomtomMapUtils'
 
 interface MapControlsProps {
@@ -11,6 +11,9 @@ interface MapControlsProps {
   onRecenter: () => void
   tiltOn: boolean
   onToggleTilt: () => void
+  /** Plan Mode is a display mode: it swaps the island's config, not the route. */
+  planMode: boolean
+  onTogglePlan: () => void
   styleOptions?: MapStyle[]
 }
 
@@ -23,10 +26,26 @@ const MapControls: React.FC<MapControlsProps> = ({
   onRecenter,
   tiltOn,
   onToggleTilt,
+  planMode,
+  onTogglePlan,
   styleOptions = DEFAULT_STYLES,
 }) => {
   return (
     <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1.5">
+      <button
+        type="button"
+        onClick={onTogglePlan}
+        className={
+          planMode
+            ? 'w-10 h-10 rounded-full shadow-md border flex items-center justify-center transition-colors bg-blue-600 border-blue-600 text-white'
+            : 'w-10 h-10 rounded-full shadow-md border flex items-center justify-center transition-colors bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-blue-600'
+        }
+        aria-pressed={planMode}
+        aria-label={planMode ? 'Plan mode: on' : 'Plan mode: off'}
+        title={planMode ? 'Plan mode: On' : 'Plan mode: Off'}
+      >
+        <Route className="w-5 h-5" />
+      </button>
       <button
         type="button"
         onClick={onRecenter}
