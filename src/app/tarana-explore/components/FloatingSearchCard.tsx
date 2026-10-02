@@ -56,6 +56,11 @@ interface FloatingSearchCardProps {
   isCalculating: boolean
   popularLocations: LocationPoint[]
   disabled?: boolean
+  /**
+   * Increments when the parent changes mode. The island collapses in response;
+   * it owns `isOpen`, so a counter beats exposing the setter upward.
+   */
+  collapseSignal?: number
 }
 
 type SegmentedOption<T extends string> = {
@@ -485,6 +490,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   isCalculating,
   popularLocations,
   disabled,
+  collapseSignal,
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
@@ -534,6 +540,18 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [isOpen, close])
+
+  /**
+   * The parent changes mode by bumping `collapseSignal`. Collapse without
+   * clearing endpoints: they are the user's route work and outlive the mode.
+   * Skipped on the first render so the signal's initial value is inert.
+   */
+  const lastCollapseSignal = useRef(collapseSignal)
+  useEffect(() => {
+    if (collapseSignal === lastCollapseSignal.current) return
+    lastCollapseSignal.current = collapseSignal
+    close()
+  }, [collapseSignal, close])
 
   // Once a route is on the map, collapse back to the pill. The endpoints live in
   // parent state and are deliberately kept.

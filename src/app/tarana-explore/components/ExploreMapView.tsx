@@ -114,6 +114,12 @@ const ExploreMapView: React.FC = () => {
   const [isChangingStyle, setIsChangingStyle] = useState(false)
 
   const [tiltOn, setTiltOn] = useState(true)
+  // Plan Mode is display state: toggling it must not touch origin/destination,
+  // which are the user's route work, not mode state.
+  const [planMode, setPlanMode] = useState(false)
+  // Mirrors recenterSignal: a counter the island watches to collapse itself on
+  // a mode change. A callback would need the island's setter, which it owns.
+  const [collapseIslandSignal, setCollapseIslandSignal] = useState(0)
   const styleControlRef = useRef<{ changeStyle: (style: MapStyle) => void } | null>(null);
 
   const { state, calculate, selectAlternative, refreshTraffic, clear } = useRouteCalculation()
@@ -159,6 +165,13 @@ const ExploreMapView: React.FC = () => {
     setTiltOn((v) => !v)
   }, [])
 
+  const handleTogglePlan = useCallback(() => {
+    setPlanMode((v) => !v)
+    // Collapse on the way in and on the way out: the island is about to swap
+    // its whole contents, and a half-open card mid-swap reads as a glitch.
+    setCollapseIslandSignal((n) => n + 1)
+  }, [])
+
   // Silent 5-minute traffic refresh — no UI button (matches Google Maps' silent updates)
   useEffect(() => {
     if (!state.currentRoute) return
@@ -194,6 +207,7 @@ const ExploreMapView: React.FC = () => {
         origin={origin}
         destination={destination}
         preferences={preferences}
+        collapseSignal={collapseIslandSignal}
         onOriginChange={setOrigin}
         onDestinationChange={setDestination}
         onPreferencesChange={handlePreferencesChange}
@@ -212,6 +226,8 @@ const ExploreMapView: React.FC = () => {
         onRecenter={handleRecenter}
         tiltOn={tiltOn}
         onToggleTilt={handleToggleTilt}
+        planMode={planMode}
+        onTogglePlan={handleTogglePlan}
       />
 
       <BottomRouteSheet
