@@ -7,6 +7,7 @@ import React, {
   useRef,
   useCallback,
   KeyboardEvent,
+  type ReactNode,
 } from 'react'
 import {
   Search,
@@ -31,7 +32,11 @@ import {
   SearchResult,
 } from '@/types/route-optimization'
 import { motion } from 'framer-motion'
+import { Route } from 'lucide-react'
 import DynamicIsland from './DynamicIsland'
+// Fallback ref used when no plan-slot consumer is mounted, so the island
+// renders identically in isolation and in route-only mode.
+const noopRef = () => {}
 
 /** Minimum characters before we hit the geocoder (matches the API's own guard). */
 const MIN_QUERY = 2
@@ -61,6 +66,21 @@ interface FloatingSearchCardProps {
    * it owns `isOpen`, so a counter beats exposing the setter upward.
    */
   collapseSignal?: number
+  /**
+   * When true the island renders the plan slot instead of the route fields.
+   * The shell (morph, clip, dismissal) is unchanged by mode.
+   */
+  planMode?: boolean
+  /**
+   * Reports the node the planner config should be portalled into.
+   *
+   * A slot rather than an imported component on purpose: Plan Mode pulls in
+   * Gala's generator, which imports the 37-activity catalog and its menus.
+   * Pulling that into the map's static graph cost 448KB on /tarana-explore and
+   * blew the bundle budget, so the caller owns a lazily-loaded surface that
+   * renders into this node.
+   */
+  onPlanSlot?: (node: HTMLElement | null) => void
 }
 
 type SegmentedOption<T extends string> = {
@@ -491,6 +511,8 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   popularLocations,
   disabled,
   collapseSignal,
+  planMode = false,
+  onPlanSlot,
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
@@ -499,6 +521,15 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   const originRef = useRef<HTMLInputElement | null>(null)
   const destinationRef = useRef<HTMLInputElement | null>(null)
   const submitRef = useRef<HTMLButtonElement | null>(null)
+
+  // Report the slot node only when it changes. React invokes a ref callback
+  // with null and then the node on every commit, so passing the parent's
+  // setState straight to `ref` would schedule a render per commit and loop.
+  const planSlotSink = useRef(onPlanSlot)
+  planSlotSink.current = onPlanSlot
+  const setPlanSlot = useCallback((node: HTMLElement | null) => {
+    planSlotSink.current?.(node)
+  }, [])
 
   const canSubmit = !!origin && !!destination && !isCalculating && !disabled
 
@@ -525,10 +556,20 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   // Dismiss on a genuine outside press. pointerdown fires before focus moves and
   // is identical across mouse, touch and pen — unlike blur/relatedTarget.
   // Capture phase so the map's own handlers cannot swallow it.
+  //
+  // A press inside a portalled popover is NOT an outside press. Radix renders
+  // popover content into a wrapper appended to <body>, outside rootRef, so the
+  // containment check alone read "choose a budget" as "the user left" and closed
+  // the card mid-choice, stranding the rest of the form. The route config has
+  // no popover, so this only surfaced once the planner config landed.
   useEffect(() => {
     if (!isOpen) return
     const onPointerDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) close()
+      const target = e.target as Node | null
+      if (!target) return
+      if (rootRef.current?.contains(target)) return
+      if ((target as Element).closest?.('[data-radix-popper-content-wrapper]')) return
+      close()
     }
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') close()
@@ -619,7 +660,12 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
 
   // The collapsed pill reports what is still selected, so the post-search
   // collapse reads as "route set", not as "my inputs were thrown away".
-  const compactSummary = hasEndpoint ? (
+  const compactSummary = planMode ? (
+    <span className="flex w-full items-center gap-1.5 px-4">
+      <Route className="w-4 h-4 flex-shrink-0 text-blue-600" aria-hidden="true" />
+      <span className="min-w-0 truncate text-gray-900">Plan a trip</span>
+    </span>
+  ) : hasEndpoint ? (
     <span className="flex w-full items-center gap-1.5 px-4">
       <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500" />
       <span
@@ -674,7 +720,8 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
             if (next && !e.currentTarget.contains(next)) close()
           }}
         >
-          {/* Origin / Destination stack */}
+          {planMode ? <div ref={setPlanSlot} /> : (
+          <>
           <div className="relative px-1.5 py-1">
             <LocationField
               fieldId="route-origin"
@@ -823,6 +870,8 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
               )}
             </button>
           </div>
+          </>
+          )}
         </div>
       </DynamicIsland>
     </div>

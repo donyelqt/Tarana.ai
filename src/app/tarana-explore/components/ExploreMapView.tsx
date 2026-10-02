@@ -7,6 +7,7 @@ import {
   LocationPoint,
   RoutePreferences,
   RouteRequest,
+  type SearchResult,
 } from '@/types/route-optimization'
 import { MapStyle } from '@/lib/integrations/tomtomMapUtils'
 import FloatingSearchCard from './FloatingSearchCard'
@@ -15,6 +16,10 @@ import TrafficBadge from './TrafficBadge'
 import MapControls from './MapControls'
 import SpotPreviewCard, { type SpotTraffic } from './SpotPreviewCard'
 import { useRouteCalculation } from '../hooks/useRouteCalculation'
+// Plan Mode's generator, catalog, and menus are deliberately NOT imported here.
+// A static import pulled the 37-activity catalog into the map's graph and cost
+// 448KB on /tarana-explore (1029KB against a 639KB budget). It loads on demand.
+const PlanModeSurface = dynamic(() => import('./PlanModeSurface'), { ssr: false })
 
 // Map must be client-only and skip SSR (TomTom uses window)
 const InteractiveRouteMap = dynamic(
@@ -124,6 +129,10 @@ const ExploreMapView: React.FC = () => {
 
   const { state, calculate, selectAlternative, refreshTraffic, clear } = useRouteCalculation()
 
+  // The island hands this node to the lazily-loaded plan surface, which
+  // portals the planner config into it. Held here so the island's own chunk
+  // never imports Gala's generator or the activity catalog.
+  const [planSlot, setPlanSlot] = useState<HTMLElement | null>(null)
   const handlePreferencesChange = useCallback((patch: Partial<RoutePreferences>) => {
     setPreferences((prev) => ({ ...prev, ...patch }))
   }, [])
@@ -208,6 +217,8 @@ const ExploreMapView: React.FC = () => {
         destination={destination}
         preferences={preferences}
         collapseSignal={collapseIslandSignal}
+        planMode={planMode}
+        onPlanSlot={setPlanSlot}
         onOriginChange={setOrigin}
         onDestinationChange={setDestination}
         onPreferencesChange={handlePreferencesChange}
@@ -239,6 +250,15 @@ const ExploreMapView: React.FC = () => {
         onClose={handleClose}
         lastUpdated={state.lastUpdated}
       />
+
+      {/*
+        One bottom sheet at a time. The route sheet returns null without a
+        route, so rendering the plan surface only in plan mode is what stops
+        the two stacking. The surface is lazily loaded: it carries Gala's
+        generator and the activity catalog, which have no business in the map's
+        initial bundle.
+      */}
+      {planMode && <PlanModeSurface islandSlot={planSlot} />}
 
       {spotPreview && (
         <SpotPreviewCard
