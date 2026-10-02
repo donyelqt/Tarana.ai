@@ -7,6 +7,7 @@ import React, {
   useRef,
   useCallback,
   KeyboardEvent,
+  type ReactNode,
 } from 'react'
 import {
   Search,
@@ -33,8 +34,9 @@ import {
 import { motion } from 'framer-motion'
 import { Route } from 'lucide-react'
 import DynamicIsland from './DynamicIsland'
-import PlanIslandConfig from './PlanIslandConfig'
-import type { FormData } from '@/app/itinerary-generator/types'
+// Fallback ref used when no plan-slot consumer is mounted, so the island
+// renders identically in isolation and in route-only mode.
+const noopRef = () => {}
 
 /** Minimum characters before we hit the geocoder (matches the API's own guard). */
 const MIN_QUERY = 2
@@ -65,13 +67,20 @@ interface FloatingSearchCardProps {
    */
   collapseSignal?: number
   /**
-   * When true the island renders the Gala planner config instead of the route
-   * fields. The shell (morph, clip, dismissal) is unchanged by mode.
+   * When true the island renders the plan slot instead of the route fields.
+   * The shell (morph, clip, dismissal) is unchanged by mode.
    */
   planMode?: boolean
-  onPlanSubmit?: (formData: FormData) => void
-  isPlanning?: boolean
-  planDisabled?: boolean
+  /**
+   * Reports the node the planner config should be portalled into.
+   *
+   * A slot rather than an imported component on purpose: Plan Mode pulls in
+   * Gala's generator, which imports the 37-activity catalog and its menus.
+   * Pulling that into the map's static graph cost 448KB on /tarana-explore and
+   * blew the bundle budget, so the caller owns a lazily-loaded surface that
+   * renders into this node.
+   */
+  onPlanSlot?: (node: HTMLElement | null) => void
 }
 
 type SegmentedOption<T extends string> = {
@@ -503,9 +512,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   disabled,
   collapseSignal,
   planMode = false,
-  onPlanSubmit,
-  isPlanning = false,
-  planDisabled = false,
+  onPlanSlot,
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
@@ -514,6 +521,15 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   const originRef = useRef<HTMLInputElement | null>(null)
   const destinationRef = useRef<HTMLInputElement | null>(null)
   const submitRef = useRef<HTMLButtonElement | null>(null)
+
+  // Report the slot node only when it changes. React invokes a ref callback
+  // with null and then the node on every commit, so passing the parent's
+  // setState straight to `ref` would schedule a render per commit and loop.
+  const planSlotSink = useRef(onPlanSlot)
+  planSlotSink.current = onPlanSlot
+  const setPlanSlot = useCallback((node: HTMLElement | null) => {
+    planSlotSink.current?.(node)
+  }, [])
 
   const canSubmit = !!origin && !!destination && !isCalculating && !disabled
 
@@ -704,14 +720,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
             if (next && !e.currentTarget.contains(next)) close()
           }}
         >
-          {/* Origin / Destination stack */}
-          {planMode ? (
-            <PlanIslandConfig
-              onSubmit={(formData) => onPlanSubmit?.(formData)}
-              isGenerating={isPlanning}
-              disabled={planDisabled}
-            />
-          ) : (
+          {planMode ? <div ref={setPlanSlot} /> : (
           <>
           <div className="relative px-1.5 py-1">
             <LocationField
