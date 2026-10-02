@@ -31,7 +31,10 @@ import {
   SearchResult,
 } from '@/types/route-optimization'
 import { motion } from 'framer-motion'
+import { Route } from 'lucide-react'
 import DynamicIsland from './DynamicIsland'
+import PlanIslandConfig from './PlanIslandConfig'
+import type { FormData } from '@/app/itinerary-generator/types'
 
 /** Minimum characters before we hit the geocoder (matches the API's own guard). */
 const MIN_QUERY = 2
@@ -61,6 +64,14 @@ interface FloatingSearchCardProps {
    * it owns `isOpen`, so a counter beats exposing the setter upward.
    */
   collapseSignal?: number
+  /**
+   * When true the island renders the Gala planner config instead of the route
+   * fields. The shell (morph, clip, dismissal) is unchanged by mode.
+   */
+  planMode?: boolean
+  onPlanSubmit?: (formData: FormData) => void
+  isPlanning?: boolean
+  planDisabled?: boolean
 }
 
 type SegmentedOption<T extends string> = {
@@ -491,6 +502,10 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   popularLocations,
   disabled,
   collapseSignal,
+  planMode = false,
+  onPlanSubmit,
+  isPlanning = false,
+  planDisabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
@@ -525,10 +540,20 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   // Dismiss on a genuine outside press. pointerdown fires before focus moves and
   // is identical across mouse, touch and pen — unlike blur/relatedTarget.
   // Capture phase so the map's own handlers cannot swallow it.
+  //
+  // A press inside a portalled popover is NOT an outside press. Radix renders
+  // popover content into a wrapper appended to <body>, outside rootRef, so the
+  // containment check alone read "choose a budget" as "the user left" and closed
+  // the card mid-choice, stranding the rest of the form. The route config has
+  // no popover, so this only surfaced once the planner config landed.
   useEffect(() => {
     if (!isOpen) return
     const onPointerDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) close()
+      const target = e.target as Node | null
+      if (!target) return
+      if (rootRef.current?.contains(target)) return
+      if ((target as Element).closest?.('[data-radix-popper-content-wrapper]')) return
+      close()
     }
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') close()
@@ -619,7 +644,12 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
 
   // The collapsed pill reports what is still selected, so the post-search
   // collapse reads as "route set", not as "my inputs were thrown away".
-  const compactSummary = hasEndpoint ? (
+  const compactSummary = planMode ? (
+    <span className="flex w-full items-center gap-1.5 px-4">
+      <Route className="w-4 h-4 flex-shrink-0 text-blue-600" aria-hidden="true" />
+      <span className="min-w-0 truncate text-gray-900">Plan a trip</span>
+    </span>
+  ) : hasEndpoint ? (
     <span className="flex w-full items-center gap-1.5 px-4">
       <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500" />
       <span
@@ -675,6 +705,14 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
           }}
         >
           {/* Origin / Destination stack */}
+          {planMode ? (
+            <PlanIslandConfig
+              onSubmit={(formData) => onPlanSubmit?.(formData)}
+              isGenerating={isPlanning}
+              disabled={planDisabled}
+            />
+          ) : (
+          <>
           <div className="relative px-1.5 py-1">
             <LocationField
               fieldId="route-origin"
@@ -823,6 +861,8 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
               )}
             </button>
           </div>
+          </>
+          )}
         </div>
       </DynamicIsland>
     </div>

@@ -55,6 +55,24 @@ jest.mock('../FloatingSearchCard', () => ({
   ),
 }))
 
+// Plan Mode pulls in Gala's generation hook, which needs ToastProvider and a
+// credit query. This suite is about the mode boundary, not generation, so the
+// hook is stubbed at its own seam — the boundary tests then assert the island
+// contract without standing up the billing stack.
+jest.mock('../../hooks/usePlanMode', () => ({
+  usePlanMode: () => ({
+    formSnapshot: null,
+    generate: jest.fn(),
+    clearPlan: jest.fn(),
+    itinerary: null,
+    save: jest.fn(),
+    isGenerating: false,
+    isOutOfCredits: false,
+    isCheckingCredits: false,
+    creditBalance: null,
+  }),
+}))
+
 import ExploreMapView from '../ExploreMapView'
 
 function planSwitch() {

@@ -7,6 +7,7 @@ import {
   LocationPoint,
   RoutePreferences,
   RouteRequest,
+  type SearchResult,
 } from '@/types/route-optimization'
 import { MapStyle } from '@/lib/integrations/tomtomMapUtils'
 import FloatingSearchCard from './FloatingSearchCard'
@@ -15,6 +16,12 @@ import TrafficBadge from './TrafficBadge'
 import MapControls from './MapControls'
 import SpotPreviewCard, { type SpotTraffic } from './SpotPreviewCard'
 import { useRouteCalculation } from '../hooks/useRouteCalculation'
+import { usePlanMode } from '../hooks/usePlanMode'
+import PlanSheet from './PlanSheet'
+import { resolveStopCoordinates } from '../lib/resolveStopCoordinates'
+import { getActivityCoordinates } from '@/lib/data'
+import { CITY_CONFIGS, getCityCenter } from '@/lib/data/cityConfig'
+import type { CityId } from '@/lib/data/cityConfig'
 
 // Map must be client-only and skip SSR (TomTom uses window)
 const InteractiveRouteMap = dynamic(
@@ -124,6 +131,65 @@ const ExploreMapView: React.FC = () => {
 
   const { state, calculate, selectAlternative, refreshTraffic, clear } = useRouteCalculation()
 
+  const plan = usePlanMode()
+  // Coordinate resolution for a generated plan. The registry is Baguio's
+  // known-place map; anything else is looked up through the provider, scoped
+  // to the generated city's bounds so a Manila stop can never land in Baguio.
+  // A miss stays null and the sheet renders it as "No location" — never a
+  // guessed point, never the city centre.
+  const planCityId = (plan.formSnapshot?.cityId ?? 'baguio') as CityId
+  const resolveForPlan = useCallback(
+    (title: string) =>
+      resolveStopCoordinates(title, {
+        cityId: planCityId,
+        cityCenter: getCityCenter(planCityId),
+        sources: {
+          registry: (name) => {
+            // The registry holds Baguio only. Asking it for another city's stop
+            // would risk a Baguio pin for a Manila stop.
+            if (planCityId !== 'baguio') return null
+            const found = getActivityCoordinates(name)
+            return found ? { lat: found.lat, lon: found.lon } : null
+          },
+          scopedSearch: async (name) => {
+            const { bounds } = CITY_CONFIGS[planCityId]
+            const params = new URLSearchParams({
+              q: name,
+              bounds: JSON.stringify({
+                topLeft: { lat: bounds.north, lng: bounds.west },
+                bottomRight: { lat: bounds.south, lng: bounds.east },
+              }),
+            })
+            const res = await fetch(`/api/locations/search?${params.toString()}`)
+            if (!res.ok) return null
+            const data = (await res.json()) as { results?: SearchResult[] }
+            const first = data.results?.[0]
+            const lat = first?.coordinates?.lat
+            const lng = first?.coordinates?.lng
+            if (typeof lat !== 'number' || typeof lng !== 'number') return null
+            // Exact-ish name match only. A fuzzy hit for "Temple" in Cebu is
+            // not this stop, and a wrong pin is worse than a missing one.
+            const normalizedQuery = name.trim().toLowerCase()
+            const normalizedHit = first?.name?.trim().toLowerCase()
+            if (normalizedQuery !== normalizedHit) return null
+            return { lat, lon: lng }
+          },
+        },
+      }),
+    [planCityId]
+  )
+
+  const handlePlanSubmit = useCallback(
+    async (formData: Parameters<typeof plan.generate>[0]) => {
+      await plan.generate(formData)
+    },
+    [plan]
+  )
+
+  const handleClosePlan = useCallback(() => {
+    plan.clearPlan()
+  }, [plan])
+
   const handlePreferencesChange = useCallback((patch: Partial<RoutePreferences>) => {
     setPreferences((prev) => ({ ...prev, ...patch }))
   }, [])
@@ -208,6 +274,10 @@ const ExploreMapView: React.FC = () => {
         destination={destination}
         preferences={preferences}
         collapseSignal={collapseIslandSignal}
+        planMode={planMode}
+        onPlanSubmit={handlePlanSubmit}
+        isPlanning={plan.isGenerating}
+        planDisabled={Boolean(plan.isOutOfCredits)}
         onOriginChange={setOrigin}
         onDestinationChange={setDestination}
         onPreferencesChange={handlePreferencesChange}
@@ -239,6 +309,22 @@ const ExploreMapView: React.FC = () => {
         onClose={handleClose}
         lastUpdated={state.lastUpdated}
       />
+
+      {/*
+        One bottom sheet at a time. The route sheet returns null without a
+        route, so gating the plan sheet on plan mode is what stops the two
+        stacking on top of each other.
+      */}
+      {planMode && (
+        <PlanSheet
+          itinerary={plan.itinerary}
+          resolveCoordinates={resolveForPlan}
+          onSave={() => {
+            void plan.save(null)
+          }}
+          onClose={handleClosePlan}
+        />
+      )}
 
       {spotPreview && (
         <SpotPreviewCard
