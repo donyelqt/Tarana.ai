@@ -213,6 +213,36 @@ with no route drawn — same honest-empty rule as the strict-city scope.
 | Island overcrowding (7 tiles + 6 field groups at 448px) | Rows, not a pasted page form; destination tiles compress to the `grid-cols-4` pattern the dashboard pills already use |
 | Mode confusion (route vs plan state) | Hard boundary rule §3.1; route sheets and plan sheets never co-render |
 
+### 5.1 Measured: the generator request body has 57% headroom, not unlimited
+
+Plan Mode reuses `generateItinerary`, whose body ships the whole Baguio
+catalog as `sampleItinerary`. Measured, not assumed:
+
+| Component | Bytes | % of 32KB cap |
+|---|---|---|
+| `sampleItinerary` (1 item, period "Anytime", **37 activities**) | 13,964 | 42.6% |
+| `prompt` | 165 | 0.5% |
+| everything else (`weatherData`, interests, budget, pax, cityId, options) | ~215 | 0.7% |
+| **full body** | **14,344** | **43.8%** |
+
+So Gala does **not** have the Tarana Eats 413 (that path shipped 130KB, 3.97x
+cap). It fits with 18.4KB to spare.
+
+Two consequences for Plan Mode:
+
+1. **Plan Mode must add nothing to this body.** The 18.4KB headroom is the
+   budget for every future field. Adding Explore's route context, resolved
+   coordinates, or any per-stop payload to the generation request spends it.
+   Coordinates are resolved *after* generation, client-side (§3.3a) — that
+   ordering is what keeps this request small, and it is a constraint, not a
+   preference.
+2. **The pending 37 → ~50 catalog plan spends 31% of the remaining
+   headroom.** At ~377 bytes per activity, +15 activities is ~+5.6KB:
+   `sampleItinerary` ≈ 19.6KB, body ≈ 20.0KB = 61% of cap. Still safe, but the
+   margin is now 12.8KB, and the second growth step after that is the one
+   that breaks it. That plan and this one share the ceiling.
+
+
 ---
 
 ## 6. Plan (slices, each independently verifiable)
