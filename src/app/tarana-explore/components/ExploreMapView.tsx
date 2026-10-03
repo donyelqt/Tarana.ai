@@ -127,6 +127,13 @@ const ExploreMapView: React.FC = () => {
   // a mode change. A callback would need the island's setter, which it owns.
   const [collapseIslandSignal, setCollapseIslandSignal] = useState(0)
   const styleControlRef = useRef<{ changeStyle: (style: MapStyle) => void } | null>(null);
+  // Signed zoom steps, mirroring recenterSignal: the map owns the camera, so
+  // the rail sends a step and the map applies it.
+  const [zoomSignal, setZoomSignal] = useState(0)
+
+  const handleZoom = useCallback((steps: number) => {
+    setZoomSignal((n) => n + steps)
+  }, [])
 
   const { state, calculate, selectAlternative, refreshTraffic, clear } = useRouteCalculation()
 
@@ -245,6 +252,7 @@ const ExploreMapView: React.FC = () => {
         onStyleChange={setMapStyle}
         onStyleChanging={setIsChangingStyle}
         recenterSignal={recenterSignal}
+        zoomSignal={zoomSignal}
         tiltOn={tiltOn}
         styleControlRef={styleControlRef}
       />
@@ -272,6 +280,7 @@ const ExploreMapView: React.FC = () => {
         isChangingStyle={isChangingStyle}
         onStyleChange={(next) => styleControlRef.current?.changeStyle(next)}
         onRecenter={handleRecenter}
+        onZoom={handleZoom}
         tiltOn={tiltOn}
         onToggleTilt={handleToggleTilt}
         planMode={planMode}

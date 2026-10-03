@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react'
-import { Compass, Map as MapIcon, Loader2, Box, Square, Route } from 'lucide-react'
+import { Compass, Map as MapIcon, Loader2, Box, Square, Route, Plus, Minus } from 'lucide-react'
 import { MapStyle, MAP_STYLES } from '@/lib/integrations/tomtomMapUtils'
 
 interface MapControlsProps {
@@ -9,6 +9,10 @@ interface MapControlsProps {
   isChangingStyle: boolean
   onStyleChange: (style: MapStyle) => void
   onRecenter: () => void
+  /** Signed steps: negative zooms out, positive zooms in. */
+  onZoom: (steps: number) => void
+  /** True at either zoom bound, so both buttons disable together. */
+  zoomDisabled?: boolean
   tiltOn: boolean
   onToggleTilt: () => void
   /** Plan Mode is a display mode: it swaps the island's config, not the route. */
@@ -24,6 +28,8 @@ const MapControls: React.FC<MapControlsProps> = ({
   isChangingStyle,
   onStyleChange,
   onRecenter,
+  onZoom,
+  zoomDisabled = false,
   tiltOn,
   onToggleTilt,
   planMode,
@@ -37,6 +43,33 @@ const MapControls: React.FC<MapControlsProps> = ({
     // must stay tappable while the card is on screen, or the mode cannot be
     // turned off.
     <div className="absolute right-3 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-1.5">
+
+      {/*
+        Zoom first, where a map user reaches for it. Two circular controls in
+        the rail's own language, deliberately NOT TomTom's NavigationControl:
+        that control is rectangular, pins itself to the map's top-right, and
+        would sit on top of this rail.
+      */}
+      <button
+        type="button"
+        onClick={() => onZoom(1)}
+        disabled={zoomDisabled}
+        className="w-10 h-10 bg-white rounded-full shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-gray-700"
+        aria-label="Zoom in"
+        title="Zoom in"
+      >
+        <Plus className="w-5 h-5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onZoom(-1)}
+        disabled={zoomDisabled}
+        className="w-10 h-10 bg-white rounded-full shadow-md border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-gray-700"
+        aria-label="Zoom out"
+        title="Zoom out"
+      >
+        <Minus className="w-5 h-5" />
+      </button>
       <button
         type="button"
         onClick={onTogglePlan}
