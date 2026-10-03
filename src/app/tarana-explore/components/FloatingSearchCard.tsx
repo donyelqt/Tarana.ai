@@ -81,6 +81,8 @@ interface FloatingSearchCardProps {
    * renders into this node.
    */
   onPlanSlot?: (node: HTMLElement | null) => void
+  /** Plan generation in flight. Drives the same auto-collapse as routing. */
+  isPlanning?: boolean
 }
 
 type SegmentedOption<T extends string> = {
@@ -513,6 +515,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   collapseSignal,
   planMode = false,
   onPlanSlot,
+  isPlanning = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
@@ -594,13 +597,18 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
     close()
   }, [collapseSignal, close])
 
-  // Once a route is on the map, collapse back to the pill. The endpoints live in
-  // parent state and are deliberately kept.
-  const wasCalculating = useRef(isCalculating)
+  // Auto-collapse when work finishes, in both modes.
+  //
+  // This watched only `isCalculating`, which is the ROUTE pipeline. Plan
+  // Mode's generation runs through a separate flag, so a completed plan left
+  // the island open on top of the results it had just produced. One rule with
+  // two inputs, rather than a second close path for plan mode.
+  const wasBusy = useRef(isCalculating || isPlanning)
   useEffect(() => {
-    if (wasCalculating.current && !isCalculating) close()
-    wasCalculating.current = isCalculating
-  }, [isCalculating, close])
+    const busy = isCalculating || isPlanning
+    if (wasBusy.current && !busy) close()
+    wasBusy.current = busy
+  }, [isCalculating, isPlanning, close])
 
   /**
    * Opening from the pill. The actual focus is deferred to the effect below so

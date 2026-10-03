@@ -37,11 +37,26 @@ export interface PlanModeSurfaceProps {
    * cannot disagree about which day is on screen.
    */
   onDayStops?: (points: LocationPoint[]) => void
+  /**
+   * Reports plan generation in flight. The island owns its own open state and
+   * cannot watch this itself; the surface is the only place that knows.
+   */
+  onGeneratingChange?: (busy: boolean) => void
 }
 
-const PlanModeSurface: React.FC<PlanModeSurfaceProps> = ({ islandSlot, onDayStops }) => {
+const PlanModeSurface: React.FC<PlanModeSurfaceProps> = ({
+  islandSlot,
+  onDayStops,
+  onGeneratingChange,
+}) => {
   const plan = usePlanMode()
   const [activeDay, setActiveDay] = useState(0)
+
+  // The island collapses itself when this goes busy -> idle, the same rule
+  // routing already uses.
+  React.useEffect(() => {
+    onGeneratingChange?.(plan.isGenerating)
+  }, [plan.isGenerating, onGeneratingChange])
 
   const planCityId = (plan.formSnapshot?.cityId ?? 'baguio') as CityId
 

@@ -135,6 +135,10 @@ const ExploreMapView: React.FC = () => {
     setZoomSignal((n) => n + steps)
   }, [])
 
+  // Plan generation state, reported by the lazy surface. The island needs it
+  // to auto-collapse once a plan finishes, the same way routing already does.
+  const [planGenerating, setPlanGenerating] = useState(false)
+
   const { state, calculate, selectAlternative, refreshTraffic, clear } = useRouteCalculation()
 
   // The island hands this node to the lazily-loaded plan surface, which
@@ -264,6 +268,7 @@ const ExploreMapView: React.FC = () => {
         collapseSignal={collapseIslandSignal}
         planMode={planMode}
         onPlanSlot={setPlanSlot}
+        isPlanning={planGenerating}
         onOriginChange={setOrigin}
         onDestinationChange={setDestination}
         onPreferencesChange={handlePreferencesChange}
@@ -308,6 +313,7 @@ const ExploreMapView: React.FC = () => {
         <PlanModeSurface
           islandSlot={planSlot}
           onDayStops={handlePlanDayStops}
+          onGeneratingChange={setPlanGenerating}
         />
       )}
       {/*

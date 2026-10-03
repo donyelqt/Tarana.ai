@@ -176,4 +176,30 @@ describe('PlanIslandConfig', () => {
     expect(screen.getByText('Travel Interests')).toBeInTheDocument()
     expect(screen.getByRole('group', { name: /travel interests/i })).toBeInTheDocument()
   })
+
+  it('offers travel dates, in Gala\'s position and shape', () => {
+    setup()
+
+    expect(screen.getByText('Travel Dates')).toBeInTheDocument()
+    expect(screen.getByText(/start date/i)).toBeInTheDocument()
+    expect(screen.getByText(/end date/i)).toBeInTheDocument()
+  })
+
+  it('submits a dates object so a saved plan is not "Date not specified"', async () => {
+    const user = userEvent.setup()
+    const props = setup()
+
+    await pickBudget(user, budgetOptions[1])
+    await user.click(screen.getByRole('button', { name: paxOptions[1] }))
+    await user.click(screen.getByRole('button', { name: durationOptions[1] }))
+    await user.click(screen.getByRole('button', { name: /Culture & Arts/i }))
+    await user.click(screen.getByRole('button', { name: /generate itinerary/i }))
+
+    // Dates do not reach the generation prompt. They are the saved trip's date
+    // range, which is why omitting them made every Plan Mode save land as
+    // "Date not specified" (useItineraryGenerator.ts:143).
+    const formData = (props.onSubmit as jest.Mock).mock.calls[0][0]
+    expect(formData.dates).toHaveProperty('start')
+    expect(formData.dates).toHaveProperty('end')
+  })
 })
