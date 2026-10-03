@@ -33,6 +33,13 @@ export interface PlanSheetProps {
   onSave: () => void
   onClose: () => void
   isSaving?: boolean
+  /**
+   * Selected day, owned by the caller so the sheet's tabs and the map's route
+   * always agree on which day is drawn. Uncontrolled here would let the map
+   * show day 1 while the sheet lists day 2.
+   */
+  activeDay: number
+  onDayChange: (dayIndex: number) => void
 }
 
 /** "Day 1 - Morning" / "Day 2 - Evening" / "Anytime" -> "Day 1". */
@@ -47,6 +54,8 @@ const PlanSheet: React.FC<PlanSheetProps> = ({
   onSave,
   onClose,
   isSaving = false,
+  activeDay,
+  onDayChange,
 }) => {
   const days = useMemo(() => {
     if (!itinerary?.items?.length) return []
@@ -60,7 +69,6 @@ const PlanSheet: React.FC<PlanSheetProps> = ({
     return [...byDay.entries()]
   }, [itinerary])
 
-  const [activeDay, setActiveDay] = useState(0)
   const currentIndex = days.length === 0 ? 0 : Math.min(activeDay, days.length - 1)
   const current = days[currentIndex]
 
@@ -132,7 +140,7 @@ const PlanSheet: React.FC<PlanSheetProps> = ({
                 role="tab"
                 type="button"
                 aria-selected={index === activeDay}
-                onClick={() => setActiveDay(index)}
+                onClick={() => onDayChange(index)}
                 className={
                   index === activeDay
                     ? 'rounded-full bg-blue-600 px-3 py-1 text-xs font-medium text-white'

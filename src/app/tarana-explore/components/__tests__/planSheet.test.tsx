@@ -48,7 +48,16 @@ const resolvedFor = (title: string) =>
       ? { lat: 16.4025, lon: 120.5698 }
       : null
 
-function setup(overrides: Partial<React.ComponentProps<typeof PlanSheet>> = {}) {
+type SheetOverrides = Omit<Partial<React.ComponentProps<typeof PlanSheet>>, 'activeDay' | 'onDayChange'>
+
+function setup(overrides: SheetOverrides = {}) {
+  // The sheet no longer owns the selected day — the surface does, so the map
+  // and the tabs cannot disagree. The harness stands in for that owner.
+  function Host(props: Omit<React.ComponentProps<typeof PlanSheet>, 'activeDay' | 'onDayChange'>) {
+    const [day, setDay] = React.useState(0)
+    return <PlanSheet {...props} activeDay={day} onDayChange={setDay} />
+  }
+
   const props = {
     itinerary,
     resolveCoordinates: resolvedFor,
@@ -57,7 +66,15 @@ function setup(overrides: Partial<React.ComponentProps<typeof PlanSheet>> = {}) 
     isSaving: false,
     ...overrides,
   }
-  render(<PlanSheet {...props} />)
+  render(
+    <Host
+      itinerary={props.itinerary}
+      resolveCoordinates={props.resolveCoordinates}
+      onSave={props.onSave}
+      onClose={props.onClose}
+      isSaving={props.isSaving}
+    />
+  )
   return props
 }
 
@@ -70,6 +87,8 @@ describe('PlanSheet', () => {
         itinerary={null}
         resolveCoordinates={resolvedFor}
         onSave={jest.fn()}
+        activeDay={0}
+        onDayChange={jest.fn()}
         onClose={jest.fn()}
         isSaving={false}
       />
