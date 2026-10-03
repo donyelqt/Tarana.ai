@@ -85,6 +85,10 @@ describe('ExploreMapView plan mode boundary', () => {
     expect(planSwitch()).toHaveAttribute('aria-pressed', 'false')
   })
 
+  // Mounting the map view is heavy, and sibling suites in this directory run
+  // 30-40s each on a saturated machine, which pushes this past Jest's 5s
+  // default even though the test itself takes ~50ms in isolation. CI hides it
+  // with --maxWorkers=2. The margin is explicit rather than left to load.
   it('toggles on and back off', async () => {
     const user = userEvent.setup()
     render(<ExploreMapView />)
@@ -94,7 +98,7 @@ describe('ExploreMapView plan mode boundary', () => {
 
     await user.click(planSwitch())
     expect(planSwitch()).toHaveAttribute('aria-pressed', 'false')
-  })
+  }, 30_000)
 
   it('leaves the route state byte-identical across both toggle directions', async () => {
     const user = userEvent.setup()
