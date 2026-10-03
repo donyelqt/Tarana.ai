@@ -20,6 +20,7 @@ const baseProps = {
   planMode: false,
   onTogglePlan: jest.fn(),
   onZoom: jest.fn(),
+  zoomDisabled: false,
 }
 
 function setup(overrides: Partial<typeof baseProps> = {}) {
