@@ -1,16 +1,18 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PlanIslandConfig from './PlanIslandConfig'
 import PlanSheet from './PlanSheet'
 import { usePlanMode } from '../hooks/usePlanMode'
 import { resolveStopCoordinates, type StopCoordinates } from '../lib/resolveStopCoordinates'
+import { collectPlanStops, listPlanDays } from '../lib/planRoute'
 import { getActivityCoordinates } from '@/lib/data'
 import { CITY_CONFIGS, getCityCenter } from '@/lib/data/cityConfig'
 import type { CityId } from '@/lib/data/cityConfig'
-import type { SearchResult } from '@/types/route-optimization'
+import type { LocationPoint, SearchResult } from '@/types/route-optimization'
 import type { FormData } from '@/app/itinerary-generator/types'
+
 
 /**
  * Everything Plan Mode needs, behind one lazy boundary.
@@ -29,10 +31,17 @@ import type { FormData } from '@/app/itinerary-generator/types'
 export interface PlanModeSurfaceProps {
   /** DOM node provided by the island for the planner config. */
   islandSlot: HTMLElement | null
+  /**
+   * Publishes the selected day's resolved stops so the map can draw pins and
+   * a route. The surface owns the day so the sheet's tabs and the map's route
+   * cannot disagree about which day is on screen.
+   */
+  onDayStops?: (points: LocationPoint[]) => void
 }
 
-const PlanModeSurface: React.FC<PlanModeSurfaceProps> = ({ islandSlot }) => {
+const PlanModeSurface: React.FC<PlanModeSurfaceProps> = ({ islandSlot, onDayStops }) => {
   const plan = usePlanMode()
+  const [activeDay, setActiveDay] = useState(0)
 
   const planCityId = (plan.formSnapshot?.cityId ?? 'baguio') as CityId
 
@@ -87,6 +96,56 @@ const PlanModeSurface: React.FC<PlanModeSurfaceProps> = ({ islandSlot }) => {
     [plan]
   )
 
+  /**
+   * Resolve the selected day's stops and publish them for the map.
+   *
+   * Publishing re-runs on every answer, so the map fills in as lookups settle
+   * rather than waiting on the slowest one. A day with fewer than two resolved
+   * stops publishes nothing: the sheet still lists the stops, marked "No
+   * location", and no route is drawn through a guess.
+   */
+  const days = useMemo(() => listPlanDays(plan.itinerary), [plan.itinerary])
+  const dayLabel = days[Math.min(activeDay, Math.max(days.length - 1, 0))] ?? ''
+  const dayStops = useMemo(
+    () => (plan.itinerary ? collectPlanStops(plan.itinerary, dayLabel) : []),
+    [plan.itinerary, dayLabel]
+  )
+  const [resolvedStops, setResolvedStops] = useState<Record<string, StopCoordinates | null>>({})
+
+  useEffect(() => {
+    let cancelled = false
+    for (const stop of dayStops) {
+      if (stop.title in resolvedStops) continue
+      resolveForPlan(stop.title).then((point) => {
+        if (cancelled) return
+        setResolvedStops((prev) => (prev[stop.title] === point ? prev : { ...prev, [stop.title]: point }))
+      })
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [dayStops, resolveForPlan, resolvedStops])
+
+  useEffect(() => {
+    if (!onDayStops) return
+    onDayStops(
+      dayStops
+        .map((stop, index): LocationPoint | null => {
+          const point = resolvedStops[stop.title]
+          if (!point) return null
+          return {
+            id: `plan:${index}:${stop.title}`,
+            name: stop.title,
+            address: stop.title,
+            lat: point.lat,
+            lng: point.lon,
+            category: 'Stop',
+          }
+        })
+        .filter((p): p is LocationPoint => p !== null)
+    )
+  }, [dayStops, resolvedStops, onDayStops])
+
   return (
     <>
       {islandSlot
@@ -102,6 +161,8 @@ const PlanModeSurface: React.FC<PlanModeSurfaceProps> = ({ islandSlot }) => {
       <PlanSheet
         itinerary={plan.itinerary}
         resolveCoordinates={resolveForPlan}
+        activeDay={activeDay}
+        onDayChange={setActiveDay}
         onSave={() => {
           void plan.save(null)
         }}

@@ -21,11 +21,27 @@ export interface PlanStop {
  * that, which is the whole reason routes are drawn one day at a time.
  */
 export const MAX_WAYPOINTS = 10
-
 /** "Day 1 - Morning" -> "Day 1". Periods without a day label are their own group. */
-function dayKey(period: string): string {
+export function dayKey(period: string): string {
   const match = (period ?? '').match(/day\s*(\d+)/i)
   return match ? `Day ${match[1]}` : (period ?? '').trim()
+}
+
+/**
+ * Every day present in an itinerary, in order.
+ *
+ * Shared so the sheet's tabs and the map's route read the same grouping. Two
+ * copies of this regex would let the sheet list "Day 2" while the map drew
+ * stops the sheet thinks belong to "Day 1".
+ */
+export function listPlanDays(itinerary: ItineraryData | null): string[] {
+  if (!itinerary?.items?.length) return []
+  const seen: string[] = []
+  for (const item of itinerary.items) {
+    const key = dayKey(item.period ?? '')
+    if (!seen.includes(key)) seen.push(key)
+  }
+  return seen
 }
 
 /** Every activity belonging to one day, in itinerary order. */

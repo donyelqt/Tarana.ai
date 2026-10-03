@@ -16,6 +16,7 @@ import TrafficBadge from './TrafficBadge'
 import MapControls from './MapControls'
 import SpotPreviewCard, { type SpotTraffic } from './SpotPreviewCard'
 import { useRouteCalculation } from '../hooks/useRouteCalculation'
+import { buildDayRouteRequest } from '../lib/planRoute'
 // Plan Mode's generator, catalog, and menus are deliberately NOT imported here.
 // A static import pulled the 37-activity catalog into the map's graph and cost
 // 448KB on /tarana-explore (1029KB against a 639KB budget). It loads on demand.
@@ -133,6 +134,38 @@ const ExploreMapView: React.FC = () => {
   // portals the planner config into it. Held here so the island's own chunk
   // never imports Gala's generator or the activity catalog.
   const [planSlot, setPlanSlot] = useState<HTMLElement | null>(null)
+  // The route currently drawn by the plan, held separately from the planner's
+  // own route so switching modes swaps the map cleanly instead of leaving a
+  // plan route underneath the route planner's markers.
+  const [planRoute, setPlanRoute] = useState<RouteRequest | null>(null)
+
+  // Plan Mode draws the selected day through the same route pipeline the
+  // planner uses. The day's route anchors on its own first and last stop, so
+  // the user's route endpoints are never overwritten — they live in this same
+  // parent state and return untouched when the mode is left.
+  const handlePlanDayStops = useCallback(
+    (points: LocationPoint[]) => {
+      const request =
+        points.length < 2
+          ? null
+          : buildDayRouteRequest({
+              stops: points.map((p) => ({
+                title: p.name,
+                time: '',
+                coordinates: { lat: p.lat, lon: p.lng },
+              })),
+              preferences,
+            })
+
+      setPlanRoute(request)
+      // Fewer than two resolved stops is an honest empty, not a broken request:
+      // the sheet still lists those stops marked "No location", and the map
+      // draws nothing rather than routing to a guess.
+      if (request) calculate(request)
+    },
+    [preferences, calculate]
+  )
+
   const handlePreferencesChange = useCallback((patch: Partial<RoutePreferences>) => {
     setPreferences((prev) => ({ ...prev, ...patch }))
   }, [])
@@ -199,9 +232,13 @@ const ExploreMapView: React.FC = () => {
         currentRoute={state.currentRoute}
         alternativeRoutes={state.alternativeRoutes}
         trafficConditions={state.trafficConditions}
-        origin={origin}
-        destination={destination}
-        waypoints={[]}
+        // In plan mode the drawn route is the selected day's, not the user's
+        // own route: the day's first and last resolved stop become the
+        // endpoints and the rest become numbered waypoint pins. Route mode
+        // keeps the user's endpoints untouched.
+        origin={planMode ? planRoute?.origin ?? null : origin}
+        destination={planMode ? planRoute?.destination ?? null : destination}
+        waypoints={planMode ? planRoute?.waypoints ?? [] : []}
         isLoading={state.isCalculating}
         onRouteSelect={selectAlternative}
         currentMapStyle={mapStyle}
@@ -258,7 +295,18 @@ const ExploreMapView: React.FC = () => {
         generator and the activity catalog, which have no business in the map's
         initial bundle.
       */}
-      {planMode && <PlanModeSurface islandSlot={planSlot} />}
+      {planMode && (
+        <PlanModeSurface
+          islandSlot={planSlot}
+          onDayStops={handlePlanDayStops}
+        />
+      )}
+      {/*
+        The plan's route is drawn in the same slot the route planner uses, but
+        never on top of it: plan mode owns the endpoints while it is on, so the
+        user's own route stays in parent state and comes back untouched when
+        they leave the mode.
+      */}
 
       {spotPreview && (
         <SpotPreviewCard
