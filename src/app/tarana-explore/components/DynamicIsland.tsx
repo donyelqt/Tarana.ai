@@ -131,14 +131,25 @@ const DynamicIsland: React.FC<DynamicIslandProps> = ({
         {children}
       </div>
 
-      {/* Compact summary overlay, centered, only while collapsed. */}
+      {/*
+        Compact summary overlay, centered, only while collapsed.
+
+        `pointer-events-auto` is load-bearing. The island root is
+        `pointer-events-none` so the card's transparent margins do not
+        swallow map pans, and that value is inherited. This button is a
+        sibling of the content wrapper — not a child of it — so nothing
+        re-enabled it and the pill inherited `none`: taps landed on the map
+        and the card could not be opened by touch. It bit both modes, since
+        route mode's "Where to?" and Plan Mode's "Plan a trip" are this
+        same button.
+      */}
       {!expanded && (
         <button
           type="button"
           onClick={onCompactClick}
-          className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium text-gray-600"
+          className="pointer-events-auto absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium text-gray-600"
           aria-label={compactLabel}
-          style={{ borderRadius: "inherit" }}
+          style={{ borderRadius: 'inherit' }}
         >
           {compact}
         </button>
