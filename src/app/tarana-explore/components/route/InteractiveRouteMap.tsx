@@ -26,6 +26,12 @@ interface InteractiveRouteMapProps {
   onStyleChange?: (style: MapStyle) => void;
   onStyleChanging?: (changing: boolean) => void;
   recenterSignal?: number;
+  /**
+   * Signed zoom steps: negative zooms out, positive zooms in. A number rather
+   * than a direction enum so repeated presses accumulate, matching how
+   * recenterSignal already works.
+   */
+  zoomSignal?: number;
   tiltOn?: boolean;
   styleControlRef?: React.MutableRefObject<{ changeStyle: (style: MapStyle) => void } | null>;
 }
@@ -59,10 +65,14 @@ export default function InteractiveRouteMap({
   onStyleChange,
   onStyleChanging,
   recenterSignal,
+  zoomSignal,
+
   tiltOn = true,
   styleControlRef,
 }: InteractiveRouteMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
+  // Last applied zoomSignal, so an unchanged signal cannot re-zoom.
+  const lastZoomSignalRef = useRef<number | undefined>(undefined);
   // Read once at initialization. initializeMap has an empty dep list on
   // purpose (it must not re-run on prop changes), so a ref is how it reaches
   // the first-render deep-link centre without a stale closure.
@@ -103,6 +113,35 @@ export default function InteractiveRouteMap({
     });
   }, [recenterSignal, isMapLoaded, currentRoute, origin, destination, waypoints]);
 
+  /**
+   * Zoom in/out from the rail's circular buttons.
+   *
+   * Two things this deliberately does not do. It does not re-enable TomTom's
+   * `NavigationControl`, which PR #689 removed from this page: that control is
+   * rectangular, pins itself to the map's top-right, and would sit on top of
+   * the app's own right-hand rail. It also does not move the camera centre —
+   * zoom keeps whatever the user was looking at centred, which is the point of
+   * a zoom control sitting beside recenter and tilt.
+   *
+   * The last applied value is tracked so a re-render with an unchanged signal
+   * cannot re-zoom, and so a burst of presses applies as steps.
+   */
+  useEffect(() => {
+    if (zoomSignal === undefined || !mapInstanceRef.current || !isMapLoaded) return;
+    if (lastZoomSignalRef.current === zoomSignal) return;
+    const delta =
+      lastZoomSignalRef.current === undefined ? 0 : zoomSignal - lastZoomSignalRef.current;
+    lastZoomSignalRef.current = zoomSignal;
+    if (delta === 0) return;
+
+    const map = mapInstanceRef.current;
+    const current = typeof map.getZoom === 'function' ? map.getZoom() : ZOOM_LEVELS.CITY;
+    const min = typeof map.getMinZoom === 'function' ? map.getMinZoom() : ZOOM_LEVELS.WORLD;
+    const max = typeof map.getMaxZoom === 'function' ? map.getMaxZoom() : ZOOM_LEVELS.BUILDING;
+    const next = Math.min(Math.max(current + delta, min), max);
+    if (next === current) return;
+    map.easeTo?.({ zoom: next, duration: 300 });
+  }, [zoomSignal, isMapLoaded]);
   // Apply or remove the camera tilt (3D perspective) when the tilt toggle changes
   useEffect(() => {
     if (!mapInstanceRef.current || !isMapLoaded) return;
