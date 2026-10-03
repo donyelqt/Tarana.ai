@@ -51,6 +51,10 @@ const PlanModeSurface: React.FC<PlanModeSurfaceProps> = ({
 }) => {
   const plan = usePlanMode()
   const [activeDay, setActiveDay] = useState(0)
+  // Minimized hides the panel but keeps the itinerary, its pins, and its route.
+  // Close still discards. A new plan resets it, so the result is never stuck
+  // behind a bar the user has forgotten about.
+  const [sheetMinimized, setSheetMinimized] = useState(false)
 
   // The island collapses itself when this goes busy -> idle, the same rule
   // routing already uses.
@@ -182,6 +186,8 @@ const PlanModeSurface: React.FC<PlanModeSurfaceProps> = ({
           void plan.save(null)
         }}
         onClose={plan.clearPlan}
+        onMinimize={() => setSheetMinimized((v) => !v)}
+        minimized={sheetMinimized}
       />
     </>
   )

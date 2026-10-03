@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { MapPinOff, X } from 'lucide-react'
+import { MapPinOff, X, Minus, MapPin } from 'lucide-react'
 import type { StopCoordinates } from '../lib/resolveStopCoordinates'
 import type { ItineraryData } from '@/app/itinerary-generator/types'
 
@@ -34,6 +34,13 @@ export interface PlanSheetProps {
   onClose: () => void
   isSaving?: boolean
   /**
+   * Collapse the sheet to a compact bar without discarding the itinerary, so
+   * the map and its pins stay visible. Close still discards.
+   */
+  onMinimize?: () => void
+  /** True while minimized: renders the restore bar instead of the panel. */
+  minimized?: boolean
+  /**
    * Selected day, owned by the caller so the sheet's tabs and the map's route
    * always agree on which day is drawn. Uncontrolled here would let the map
    * show day 1 while the sheet lists day 2.
@@ -53,6 +60,8 @@ const PlanSheet: React.FC<PlanSheetProps> = ({
   resolveCoordinates,
   onSave,
   onClose,
+  onMinimize,
+  minimized = false,
   isSaving = false,
   activeDay,
   onDayChange,
@@ -109,6 +118,26 @@ const PlanSheet: React.FC<PlanSheetProps> = ({
     coordinates: stop.title in resolved ? resolved[stop.title] : null,
   }))
 
+  // Minimized: a slim bar that keeps the plan reachable and the map clear.
+  // Close still discards; minimize never does.
+  if (minimized) {
+    return (
+      <div className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-4">
+        <button
+          type="button"
+          onClick={onMinimize}
+          aria-label={`Restore plan: ${itinerary.title}`}
+          className="mx-auto flex w-full max-w-2xl items-center gap-2 rounded-2xl border border-gray-200 bg-white/95 px-4 py-2.5 text-left shadow-lg backdrop-blur"
+        >
+          <MapPin className="h-4 w-4 flex-shrink-0 text-blue-600" aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
+            {itinerary.title}
+          </span>
+          <span className="flex-shrink-0 text-xs font-medium text-blue-600">Show</span>
+        </button>
+      </div>
+    )
+  }
   return (
     <div className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-4">
       <section
@@ -122,14 +151,28 @@ const PlanSheet: React.FC<PlanSheetProps> = ({
               <p className="truncate text-xs text-gray-500">{itinerary.subtitle}</p>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close plan"
-            className="flex-shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex flex-shrink-0 items-center gap-1">
+            {onMinimize ? (
+              <button
+                type="button"
+                onClick={onMinimize}
+                aria-label="Minimize plan"
+                title="Minimize plan"
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close plan"
+              title="Close plan"
+              className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </header>
 
         {days.length > 1 ? (

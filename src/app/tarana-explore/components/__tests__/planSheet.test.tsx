@@ -64,6 +64,8 @@ function setup(overrides: SheetOverrides = {}) {
     onSave: jest.fn(),
     onClose: jest.fn(),
     isSaving: false,
+    onMinimize: jest.fn(),
+    minimized: false,
     ...overrides,
   }
   render(
@@ -73,6 +75,8 @@ function setup(overrides: SheetOverrides = {}) {
       onSave={props.onSave}
       onClose={props.onClose}
       isSaving={props.isSaving}
+      onMinimize={props.onMinimize}
+      minimized={props.minimized}
     />
   )
   return props
@@ -167,5 +171,44 @@ describe('PlanSheet', () => {
     await user.click(screen.getByRole('button', { name: /sav(e|ing)/i }))
 
     expect(props.onSave).not.toHaveBeenCalled()
+  })
+})
+
+describe('PlanSheet minimize', () => {
+  it('offers a minimize control beside close', () => {
+    const props = setup()
+
+    expect(screen.getByRole('button', { name: /minimize plan/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /close plan/i })).toBeInTheDocument()
+    expect(props.onMinimize).toBeDefined()
+  })
+
+  it('collapses without discarding the plan', async () => {
+    const user = userEvent.setup()
+    const props = setup({ minimized: false })
+
+    await user.click(screen.getByRole('button', { name: /minimize plan/i }))
+
+    expect(props.onMinimize).toHaveBeenCalledTimes(1)
+    // Minimize must NOT be a discard.
+    expect(props.onClose).not.toHaveBeenCalled()
+  })
+
+  it('shows a restore bar when minimized, hiding the stop list', () => {
+    setup({ minimized: true })
+
+    expect(screen.getByRole('button', { name: /restore plan/i })).toBeInTheDocument()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /save itinerary/i })).not.toBeInTheDocument()
+  })
+
+  it('restores from the bar without discarding', async () => {
+    const user = userEvent.setup()
+    const props = setup({ minimized: true })
+
+    await user.click(screen.getByRole('button', { name: /restore plan/i }))
+
+    expect(props.onMinimize).toHaveBeenCalledTimes(1)
+    expect(props.onClose).not.toHaveBeenCalled()
   })
 })
