@@ -11,9 +11,10 @@
  * region id reaching the API is a silent wrong-city generation.
  */
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PlanIslandConfig from '../PlanIslandConfig'
+import { ToastProvider } from '@/components/ui/use-toast'
 import {
   budgetOptions,
   paxOptions,
@@ -39,7 +40,11 @@ function setup(overrides: Partial<React.ComponentProps<typeof PlanIslandConfig>>
     disabled: false,
     ...overrides,
   }
-  render(<PlanIslandConfig {...props} />)
+  render(
+    <ToastProvider>
+      <PlanIslandConfig {...props} />
+    </ToastProvider>
+  )
   return props
 }
 
@@ -201,5 +206,109 @@ describe('PlanIslandConfig', () => {
     const formData = (props.onSubmit as jest.Mock).mock.calls[0][0]
     expect(formData.dates).toHaveProperty('start')
     expect(formData.dates).toHaveProperty('end')
+  })
+})
+
+describe('PlanIslandConfig date derivation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    ;(global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({ results: [] }) })
+  })
+
+  /**
+   * Drives the real DatePicker rather than poking state. The calendar lives in
+   * a Radix popover with its own grid semantics; driving it the way a user does
+   * is the only way to prove the wiring, not just the arithmetic.
+   */
+  async function pickStartDay(user: ReturnType<typeof userEvent.setup>, day: number) {
+    await user.click(screen.getByText(/start date/i))
+    const calendar = await screen.findByRole('dialog')
+    // react-day-picker renders each day as a gridcell wrapping a button, and
+    // the cell itself does not select. Scoped to the calendar because a bare
+    // /\b5\b/ also matches the "3-5" pax tile.
+    const cell = within(calendar).getByRole('gridcell', { name: new RegExp(`^${day}$`) })
+    await user.click(within(cell).getByRole('button'))
+    await user.keyboard('{Escape}')
+  }
+
+  it('fills the end date from the start date and the chosen duration', async () => {
+    const user = userEvent.setup()
+    setup()
+
+    await pickStartDay(user, 5)
+    await user.click(screen.getByRole('button', { name: durationOptions[2] })) // "3 Days"
+
+    // Asserted on the picker's own formatted text, not a bare day number: a
+    // /\b6\b/ also matches the "3-5" pax tile, which makes a loose day
+    // matcher ambiguous.
+    await waitFor(() => expect(screen.queryByText('End date')).not.toBeInTheDocument())
+    // A 3-day trip starting on the 5th ends on the 7th. The month and year
+    // come from the calendar react-day-picker opens, so this does not assume
+    // "today" and cannot rot.
+    const { format } = require('date-fns') as typeof import('date-fns')
+    const start = new Date()
+    start.setDate(5)
+    const expected = new Date(start)
+    expected.setDate(7)
+    expect(screen.getByText(format(expected, 'PPP'))).toBeInTheDocument()
+  })
+
+  it('recomputes the end date when the duration changes', async () => {
+    const user = userEvent.setup()
+    setup()
+    const { format } = require('date-fns') as typeof import('date-fns')
+    const expectedFor = (day: number) => {
+      const d = new Date()
+      d.setDate(day)
+      return format(d, 'PPP')
+    }
+
+    await pickStartDay(user, 5)
+    await user.click(screen.getByRole('button', { name: durationOptions[1] })) // "2 Days"
+    await waitFor(() => expect(screen.getByText(expectedFor(6))).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: durationOptions[2] })) // "3 Days"
+    await waitFor(() => expect(screen.getByText(expectedFor(7))).toBeInTheDocument())
+  })
+
+  it('leaves the end date alone until a start date is chosen', () => {
+    setup()
+
+    userEvent.setup().click(screen.getByRole('button', { name: durationOptions[2] }))
+
+    expect(screen.getByText(/end date/i)).toBeInTheDocument()
+  })
+
+  it('blocks submit when a hand-edited end date contradicts the duration', async () => {
+    const user = userEvent.setup()
+    const props = setup()
+
+    await pickBudget(user, budgetOptions[0])
+    await pickStartDay(user, 5)
+    await user.click(screen.getByRole('button', { name: paxOptions[0] }))
+    await user.click(screen.getByRole('button', { name: durationOptions[0] })) // "1 Day"
+    await user.click(screen.getByRole('button', { name: /Nature & Scenery/i }))
+
+    // Now hand-edit the END date. The derivation only fires when start or
+    // duration changes, so editing the end date is the one path that can
+    // leave a range contradicting the chosen duration.
+    // Both pickers now show a formatted date, so target the END trigger by
+    // position rather than matching text alone.
+    const endTrigger = screen
+      .getAllByRole('button')
+      .filter((b) => /^\w+ \d+(st|nd|rd|th), \d{4}$/i.test(b.textContent || ''))[1]
+    await user.click(endTrigger)
+    const calendar = await screen.findByRole('dialog')
+    const cell = within(calendar).getByRole('gridcell', { name: /^20$/ })
+    await user.click(within(cell).getByRole('button'))
+    await user.keyboard('{Escape}')
+
+    await user.click(screen.getByRole('button', { name: /generate itinerary/i }))
+
+    // A "1 Day" trip whose end date is the 20th must not save. The toast text
+    // is deliberately not asserted: this repo's ToastProvider is a context
+    // shim that renders no toast UI, so the message is never in the DOM. The
+    // observable contract is that submit did not fire.
+    expect(props.onSubmit).not.toHaveBeenCalled()
   })
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/core'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -13,7 +13,8 @@ import {
 import { CITY_PILLS } from '@/app/itinerary-generator/components/ItineraryForm'
 import type { CityId, FormData } from '@/app/itinerary-generator/types'
 import { DatePicker } from '@/components/ui/date-picker'
-
+import { endDateForDuration, datesMatchDuration } from '@/app/itinerary-generator/utils/travelDates'
+import { useToast } from '@/components/ui/use-toast'
 /**
  * Plan Mode's configuration surface, rendered inside the Explore island.
  *
@@ -40,6 +41,7 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
   isGenerating,
   disabled = false,
 }) => {
+  const { toast } = useToast()
   const [budget, setBudget] = useState('')
   const [pax, setPax] = useState('')
   const [duration, setDuration] = useState('')
@@ -48,6 +50,16 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
   const [selectedInterests, setSelectedInterests] = useState<string[]>([])
   const [pillKey, setPillKey] = useState(CITY_PILLS[0].key)
   const [openBudget, setOpenBudget] = useState(false)
+
+  // End date follows from start + duration, exactly as it does in Gala. Without
+  // this the two DatePickers were independent and a plan picked for "3 Days"
+  // saved with no end date at all. The arithmetic lives in one shared helper so
+  // the two surfaces cannot drift apart again.
+  useEffect(() => {
+    if (!startDate || !duration) return
+    const derived = endDateForDuration(startDate, duration)
+    if (derived) setEndDate(derived)
+  }, [startDate, duration])
 
   const activePill = CITY_PILLS.find((p) => p.key === pillKey) ?? CITY_PILLS[0]
   const complete =
@@ -62,6 +74,16 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
 
   const submit = () => {
     if (!canSubmit) return
+    // A hand-edited end date must still agree with the duration, or the saved
+    // trip contradicts the plan on screen. Same rule as Gala.
+    if (!datesMatchDuration(startDate, endDate, duration)) {
+      toast({
+        title: 'Invalid Travel Dates',
+        description: `The selected travel dates do not match the chosen duration (${duration}). Please adjust your dates.`,
+        variant: 'destructive',
+      })
+      return
+    }
     const formData: FormData = {
       budget,
       pax,

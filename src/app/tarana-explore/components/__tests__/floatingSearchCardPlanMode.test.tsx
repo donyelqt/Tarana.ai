@@ -12,9 +12,10 @@ import userEvent from '@testing-library/user-event'
 import { createPortal } from 'react-dom'
 import FloatingSearchCard from '../FloatingSearchCard'
 import PlanIslandConfig from '../PlanIslandConfig'
+import { ToastProvider } from '@/components/ui/use-toast'
 import type { LocationPoint, RoutePreferences } from '@/types/route-optimization'
-import type { FormData } from '@/app/itinerary-generator/types'
-
+// Aliased: the DOM has its own FormData, which shadows Gala's payload type.
+import type { FormData as ItineraryFormData } from '@/app/itinerary-generator/types'
 jest.mock('framer-motion', () => {
   const ReactLib = jest.requireActual<typeof import('react')>('react')
   const MOTION_ONLY_PROPS = new Set([
@@ -108,7 +109,7 @@ function PlanHost({
   onSubmit,
   onRouteSubmit = noop,
 }: {
-  onSubmit: (formData: FormData) => void
+  onSubmit: (formData: ItineraryFormData) => void
   onRouteSubmit?: () => void
 }) {
   const [slot, setSlot] = useState<HTMLElement | null>(null)
@@ -134,7 +135,9 @@ function PlanHost({
       />
       {slot
         ? createPortal(
-            <PlanIslandConfig onSubmit={onSubmit} isGenerating={false} disabled={false} />,
+            <ToastProvider>
+              <PlanIslandConfig onSubmit={onSubmit} isGenerating={false} disabled={false} />
+            </ToastProvider>,
             slot
           )
         : null}
