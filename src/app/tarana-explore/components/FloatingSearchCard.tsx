@@ -709,7 +709,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
         compactLabel={compactLabel}
       >
         <div
-          className="pointer-events-auto"
+          className="pointer-events-auto max-h-[70dvh] overflow-y-auto overscroll-contain"
           onFocusCapture={() => setIsOpen(true)}
           onBlurCapture={(e) => {
             // Only a real focus hand-off to something outside closes the card.

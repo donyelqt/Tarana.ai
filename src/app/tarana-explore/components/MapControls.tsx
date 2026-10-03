@@ -31,7 +31,12 @@ const MapControls: React.FC<MapControlsProps> = ({
   styleOptions = DEFAULT_STYLES,
 }) => {
   return (
-    <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1.5">
+    // z-40, above the island's z-30. At narrow widths the expanded planner
+    // card reaches past the middle of the screen, so a rail painted
+    // underneath it would be unreachable. The switch that opened the card
+    // must stay tappable while the card is on screen, or the mode cannot be
+    // turned off.
+    <div className="absolute right-3 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-1.5">
       <button
         type="button"
         onClick={onTogglePlan}

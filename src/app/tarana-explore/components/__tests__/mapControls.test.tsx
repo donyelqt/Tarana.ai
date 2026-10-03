@@ -84,3 +84,22 @@ describe('MapControls plan mode switch', () => {
     expect(props.onStyleChange).not.toHaveBeenCalled()
   })
 })
+
+describe('MapControls stacking', () => {
+  it('sits above the island so the plan switch stays reachable', () => {
+    // The island root paints at z-30. A rail below it would be covered by an
+    // expanded planner card on a narrow viewport, and the switch that opened
+    // the card would be unreachable — Plan Mode could not be turned off.
+    setup()
+    expect(screen.getByRole('button', { name: /plan mode/i }).parentElement).toHaveClass('z-40')
+  })
+
+  it('keeps every control on the rail\'s 40px target', () => {
+    setup()
+    // Pre-existing rail language, deliberately unchanged: restyling all four
+    // map controls is a separate decision from Plan Mode.
+    for (const control of screen.getAllByRole('button')) {
+      expect(control).toHaveClass('w-10', 'h-10')
+    }
+  })
+})
