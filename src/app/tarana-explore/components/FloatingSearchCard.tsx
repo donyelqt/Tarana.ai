@@ -708,8 +708,21 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
         compactWidth={hasEndpoint ? 320 : 240}
         compactLabel={compactLabel}
       >
+        {/*
+          Scroll only in plan mode. The planner is genuinely taller than a
+          short viewport and needs the cap; route mode is short, and giving its
+          wrapper `overflow-y: auto` created a scroll container that clipped
+          the From/To suggestion list to a fraction of its height (it rendered
+          to y=563 inside a wrapper ending at y=282). The list is absolutely
+          positioned below the field and must be free to escape, which is why
+          DynamicIsland keeps `overflow: visible` while expanded.
+        */}
         <div
-          className="pointer-events-auto max-h-[70dvh] overflow-y-auto overscroll-contain"
+          className={
+            planMode
+              ? 'pointer-events-auto max-h-[70dvh] overflow-y-auto overscroll-contain'
+              : 'pointer-events-auto'
+          }
           onFocusCapture={() => setIsOpen(true)}
           onBlurCapture={(e) => {
             // Only a real focus hand-off to something outside closes the card.
