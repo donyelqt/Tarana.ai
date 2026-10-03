@@ -64,7 +64,13 @@ export const generateItinerary = async (
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt,
-        weatherData,
+        // Omit the key when there is no weather. `itineraryRequestSchema`
+        // types weatherData as `.optional()`, which accepts an absent key but
+        // rejects a present one holding null, and JSON.stringify preserves a
+        // null as a real key. Sending null therefore failed validation with a
+        // 400 before any charge or model call — which hit Plan Mode on every
+        // request, and Gala whenever its weather fetch failed.
+        ...(weatherData ? { weatherData } : {}),
         interests: formData.selectedInterests.length > 0 ? formData.selectedInterests : ["Random"],
         duration: formData.duration,
         budget: formData.budget,

@@ -2,8 +2,10 @@
 
 import { useCallback, useState } from 'react'
 import type { FormData } from '@/app/itinerary-generator/types'
+import type { WeatherData } from '@/lib/core'
 import { useItineraryGenerator } from '@/app/itinerary-generator/hooks/useItineraryGenerator'
-
+import { fetchWeatherData } from '@/app/itinerary-generator/utils/weatherUtils'
+import { getCityCenter } from '@/lib/data/cityConfig'
 /**
  * Plan Mode state: the config snapshot and the itinerary it produced.
  *
@@ -31,19 +33,54 @@ export function usePlanMode() {
     creditBalance,
   } = useItineraryGenerator()
 
+  /**
+   * Fetch weather for the city that was actually submitted.
+   *
+   * Two reasons this is not simply omitted:
+   *
+   * 1. `itineraryRequestSchema` types `weatherData` as an object with
+   *    `.optional()`, which accepts `undefined` but rejects `null`. Plan Mode
+   *    used to send an explicit null, so every generation failed validation
+   *    with a 400 before any charge or model call.
+   * 2. Weather is load-bearing. The route derives `weatherType` from it and
+   *    `weatherMatch` filters the activity pool, so omitting it would make
+   *    Plan Mode produce different itineraries than Gala for the same input,
+   *    breaking the parity this hook exists to guarantee.
+   *
+   * Fetched at submit rather than prefetched on city change so the weather
+   * always matches the city in this request, with no window where a city
+   * switch leaves stale weather behind.
+   */
+  const fetchWeatherFor = useCallback(
+    async (cityId: FormData['cityId']): Promise<WeatherData | null> => {
+      const { lat, lon } = getCityCenter(cityId ?? 'baguio')
+      try {
+        // fetchWeatherData already swallows provider failures and returns
+        // null. The catch covers a rejected call too, because weather is an
+        // enhancement to generation, never a precondition for it: a thrown
+        // lookup must not stop the itinerary from being built.
+        return await fetchWeatherData(lat, lon)
+      } catch {
+        return null
+      }
+    },
+    []
+  )
+
   const generate = useCallback(
     async (formData: FormData) => {
       setFormSnapshot(formData)
       // Gala's hook reads its own snapshot for save; keep the two in step.
       setGalaSnapshot(formData)
-      await handleGenerateItinerary(formData, null, {
+      const weatherData = await fetchWeatherFor(formData.cityId)
+      await handleGenerateItinerary(formData, weatherData ?? null, {
         // The hook reports progress through callbacks, not a value, so the
         // boolean Plan Mode renders is tracked here rather than assumed.
         onStart: () => setIsGenerating(true),
         onComplete: () => setIsGenerating(false),
       })
     },
-    [handleGenerateItinerary, setGalaSnapshot]
+    [handleGenerateItinerary, setGalaSnapshot, fetchWeatherFor]
   )
 
   const clearPlan = useCallback(() => {
