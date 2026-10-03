@@ -12,6 +12,7 @@ import {
 } from '@/app/itinerary-generator/data/itineraryData'
 import { CITY_PILLS } from '@/app/itinerary-generator/components/ItineraryForm'
 import type { CityId, FormData } from '@/app/itinerary-generator/types'
+import { DatePicker } from '@/components/ui/date-picker'
 
 /**
  * Plan Mode's configuration surface, rendered inside the Explore island.
@@ -42,6 +43,8 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
   const [budget, setBudget] = useState('')
   const [pax, setPax] = useState('')
   const [duration, setDuration] = useState('')
+  const [startDate, setStartDate] = useState<Date | undefined>()
+  const [endDate, setEndDate] = useState<Date | undefined>()
   const [selectedInterests, setSelectedInterests] = useState<string[]>([])
   const [pillKey, setPillKey] = useState(CITY_PILLS[0].key)
   const [openBudget, setOpenBudget] = useState(false)
@@ -63,7 +66,10 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
       budget,
       pax,
       duration,
-      dates: { start: undefined, end: undefined },
+      // Dates do not reach the generation prompt — the itinerary pipeline never
+      // reads them. They are the saved trip's date range, so omitting them here
+      // made every Plan Mode save land as "Date not specified".
+      dates: { start: startDate, end: endDate },
       selectedInterests,
       trafficAware: true,
       // Resolve the alias here, at the boundary. `activePill.cityId` is a real
@@ -210,6 +216,25 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
         </div>
       </div>
 
+
+      {/* Travel dates, in Gala's position between duration and interests. */}
+      <div className="px-3 pb-2">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
+          Travel Dates
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          <DatePicker
+            date={startDate}
+            setDate={setStartDate}
+            placeholder="Start date"
+          />
+          <DatePicker
+            date={endDate}
+            setDate={setEndDate}
+            placeholder="End date"
+          />
+        </div>
+      </div>
       <div className="border-t border-gray-100" />
 
       {/* Interests */}
