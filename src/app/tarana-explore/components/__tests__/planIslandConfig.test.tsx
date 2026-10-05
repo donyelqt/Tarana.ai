@@ -13,7 +13,7 @@
 import React from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import PlanIslandConfig from '../PlanIslandConfig'
+import PlanIslandConfig, { PLAN_DATE_FORMAT } from '../PlanIslandConfig'
 import { ToastProvider } from '@/components/ui/use-toast'
 import {
   budgetOptions,
@@ -250,7 +250,7 @@ describe('PlanIslandConfig date derivation', () => {
     start.setDate(5)
     const expected = new Date(start)
     expected.setDate(7)
-    expect(screen.getByText(format(expected, 'PPP'))).toBeInTheDocument()
+    expect(screen.getByText(format(expected, PLAN_DATE_FORMAT))).toBeInTheDocument()
   })
 
   it('recomputes the end date when the duration changes', async () => {
@@ -260,7 +260,7 @@ describe('PlanIslandConfig date derivation', () => {
     const expectedFor = (day: number) => {
       const d = new Date()
       d.setDate(day)
-      return format(d, 'PPP')
+      return format(d, PLAN_DATE_FORMAT)
     }
 
     await pickStartDay(user, 5)
@@ -292,11 +292,12 @@ describe('PlanIslandConfig date derivation', () => {
     // Now hand-edit the END date. The derivation only fires when start or
     // duration changes, so editing the end date is the one path that can
     // leave a range contradicting the chosen duration.
-    // Both pickers now show a formatted date, so target the END trigger by
-    // position rather than matching text alone.
+    // Both pickers now show a date, so target the END trigger by position
+    // rather than matching text alone. The pattern is PLAN_DATE_FORMAT's
+    // "Sep 30, 2026" shape, not the default "September 30th, 2026".
     const endTrigger = screen
       .getAllByRole('button')
-      .filter((b) => /^\w+ \d+(st|nd|rd|th), \d{4}$/i.test(b.textContent || ''))[1]
+      .filter((b) => /^\w{3,9} \d{1,2}, \d{4}$/.test(b.textContent || ''))[1]
     await user.click(endTrigger)
     const calendar = await screen.findByRole('dialog')
     const cell = within(calendar).getByRole('gridcell', { name: /^20$/ })

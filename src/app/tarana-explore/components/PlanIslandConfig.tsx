@@ -36,6 +36,18 @@ export interface PlanIslandConfigProps {
   disabled?: boolean
 }
 
+/**
+ * Date pattern for the island's date triggers.
+ *
+ * The triggers are 150px wide, which leaves ~92px for the label. `PPP`
+ * ("September 30th, 2026") needs ~198px of button at this font and truncates
+ * to "September 30...". This pattern needs ~80px and fits with headroom.
+ *
+ * Exported so the tests assert on the same pattern the component renders
+ * rather than a copy that can drift.
+ */
+export const PLAN_DATE_FORMAT = 'MMM d, yyyy'
+
 const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
   onSubmit,
   isGenerating,
@@ -244,16 +256,27 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
         <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
           Travel Dates
         </div>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="flex gap-1.5">
+          {/* 150px rather than the component's fixed 220px, which spilled 11px
+              past the panel's content edge, and rather than filling the row,
+              which stretched the buttons far wider than their labels. The row
+              is deliberately left short of the panel width. min-w-0 lets a
+              trigger shrink below its content width so the label truncates
+              rather than pushing out. The compact date pattern is what makes
+              150px viable: `PPP` needs ~198px of button and would truncate. */}
           <DatePicker
             date={startDate}
             setDate={setStartDate}
             placeholder="Start date"
+            className="w-[150px] min-w-0"
+            dateFormat={PLAN_DATE_FORMAT}
           />
           <DatePicker
             date={endDate}
             setDate={setEndDate}
             placeholder="End date"
+            className="w-[150px] min-w-0"
+            dateFormat={PLAN_DATE_FORMAT}
           />
         </div>
       </div>
