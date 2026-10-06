@@ -1,18 +1,61 @@
 import { findAndScoreActivities } from "@/app/api/gemini/itinerary-generator/lib/activitySearch";
 import type { WeatherCondition } from "@/app/api/gemini/itinerary-generator/types/types";
 import { updateSession, appendError, type RequestSession, type RetrievalResult, type RankedActivity } from "@/lib/agentic/sessionStore";
-
+import { isTargetCityId } from "@/lib/data/touristPoi";
 export interface RetrievalStrategistDeps {
   geminiModel: unknown;
+}
+
+/**
+ * The only strategy space the Strategist is allowed to pick from. Every value
+ * names a retrieval path that already exists inside findAndScoreActivities --
+ * this slice selects between them explicitly instead of calling blind and
+ * recording `expandedQueries: []`. No new retrieval code, no new model call:
+ * the same single search runs, but the session now says what was asked for.
+ */
+export type RetrievalStrategy = 'curated' | 'tomtom-live' | 'interest-first' | 'honest-empty';
+
+export interface StrategyDecision {
+  strategy: RetrievalStrategy;
+  reason: string;
 }
 
 export class RetrievalStrategistAgent {
   constructor(private readonly deps: RetrievalStrategistDeps) {}
 
+  /**
+   * Pick a strategy from what is known BEFORE any search runs: the scope and
+   * the request shape. Deterministic and testable -- no model call involved.
+   *
+   *  - baguio + no interests          -> curated (deterministic catalog, zero upstream)
+   *  - baguio + stated interests      -> interest-first (personalization layer leads)
+   *  - strict-city members           -> tomtom-live (the shared 50-POI pool is their only ground)
+   *  - anything else (ph-wide/world) -> honest-empty (no pool exists yet; never
+   *    fall back to another city's data)
+   */
+  decideStrategy(session: RequestSession): StrategyDecision {
+    const cityId = (session.preferences.cityId ?? 'baguio').toLowerCase();
+    const hasInterests =
+      Array.isArray(session.preferences.interests) &&
+      session.preferences.interests.some((i) => typeof i === 'string' && i.trim().length > 0);
+
+    if (cityId === 'baguio' && !hasInterests) {
+      return { strategy: 'curated', reason: 'Baguio has a deterministic catalog and the request states no interests; skip upstream entirely' };
+    }
+    if (cityId === 'baguio') {
+      return { strategy: 'interest-first', reason: 'Baguio with stated interests: personalization layer leads, catalog covers' };
+    }
+    if (isTargetCityId(cityId)) {
+      return { strategy: 'tomtom-live', reason: `${cityId} has no curated catalog; the shared TomTom pool is its only ground` };
+    }
+    return { strategy: 'honest-empty', reason: `${cityId} has no retrieval pool; refusing to substitute another city's data` };
+  }
+
   async execute(session: RequestSession): Promise<RequestSession> {
     try {
       this.ensureModel();
 
+      const decision = this.decideStrategy(session);
       const weatherType = this.resolveWeatherCondition(session);
       const sampleItinerary = await findAndScoreActivities(
         session.prompt,
@@ -24,13 +67,21 @@ export class RetrievalStrategistAgent {
         session.preferences.cityId ?? "baguio"
       );
 
+      const observedMethod =
+        typeof sampleItinerary?.searchMetadata?.searchMethod === 'string'
+          ? sampleItinerary.searchMetadata.searchMethod
+          : 'unknown';
+
       const candidates = this.extractCandidates(sampleItinerary);
       const retrieval: RetrievalResult = {
         candidates,
-        expandedQueries: [],
+        expandedQueries: [decision.strategy],
         coverageScore: candidates.length,
         metadata: {
           sampleItinerary,
+          strategy: decision.strategy,
+          strategyReason: decision.reason,
+          observedSearchMethod: observedMethod,
         },
       };
 
