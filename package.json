@@ -23,13 +23,16 @@
     "bench:staging": "node scripts/run-bench-staging.mjs"
   },
   "pnpm": {
-    "//": "Build scripts run only for these four. Every other dependency's pre/install/postinstall hook is refused, so a compromised (or typosquatted) transitive package cannot execute code at CI/dev/Vercel install time. All four are native/binary builders that legitimately need it: protobufjs (via @google/genai, prod), sharp (via next, prod), esbuild + unrs-resolver (build/test chain, dev). Adding a package here is a reviewed decision.",
+    "//": "Build scripts run only for these four. Every other dependency's pre/install/postinstall hook is refused, so a compromised (or typosquatted) transitive package cannot execute code at CI/dev/Vercel install time. All four are native/binary builders that legitimately need it: protobufjs (via @google/genai, prod), sharp (via next, prod), esbuild + unrs-resolver (build/test chain, dev). Adding a package here is a reviewed decision. Overrides below: shell-quote>=1.11.0 pins GHSA-pqg4-j6r4-53mv (quote() injection via line terminator after a {comment} token). Pure transitive via react-devtools-core@6.1.5, a dev-debugger never called by our code. Forced across every edge without touching the mobile chain; revisit only if react-devtools-core itself upgrades.",
     "onlyBuiltDependencies": [
       "esbuild",
       "protobufjs",
       "sharp",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "shell-quote": ">=1.11.0"
+    }
   },
   "dependencies": {
     "@google/genai": "^2.21.0",
