@@ -65,7 +65,18 @@ type PlaceInput = {
  */
 function curatedImageFor(title: string, cityId?: CityId): string | undefined {
   if (cityId !== 'baguio') return undefined
-  return CURATED_IMAGE_MAP[title]
+  if (!title) return undefined
+  const direct = CURATED_IMAGE_MAP[title]
+  if (direct) return direct
+  // TomTom appends the city to bare venue names ("Mines View Park, Baguio
+  // City"). The curated catalogue keys the bare form, so an exact lookup
+  // misses and the photo falls back to fetched-or-logo even though the real
+  // image sits on disk. Strip ONE trailing ", <city>" segment and retry --
+  // never fuzzy-match, never strip deeper: "The Mansion, Baguio" must not
+  // reach a different venue's photo through substring luck.
+  const stripped = title.replace(/,\s*[^,]+$/, '').trim()
+  if (stripped && stripped !== title) return CURATED_IMAGE_MAP[stripped]
+  return undefined
 }
 type CachedEntry = { url: string; expiry: number }
 
