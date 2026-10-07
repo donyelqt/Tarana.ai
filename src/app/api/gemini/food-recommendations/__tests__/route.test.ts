@@ -130,6 +130,12 @@ describe('food-recommendations charge-first (H1-Eats)', () => {
   });
 
   test('charges exactly once and answers safe failure when validation faults', async () => {
+    // Force the intended path: parse failure drives the 500. The Gemini branch
+    // exists because jest.setup.js seeds GOOGLE_GEMINI_API_KEY before module
+    // load; without it the route silently takes the intelligent-fallback path
+    // and answers 200, inverting the premise.
+    parseMock.mockReturnValue({ success: false });
+
     const res = await POST(post({ prompt: 'coffee for 2', foodData }));
     const text = await res.text();
 
@@ -139,6 +145,7 @@ describe('food-recommendations charge-first (H1-Eats)', () => {
   });
 
   test('refunds the prepaid credit when generation fails', async () => {
+    // Same forced path: the refund only fires on the Gemini branch.
     (withRetry as unknown as jest.Mock).mockRejectedValueOnce(new Error('upstream down'));
 
     const res = await POST(post({ prompt: 'coffee for 2', foodData }));
