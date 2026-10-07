@@ -5,6 +5,14 @@ process.env.NODE_ENV = 'test';
 process.env.NEXTAUTH_URL = 'http://localhost:3000';
 process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:3000';
 process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'test-service-role-key';
+// Gemini: several route modules read this at MODULE SCOPE to build the model
+// client, so it must be present before any test module loads. Without it the
+// model is null, every Gemini-branch test silently takes the fallback path,
+// and tests asserting that branch (parse failure -> 500, upstream failure ->
+// refund) fail on machines without the key exported in the shell -- CI passes
+// only because its env block sets it. Tests that need the no-key branch set
+// this to '' explicitly.
+process.env.GOOGLE_GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY || 'test-gemini-key';
 
 // Setup React Testing Library
 require('@testing-library/jest-dom');
