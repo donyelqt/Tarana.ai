@@ -153,7 +153,9 @@ const ExploreMapView: React.FC = () => {
   // Plan Mode draws the selected day through the same route pipeline the
   // planner uses. The day's route anchors on its own first and last stop, so
   // the user's route endpoints are never overwritten — they live in this same
-  // parent state and return untouched when the mode is left.
+  // parent state and return untouched when the mode is left. The request keeps
+  // the origin/destination/waypoints split the routing API expects; the map
+  // props below flatten it into numbered pins.
   const handlePlanDayStops = useCallback(
     (points: LocationPoint[]) => {
       const request =
@@ -199,12 +201,18 @@ const ExploreMapView: React.FC = () => {
     calculate(request)
   }, [origin, destination, preferences, calculate])
 
+  // Route-chrome close. In plan mode BottomRouteSheet/TrafficBadge never show
+  // plan-pipeline output as the user's route, so closing there only clears the
+  // pipeline — the user's own origin/destination (and the deep-link
+  // destination seed) must survive untouched.
   const handleClose = useCallback(() => {
     clear()
+    setPlanRoute(null)
+    if (planMode) return
     setOrigin(null)
     setDestination(null)
     setSpotPreview(null)
-  }, [clear])
+  }, [clear, planMode])
 
   // Dismissing the card keeps the destination (it is a routing seed the user
   // can still plan from) and only hides the photo/title chrome.
@@ -219,20 +227,38 @@ const ExploreMapView: React.FC = () => {
   }, [])
 
   const handleTogglePlan = useCallback(() => {
+    if (!planMode) {
+      // Entering plan mode: plan mode owns the map visually, so dismiss any
+      // visible deep-link preview through the existing dismiss path (the
+      // deep-link destination seed stays in state for the return trip).
+      handleDismissPreview()
+    } else {
+      // Leaving plan mode: clear any plan-pipeline output (the hook exposes
+      // clear() only — its abortRef is an unused Timeout, so an in-flight
+      // calculate cannot be cancelled, only its completed currentRoute/traffic
+      // cleared) so the route chrome and the 5-minute refresh stop showing
+      // plan data. The user's own origin/destination stay untouched; a pre-plan
+      // route, if any, is not reconstructed here — this only guarantees nothing
+      // destroys it.
+      clear()
+      setPlanRoute(null)
+    }
     setPlanMode((v) => !v)
     // Collapse on the way in and on the way out: the island is about to swap
     // its whole contents, and a half-open card mid-swap reads as a glitch.
     setCollapseIslandSignal((n) => n + 1)
-  }, [])
+  }, [planMode, clear, handleDismissPreview])
 
-  // Silent 5-minute traffic refresh — no UI button (matches Google Maps' silent updates)
+  // Silent 5-minute traffic refresh — no UI button (matches Google Maps' silent updates).
+  // Route-mode only: plan-pipeline output must never feed the route chrome's
+  // refresh, and leaving plan mode clears currentRoute so this stops too.
   useEffect(() => {
-    if (!state.currentRoute) return
+    if (!state.currentRoute || planMode) return
     const id = setInterval(() => {
       refreshTraffic()
     }, 5 * 60 * 1000)
     return () => clearInterval(id)
-  }, [state.currentRoute, refreshTraffic])
+  }, [state.currentRoute, planMode, refreshTraffic])
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -243,13 +269,23 @@ const ExploreMapView: React.FC = () => {
         currentRoute={state.currentRoute}
         alternativeRoutes={state.alternativeRoutes}
         trafficConditions={state.trafficConditions}
-        // In plan mode the drawn route is the selected day's, not the user's
-        // own route: the day's first and last resolved stop become the
-        // endpoints and the rest become numbered waypoint pins. Route mode
-        // keeps the user's endpoints untouched.
-        origin={planMode ? planRoute?.origin ?? null : origin}
-        destination={planMode ? planRoute?.destination ?? null : destination}
-        waypoints={planMode ? planRoute?.waypoints ?? [] : []}
+        // In plan mode the selected day reads as an itinerary, not a route:
+        // every resolved stop becomes a numbered blue waypoint pin (first stop
+        // is Waypoint 1, last stop is Waypoint N), so no green start or red
+        // end pin ever renders. The routing request still carries its own
+        // origin/destination split — only the map props are flattened. Route
+        // mode keeps the user's endpoints untouched.
+        origin={planMode ? null : origin}
+        destination={planMode ? null : destination}
+        waypoints={
+          planMode
+            ? [
+                ...(planRoute?.origin ? [planRoute.origin] : []),
+                ...(planRoute?.waypoints ?? []),
+                ...(planRoute?.destination ? [planRoute.destination] : []),
+              ]
+            : []
+        }
         isLoading={state.isCalculating}
         onRouteSelect={selectAlternative}
         currentMapStyle={mapStyle}
@@ -278,7 +314,10 @@ const ExploreMapView: React.FC = () => {
         disabled={false}
       />
 
-      <TrafficBadge trafficConditions={state.trafficConditions} />
+      {/* Route chrome is route-mode only: plan-mode calculate() output must
+      never render as the user's route, so both are gated here at the render
+      site — never inside the shared child components. */}
+      {!planMode && <TrafficBadge trafficConditions={state.trafficConditions} />}
 
       <MapControls
         currentMapStyle={mapStyle}
@@ -292,15 +331,17 @@ const ExploreMapView: React.FC = () => {
         onTogglePlan={handleTogglePlan}
       />
 
-      <BottomRouteSheet
-        currentRoute={state.currentRoute}
-        trafficAnalysis={state.trafficConditions}
-        routeComparison={state.routeComparison}
-        alternatives={state.alternativeRoutes}
-        onSelectAlternative={selectAlternative}
-        onClose={handleClose}
-        lastUpdated={state.lastUpdated}
-      />
+      {!planMode && (
+        <BottomRouteSheet
+          currentRoute={state.currentRoute}
+          trafficAnalysis={state.trafficConditions}
+          routeComparison={state.routeComparison}
+          alternatives={state.alternativeRoutes}
+          onSelectAlternative={selectAlternative}
+          onClose={handleClose}
+          lastUpdated={state.lastUpdated}
+        />
+      )}
 
       {/*
         One bottom sheet at a time. The route sheet returns null without a
