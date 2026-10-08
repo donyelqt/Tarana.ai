@@ -83,8 +83,37 @@ describe('resolveCameraTarget', () => {
     expect(target.points).toEqual(route)
   })
 
-  it('goes home only when nothing is selected', () => {
+  it('routes route-mode empties home to Baguio — the unchanged fallback', () => {
+    // Pins the fallthrough at cameraTarget.ts:83 (`return { kind: 'home' }`):
+    // route mode with nothing selected must still ease to Baguio.
     expect(resolveCameraTarget({ ...base, origin: null, destination: null }).kind).toBe('home')
+    expect(
+      resolveCameraTarget({ ...base, origin: null, destination: null, planMode: false }).kind,
+    ).toBe('home')
+  })
+
+  it('plan-on with no generated plan holds instead of sliding home to Baguio', () => {
+    // "No plan yet": planMode on, no planRoute endpoints, no waypoints, no
+    // currentRoute geometry. Fails on the old `{ kind: 'home' }` fallthrough.
+    const target = resolveCameraTarget({ ...base, origin: null, destination: null, planMode: true })
+
+    expect(target).toEqual({ kind: 'hold' })
+  })
+
+  it('plan-on with an unresolvable day (zero resolved stops) holds Day 1 view', () => {
+    // Twin case: the day published [] so planRoute is null — switching tabs
+    // must hold, not slide home. Same empty shape, planMode on.
+    const target = resolveCameraTarget({
+      ...base,
+      origin: null,
+      destination: null,
+      waypoints: [],
+      routeCoords: [],
+      planMode: true,
+    })
+
+    expect(target.kind).toBe('hold')
+    expect(target.kind).not.toBe('home')
   })
 
   it('ignores endpoints with non-finite coordinates instead of centring on 0,0', () => {
@@ -157,5 +186,15 @@ describe('applyCameraTarget', () => {
     expect(easeTo).toHaveBeenCalledWith(
       expect.objectContaining({ center: BAGUIO_CENTER, zoom: 12 }),
     )
+  })
+
+  it('hold target makes no camera call so the Cebu view stays', () => {
+    const easeTo = jest.fn()
+    const fitBounds = jest.fn()
+    const applied = applyCameraTarget({ easeTo, fitBounds }, { kind: 'hold' }, opts)
+
+    expect(applied).toBe(false)
+    expect(easeTo).not.toHaveBeenCalled()
+    expect(fitBounds).not.toHaveBeenCalled()
   })
 })

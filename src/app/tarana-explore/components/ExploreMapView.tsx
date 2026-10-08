@@ -286,6 +286,10 @@ const ExploreMapView: React.FC = () => {
               ]
             : []
         }
+        // Empty plan state ("No plan yet", or a day whose stops all resolved
+        // to "No location" so planRoute is null) holds the current view —
+        // Cebu deep-link, user pan, or previous day's frame — never Baguio.
+        planMode={planMode}
         isLoading={state.isCalculating}
         onRouteSelect={selectAlternative}
         currentMapStyle={mapStyle}

@@ -30,6 +30,7 @@ export type CameraTarget =
   | { kind: 'fitBounds'; points: [number, number][] }
   | { kind: 'center'; center: [number, number]; zoom: number }
   | { kind: 'home' }
+  | { kind: 'hold' }
 
 export interface CameraInput {
   origin?: CameraPoint | null
@@ -43,6 +44,12 @@ export interface CameraInput {
   homeZoom: number
   /** Cap for a multi-point fit. */
   maxFitZoom?: number
+  /**
+   * Plan mode with nothing to frame ("No plan yet", or an active day whose
+   * stops all resolved to "No location" so planRoute published null). Holds
+   * the current view instead of sliding home to Baguio.
+   */
+  planMode?: boolean
 }
 
 function finite(p: CameraPoint | null | undefined): p is CameraPoint {
@@ -70,7 +77,9 @@ export function resolveCameraTarget(input: CameraInput): CameraTarget {
   //    exactly the bug this function exists to remove.
   if (points.length === 1) return { kind: 'center', center: points[0], zoom: input.singleZoom }
 
-  // 4. Nothing selected.
+  // 4. Nothing selected. Plan mode holds the current view (Cebu deep-link,
+  //    user's pan, previous day's frame); route mode still homes to Baguio.
+  if (input.planMode) return { kind: 'hold' }
   return { kind: 'home' }
 }
 
@@ -106,6 +115,10 @@ export function applyCameraTarget(
     map.easeTo?.({ center: target.center, zoom: target.zoom, duration })
     return true
   }
+
+  // Hold: deliberately no camera call, so the current view stays. Returns
+  // false so callers can tell "nothing moved" from "homed".
+  if (target.kind === 'hold') return false
 
   map.easeTo?.({ center: opts.homeCenter, zoom: opts.homeZoom, duration })
   return true
