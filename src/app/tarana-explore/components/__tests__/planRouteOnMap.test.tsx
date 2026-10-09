@@ -128,14 +128,16 @@ describe('ExploreMapView plan route drawing', () => {
     publishDayStops = null
   })
 
-  it('draws the published day as the route, with the middle stops as waypoints', async () => {
+  it('draws the published day as three numbered itinerary pins, with no green/red endpoints', async () => {
     const user = userEvent.setup()
     render(<ExploreMapView />)
 
     await user.click(planSwitch())
     publish([stop('A', 16.4, 120.5), stop('B', 16.41, 120.51), stop('C', 16.42, 120.52)])
 
-    expect(mapState()).toEqual({ origin: 'A', destination: 'C', waypoints: ['B'] })
+    // Fails on the old :250-252 substitution (origin 'A', destination 'C',
+    // waypoints ['B']): plan mode must flatten every stop into waypoints.
+    expect(mapState()).toEqual({ origin: null, destination: null, waypoints: ['A', 'B', 'C'] })
     expect(calculateMock).toHaveBeenCalledTimes(1)
   })
 
@@ -176,17 +178,35 @@ describe('ExploreMapView plan route drawing', () => {
     expect(calculateMock).not.toHaveBeenCalled()
   })
 
-  it('redraws when a different day is published', async () => {
+  it('redraws numbered pins when a different day is published', async () => {
     const user = userEvent.setup()
     render(<ExploreMapView />)
 
     await user.click(planSwitch())
     publish([stop('A', 16.4, 120.5), stop('B', 16.41, 120.51)])
-    expect(mapState().origin).toBe('A')
+    // Fails on the old :250-252 substitution (origin 'A', destination 'B',
+    // waypoints []): both stops must be waypoint pins.
+    expect(mapState()).toEqual({ origin: null, destination: null, waypoints: ['A', 'B'] })
 
     publish([stop('D', 15.1, 121.0), stop('E', 15.2, 121.1)])
-    expect(mapState()).toEqual({ origin: 'D', destination: 'E', waypoints: [] })
+    expect(mapState()).toEqual({ origin: null, destination: null, waypoints: ['D', 'E'] })
     expect(calculateMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('caps numbered pins at origin + destination + first 10 middles, dropping middles past index 10', async () => {
+    const user = userEvent.setup()
+    render(<ExploreMapView />)
+
+    await user.click(planSwitch())
+    const names = Array.from({ length: 14 }, (_, i) => `S${i + 1}`)
+    publish(names.map((name, i) => stop(name, 16.4 + i * 0.01, 120.5 + i * 0.01)))
+
+    // MAX_WAYPOINTS truncation is unchanged: middles S12/S13 never reach the map.
+    expect(mapState()).toEqual({
+      origin: null,
+      destination: null,
+      waypoints: [...names.slice(0, 11), names[names.length - 1]],
+    })
   })
 
   it('leaves the map without a plan route when plan mode is turned off', async () => {
@@ -195,7 +215,7 @@ describe('ExploreMapView plan route drawing', () => {
 
     await user.click(planSwitch())
     publish([stop('A', 16.4, 120.5), stop('B', 16.41, 120.51)])
-    expect(mapState().origin).toBe('A')
+    expect(mapState().waypoints).toEqual(['A', 'B'])
 
     await user.click(planSwitch())
 
