@@ -20,6 +20,11 @@ interface InteractiveRouteMapProps {
   origin: LocationPoint | null;
   destination: LocationPoint | null;
   waypoints: LocationPoint[];
+  /**
+   * Plan mode with nothing to frame holds the current view instead of
+   * homing to Baguio. Threaded from ExploreMapView's planMode state.
+   */
+  planMode?: boolean;
   isLoading: boolean;
   onRouteSelect?: (routeId: string) => void;
   currentMapStyle?: MapStyle;
@@ -59,6 +64,7 @@ export default function InteractiveRouteMap({
   origin,
   destination,
   waypoints,
+  planMode = false,
   isLoading,
   onRouteSelect,
   currentMapStyle: externalStyle,
@@ -105,13 +111,14 @@ export default function InteractiveRouteMap({
       homeCenter: BAGUIO_CITY_COORDINATES,
       homeZoom: ZOOM_LEVELS.CITY,
       maxFitZoom: 15,
+      planMode,
     }), {
       homeCenter: BAGUIO_CITY_COORDINATES,
       homeZoom: ZOOM_LEVELS.CITY,
       maxFitZoom: 15,
       duration: 600,
     });
-  }, [recenterSignal, isMapLoaded, currentRoute, origin, destination, waypoints]);
+  }, [recenterSignal, isMapLoaded, currentRoute, origin, destination, waypoints, planMode]);
 
   /**
    * Zoom in/out from the rail's circular buttons.
@@ -806,6 +813,7 @@ export default function InteractiveRouteMap({
         homeCenter: BAGUIO_CITY_COORDINATES,
         homeZoom: ZOOM_LEVELS.CITY,
         maxFitZoom: 15,
+        planMode,
       }), {
         homeCenter: BAGUIO_CITY_COORDINATES,
         homeZoom: ZOOM_LEVELS.CITY,
@@ -982,7 +990,7 @@ export default function InteractiveRouteMap({
     }
     // Update the plotted count ref for next cleanup
     plottedRouteCountRef.current = alternativeRoutes.length;
-  }, [currentRoute?.id, alternativeRoutes.map(r => r.id).join(','), origin?.lat, origin?.lng, destination?.lat, destination?.lng, waypoints.length, isMapLoaded]);
+  }, [currentRoute?.id, alternativeRoutes.map(r => r.id).join(','), origin?.lat, origin?.lng, destination?.lat, destination?.lng, waypoints.length, isMapLoaded, planMode]);
 
 
   if (mapError) {
