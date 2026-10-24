@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GradientCTA } from './ui';
 import { generateItinerary } from '../data';
+import { downloadModel, getModelStatus, type ModelStatus } from '../llm/modelManager';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 
 const BLUE = '#0066FF';
@@ -12,15 +13,34 @@ const INTERESTS = ['Food', 'Nature', 'Culture', 'Adventure', 'Cafes', 'History',
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Human copy for the reason a plan cannot be built on this device right now. */
+const DOWNLOAD_REASON =
+  'This device has no planning model yet. Tarana plans offline, so the model lives on your phone instead of a server.';
+const PREPARE_REASON =
+  'This build cannot run the on-device model (llama.rn is a native module; a development build is required).';
+
+const MEGABYTE = 1024 * 1024;
+
+function megabytes(bytes: number): string {
+  if (bytes <= 0) return '0 MB';
+  return `${(bytes / MEGABYTE).toFixed(0)} MB`;
+}
+
 /**
  * Plan — Tarana Gala form, native (§8).
  *
  * Web field order recomposed single-column: destination → budget → pax →
  * duration → dates → interests → CTA. No traffic toggle yet (it only
- * affects generation, which is Phase-2 gated — a toggle that changes
- * nothing would be dishonest UI). Generate validates, then calls the
- * seam: until the local model lands, the honest pending card echoes the
- * request back instead of a dead spinner.
+ * affects generation, and nothing but the model reads it — a toggle that
+ * changes no output would be dishonest UI).
+ *
+ * Generate validates, then works through three states, all visible:
+ * 1. no model on disk → a real download affordance with byte progress,
+ *    gating generation instead of letting it start and then fail;
+ * 2. generating → the generator's own per-slot message, so a ~40s local
+ *    run reads as progress rather than a hung button;
+ * 3. failure → the honest pending card, carrying the thrown Error.message
+ *    verbatim (the seam's contract) prefixed by the request it answers.
  */
 export default function Plan() {
   const [city, setCity] = useState<CityId>('baguio');
@@ -33,15 +53,62 @@ export default function Plan() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Model gate + progress. Kept out of `pending` on purpose: a progress
+  // line and a failure reason are different content and must not overwrite
+  // one another (the pending card is what the user reads after a failure).
+  const [progress, setProgress] = useState<string | null>(null);
+  const [model, setModel] = useState<ModelStatus | null>(null);
+  const [modelLoading, setModelLoading] = useState(false);
+  const [downloading, setDownloading] = useState<{ fraction: number; bytesDownloaded: number; bytesTotal: number } | null>(
+    null
+  );
 
   const toggleInterest = (tag: string) => {
     setInterests((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
     setPending(null);
   };
 
+  /** The model is a ~1.1 GB download: ask before a long wait, never mid-run. */
+  const checkModel = async (): Promise<boolean> => {
+    setModelLoading(true);
+    try {
+      const status = await getModelStatus();
+      setModel(status);
+      return status.state === 'ready';
+    } catch {
+      setPending(DOWNLOAD_REASON);
+      return false;
+    } finally {
+      setModelLoading(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    setDownloading({ fraction: 0, bytesDownloaded: 0, bytesTotal: 0 });
+    setProgress('Downloading the planning model…');
+    setPending(null);
+    try {
+      await downloadModel((fraction, bytesDownloaded, bytesTotal) => {
+        setDownloading({ fraction, bytesDownloaded, bytesTotal });
+        setProgress(`Downloading the planning model… ${Math.round(fraction * 100)}%`);
+      });
+      // Re-read rather than trusting the resolved value: the manager caches
+      // status, and a later build could plausibly change what "ready" means.
+      const status = await getModelStatus();
+      setModel(status);
+      setProgress(null);
+    } catch (e) {
+      setDownloading(null);
+      setPending(e instanceof Error ? `The download stopped: ${e.message}` : 'The download stopped before it finished.');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   const handleGenerate = async () => {
     setError(null);
     setPending(null);
+    setProgress(null);
     const n = parseInt(budget.replace(/[^0-9]/g, ''), 10);
     if (!Number.isFinite(n) || n <= 0) {
       setError('Enter a trip budget in pesos.');
@@ -58,24 +125,45 @@ export default function Plan() {
     const summary =
       `${CITY_CONFIGS[city].name} · ₱${n} · ${pax} ${pax === 1 ? 'person' : 'people'} · ` +
       `${days} ${days === 1 ? 'day' : 'days'} · ${interests.join(', ')}`;
+
+    // Gate on the model before spending generator time. The seam throws the
+    // same reason, but asking here avoids a long wait that ends in the same
+    // "Download the local model" line.
+    if (model !== null && model.state === 'unsupported') {
+      setPending(`${summary}\n\n${PREPARE_REASON}`);
+      return;
+    }
     setLoading(true);
     try {
-      await generateItinerary({
-        city,
-        budget: n,
-        pax,
-        days,
-        startDate: start.trim(),
-        endDate: end.trim(),
-        interests,
-      });
+      const ready = await checkModel();
+      if (!ready) {
+        setPending(`${summary}\n\n${DOWNLOAD_REASON}`);
+        return;
+      }
+      await generateItinerary(
+        {
+          city,
+          budget: n,
+          pax,
+          days,
+          startDate: start.trim(),
+          endDate: end.trim(),
+          interests,
+        },
+        setProgress
+      );
+      setProgress(null);
     } catch (e) {
-      // Capability gate (§6 Q1): the form is real, the model is pending.
+      // Seam contract (§6): every failure path is a user-readable reason,
+      // rendered here verbatim below the request it answers.
+      setProgress(null);
       setPending(`${summary}\n\n${e instanceof Error ? e.message : 'Generation is unavailable.'}`);
     } finally {
       setLoading(false);
     }
   };
+
+  const busy = loading || modelLoading || downloading !== null;
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -213,6 +301,30 @@ export default function Plan() {
         </View>
       ) : null}
 
+      {downloading ? (
+        <View style={styles.progressBox}>
+          <Text style={styles.progressText}>{progress ?? 'Downloading the planning model…'}</Text>
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${Math.min(100, Math.max(0, Math.round(downloading.fraction * 100)))}%` },
+              ]}
+            />
+          </View>
+          <Text style={styles.progressMeta}>
+            {downloading.bytesTotal > 0
+              ? `${megabytes(downloading.bytesDownloaded)} of ${megabytes(downloading.bytesTotal)}`
+              : 'Starting…'}
+          </Text>
+        </View>
+      ) : progress && loading ? (
+        <View style={styles.progressBox}>
+          <ActivityIndicator color={BLUE} />
+          <Text style={styles.progressText}>{progress}</Text>
+        </View>
+      ) : null}
+
       {pending ? (
         <View style={styles.pendingBox}>
           <Text style={styles.pendingTitle}>Almost there</Text>
@@ -220,11 +332,23 @@ export default function Plan() {
         </View>
       ) : null}
 
+      {model !== null && model.state !== 'ready' && !busy ? (
+        <TouchableOpacity
+          style={styles.downloadBtn}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Download the planning model"
+          onPress={handleDownload}
+        >
+          <Text style={styles.downloadText}>Download planning model{model.state === 'downloading-incomplete' ? ' (resume)' : ''}</Text>
+        </TouchableOpacity>
+      ) : null}
+
       <GradientCTA
         variant="app"
         title="Generate itinerary"
         loadingTitle="Checking…"
-        loading={loading}
+        loading={busy}
         onPress={handleGenerate}
         accessibilityLabel="Generate itinerary"
       />
@@ -250,7 +374,14 @@ const styles = StyleSheet.create({
   stepValue: { fontSize: 20, fontWeight: '700', color: '#111827', minWidth: 32, textAlign: 'center', fontVariant: ['tabular-nums'] },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 12, padding: 10 },
   errorText: { color: '#dc2626', fontSize: 13 },
+  progressBox: { backgroundColor: '#eff6ff', borderRadius: 16, padding: 16, gap: 8, borderWidth: 1, borderColor: '#dbeafe', flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
+  progressText: { fontSize: 13, color: '#374151', flexGrow: 1, flexBasis: '100%' },
+  progressMeta: { fontSize: 12, color: '#6b7280' },
+  progressTrack: { height: 6, borderRadius: 3, backgroundColor: '#dbeafe', flexBasis: '100%', overflow: 'hidden' },
+  progressFill: { height: 6, borderRadius: 3, backgroundColor: BLUE },
   pendingBox: { backgroundColor: '#eff6ff', borderRadius: 16, padding: 16, gap: 6, borderWidth: 1, borderColor: '#dbeafe' },
   pendingTitle: { fontSize: 15, fontWeight: '600', color: BLUE },
   pendingText: { fontSize: 13, color: '#374151', lineHeight: 19 },
+  downloadBtn: { backgroundColor: '#ffffff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, borderWidth: 1, borderColor: BLUE, alignItems: 'center' },
+  downloadText: { color: BLUE, fontSize: 14, fontWeight: '600' },
 });
