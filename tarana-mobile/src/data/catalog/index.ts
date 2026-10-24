@@ -3,13 +3,12 @@
  * from `src/app/tarana-eats/data/restaurants.ts` (names, cuisines, prices,
  * locations, about, hours, dietary, tags).
  *
- * Menus: 6 signature cafes carry their full dish lists, copied byte-for-byte
+ * Menus: all 20 entries carry their full dish lists, copied byte-for-byte
  * from `src/app/tarana-eats/data/menus/*.ts` into `./menus/` (only their
  * `import { FullMenu } from "../types"` resolves here to the local
  * `catalog/types.ts` — zero other imports, Metro-safe by construction).
- * The other 14 ship `EMPTY_MENU` with `hasMenu: false`; their detail
- * screens hide the menu section (no dead buttons) until the full catalog
- * arrives via a web endpoint later.
+ * `hasMenu: true` for every entry, so detail screens never hide the menu
+ * section; `EMPTY_MENU` exists only as the `entry()` fallback.
  */
 import { EMPTY_MENU, menuDishCount, type Cafe, type FullMenu } from './types';
 export { EMPTY_MENU, menuDishCount };
@@ -20,6 +19,20 @@ import { ujiMatchaCafeMenu } from './menus/ujiMatchaCafe';
 import { agaraRamenMenu } from './menus/agaraRamen';
 import { kocoCafeMenu } from './menus/kocoCafe';
 import { hirayaCafeMenu } from './menus/hirayaCafe';
+import { kFlavorsBuffetMenu } from './menus/kFlavorsBuffet';
+import { myeongDongJjigaeMenu } from './menus/myeongDongJjigae';
+import { itaewonCafeMenu } from './menus/itaewonCafe';
+import { chimichangaJaimesFamilyFeastMenu } from './menus/chimichangaJaimesFamilyFeast';
+import { kapiKullaawMenu } from './menus/kapiKullaaw';
+import { cafeDeCasaMenu } from './menus/cafeDeCasa';
+import { farmersDaughterMenu } from './menus/farmersDaughter';
+import { blendlabCafeMenu } from './menus/blendlabCafe';
+import { kuboGrillBaguioMenu } from './menus/kuboGrillBaguio';
+import { somTamThaiRestaurantMenu } from './menus/somTamThaiRestaurant';
+import { kuboGrillMenu } from './menus/kuboGrill';
+import { yoshimeatsuBaguioCityMenu } from './menus/yoshimeatsuBaguioCity';
+import { aliHouseOfShawarmaHalalMenu } from './menus/aliHouseOfShawarmaHalal';
+import { loopByCantoMenu } from './menus/loopByCanto';
 
 function entry(
   base: Omit<Cafe, 'fullMenu' | 'hasMenu' | 'image'> & { image?: string | null },
@@ -85,7 +98,9 @@ export const CAFES: Cafe[] = [
     hours: '11:00 AM - 10:00 PM',
     dietaryOptions: [],
     tags: ['Korean', 'Buffet', 'Baguio'],
-  }),
+  },
+  kFlavorsBuffetMenu
+),
   entry({
     name: 'Myeong Dong Jjigae Restaurant',
     cuisine: ['Korean', 'Buffet'],
@@ -96,7 +111,9 @@ export const CAFES: Cafe[] = [
     hours: '11:00 AM - 9:00 PM',
     dietaryOptions: [],
     tags: ['Korean', 'Buffet', 'Jjigae', 'Baguio'],
-  }),
+  },
+  myeongDongJjigaeMenu
+),
   entry({
     name: 'Itaewon Cafe',
     cuisine: ['Korean', 'Cafe'],
@@ -108,7 +125,9 @@ export const CAFES: Cafe[] = [
     hours: '11:00 AM - 9:00 PM',
     dietaryOptions: [],
     tags: ['Korean', 'Cafe', 'Baguio', 'K-Culture'],
-  }),
+  },
+  itaewonCafeMenu
+),
   entry({
     name: 'Chimichanga by Jaimes Family Feast',
     cuisine: ['Mexican', 'Filipino'],
@@ -120,7 +139,9 @@ export const CAFES: Cafe[] = [
     hours: 'Breakfast, Snacks, Dinner',
     dietaryOptions: ['Vegetarian', 'Vegan', 'Halal'],
     tags: ['Mexican', 'Filipino', 'Fusion', 'Baguio'],
-  }),
+  },
+  chimichangaJaimesFamilyFeastMenu
+),
   entry({
     name: 'Kapi Kullaaw',
     cuisine: ['Cafe', 'Coffee', 'Snacks'],
@@ -132,7 +153,9 @@ export const CAFES: Cafe[] = [
     hours: 'Not specified',
     dietaryOptions: ['Vegan', 'Vegetarian', 'Halal'],
     tags: ['Cafe', 'Coffee', 'Art', 'Baguio'],
-  }),
+  },
+  kapiKullaawMenu
+),
   entry({
     name: 'Café De Casa',
     cuisine: ['Cafe', 'Coffee', 'Artisanal'],
@@ -144,7 +167,9 @@ export const CAFES: Cafe[] = [
     hours: 'Breakfast, Snacks',
     dietaryOptions: ['Vegetarian', 'Halal'],
     tags: ['Cafe', 'Coffee', 'Artisanal', 'Baguio', 'Home-based'],
-  }),
+  },
+  cafeDeCasaMenu
+),
   entry(
     {
       name: 'Agara Ramen',
@@ -186,7 +211,9 @@ export const CAFES: Cafe[] = [
     hours: 'Lunch/Dinner',
     dietaryOptions: [],
     tags: ['Filipino', 'Ilocano', 'Cordilleran', 'Farm-to-Table', 'Traditional', 'Baguio'],
-  }),
+  },
+  farmersDaughterMenu
+),
   entry(
     {
       name: 'Hiraya Cafe',
@@ -213,7 +240,9 @@ export const CAFES: Cafe[] = [
     hours: 'Breakfast, Lunch, Snacks',
     dietaryOptions: ['Vegetarian'],
     tags: ['Cafe', 'Coffee', 'Specialty', 'Trendy', 'Baguio'],
-  }),
+  },
+  blendlabCafeMenu
+),
   entry({
     name: 'Kubo Grill Baguio',
     cuisine: ['Filipino', 'Grilled', 'Comfort Food'],
@@ -225,7 +254,9 @@ export const CAFES: Cafe[] = [
     hours: 'All',
     dietaryOptions: [],
     tags: ['Filipino', 'Grilled', 'Comfort Food', 'Unlimited', 'Baguio'],
-  }),
+  },
+  kuboGrillBaguioMenu
+),
   entry({
     name: 'Som Tam Thai Restaurant',
     cuisine: ['Thai', 'Asian', 'Authentic'],
@@ -237,7 +268,9 @@ export const CAFES: Cafe[] = [
     hours: 'Lunch/Dinner',
     dietaryOptions: ['Halal', 'Vegetarian'],
     tags: ['Thai', 'Asian', 'Authentic', 'Spicy', 'Curry', 'Baguio'],
-  }),
+  },
+  somTamThaiRestaurantMenu
+),
   entry({
     name: 'Kubo Grill',
     cuisine: ['Filipino', 'Korean', 'Grilled'],
@@ -249,7 +282,9 @@ export const CAFES: Cafe[] = [
     hours: 'Lunch/Dinner',
     dietaryOptions: [],
     tags: ['Filipino', 'Korean', 'Grilled', 'Fusion', 'Casual', 'Baguio'],
-  }),
+  },
+  kuboGrillMenu
+),
   entry({
     name: 'Yoshimeatsu Baguio City',
     cuisine: ['Korean', 'Japanese', 'Buffet'],
@@ -261,7 +296,9 @@ export const CAFES: Cafe[] = [
     hours: 'Lunch/Dinner',
     dietaryOptions: [],
     tags: ['Korean', 'Japanese', 'Buffet', 'Unlimited', 'BBQ', 'Sushi', 'Baguio'],
-  }),
+  },
+  yoshimeatsuBaguioCityMenu
+),
   entry({
     name: 'Ali House of Shawarma Halal',
     cuisine: ['Middle Eastern', 'Halal', 'Mediterranean'],
@@ -273,7 +310,9 @@ export const CAFES: Cafe[] = [
     hours: 'Lunch/Dinner',
     dietaryOptions: ['Halal'],
     tags: ['Middle Eastern', 'Halal', 'Shawarma', 'Biryani', 'Mediterranean', 'Baguio'],
-  }),
+  },
+  aliHouseOfShawarmaHalalMenu
+),
   entry({
     name: 'Loop By Canto',
     cuisine: ['Cafe', 'Comfort Food', 'International'],
@@ -285,7 +324,9 @@ export const CAFES: Cafe[] = [
     hours: 'Snacks',
     dietaryOptions: ['Vegetarian'],
     tags: ['Cafe', 'Coffee', 'Comfort Food', 'Creative', 'International', 'Baguio'],
-  }),
+  },
+  loopByCantoMenu
+),
 ];
 
 export function findCafe(name: string): Cafe | undefined {
