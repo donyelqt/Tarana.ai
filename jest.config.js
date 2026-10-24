@@ -17,6 +17,11 @@ module.exports = {
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    // Mobile resolves `tarana-web/*` through Metro extraNodeModules (see
+    // tarana-mobile/metro.config.js); the root config needs the same remap
+    // so mobile specs that import the shared schema run from here too.
+    '^tarana-web/(.*)$': '<rootDir>/src/lib/$1',
+    '^tarana-web$': '<rootDir>/src/lib',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(png|jpg|jpeg|gif|webp|svg|ico)$': '<rootDir>/jest.fileMock.js',
   },
