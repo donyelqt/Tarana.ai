@@ -21,7 +21,8 @@ import { exchangeForMobileToken, clearStoredToken, withMobileAuth } from '../aut
 import { createMobileSupabaseClient } from '../supabase';
 import { getCityCenter, getCityTimezone } from 'tarana-web/data/cityConfig';
 import * as Db from '../db';
-import type { LocalProfile } from '../db';
+import { generateWithLlama } from '../llm/generateWithLlama';
+import type { LocalProfile, LocalTrip } from '../db';
 
 export type { LocalProfile, LocalTrip, LocalMeal } from '../db';
 export type { LocalProfile as Profile, LocalTrip as Trip, LocalMeal as Meal } from '../db';
@@ -214,17 +215,69 @@ export type PlanInput = {
 /**
  * On-device itinerary generation (§6 Q1 kill-gate).
  *
- * Deliberately unimplemented: the web POST is 401/402-gated by design and
- * there is no cloud fallback for a paid offline app. Phase 2 fills this
- * body with the validated local model; the Plan screen proves the
- * contract (typed input, validated form, honest pending state) meanwhile.
- * Throwing here is a capability gate, not missing code — callers render
- * the pending card, never a dead button.
+ * The generator is the local llama.rn pipeline (`../llm/generateWithLlama`):
+ * no cloud, no login, no 401/402 wall — a paid offline app cannot fall back
+ * to a hosted call. Whatever the model returns is validated by the shared
+ * Zod schema before it is persisted, and the write goes through `Db.createTrip`
+ * with this file's payload shape (`{ formData, itineraryData }`) so the row
+ * renders exactly like a web import.
+ *
+ * The throw contract is the caller's, not ours: Plan.tsx paints `e.message`
+ * onto its pending card, so every failure path — missing model, empty engine,
+ * validation — surfaces as a human-readable reason instead of a dead button.
+ *
+ * `onProgress` forwards the generator's per-slot message. One day at a time
+ * on a phone runs tens of seconds; without it the CTA looks frozen, so the
+ * screen is only honest if it can show the reason for the wait.
  */
-export async function generateItinerary(_input: PlanInput): Promise<never> {
-  throw new Error(
-    'On-device planning is being tuned and is not available in this build. Plan with the web app today — your trips import here in one tap.'
-  );
+export async function generateItinerary(
+  input: PlanInput,
+  onProgress?: (message: string) => void
+): Promise<LocalTrip> {
+  const profileId = await Db.getActiveProfileId();
+  if (!profileId) {
+    throw new Error('Create a profile on this device before generating a trip.');
+  }
+
+  let generated;
+  try {
+    generated = await generateWithLlama(input, onProgress);
+  } catch (e) {
+    throw new Error(
+      e instanceof Error
+        ? `Could not build this itinerary: ${e.message}`
+        : 'Could not build this itinerary on this device.'
+    );
+  }
+
+  let payload: string;
+  try {
+    payload = JSON.stringify({
+      formData: {
+        budget: input.budget === null ? '' : String(input.budget),
+        pax: String(input.pax),
+        duration: `${input.days} ${input.days === 1 ? 'day' : 'days'}`,
+        dates: { start: input.startDate, end: input.endDate },
+        selectedInterests: input.interests,
+      },
+      itineraryData: {
+        title: generated.title,
+        subtitle: generated.subtitle,
+        items: generated.items,
+      },
+    });
+  } catch {
+    throw new Error('The generated plan could not be saved on this device.');
+  }
+
+  return Db.createTrip({
+    profileId,
+    title: generated.title,
+    date: input.startDate,
+    budget: input.budget === null ? null : String(input.budget),
+    tags: input.interests,
+    payload,
+  });
 }
 
 // ── Places + routes (remote, session-free) ───────────────
