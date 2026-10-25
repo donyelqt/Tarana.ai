@@ -22,6 +22,11 @@ module.exports = {
     // so mobile specs that import the shared schema run from here too.
     '^tarana-web/(.*)$': '<rootDir>/src/lib/$1',
     '^tarana-web$': '<rootDir>/src/lib',
+    // SDK 57's legacy entry point ships untransformable TS source (see
+    // jest.expoFileSystemMock.js), so map it to a stub when a mobile spec is
+    // run from here -- which is what `pnpm test` does in CI.
+    '^expo-file-system/legacy$': '<rootDir>/jest.expoFileSystemMock.js',
+    '^expo-file-system$': '<rootDir>/jest.expoFileSystemMock.js',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(png|jpg|jpeg|gif|webp|svg|ico)$': '<rootDir>/jest.fileMock.js',
   },
