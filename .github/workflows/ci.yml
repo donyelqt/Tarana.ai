@@ -71,6 +71,20 @@ jobs:
       - name: Tests
         run: pnpm test -- --coverage --passWithNoTests --maxWorkers=2
 
+      # The web job above runs `pnpm test` from the repo ROOT, and the root
+      # jest.config.js ignores tarana-mobile (see testPathIgnorePatterns): the
+      # two configs resolve `jest.mock('../modelManager')` under different
+      # module identities, so the mobile degradation specs pass under one and
+      # fail under the other — which is how a green local run used to ship a
+      # red CI. Running the mobile suite in its own directory — so it picks up
+      # tarana-mobile/jest.config.js, where the mock identity is stable — is
+      # what makes it a first-class gate instead of a Windows-only accident.
+      # `--passWithNoTests` is NOT passed here: the mobile suite exists and a
+      # silently-empty mobile run would read as green.
+      - name: Mobile tests
+        working-directory: ./tarana-mobile
+        run: pnpm test
+
       - name: Build
         run: pnpm run build
 

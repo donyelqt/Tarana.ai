@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { getActiveProfileId, listMeals, type LocalMeal } from '../data';
+import { getActiveProfileId, listMeals, exportLocalMeals, type ExportSummary, type LocalMeal } from '../data';
 import { formatPHP, GRADIENT } from './ui';
 import { ChevronLeftIcon } from './icons';
 
@@ -20,6 +20,8 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
   const [meals, setMeals] = useState<LocalMeal[] | null>(null);
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportSummary, setExportSummary] = useState<ExportSummary | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -33,6 +35,35 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load saved cafes.');
       setMeals([]);
+    }
+  }, []);
+
+  /**
+   * Two-way sync's export direction. The screen never touches `fetch` — it
+   * calls the seam, which owns the idempotency key, the per-meal failure
+   * collection, and the no-delete conflict rule.
+   *
+   * Only a failure the seam attributes to the whole run (an unusable profile,
+   * no linked token) reaches the error line; per-meal reasons arrive inside
+   * `exportSummary` and are rendered as the failure list, so one bad meal
+   * never masquerades as a broken export.
+   */
+  const runExport = useCallback(async () => {
+    setExporting(true);
+    setError(null);
+    setExportSummary(null);
+    try {
+      const profileId = await getActiveProfileId();
+      if (!profileId) {
+        setError('Create a profile first to export cafes.');
+        return;
+      }
+      setExportSummary(await exportLocalMeals(profileId));
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Export did not complete.');
+    } finally {
+      setExporting(false);
     }
   }, []);
 
@@ -147,6 +178,53 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
             ) : null}
           </TouchableOpacity>
         )}
+        // Progress + summary live below the list, matching the card/row
+        // language above rather than introducing a modal. Nothing is hidden
+        // behind a tap: the counts the seam returns are the whole report.
+        // (A `//` comment, not `{/* */}`: this sits inside FlatList's
+        // attribute list, where only line comments are legal.)
+        ListFooterComponent={
+          <View style={styles.exportFooter}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              disabled={exporting}
+              accessibilityRole="button"
+              accessibilityLabel="Export cafes to the web"
+              onPress={() => void runExport()}
+            >
+              {/* Gradient while idle, web `disabled:bg-gray-300` while running. */}
+              <LinearGradient
+                colors={exporting ? [GRADIENT.disabled.from, GRADIENT.disabled.to] : [GRADIENT.app.from, GRADIENT.app.to]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.exportGradient}
+              >
+                {/* The label never disappears: a spinner with no text reads as
+                    a frozen UI, and the action must stay readable mid-run. */}
+                <Text style={styles.exportButtonText}>{exporting ? 'Exporting…' : 'Export to web'}</Text>
+                {exporting ? <ActivityIndicator size="small" color="#ffffff" style={styles.exportSpinner} /> : null}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {exporting ? (
+              <Text className="mt-2 text-xs text-muted-foreground">Uploading local cafes…</Text>
+            ) : null}
+
+            {exportSummary ? (
+              <View className="mt-2 gap-1">
+                <Text className="text-xs text-muted-foreground">
+                  {exportSummary.exported} exported · {exportSummary.skipped} skipped ·{' '}
+                  {exportSummary.failures.length} failed
+                </Text>
+                {exportSummary.failures.map((reason) => (
+                  <Text key={reason} className="text-xs text-destructive">
+                    {reason}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        }
       />
       <StatusBar style="auto" />
     </View>
@@ -162,4 +240,15 @@ const styles = StyleSheet.create({
   titleText: { flex: 1, gap: 2 },
   bandTitle: { fontSize: 22, fontWeight: '700', color: '#ffffff', lineHeight: 28 },
   bandSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  exportFooter: { paddingVertical: 12, gap: 4 },
+  exportGradient: {
+    borderRadius: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  exportButtonText: { fontSize: 16, fontWeight: '600', color: '#ffffff', textAlign: 'center' },
+  exportSpinner: { marginLeft: 2 },
 });
