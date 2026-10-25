@@ -1,5 +1,14 @@
 // Jest stub for `expo-file-system` under the repo-root jest config.
 //
+// STATUS: not currently wired into any config. The root config used to map
+// `expo-file-system` here while it also discovered the mobile specs; it no
+// longer does either (see `testPathIgnorePatterns` in jest.config.js), and the
+// mobile specs that needed it now run under tarana-mobile/jest.config.js.
+// Kept only because the "why a stub and not a transform" record below is the
+// reasoning that was never written down when three failed attempts tried to
+// make the mobile specs pass under the ROOT config. Deleting this file is
+// safe; leaving it is also safe — nothing requires it.
+//
 // WHY A STUB AND NOT A TRANSFORM: SDK 57 split the filesystem, and the legacy
 // entry point the model manager depends on ships TypeScript source with no
 // build output (`main: src/index.ts`, `exports["./legacy"].default:
@@ -15,8 +24,8 @@
 // change how every web `.js` file under `src/` is transformed.
 //
 // The web tree never imports this package at all (checked: zero references in
-// `src/`), so this mapping only binds when a mobile spec is run from the repo
-// ROOT — which is what `pnpm test` does in CI.
+// `src/`), so the mapping this file served could only ever bind to a mobile
+// spec — which is exactly the run no root-discovered spec performs any more.
 //
 // BEHAVIOR CONTRACT: reading `documentDirectory` returns a string, because
 // that is the single value the model manager's shape guard requires

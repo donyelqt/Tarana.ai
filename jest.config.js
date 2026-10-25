@@ -1,18 +1,14 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
-  // `pnpm test` runs from here, so the mobile LLM specs are discovered and run
-  // by THIS config, not only by tarana-mobile/jest.config.js. Declaring both
-  // roots (and the mobile node_modules in moduleDirectories) makes a mobile
-  // spec resolve against tarana-mobile -- the same way its own config does --
-  // so `../modelManager` in the spec and `./modelManager` in generateWithLlama
-  // are resolved by the same rules. That is what the spec's
-  // jest.mock('../modelManager') depends on: it registers under a module ID
-  // built from the resolved absolute path plus the export conditions, and if
-  // the two callers resolve differently the mock is never consulted and the
-  // real model manager loads instead.
-  roots: ['<rootDir>', '<rootDir>/tarana-mobile/src'],
-  moduleDirectories: ['node_modules', '<rootDir>/tarana-mobile/node_modules'],
+  // The web tree only. The mobile specs have their own config
+  // (tarana-mobile/jest.config.js) and their own CI step, so they must not be
+  // collected from here: running them under this config made
+  // jest.mock('../modelManager') register a module ID that a POSIX working
+  // directory does not reproduce, so the real native model manager loaded
+  // instead of the double and the degradation assertions failed on Linux only.
+  // See `testPathIgnorePatterns` below, which is the belt to this braces.
+  roots: ['<rootDir>'],
   testMatch: [
     '**/__tests__/**/*.test.ts',
     '**/__tests__/**/*.test.tsx',
@@ -34,11 +30,6 @@ module.exports = {
     // so mobile specs that import the shared schema run from here too.
     '^tarana-web/(.*)$': '<rootDir>/src/lib/$1',
     '^tarana-web$': '<rootDir>/src/lib',
-    // SDK 57's legacy entry point ships untransformable TS source (see
-    // jest.expoFileSystemMock.js), so map it to a stub when a mobile spec is
-    // run from here -- which is what `pnpm test` does in CI.
-    '^expo-file-system/legacy$': '<rootDir>/jest.expoFileSystemMock.js',
-    '^expo-file-system$': '<rootDir>/jest.expoFileSystemMock.js',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(png|jpg|jpeg|gif|webp|svg|ico)$': '<rootDir>/jest.fileMock.js',
   },
@@ -57,6 +48,13 @@ module.exports = {
     '/.swc/',
     '/.kilo/',
     '/tests/e2e/',
+    // The whole mobile app. `roots` is already web-only above, but this keeps
+    // the mobile specs out even if a future change re-widens the roots or a
+    // symlink puts them under one: they must run under
+    // tarana-mobile/jest.config.js, whose mock identity for
+    // jest.mock('../modelManager') is the one the degradation assertions pass
+    // against. Under this config they pass on Windows and fail on Linux.
+    '/tarana-mobile/',
   ],
   // Explicit, and written with forward slashes so the pattern means the same
   // thing on every platform. Jest's own default is the Windows-escaped
