@@ -7,12 +7,12 @@
  * body here — no screen rewrites.
  *
  * Current bindings:
- * - profiles, trips → local SQLite (`../db`). No network, no login.
- * - trips (sync) → the linked web account over HTTP. The mobile Bearer
- *   token is the credential: the middleware validates it and injects the
- *   session identity, so the token-bearing routes (`/api/saved-*`) accept
- *   a mobile request unchanged. Import pulls web → SQLite; export pushes
- *   local-only trips web-ward. NO operation deletes on either side.
+ * - profiles, trips, meals → local SQLite (`../db`). No network, no login.
+ * - trips + meals (sync) → the linked web account over HTTP. The mobile
+ *   Bearer token is the credential: the middleware validates it and injects
+ *   the session identity, so the token-bearing routes (`/api/saved-*`)
+ *   accept a mobile request unchanged. Import pulls web → SQLite; export
+ *   pushes local-only rows web-ward. NO operation deletes on either side.
  * - spots, weather → web enrichment proxy over HTTP. Verified session-free
  *   (`GET /api/spots`, `GET /api/weather` carry no auth check), so these
  *   deliberately send NO token. Offline → thrown Error → caller renders
@@ -27,7 +27,7 @@ import { createMobileSupabaseClient } from '../supabase';
 import { getCityCenter, getCityTimezone } from 'tarana-web/data/cityConfig';
 import * as Db from '../db';
 import { generateWithLlama } from '../llm/generateWithLlama';
-import type { LocalProfile, LocalTrip } from '../db';
+import type { LocalMeal, LocalProfile, LocalTrip } from '../db';
 
 export type { LocalProfile, LocalTrip, LocalMeal } from '../db';
 export type { LocalProfile as Profile, LocalTrip as Trip, LocalMeal as Meal } from '../db';
@@ -400,7 +400,184 @@ export async function importWebMeals(_userId: string, profileId: string): Promis
   return { imported };
 }
 
-// ── Plan generation (Phase-2 gate — honest stub, not a mock) ─
+// ── Meals export (two-way copy: local → web) ──────────────
+
+/** The subset of `SavedMealSchema` the mobile client is responsible for. */
+type SaveMealBody = {
+  cafe_name: string;
+  meal_type: string;
+  price: number;
+  good_for: string | null;
+  location: string | null;
+  menu_items: unknown[];
+};
+
+/**
+ * Local-shape validation, mirroring the fields `SavedMealSchema` requires.
+ * A meal that cannot satisfy the web contract is skipped with a reason
+ * rather than POSTed and 400'd, because the failure is already knowable on
+ * device.
+ *
+ * The shape conversion the trips seam never needs: web `good_for` is ONE
+ * nullable string while local `good_for` is a string array. The first
+ * non-empty entry is the exact inverse of `mealGoodFor`, which maps the web
+ * string to a one-element array on import, so a round-trip yields the value
+ * that was saved. Joining the array instead would concatenate unrelated
+ * labels and routinely blow the 20-character cap.
+ */
+function buildMealExportBody(meal: LocalMeal): SaveMealBody | null {
+  const cafeName = typeof meal.cafe_name === 'string' && meal.cafe_name.trim() ? meal.cafe_name.trim() : null;
+  const mealType = typeof meal.meal_type === 'string' && meal.meal_type.trim() ? meal.meal_type.trim() : null;
+  if (!cafeName || !mealType) return null;
+  if (cafeName.length > 200) return null;
+
+  const price =
+    typeof meal.price === 'number' && Number.isFinite(meal.price) && meal.price > 0 ? meal.price : null;
+  if (price === null) return null;
+
+  const goodForEntry = (meal.good_for ?? []).find((v) => typeof v === 'string' && v.trim());
+  const goodFor = goodForEntry ? goodForEntry.trim() : null;
+  // The cap is 20 characters. A first entry over it would 400, so the row is
+  // skipped here rather than sent.
+  if (goodFor !== null && goodFor.length > 20) return null;
+
+  const location = typeof meal.location === 'string' && meal.location.trim() ? meal.location.trim() : null;
+  if (location !== null && location.length > 200) return null;
+
+  // Local `items` is a JSON string of dish objects, written by createMeal.
+  // Null means the row never captured a dish, which the schema allows.
+  let menuItems: unknown;
+  try {
+    menuItems = JSON.parse(meal.items ?? '[]');
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(menuItems)) return null;
+  if (menuItems.length > 200) return null;
+
+  return {
+    cafe_name: cafeName,
+    meal_type: mealType,
+    price,
+    good_for: goodFor,
+    location,
+    menu_items: menuItems,
+  };
+}
+
+/**
+ * Two-way sync's export direction (§7.4 mirror): local-only saved meals are
+ * POSTed to the web app so a linked account sees them on every device.
+ *
+ * Conflict rule, identical to `exportLocalTrips`:
+ * - Export NEVER deletes on either side. Nothing here removes a local row
+ *   or a web row, so a partial run can only leave work undone, never data
+ *   destroyed, and re-running the same export is always safe.
+ * - Idempotency converges on the LOCAL MEAL ID (see `exportIdempotencyKey`).
+ *   The route claims `Idempotency-Key` scoped to (user, route, key) before
+ *   its insert and replays the cached response for an already-completed
+ *   key, so a retry after a partial failure returns the SAME web id instead
+ *   of inserting a second row. This is the export-side mirror of
+ *   `upsertImportedMeal`'s (source, source_id) dedupe on the import side.
+ * - The exported row is NOT rewritten as `source: 'web-import'`. Marking it
+ *   would hide it from the candidate set of a later export, and the
+ *   idempotency key already makes a repeat POST converge, so no local write
+ *   is needed and none is made.
+ * - A meal that cannot produce a valid `SavedMealSchema` body is skipped
+ *   with a reason, never POSTed.
+ *
+ * Per-meal isolation: one failure is recorded and the loop continues. Only a
+ * missing token or an unusable profile (i.e. "this export cannot run at
+ * all") throws, because those cannot be attributed to any meal.
+ */
+export async function exportLocalMeals(profileId: string): Promise<ExportSummary> {
+  const meals = await Db.listMealsByProfile(profileId);
+  // A web-import row is already on the web; re-pushing it would fight the
+  // import-side dedupe.
+  const candidates = meals.filter((m) => m.source === 'local');
+
+  // Nothing to send beats an early token prompt: the exchange is a browser
+  // round-trip the user has to authorise.
+  if (candidates.length === 0) return { exported: 0, skipped: 0, failures: [] };
+
+  const baseUrl = config.webBaseUrl.replace(/\/$/, '');
+  // Resolved once, up front: a missing/invalid token is a whole-export
+  // failure, not a per-meal one, so it must not be retried per row.
+  const headers = await withMobileAuth({
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  });
+
+  const summary: ExportSummary = { exported: 0, skipped: 0, failures: [] };
+
+  for (const meal of candidates) {
+    const label = meal.cafe_name && meal.cafe_name.trim() ? meal.cafe_name.trim() : meal.id;
+    const idempotencyKey = exportIdempotencyKey(meal.id);
+
+    if (idempotencyKey === null) {
+      summary.skipped += 1;
+      summary.failures.push(`${label}: the local meal id is too long to use as an export key.`);
+      continue;
+    }
+
+    const body = buildMealExportBody(meal);
+    if (body === null) {
+      // A payload the web schema rejects would 400 on POST; catching it here
+      // keeps the reason on the device and skips the round-trip.
+      summary.skipped += 1;
+      summary.failures.push(`${label}: this meal is missing the details the web requires (cafe name, meal type, or a positive price).`);
+      continue;
+    }
+
+    let res: Response;
+    try {
+      res = await fetch(`${baseUrl}/api/saved-meals`, {
+        method: 'POST',
+        headers: { ...headers, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      // Transport failure. The web claim (if any) expires on its own TTL, and
+      // the local id stays the key, so the next attempt converges.
+      summary.failures.push(`${label}: could not reach the web app.`);
+      continue;
+    }
+
+    // Every response body is untrusted: parse defensively and validate shape
+    // before use (same boundary rule as every other call in this file).
+    let parsed: unknown;
+    try {
+      parsed = await res.json();
+    } catch {
+      summary.failures.push(`${label}: the web reply was not valid JSON${res.ok ? '' : ` (HTTP ${res.status})`}.`);
+      continue;
+    }
+
+    if (!res.ok) {
+      summary.failures.push(`${label}: ${webErrorMessage(res.status, parsed)}`);
+      continue;
+    }
+
+    // The route replies 200 with `{ success: true, data }` where `data` is
+    // the raw row, and an idempotent replay returns that same body. So the
+    // saved id is read off the payload rather than the status code, and
+    // 200 and 201 are both success here.
+    const savedId = savedTripId(parsed);
+    if (savedId === null) {
+      // The write may well have landed; without a returned id we cannot claim
+      // success, and the idempotency key makes re-export safe.
+      summary.failures.push(`${label}: the web reply did not include the saved meal.`);
+      continue;
+    }
+
+    // 200 created, or any non-replay 2xx that still carries an id.
+    summary.exported += 1;
+  }
+
+  return summary;
+}
+
+// ── Plan generation (Phase-2 gate — honest stub, not a mock) ─────────────────
 
 export type PlanInput = {
   city: string;
