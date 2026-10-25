@@ -14,8 +14,9 @@ const BLUE = '#0066FF';
  * Web form skeleton recomposed native: budget → cuisine → pax → dietary →
  * CTA → match cards → detail. Two deliberate divergences, both documented:
  * 1. No meal-type filter yet — it is only meaningful with full dish lists
- *    (6 of 20 cafes vendored); it arrives with the full catalog, not as a
- *    half-working filter.
+ *    (20 of 20 cafes vendored, gated by `data/catalog/__tests__/catalog.test.ts`,
+ *    which pins the count and rejects EMPTY_MENU); it arrives with the full
+ *    catalog, not as a half-working filter.
  * 2. Suggestions run on-device (`suggestCafes`: budget ceiling + cuisine +
  *    diet) instead of the 401-gated AI POST. Real filtering, no network.
  * Save lives in CafeDetail (single save path, no duplicates).
