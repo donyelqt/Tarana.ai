@@ -16,23 +16,54 @@
  * dev build (documented in the plan); `isLlamaAvailable` lets callers show an
  * honest message instead of throwing an opaque module error.
  */
-import Constants from 'expo-constants';
 // SDK 57 split the filesystem: the resumable-download API the model manager
 // depends on lives under the legacy entry point and throws from the top-level
 // import.
 import * as FileSystem from 'expo-file-system/legacy';
 
-// app.json extra override keeps the URL configurable per build channel.
-const extra = Constants.expoConfig?.extra;
-const localModelUrl =
-  extra && typeof extra === 'object' && 'localModelUrl' in extra && typeof extra.localModelUrl === 'string'
-    ? extra.localModelUrl
-    : undefined;
 const DEFAULT_MODEL_URL =
   'https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/main/qwen3-1.7b-q4_k_m.gguf';
-const MODEL_URL: string = localModelUrl ?? DEFAULT_MODEL_URL;
 
-const MODEL_FILENAME = MODEL_URL.split('/').pop() ?? 'model.gguf';
+/**
+ * app.json extra override keeps the URL configurable per build channel.
+ *
+ * `expo-constants` ships ESM and is imported lazily, not at module scope: the
+ * repo-root Jest config transforms `node_modules` on Windows and skips it on
+ * Linux, so a top-level import here parses on a developer machine and then
+ * fails the whole mobile suite in CI ("Cannot use import statement outside a
+ * module"). Requiring it inside the only function that reads it keeps the
+ * cost off module load, and the model manager is imported by paths --
+ * including tests and the shared `generateWithLlama` -- that never touch the
+ * download source URL.
+ */
+function downloadUrl(): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Constants: unknown = require('expo-constants');
+    const extra =
+      Constants && typeof Constants === 'object' && 'expoConfig' in Constants
+        ? (Constants.expoConfig as { extra?: unknown } | undefined)?.extra
+        : undefined;
+    if (extra && typeof extra === 'object' && 'localModelUrl' in extra) {
+      const override = extra.localModelUrl;
+      if (typeof override === 'string' && override.length > 0) return override;
+    }
+  } catch {
+    // No native constants available (Expo Go, bare Jest, import failure):
+    // fall through to the default URL.
+  }
+  return DEFAULT_MODEL_URL;
+}
+
+let cachedModelUrl: string | null = null;
+
+/** Model source URL, read once. `MODEL_PATH` is derived from it. */
+function modelUrl(): string {
+  if (cachedModelUrl === null) cachedModelUrl = downloadUrl();
+  return cachedModelUrl;
+}
+
+const MODEL_FILENAME = modelUrl().split('/').pop() ?? 'model.gguf';
 const MODEL_DIR = `${FileSystem.documentDirectory}models/`;
 const MODEL_PATH = `${MODEL_DIR}${MODEL_FILENAME}`;
 
@@ -104,7 +135,7 @@ export async function downloadModel(
 
   return new Promise<string>((resolve, reject) => {
     const job = FileSystem.createDownloadResumable(
-      MODEL_URL,
+      modelUrl(),
       MODEL_PATH,
       { headers: resumeHeaders },
       (progress) => {
