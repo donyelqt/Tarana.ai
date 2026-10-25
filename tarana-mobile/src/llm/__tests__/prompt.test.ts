@@ -18,6 +18,29 @@ import { generateWithLlama } from '../generateWithLlama';
 import type { PlanInput } from '../../data';
 
 /**
+ * llama.rn is a native module: on a developer machine the package is present
+ * and `require` resolves to it, but in CI on Linux the native artifact is
+ * absent and the same `require` throws. Resolving it to a stub here pins the
+ * answer on every platform, so the suite's engine-available state does not
+ * depend on whether the native build landed in `node_modules`.
+ *
+ * `virtual: true` is what makes that work when the package is genuinely
+ * missing -- without it Jest refuses to register a mock for an unresolvable
+ * module and the require falls through to the real, throwing one.
+ *
+ * The stub deliberately provides only `initLlama`, because that is the one
+ * export the availability guard inspects (`'initLlama' in Llama` plus a
+ * function check) and the one the generator then destructures. Nothing here
+ * runs the model: the generator tests assert on the failure paths that fire
+ * before it is ever called.
+ */
+jest.mock(
+  'llama.rn',
+  () => ({ initLlama: jest.fn() }),
+  { virtual: true }
+);
+
+/**
  * The model manager is a native boundary (llama.rn + FileSystem), so it is
  * replaced with a switchable double. The defaults force the state every
  * generation gate must reject: engine present, model absent on disk.
