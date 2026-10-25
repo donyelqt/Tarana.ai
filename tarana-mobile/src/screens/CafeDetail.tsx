@@ -91,6 +91,11 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
       const profileId = await getActiveProfileId();
       if (!profileId) throw new Error('Create a profile first.');
       const first = firstDish(cafe.fullMenu);
+      // Known gap, not fixed here: this save writes only the first dish of
+      // the active tab as a one-element snapshot in items, while the web save
+      // (useTaranaEatsService.saveToMeals in FoodMatchesPreview.tsx) stores
+      // the full array of selected MenuItem[] in menu_items, so a meal saved
+      // on mobile shows one dish on web where the web save shows several.
       // Web parity (useTaranaEatsService.saveToMeals): persist the saved
       // dish snapshot (name/price/quantity) into items, not just the
       // cafe-level row — otherwise detail can never show what was saved.
