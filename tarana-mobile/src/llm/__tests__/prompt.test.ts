@@ -36,7 +36,7 @@ jest.mock('../modelManager', () => ({
     bytesTotal: 0,
     path: mockStatus.path,
   }),
-  MODEL_PATH: '/models/model.gguf',
+  getModelPath: () => '/models/model.gguf',
 }));
 
 const baseInput: PlanInput = {
