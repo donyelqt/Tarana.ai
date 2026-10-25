@@ -18,7 +18,7 @@
  * `activity_coordinates` separately at save time.
  */
 import { itineraryDataSchema, type ItinerarySection } from 'tarana-web/data/itinerarySchema';
-import { getModelStatus, isLlamaAvailable, MODEL_PATH } from './modelManager';
+import { getModelStatus, getModelPath, isLlamaAvailable } from './modelManager';
 import { buildDayPrompt, SLOTS } from './prompt';
 import type { PlanInput } from '../data';
 
@@ -116,7 +116,7 @@ export async function generateWithLlama(
 
   onProgress?.('Loading the local model…');
   const context = await initLlama({
-    model: MODEL_PATH,
+    model: getModelPath(),
     n_ctx: MODEL_CONTEXT,
     n_gpu_layers: 'auto',
   });

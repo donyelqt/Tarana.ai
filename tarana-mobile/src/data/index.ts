@@ -8,6 +8,11 @@
  *
  * Current bindings:
  * - profiles, trips → local SQLite (`../db`). No network, no login.
+ * - trips (sync) → the linked web account over HTTP. The mobile Bearer
+ *   token is the credential: the middleware validates it and injects the
+ *   session identity, so the token-bearing routes (`/api/saved-*`) accept
+ *   a mobile request unchanged. Import pulls web → SQLite; export pushes
+ *   local-only trips web-ward. NO operation deletes on either side.
  * - spots, weather → web enrichment proxy over HTTP. Verified session-free
  *   (`GET /api/spots`, `GET /api/weather` carry no auth check), so these
  *   deliberately send NO token. Offline → thrown Error → caller renders
@@ -121,6 +126,201 @@ export async function importWebTrips(email: string): Promise<{ imported: number;
     imported += 1;
   }
   return { imported, profile, userId };
+}
+
+// ── Web export (two-way copy: local → web) ─────────────────
+
+export type ExportSummary = {
+  exported: number;
+  skipped: number;
+  failures: string[];
+};
+
+/** The subset of `SaveItinerarySchema` the mobile client is responsible for. */
+type SaveItineraryBody = {
+  title: string;
+  date: string;
+  budget: string;
+  tags: string[];
+  formData: unknown;
+  itineraryData: unknown;
+  weatherData?: unknown;
+};
+
+/**
+ * The idempotency key: derived from the local trip id so a retry always
+ * carries the SAME key for the same trip. The web route scopes keys per
+ * user+route, so a namespaced key can never collide with — or replay
+ * against — an unrelated browser save.
+ */
+const EXPORT_KEY_PREFIX = 'tarana-mobile-export';
+const MAX_EXPORT_KEY_LENGTH = 256;
+
+function exportIdempotencyKey(localTripId: string): string | null {
+  const key = `${EXPORT_KEY_PREFIX}:${localTripId}`;
+  return key.length <= MAX_EXPORT_KEY_LENGTH ? key : null;
+}
+
+/**
+ * Local-shape validation, mirroring the fields `SaveItinerarySchema`
+ * requires. A trip that cannot satisfy the web contract is skipped with a
+ * reason rather than POSTed and 400'd — the write is never attempted when
+ * the failure is already knowable on device.
+ */
+function buildExportBody(trip: LocalTrip): SaveItineraryBody | null {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(trip.payload as string);
+  } catch {
+    return null;
+  }
+
+  const title = typeof trip.title === 'string' && trip.title.trim() ? trip.title.trim() : null;
+  const date = typeof trip.date === 'string' && trip.date.trim() ? trip.date.trim() : null;
+  const budget = typeof trip.budget === 'string' && trip.budget.trim() ? trip.budget.trim() : null;
+  if (!title || !date || !budget) return null;
+
+  // Payload contract (`itinerarySchema.ts:65-69`): `formData` and
+  // `itineraryData` are objects-or-null, `weatherData` is opaque. Checked
+  // property by property rather than with a generic "is an object" guard,
+  // which would pass a `{ formData: "boom" }` payload straight into the POST.
+  if (typeof payload !== 'object' || payload === null) return null;
+  if (!('formData' in payload) || !('itineraryData' in payload)) return null;
+
+  const formData = payload.formData;
+  const itineraryData = payload.itineraryData;
+  const weatherData = 'weatherData' in payload ? payload.weatherData : undefined;
+  if (typeof formData !== 'object' || formData === null || Array.isArray(formData)) return null;
+  if (typeof itineraryData !== 'object' || itineraryData === null || Array.isArray(itineraryData)) return null;
+
+  return {
+    title,
+    date,
+    budget,
+    tags: (trip.tags ?? []).filter((t): t is string => typeof t === 'string'),
+    formData,
+    itineraryData,
+    weatherData: weatherData ?? undefined,
+  };
+}
+
+/** Server-supplied error text is the only useful diagnostic for a 4xx/5xx. */
+function webErrorMessage(status: number, body: unknown): string {
+  const error = body && typeof body === 'object' && 'error' in body ? body.error : undefined;
+  if (typeof error === 'string' && error.trim()) return `HTTP ${status}: ${error}`;
+  return `HTTP ${status}`;
+}
+
+/** Named boundary type for the part of `SavedItineraryDto` this function reads. */
+function savedTripId(body: unknown): string | null {
+  const data = body && typeof body === 'object' && 'data' in body ? body.data : undefined;
+  const id = data && typeof data === 'object' && 'id' in data ? data.id : undefined;
+  return typeof id === 'string' ? id : null;
+}
+
+/**
+ * Two-way sync's export direction (§7.4 mirror): local-only trips are
+ * POSTed to the web app so a linked account sees them on every device.
+ *
+ * Conflict rule — web is the source of truth for identity, SQLite for
+ * local-only trips:
+ * - Export NEVER deletes on either side. Nothing here removes a local row
+ *   or a web row, so a partial run can only leave work undone, never data
+ *   destroyed, and re-running the same export is always safe.
+ * - Idempotency converges on the LOCAL TRIP ID (see `exportIdempotencyKey`).
+ *   The web route claims `Idempotency-Key` before its insert and replays
+ *   the cached response for an already-completed key, so a retry after a
+ *   partial failure returns the SAME web id instead of inserting a second
+ *   row. This is the export-side mirror of `upsertImportedTrip`'s
+ *   `(source, source_id)` dedupe on the import side.
+ * - A trip whose payload cannot produce a valid `SaveItinerarySchema` body
+ *   is skipped with a reason, never POSTed.
+ *
+ * Per-trip isolation: one failure is recorded and the loop continues, so a
+ * single malformed trip can neither abort the batch nor lose the report of
+ * the trips that did land. Only a missing token or an unusable profile
+ * (i.e. "this export cannot run at all") throws, because those cannot be
+ * attributed to any trip.
+ */
+export async function exportLocalTrips(profileId: string): Promise<ExportSummary> {
+  const trips = await Db.listTripsByProfile(profileId);
+  const candidates = trips.filter((t) => t.source === 'local' && t.payload !== null);
+
+  // Nothing to send beats an early token prompt: the exchange is a browser
+  // round-trip the user has to authorise.
+  if (candidates.length === 0) return { exported: 0, skipped: 0, failures: [] };
+
+  const baseUrl = config.webBaseUrl.replace(/\/$/, '');
+  // Resolved once, up front: a missing/invalid token is a whole-export
+  // failure, not a per-trip one, so it must not be retried per row.
+  const headers = await withMobileAuth({
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  });
+
+  const summary: ExportSummary = { exported: 0, skipped: 0, failures: [] };
+
+  for (const trip of candidates) {
+    const label = trip.title && trip.title.trim() ? trip.title.trim() : trip.id;
+    const idempotencyKey = exportIdempotencyKey(trip.id);
+
+    if (idempotencyKey === null) {
+      summary.skipped += 1;
+      summary.failures.push(`${label}: the local trip id is too long to use as an export key.`);
+      continue;
+    }
+
+    const body = buildExportBody(trip);
+    if (body === null) {
+      // A payload the web schema rejects would 400 on POST; catching it here
+      // keeps the reason on the device and skips the round-trip.
+      summary.skipped += 1;
+      summary.failures.push(`${label}: this trip is missing the details the web requires (title, date, budget, or itinerary).`);
+      continue;
+    }
+
+    let res: Response;
+    try {
+      res = await fetch(`${baseUrl}/api/saved-itineraries`, {
+        method: 'POST',
+        headers: { ...headers, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      // Transport failure. The web claim (if any) expires on its own TTL, and
+      // the local id stays the key, so the next attempt converges.
+      summary.failures.push(`${label}: could not reach the web app.`);
+      continue;
+    }
+
+    // Every response body is untrusted: parse defensively and validate shape
+    // before use (same boundary rule as every other call in this file).
+    let parsed: unknown;
+    try {
+      parsed = await res.json();
+    } catch {
+      summary.failures.push(`${label}: the web reply was not valid JSON${res.ok ? '' : ` (HTTP ${res.status})`}.`);
+      continue;
+    }
+
+    if (!res.ok) {
+      summary.failures.push(`${label}: ${webErrorMessage(res.status, parsed)}`);
+      continue;
+    }
+
+    const savedId = savedTripId(parsed);
+    if (savedId === null) {
+      // The write may well have landed; without a returned id we cannot claim
+      // success, and the idempotency key makes re-export safe.
+      summary.failures.push(`${label}: the web reply did not include the saved trip.`);
+      continue;
+    }
+
+    // 201 created, or any non-replay 2xx that still carries an id.
+    summary.exported += 1;
+  }
+
+  return summary;
 }
 
 type WebMealRow = {
