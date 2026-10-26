@@ -1,13 +1,10 @@
 // Jest stub for `expo-file-system` under the repo-root jest config.
 //
-// STATUS: not currently wired into any config. The root config used to map
-// `expo-file-system` here while it also discovered the mobile specs; it no
-// longer does either (see `testPathIgnorePatterns` in jest.config.js), and the
-// mobile specs that needed it now run under tarana-mobile/jest.config.js.
-// Kept only because the "why a stub and not a transform" record below is the
-// reasoning that was never written down when three failed attempts tried to
-// make the mobile specs pass under the ROOT config. Deleting this file is
-// safe; leaving it is also safe — nothing requires it.
+// STATUS: wired into BOTH jest configs. Both the repo root and tarana-mobile
+// map `expo-file-system` and `expo-file-system/legacy` here, because under
+// both configs the real module dies the same way on Linux CI: SDK 57 ships
+// TypeScript source as the legacy entry point's default, and neither config's
+// transformIgnorePatterns rewrites that ESM into CommonJS.
 //
 // WHY A STUB AND NOT A TRANSFORM: SDK 57 split the filesystem, and the legacy
 // entry point the model manager depends on ships TypeScript source with no
@@ -60,9 +57,8 @@ module.exports = {
 function unavailable(name) {
   return function stubUnavailable() {
     throw new Error(
-      `expo-file-system.${name} is not available under the repo-root jest config. ` +
-        'This spec is asserting a failure path that fires before any filesystem call; ' +
-        'run it under tarana-mobile/jest.config.js to exercise real filesystem behavior.'
+      `expo-file-system.${name} is a stub under jest. ` +
+        'No mobile spec exercises real filesystem writes; verify those on a device.'
     );
   };
 }

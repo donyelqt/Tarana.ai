@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GradientCTA } from './ui';
-import { getActiveProfileId, listMeals, createMeal, deleteMeal, resolveWebImage } from '../data';
+import { getActiveProfileId, listMeals, createMeal, deleteMeal, resolveWebImage, toWebMealType } from '../data';
 import { formatPHP } from './ui';
 import { findCafe, menuDishCount, type Cafe, type FullMenu } from '../data/catalog';
 import { parseSavedItems, type SavedDish } from './savedMeals';
@@ -75,7 +75,11 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
       const saved = await createMeal({
         profileId,
         cafeName: cafe.name,
-        mealType: first ? tab : null,
+        // The tab labels are mobile UI; `meal_type` is the web-visible column.
+        // Map the tab through the web union before persisting so a row saved
+        // under Snacks or Drinks carries 'Snack' and matches the web filter
+        // (src/app/saved-meals/page.tsx:77) instead of silently vanishing there.
+        mealType: first ? toWebMealType(tab) : null,
         price: first ? first.price : null,
         goodFor: cafe.popularFor.slice(0, 3),
         location: cafe.location,

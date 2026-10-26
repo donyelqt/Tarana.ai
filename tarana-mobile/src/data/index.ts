@@ -27,10 +27,19 @@ import { createMobileSupabaseClient } from '../supabase';
 import { getCityCenter, getCityTimezone } from 'tarana-web/data/cityConfig';
 import * as Db from '../db';
 import { generateWithLlama } from '../llm/generateWithLlama';
+import { toWebMealType } from './mealTypeMapping';
+import type { WebMealType } from './mealTypeMapping';
 import type { LocalMeal, LocalProfile, LocalTrip } from '../db';
 
 export type { LocalProfile, LocalTrip, LocalMeal } from '../db';
 export type { LocalProfile as Profile, LocalTrip as Trip, LocalMeal as Meal } from '../db';
+
+// The mobile-tab → web-union mapping lives in its own module so both the
+// save site (a screen) and `buildMealExportBody` below share one definition,
+// and so the mapping can be unit-tested without the seam's native imports.
+// Re-exported here because screens consume the seam, never a data sibling.
+export { toWebMealType } from './mealTypeMapping';
+export type { WebMealType, MobileMealTab } from './mealTypeMapping';
 
 // ── Profiles (local) ─────────────────────────────────────
 
@@ -405,7 +414,7 @@ export async function importWebMeals(_userId: string, profileId: string): Promis
 /** The subset of `SavedMealSchema` the mobile client is responsible for. */
 type SaveMealBody = {
   cafe_name: string;
-  meal_type: string;
+  meal_type: WebMealType;
   price: number;
   good_for: string | null;
   location: string | null;
@@ -424,10 +433,24 @@ type SaveMealBody = {
  * string to a one-element array on import, so a round-trip yields the value
  * that was saved. Joining the array instead would concatenate unrelated
  * labels and routinely blow the 20-character cap.
+ *
+ * `meal_type` is likewise mapped here, not passed through: the local column
+ * is free text written historically as the raw mobile tab label, so rows
+ * saved before the save site started normalizing it carry 'Snacks'/'Drinks'
+ * — values the web row type accepts but the web filter can never match
+ * (see `./mealTypeMapping`). Mapping on export repairs those rows on their
+ * next sync without a migration, and keeps the export body in the web union
+ * the same way a fresh save already is.
  */
 function buildMealExportBody(meal: LocalMeal): SaveMealBody | null {
   const cafeName = typeof meal.cafe_name === 'string' && meal.cafe_name.trim() ? meal.cafe_name.trim() : null;
-  const mealType = typeof meal.meal_type === 'string' && meal.meal_type.trim() ? meal.meal_type.trim() : null;
+  const rawType = typeof meal.meal_type === 'string' && meal.meal_type.trim() ? meal.meal_type.trim() : null;
+  // 'Snacks' → 'Snack', 'Drinks' → 'Snack'. A value already in the web union
+  // passes through unchanged, so a web-imported row round-trips instead of
+  // being dropped here. An unmappable type is null, which the `!mealType`
+  // guard below skips — no invented bucket for a row that does not come from
+  // a known tab.
+  const mealType = rawType === null ? null : toWebMealType(rawType);
   if (!cafeName || !mealType) return null;
   if (cafeName.length > 200) return null;
 
