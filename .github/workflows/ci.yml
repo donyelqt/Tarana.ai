@@ -188,7 +188,10 @@ jobs:
 
   e2e-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The ~7 minute apt dependency install plus a build plus the smoke journey
+    # does not fit in 10 minutes, and a timeout here reads as a flaky-red job
+    # rather than a real failure.
+    timeout-minutes: 25
     needs: verify
     env:
       NEXTAUTH_URL: http://localhost:3000
@@ -218,6 +221,16 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      # Cached because the apt side of the install is the slow, flaky part:
+      # it re-downloads 25.9MB of fonts every run and has been the step that
+      # blows the job budget. The browser itself is cached on the pnpm
+      # lockfile, so a lockfile change invalidates it and nothing else does.
+      - name: Cache Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
