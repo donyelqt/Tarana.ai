@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { getActiveProfileId, listMeals, exportLocalMeals, type ExportSummary, type LocalMeal } from '../data';
+import { savedMealMatchesQuery } from './savedMeals';
 import { formatPHP, GRADIENT } from './ui';
 import { ChevronLeftIcon } from './icons';
 
@@ -77,10 +78,7 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
     }, [load])
   );
 
-  const q = query.trim().toLowerCase();
-  const visible = (meals ?? []).filter(
-    (m) => !q || m.cafe_name.toLowerCase().includes(q) || (m.meal_type ?? '').toLowerCase().includes(q)
-  );
+  const visible = (meals ?? []).filter((m) => savedMealMatchesQuery(m, query));
 
   if (meals === null) {
     return (

@@ -5,40 +5,13 @@ import { GradientCTA } from './ui';
 import { getActiveProfileId, listMeals, createMeal, deleteMeal, resolveWebImage } from '../data';
 import { formatPHP } from './ui';
 import { findCafe, menuDishCount, type Cafe, type FullMenu } from '../data/catalog';
+import { parseSavedItems, type SavedDish } from './savedMeals';
 import type { MenuItem } from '../data/catalog/types';
 
 const BLUE = '#0066FF';
 
 const MEAL_TABS = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'] as const;
 type MealTab = (typeof MEAL_TABS)[number];
-
-type SavedDish = { name: string; price: number | null };
-
-/**
- * Imported web rows store menu_items JSON in the opaque `items` column
- * (data seam importWebMeals). Surface name + price only — the same two
- * fields web renders per dish row. Anything unparseable degrades to no
- * section, never a crash.
- */
-function parseSavedItems(raw: string | null): SavedDish[] {
-  if (!raw) return [];
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    const dishes: SavedDish[] = [];
-    for (const item of parsed) {
-      if (typeof item !== 'object' || item === null) continue;
-      const rec = item as Record<string, unknown>;
-      const name = typeof rec.name === 'string' ? rec.name : null;
-      if (!name) continue;
-      const price = typeof rec.price === 'number' && Number.isFinite(rec.price) ? rec.price : null;
-      dishes.push({ name, price });
-    }
-    return dishes;
-  } catch {
-    return [];
-  }
-}
 
 /**
  * CafeDetail — one detail for catalog browsing AND saved records (§8).
