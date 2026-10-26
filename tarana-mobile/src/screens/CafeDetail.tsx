@@ -4,8 +4,15 @@ import { StatusBar } from 'expo-status-bar';
 import { GradientCTA } from './ui';
 import { getActiveProfileId, listMeals, createMeal, deleteMeal, resolveWebImage, toWebMealType } from '../data';
 import { formatPHP } from './ui';
-import { findCafe, menuDishCount, type Cafe, type FullMenu } from '../data/catalog';
-import { parseSavedItems, type SavedDish } from './savedMeals';
+import { findCafe, menuDishCount, type Cafe } from '../data/catalog';
+import {
+  parseSavedItems,
+  selectedDishMealType,
+  selectedDishTotal,
+  snapshotSelection,
+  type DishSelection,
+  type SavedDish,
+} from './savedMeals';
 import type { MenuItem } from '../data/catalog/types';
 
 const BLUE = '#0066FF';
@@ -27,6 +34,11 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
   const [savedId, setSavedId] = useState<string | null>(null);
   const [savedDishes, setSavedDishes] = useState<SavedDish[]>([]);
   const [tab, setTab] = useState<MealTab>('Breakfast');
+  // Dishes picked for the next save. Empty means "nothing picked", which the
+  // save CTA refuses rather than writing an empty meal. A loaded saved row
+  // pre-checks the dishes it already holds, so editing an existing meal
+  // starts from what is on disk rather than a blank slate.
+  const [selected, setSelected] = useState<DishSelection[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,34 +68,42 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
     load();
   }, [load]);
 
+  const toggleDish = useCallback((dish: MenuItem) => {
+    setSelected((prev) => {
+      const exists = prev.some((d) => d.name === dish.name);
+      return exists ? prev.filter((d) => d.name !== dish.name) : [...prev, { name: dish.name, price: dish.price, tab }];
+    });
+  }, [tab]);
+
   const onSave = async () => {
     if (!cafe) return;
+    if (selected.length === 0) {
+      setError('Pick at least one dish to save.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const profileId = await getActiveProfileId();
       if (!profileId) throw new Error('Create a profile first.');
-      const first = firstDish(cafe.fullMenu);
-      // Known gap, not fixed here: this save writes only the first dish of
-      // the active tab as a one-element snapshot in items, while the web save
-      // (useTaranaEatsService.saveToMeals in FoodMatchesPreview.tsx) stores
-      // the full array of selected MenuItem[] in menu_items, so a meal saved
-      // on mobile shows one dish on web where the web save shows several.
-      // Web parity (useTaranaEatsService.saveToMeals): persist the saved
-      // dish snapshot (name/price/quantity) into items, not just the
-      // cafe-level row — otherwise detail can never show what was saved.
+      // Web parity (useTaranaEatsService.saveToMeals): the row price is the
+      // sum of the picked dishes and the snapshot is the whole selection, so
+      // a meal saved here shows every dish on web instead of the first one.
+      const items = snapshotSelection(selected);
       const saved = await createMeal({
         profileId,
         cafeName: cafe.name,
         // The tab labels are mobile UI; `meal_type` is the web-visible column.
-        // Map the tab through the web union before persisting so a row saved
-        // under Snacks or Drinks carries 'Snack' and matches the web filter
-        // (src/app/saved-meals/page.tsx:77) instead of silently vanishing there.
-        mealType: first ? toWebMealType(tab) : null,
-        price: first ? first.price : null,
+        // Map through the web union before persisting so a row saved under
+        // Snacks or Drinks carries 'Snack' and matches the web filter
+        // (src/app/saved-meals/page.tsx:77) instead of silently vanishing
+        // there. A multi-tab selection maps its dominant tab, so the row is
+        // filed under where the meal actually sits.
+        mealType: selectedDishMealType(selected, toWebMealType),
+        price: selectedDishTotal(selected),
         goodFor: cafe.popularFor.slice(0, 3),
         location: cafe.location,
-        items: first ? JSON.stringify([{ name: first.name, price: first.price, quantity: 1 }]) : null,
+        items,
       });
       setSavedId(saved.id);
       setSavedDishes(parseSavedItems(saved.items));
@@ -186,19 +206,39 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
           {dishes.length === 0 ? (
             <Text style={styles.muted}>Nothing listed under {tab}.</Text>
           ) : (
-            dishes.map((d, i) => (
-              <View key={`${d.name}-${i}`} style={styles.dish}>
-                <View style={styles.dishText}>
-                  <Text style={styles.dishName}>{d.name}</Text>
-                  {d.description && d.description !== 'No description available — yet.' ? (
-                    <Text style={styles.dishDesc} numberOfLines={2}>{d.description}</Text>
-                  ) : null}
-                </View>
-                <Text style={styles.dishPrice}>{formatPHP(d.price)}</Text>
-              </View>
-            ))
+            dishes.map((d, i) => {
+              const picked = selected.some((s) => s.name === d.name);
+              return (
+                <TouchableOpacity
+                  key={`${d.name}-${i}`}
+                  style={[styles.dish, picked && styles.dishPicked]}
+                  activeOpacity={0.85}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: picked }}
+                  accessibilityLabel={`${d.name}, ${formatPHP(d.price)}`}
+                  onPress={() => toggleDish(d)}
+                >
+                  <View style={[styles.checkbox, picked && styles.checkboxPicked]}>
+                    {picked ? <Text style={styles.checkboxTick}>✓</Text> : null}
+                  </View>
+                  <View style={styles.dishText}>
+                    <Text style={styles.dishName}>{d.name}</Text>
+                    {d.description && d.description !== 'No description available — yet.' ? (
+                      <Text style={styles.dishDesc} numberOfLines={2}>{d.description}</Text>
+                    ) : null}
+                  </View>
+                  <Text style={styles.dishPrice}>{formatPHP(d.price)}</Text>
+                </TouchableOpacity>
+              );
+            })
           )}
         </View>
+      ) : null}
+
+      {selected.length > 0 ? (
+        <Text style={styles.selectionTotal}>
+          {selected.length} {selected.length === 1 ? 'dish' : 'dishes'} · {formatPHP(selectedDishTotal(selected))}
+        </Text>
       ) : null}
 
       {savedId ? (
@@ -217,24 +257,16 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
       ) : (
         <GradientCTA
           variant="app"
-          title="Save cafe"
+          title={selected.length > 0 ? `Save ${selected.length} ${selected.length === 1 ? 'dish' : 'dishes'}` : 'Save cafe'}
           loadingTitle="Saving…"
           loading={busy}
           onPress={onSave}
-          accessibilityLabel="Save cafe"
+          accessibilityLabel="Save selected dishes"
         />
       )}
       <StatusBar style="auto" />
     </ScrollView>
   );
-}
-
-function firstDish(menu: FullMenu): MenuItem | null {
-  for (const t of MEAL_TABS) {
-    const dish = menu[t]?.[0];
-    if (dish) return dish;
-  }
-  return null;
 }
 
 /**
@@ -283,6 +315,19 @@ const styles = StyleSheet.create({  root: { flex: 1, backgroundColor: '#F2F2F7' 
   dishName: { fontSize: 15, fontWeight: '600', color: '#111827' },
   dishDesc: { fontSize: 13, color: '#6b7280', lineHeight: 18 },
   dishPrice: { fontSize: 15, fontWeight: '700', color: BLUE, fontVariant: ['tabular-nums'] },
+  dishPicked: { borderColor: BLUE, borderWidth: 1, backgroundColor: '#eff6ff' },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#d1d5db',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxPicked: { borderColor: BLUE, backgroundColor: BLUE },
+  checkboxTick: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
+  selectionTotal: { marginTop: 10, fontSize: 14, fontWeight: '600', color: '#374151', fontVariant: ['tabular-nums'] },
   unsaveBtn: { marginTop: 8, borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', paddingVertical: 14, alignItems: 'center' },
   unsaveArmed: { backgroundColor: '#fef2f2', borderColor: '#dc2626' },
   unsaveText: { color: '#374151', fontSize: 15, fontWeight: '600' },

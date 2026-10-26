@@ -355,8 +355,12 @@ describe('CafeDetail — the save site writes through the mapping', () => {
    */
   const source = readFileSync(join(__dirname, '..', '..', 'screens', 'CafeDetail.tsx'), 'utf8');
 
-  it('routes the active tab through toWebMealType when saving', () => {
-    expect(source).toMatch(/mealType:\s*first\s*\?\s*toWebMealType\(tab\)\s*:\s*null/);
+  it('routes the meal type through the mapping when saving', () => {
+    // The mapper is applied to whatever the save writes: the picked dishes'
+    // dominant tab now (multi-dish save), not the raw tab label. The
+    // contract this pins is that the persisted value is mapped, whichever
+    // call shape the save uses.
+    expect(source).toMatch(/mealType:\s*selectedDishMealType\(selected, toWebMealType\)/);
   });
 
   it('imports the mapping from the data seam', () => {
