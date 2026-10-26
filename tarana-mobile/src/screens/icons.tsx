@@ -452,6 +452,33 @@ export function TrafficConeIcon({ size = 14, color = '#16a34a', strokeWidth = 2 
 
 // Re-exported as a RN-friendly wrapper so consumers can render via JSX without
 // touching the SVG namespace.
+/**
+ * Trash icon — lucide `Trash2`, the same one the web saved-trips row uses
+ * (`src/app/saved-trips/page.tsx`). Mobile list rows use it for the delete
+ * control; the stroke alone (no fill) reads as a smaller target than a
+ * filled X, which matters because it sits beside a navigation target.
+ */
+export function TrashIcon({ size = 18, color = '#dc2626', strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M3 6h18" />
+      <Path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
+      <Path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+      <Line x1="10" y1="11" x2="10" y2="17" />
+      <Line x1="14" y1="11" x2="14" y2="17" />
+    </Svg>
+  );
+}
+
 export const Icon = ({ children }: { children: React.ReactNode }) => (
   <View style={{ flexDirection: 'row', alignItems: 'center' }}>{children}</View>
 );
