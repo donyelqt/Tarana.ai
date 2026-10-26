@@ -3,7 +3,7 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacit
 import { StatusBar } from 'expo-status-bar';
 import { getActiveProfileId, listTrips, deleteTrip, resolveWebImage, type LocalTrip } from '../data';
 import { formatDate, firstPayloadImage, TrafficBadge } from './ui';
-import type { SpotTraffic } from '../data';
+import { activityTrafficLevel, isTrafficTag } from './tripTraffic';
 import Thumb from './Thumb';
 import ActivitySheet, { type SheetActivity } from './ActivitySheet';
 
@@ -39,17 +39,6 @@ function parsePayload(raw: string | null): Payload | null {
   } catch {
     return null;
   }
-}
-
-function badgeLevel(level: string | undefined): SpotTraffic | null {
-  const v = (level ?? '').toUpperCase();
-  if (v === 'VERY_LOW' || v === 'LOW') return 'LOW';
-  if (v === 'MODERATE' || v === 'HIGH' || v === 'SEVERE') return v;
-  return null;
-}
-
-function isTrafficTag(tag: string): boolean {
-  return tag === 'low-traffic' || tag === 'moderate-traffic';
 }
 
 /**
@@ -206,7 +195,7 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
               {dayDate(dayIdx) ? <Text style={styles.dayDate}>{dayDate(dayIdx)}</Text> : null}
             </View>
             {day.flatMap((p) => p.activities ?? []).map((a, j) => {
-              const badge = badgeLevel(a.trafficLevel);
+              const badge = activityTrafficLevel(a.trafficLevel, a.tags);
               const tags = (a.tags ?? []).filter((t) => !isTrafficTag(t)).slice(0, 4);
               return (
                 <View key={`${a.title ?? 'activity'}-${j}`} style={styles.activity}>
