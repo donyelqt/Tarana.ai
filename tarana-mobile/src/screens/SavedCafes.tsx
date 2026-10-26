@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { getActiveProfileId, listMeals, exportLocalMeals, type ExportSummary, type LocalMeal } from '../data';
-import { savedMealMatchesQuery } from './savedMeals';
+import {
+  ALL_FILTER,
+  BUDGET_OPTIONS,
+  CUISINE_FILTER_OPTIONS,
+  MEAL_TYPE_OPTIONS,
+  filterSavedMeals,
+  type FilterOption,
+} from './savedMeals';
 import { formatPHP, GRADIENT } from './ui';
 import { ChevronLeftIcon } from './icons';
 
@@ -20,6 +27,12 @@ import { ChevronLeftIcon } from './icons';
 export default function SavedCafes({ navigation }: { navigation: any }) {
   const [meals, setMeals] = useState<LocalMeal[] | null>(null);
   const [query, setQuery] = useState('');
+  // Meal type, budget, cuisine — the web list's three other selects
+  // (src/app/saved-meals/page.tsx:132-165). Held as plain strings so the
+  // predicates in ./savedMeals own the vocabulary, not the screen.
+  const [mealType, setMealType] = useState<string>(ALL_FILTER);
+  const [budget, setBudget] = useState<string>(ALL_FILTER);
+  const [cuisine, setCuisine] = useState<string>(ALL_FILTER);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportSummary, setExportSummary] = useState<ExportSummary | null>(null);
@@ -78,7 +91,18 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
     }, [load])
   );
 
-  const visible = (meals ?? []).filter((m) => savedMealMatchesQuery(m, query));
+  const visible = filterSavedMeals(meals ?? [], { query, mealType, budget, cuisine });
+  // "No meals match your filters" ≠ "you have no saved meals". With filters
+  // active and rows failing them, the rows are still on the device — the copy
+  // must say the filter is the reason, or the user reads it as data loss and
+  // goes looking for the meals. Only with everything off does an empty list
+  // mean an empty list.
+  const filtersActive = query.trim() !== '' || mealType !== ALL_FILTER || budget !== ALL_FILTER || cuisine !== ALL_FILTER;
+  const emptyTitle = filtersActive && visible.length === 0 ? 'No meals match' : 'No saved cafes yet';
+  const emptyBody =
+    filtersActive && visible.length === 0
+      ? 'Try a different meal type, budget, or cuisine.'
+      : 'Browse Baguio cafes and save the ones you love.';
 
   if (meals === null) {
     return (
@@ -128,6 +152,16 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
             placeholderTextColor="#9ca3af"
             accessibilityLabel="Search saved cafes"
           />
+          {/* Meal type, budget, cuisine — the web list's three selects,
+              recomposed as pill rows so they sit under the search inside the
+              gradient band without redesigning the screen. Same vocabulary
+              and band edges as web (src/app/saved-meals/page.tsx:132-165);
+              the options come from ./savedMeals, not from this screen. */}
+          <View style={styles.filters}>
+            <FilterRow label="Meal type" options={MEAL_TYPE_OPTIONS} selected={mealType} onSelect={setMealType} />
+            <FilterRow label="Budget" options={BUDGET_OPTIONS} selected={budget} onSelect={setBudget} />
+            <FilterRow label="Cuisine" options={CUISINE_FILTER_OPTIONS} selected={cuisine} onSelect={setCuisine} />
+          </View>
         </LinearGradient>
         <View style={styles.wave} accessible={false} importantForAccessibility="no-hide-descendants">
           <Svg width="100%" height={30} viewBox="0 0 1440 90" preserveAspectRatio="none">
@@ -141,10 +175,8 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
       {error ? <Text className="mb-2 text-sm text-destructive">{error}</Text> : null}
       {visible.length === 0 && !error ? (
         <View className="items-center px-6 pt-10">
-          <Text className="text-base font-semibold text-foreground">No saved cafes yet</Text>
-          <Text className="mt-1 text-center text-sm text-muted-foreground">
-            Browse Baguio cafes and save the ones you love.
-          </Text>
+          <Text className="text-base font-semibold text-foreground">{emptyTitle}</Text>
+          <Text className="mt-1 text-center text-sm text-muted-foreground">{emptyBody}</Text>
           <TouchableOpacity
             className="mt-4 rounded-full bg-primary px-6 py-3"
             activeOpacity={0.85}
@@ -230,6 +262,78 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
   );
 }
 
+/**
+ * One compact filter row: label + horizontally scrolling pills.
+ *
+ * Pure StyleSheet (no className) and the active pill takes the app gradient,
+ * matching SpotCityPills' language — same pill, same state treatment, so this
+ * reads as the screen's existing control rather than a new one. `all` is the
+ * first pill of every row and is a normal reset, not a special case.
+ *
+ * The lane is a horizontal ScrollView inside the gradient band. It carves its
+ * own height (`flexGrow: 0`) rather than borrowing the band's: a vertical
+ * flex parent that is not bounded would otherwise let the pills inherit the
+ * leftover space — the giant-pills bug SpotCityPills calls out. Pills never
+ * shrink to fit; the lane scrolls, which is how the cuisine row (16 options
+ * from the catalog) stays readable on a narrow phone.
+ */
+function FilterRow({
+  label,
+  options,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  options: FilterOption[];
+  selected: string;
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <View style={styles.filterRow}>
+      <Text style={styles.filterLabel}>{label}</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterPills}
+        style={styles.filterPillsWrap}
+      >
+        {options.map((option) => {
+          const active = option.value === selected;
+          const text = (
+            <Text style={[styles.filterPillText, active && styles.filterPillTextActive]}>
+              {option.label}
+            </Text>
+          );
+          return (
+            <TouchableOpacity
+              key={option.value}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`${option.label} ${label}`}
+              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+              onPress={() => onSelect(option.value)}
+            >
+              {active ? (
+                <LinearGradient
+                  colors={[GRADIENT.app.from, GRADIENT.app.to]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={styles.filterPillActive}
+                >
+                  {text}
+                </LinearGradient>
+              ) : (
+                <View style={styles.filterPill}>{text}</View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   band: { marginHorizontal: -16 },
   bandBody: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 46, gap: 14 },
@@ -249,4 +353,25 @@ const styles = StyleSheet.create({
   },
   exportButtonText: { fontSize: 16, fontWeight: '600', color: '#ffffff', textAlign: 'center' },
   exportSpinner: { marginLeft: 2 },
+  filters: { gap: 8 },
+  filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  filterLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.75)', width: 56 },
+  filterPillsWrap: { flexGrow: 0, flexShrink: 1 },
+  filterPills: { flexDirection: 'row', gap: 6, paddingRight: 12 },
+  filterPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  filterPillActive: {
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#ffffff',
+  },
+  filterPillText: { color: '#ffffff', fontSize: 12, fontWeight: '500' },
+  filterPillTextActive: { color: '#0066FF' },
 });
