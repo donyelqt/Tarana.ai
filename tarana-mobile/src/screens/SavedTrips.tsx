@@ -5,9 +5,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { getActiveProfileId, listTrips, exportLocalTrips, type ExportSummary, type LocalTrip } from '../data';
+import { getActiveProfileId, listTrips, exportLocalTrips, deleteTrip, type ExportSummary, type LocalTrip } from '../data';
 import { formatDate, firstPayloadImage, GRADIENT } from './ui';
-import { ChevronLeftIcon } from './icons';
+import { ChevronLeftIcon, TrashIcon } from './icons';
+import {
+  afterDelete,
+  idleRowDelete,
+  nextArmedId,
+  rowDeleteCaption,
+  rowDeleteErrorMessage,
+  rowDeleteLabel,
+  rowDeleteState,
+  ROW_DELETE_FALLBACK_REASON,
+  tapDeletes,
+  tripRow,
+  type RowDeleteModel,
+} from './savedRowDelete';
 import Thumb from './Thumb';
 
 /**
@@ -20,9 +33,16 @@ import Thumb from './Thumb';
  * as before.
  *
  * Web parity (saved-trips/page.tsx): header band + search + rows
- * (title, date · budget, tags) → TripDetail. Delete lives in the detail
- * (two-step arm); the list never deletes. No dead web affordances ported
- * (no refresh control — server-side, 401-gated).
+ * (title, date · budget, tags) → TripDetail, plus the per-row delete
+ * control the web list has (a trash button that opens a confirm modal).
+ * Here the confirm is the same two-step arm TripDetail uses — a first tap
+ * arms the row, a second deletes — because that is the confirm mechanism
+ * already shipped on this app's destructive actions, and a modal on a
+ * scrolling list would need its own dismissal contract for no gain. The
+ * row stays a navigation target; only the trash control deletes.
+ *
+ * No dead web affordances ported (no refresh control — server-side,
+ * 401-gated).
  *
  * The Export footer is the only network affordance on this screen, and it
  * is deliberately a footer rather than a per-row switch: the export is a
@@ -36,6 +56,10 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportSummary, setExportSummary] = useState<ExportSummary | null>(null);
+  // The delete control's arm/confirm model. Only one row is armed at a
+  // time — see `savedRowDelete.nextArmedId` for why a second armed row
+  // would be a footgun rather than a convenience.
+  const [deleteModel, setDeleteModel] = useState<RowDeleteModel>(idleRowDelete);
   const load = useCallback(async () => {
     try {
       const profileId = await getActiveProfileId();
@@ -85,6 +109,53 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  /**
+   * Per-row delete: first tap arms, second tap deletes. Same two-step
+   * contract as TripDetail's delete button (`TripDetail.tsx:249-257`) —
+   * delete must never fire on the first tap. The rules themselves live in
+   * `savedRowDelete.ts` so both saved lists share one definition and the
+   * "never deletes on the first tap" part is covered by headless tests.
+   *
+   * LOCAL ONLY. This removes the SQLite row and nothing else: there is no
+   * web DELETE call here, so if this trip was already exported, the web
+   * saved-trips list keeps showing it and the next import will bring it
+   * back. Web-side delete propagation is a separate change with its own
+   * auth and idempotency questions.
+   *
+   * On failure the row stays put and the reason reaches the error line
+   * (same line the export failures use), because a silent no-op reads as
+   * a broken control.
+   */
+  const onDeleteTrip = useCallback(
+    async (trip: LocalTrip) => {
+      if (!tapDeletes(deleteModel, trip.id)) {
+        setDeleteModel({ ...deleteModel, armedId: nextArmedId(deleteModel, trip.id) });
+        return;
+      }
+      setDeleteModel({ ...deleteModel, armedId: null, deletingId: trip.id });
+      let deleted = false;
+      try {
+        const profileId = await getActiveProfileId();
+        if (!profileId) throw new Error('No active profile; the row was not removed.');
+        await deleteTrip(trip.id, profileId);
+        deleted = true;
+        // Refresh from the seam rather than splicing state: the list is
+        // already re-read on focus, and a local filter would drift from
+        // what SQLite actually holds.
+        await load();
+      } catch (e) {
+        setError(rowDeleteErrorMessage(e, ROW_DELETE_FALLBACK_REASON));
+      } finally {
+        // Both outcomes dispose of the model (see savedRowDelete), so the
+        // tag is documentation rather than behaviour — but it stays honest:
+        // claiming 'deleted' on a failure would mislabel the reason we are
+        // about to show above.
+        setDeleteModel(afterDelete(deleteModel, deleted ? 'deleted' : 'failed'));
+      }
+    },
+    [deleteModel, load]
+  );
 
   // Re-read when returning from TripDetail (delete lands back here).
   useFocusEffect(
@@ -181,26 +252,55 @@ export default function SavedTrips({ navigation }: { navigation: any }) {
       <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={`Open ${item.title ?? 'untitled trip'}`}
-            onPress={() => navigation.navigate('TripDetail', { id: item.id })}
-            className="mb-3 flex-row gap-3 rounded-lg bg-card p-3"
-          >
-            <Thumb uri={firstPayloadImage(item.payload)} size={56} />
-            <View className="flex-1">
-              <Text className="text-base font-semibold text-foreground">{item.title ?? 'Untitled trip'}</Text>
-              <Text className="mt-1 text-sm text-muted-foreground">
-                {[formatDate(item.date), item.budget].filter(Boolean).join(' · ') || 'No details'}
-              </Text>
-              {item.tags && item.tags.length > 0 ? (
-                <Text className="mt-1 text-xs text-muted-foreground">{item.tags.join(', ')}</Text>
-              ) : null}
+        renderItem={({ item }) => {
+          const state = rowDeleteState(deleteModel, item.id);
+          const armed = state === 'armed';
+          const row = tripRow(item);
+          const title = item.title ?? 'Untitled trip';
+          return (
+            // The delete control is a SIBLING of the row, never a child:
+            // nested inside a TouchableOpacity its press would bubble to
+            // the row and navigate instead of arming.
+            <View className="mb-3 flex-row items-center rounded-lg bg-card">
+              <TouchableOpacity
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${title}`}
+                onPress={() => navigation.navigate('TripDetail', { id: item.id })}
+                className="flex-1 flex-row gap-3 rounded-lg p-3"
+              >
+                <Thumb uri={firstPayloadImage(item.payload)} size={56} />
+                <View className="flex-1">
+                  <Text className="text-base font-semibold text-foreground">{title}</Text>
+                  <Text className="mt-1 text-sm text-muted-foreground">
+                    {[formatDate(item.date), item.budget].filter(Boolean).join(' · ') || 'No details'}
+                  </Text>
+                  {item.tags && item.tags.length > 0 ? (
+                    <Text className="mt-1 text-xs text-muted-foreground">{item.tags.join(', ')}</Text>
+                  ) : null}
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={rowDeleteLabel(row, state)}
+                hitSlop={{ top: 12, bottom: 12, left: 8, right: 12 }}
+                disabled={state === 'deleting'}
+                onPress={() => void onDeleteTrip(item)}
+                style={[styles.deleteBtn, armed && styles.deleteBtnArmed]}
+                className="mr-2 items-center justify-center rounded-lg px-2 py-2"
+              >
+                <TrashIcon size={18} color={armed ? '#ffffff' : '#dc2626'} />
+                {/* The confirm step is spelled out under the icon rather
+                    than left to a color change: red-on-red is the one
+                    state change a color-blind user may not see. */}
+                {rowDeleteCaption(state) ? (
+                  <Text className="text-[10px] font-semibold text-white">{rowDeleteCaption(state)}</Text>
+                ) : null}
+              </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-        )}
+          );
+        }}
         // Progress + summary live below the list, matching the card/row
         // language above rather than introducing a modal. Nothing is hidden
         // behind a tap: the counts the seam returns are the whole report.
@@ -282,4 +382,8 @@ const styles = StyleSheet.create({
   },
   exportButtonText: { fontSize: 16, fontWeight: '600', color: '#ffffff', textAlign: 'center' },
   exportSpinner: { marginLeft: 2 },
+  // Row delete — the armed state mirrors CafeDetail's unsave button
+  // (red wash, red border), so "armed" looks the same wherever it appears.
+  deleteBtn: { borderWidth: 1, borderColor: 'transparent' },
+  deleteBtnArmed: { backgroundColor: '#dc2626', borderColor: '#b91c1c' },
 });
