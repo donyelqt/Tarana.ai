@@ -1,6 +1,7 @@
 import { Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { spotMapsUrl, type SpotTraffic } from '../data';
+import { spotMapsUrl } from '../data';
 import { TrafficBadge } from './ui';
+import { activityTrafficLevel, isTrafficTag } from './tripTraffic';
 
 /**
  * ActivitySheet — native recomposition of web PlaceDetail
@@ -36,15 +37,8 @@ export type SheetActivity = {
   imageUri?: string | null;
 };
 
-function trafficBadgeLevel(level: string | null | undefined): SpotTraffic | null {
-  const v = (level ?? '').toUpperCase();
-  if (v === 'VERY_LOW' || v === 'LOW') return 'LOW';
-  if (v === 'MODERATE' || v === 'HIGH' || v === 'SEVERE') return v;
-  return null;
-}
-
 function visibleTags(tags: string[]): string[] {
-  return tags.filter((t) => t !== 'low-traffic' && t !== 'moderate-traffic').slice(0, 4);
+  return tags.filter((t) => !isTrafficTag(t)).slice(0, 4);
 }
 
 export default function ActivitySheet({
@@ -56,7 +50,8 @@ export default function ActivitySheet({
 }) {
   const mapsUrl =
     activity != null ? spotMapsUrl(activity.lat ?? null, activity.lon ?? null) : null;
-  const badgeLevel = activity != null ? trafficBadgeLevel(activity.trafficLevel) : null;
+  const badgeLevel =
+    activity != null ? activityTrafficLevel(activity.trafficLevel ?? undefined, activity.tags) : null;
   const tags = activity != null ? visibleTags(activity.tags) : [];
 
   return (

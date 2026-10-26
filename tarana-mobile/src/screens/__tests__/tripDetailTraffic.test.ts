@@ -80,6 +80,23 @@ describe('activityTrafficLevel — the tag fallback (the web parity gap)', () =>
   });
 });
 
+describe('ActivitySheet — the badge site resolves from both sources', () => {
+  // ActivitySheet passes both the level and the tags, the same seam
+  // TripDetail uses; the sheet is reachable from every activity card, so it
+  // must resolve a web-saved row's tag, not silently drop it.
+  it('renders the same badge when the field and its tag agree', () => {
+    expect(activityTrafficLevel('LOW', ['low-traffic'])).toBe('LOW');
+  });
+
+  it('renders a badge for a row carrying only the tag', () => {
+    expect(activityTrafficLevel(undefined, ['moderate-traffic'])).toBe('MODERATE');
+  });
+
+  it('renders no badge when neither source is present', () => {
+    expect(activityTrafficLevel(undefined, ['food', 'outdoors'])).toBe(null);
+  });
+});
+
 describe('isTrafficTag — the tag filter is independent of the badge', () => {
   it('recognises exactly the two web traffic tags', () => {
     expect(isTrafficTag('low-traffic')).toBe(true);
