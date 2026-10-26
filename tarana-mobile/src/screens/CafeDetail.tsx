@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GradientCTA } from './ui';
-import { getActiveProfileId, listMeals, createMeal, deleteMeal, resolveWebImage, toWebMealType } from '../data';
+import { getActiveProfileId, listMeals, createMeal, deleteMeal, resolveWebImage, toWebMealType, spotMapsUrl } from '../data';
 import { formatPHP } from './ui';
 import { findCafe, menuDishCount, type Cafe } from '../data/catalog';
 import {
@@ -13,6 +13,14 @@ import {
   type DishSelection,
   type SavedDish,
 } from './savedMeals';
+import {
+  cafeCoordinates,
+  mealCardDishCount,
+  mealCardItems,
+  mealCardTotal,
+  mealCardValidUntil,
+  type MealCardItem,
+} from './savedMealDetail';
 import type { MenuItem } from '../data/catalog/types';
 
 const BLUE = '#0066FF';
@@ -28,17 +36,31 @@ type MealTab = (typeof MEAL_TABS)[number];
  * (section hidden otherwise — no dead buttons) + Save/Unsave against the
  * active profile. Saved state derives from SQLite, so list and detail
  * never disagree.
+ *
+ * Web parity: the web detail (`src/app/saved-meals/[id]/page.tsx`) carries
+ * two actions this screen was missing — "View on Map" and "show this card to
+ * cafe staff" (the MealCardPopup). Both land here, in the platform's idiom:
+ * the map action is one system handoff, and the card is a native sheet rather
+ * than a web overlay.
  */
 export default function CafeDetail({ navigation, route }: { navigation: any; route: { params?: { name?: string } } }) {
   const [cafe, setCafe] = useState<Cafe | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [savedDishes, setSavedDishes] = useState<SavedDish[]>([]);
+  // The opaque `items` snapshot as stored, kept verbatim so the meal card
+  // can read quantities that `parseSavedItems` deliberately drops. Both
+  // views render from the same column, so they can never disagree.
+  const [savedItemsRaw, setSavedItemsRaw] = useState<string | null>(null);
   const [tab, setTab] = useState<MealTab>('Breakfast');
   // Dishes picked for the next save. Empty means "nothing picked", which the
   // save CTA refuses rather than writing an empty meal. A loaded saved row
   // pre-checks the dishes it already holds, so editing an existing meal
   // starts from what is on disk rather than a blank slate.
   const [selected, setSelected] = useState<DishSelection[]>([]);
+  // Meal card shown to cafe staff. Only a saved row can open one, so the
+  // gating is `savedId` rather than this flag — the flag is the sheet's own
+  // open/closed state, nothing more.
+  const [cardOpen, setCardOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,6 +78,7 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
         const saved = (await listMeals(profileId)).find((m) => m.cafe_name === found.name) ?? null;
         setSavedId(saved ? saved.id : null);
         setSavedDishes(parseSavedItems(saved?.items ?? null));
+        setSavedItemsRaw(saved?.items ?? null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load cafe.');
@@ -107,6 +130,7 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
       });
       setSavedId(saved.id);
       setSavedDishes(parseSavedItems(saved.items));
+      setSavedItemsRaw(saved.items);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save cafe.');
     } finally {
@@ -126,6 +150,10 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
       if (profileId) await deleteMeal(savedId, profileId);
       setSavedId(null);
       setSavedDishes([]);
+      setSavedItemsRaw(null);
+      // A card left open on a row that no longer exists would show staff a
+      // meal that was just deleted.
+      setCardOpen(false);
       setArming(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not remove cafe.');
@@ -156,116 +184,262 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
 
   const dishes: MenuItem[] = cafe.fullMenu[tab] ?? [];
   const dishCount = menuDishCount(cafe.fullMenu);
+  // Null for the 10 catalogued cafes with no pinned coordinate — the action
+  // is then not rendered at all, rather than opening a maps search for a
+  // place we cannot name. `spotMapsUrl` returns null if the coords are absent.
+  const coords = cafeCoordinates(cafe.name);
+  const mapsUrl = coords ? spotMapsUrl(coords.lat, coords.lon) : null;
+  // Card rows come from the stored snapshot, which is where the saved dishes
+  // live; `savedDishes` above only carries name + price and no quantity.
+  const cardItems = mealCardItems(savedItemsRaw);
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={styles.eyebrow}>{cafe.cuisine.join(' · ')}</Text>
-      <Text style={styles.title}>{cafe.name}</Text>
-      <CafeHero uri={resolveWebImage(cafe.image)} name={cafe.name} />
-      <Text style={styles.price}>
-        {formatPHP(cafe.priceRange.min)} – {formatPHP(cafe.priceRange.max)}
-      </Text>
-      <Text style={styles.meta}>{cafe.location}{cafe.hours ? ` · ${cafe.hours}` : ''}</Text>
-      <Text style={styles.about}>{cafe.about}</Text>
-      {cafe.popularFor.length > 0 ? (
-        <Text style={styles.tags}>Known for: {cafe.popularFor.join(', ')}</Text>
-      ) : null}
+    // Fragment, not a wrapper View: the sheet must sit beside the scroll
+    // content, not inside it, so it can overlay and not scroll away.
+    <>
+      <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.eyebrow}>{cafe.cuisine.join(' · ')}</Text>
+        <Text style={styles.title}>{cafe.name}</Text>
+        <CafeHero uri={resolveWebImage(cafe.image)} name={cafe.name} />
+        <Text style={styles.price}>
+          {formatPHP(cafe.priceRange.min)} – {formatPHP(cafe.priceRange.max)}
+        </Text>
+        <Text style={styles.meta}>{cafe.location}{cafe.hours ? ` · ${cafe.hours}` : ''}</Text>
+        <Text style={styles.about}>{cafe.about}</Text>
+        {cafe.popularFor.length > 0 ? (
+          <Text style={styles.tags}>Known for: {cafe.popularFor.join(', ')}</Text>
+        ) : null}
 
-      {savedDishes.length > 0 ? (
-        <View style={styles.menu}>
-          <Text style={styles.sectionTitle}>Your saved dishes</Text>
-          {savedDishes.map((d, i) => (
-            <View key={`${d.name}-${i}`} style={styles.dish}>
-              <View style={styles.dishText}>
-                <Text style={styles.dishName}>{d.name}</Text>
+        {savedDishes.length > 0 ? (
+          <View style={styles.menu}>
+            <Text style={styles.sectionTitle}>Your saved dishes</Text>
+            {savedDishes.map((d, i) => (
+              <View key={`${d.name}-${i}`} style={styles.dish}>
+                <View style={styles.dishText}>
+                  <Text style={styles.dishName}>{d.name}</Text>
+                </View>
+                {d.price != null ? <Text style={styles.dishPrice}>{formatPHP(d.price)}</Text> : null}
               </View>
-              {d.price != null ? <Text style={styles.dishPrice}>{formatPHP(d.price)}</Text> : null}
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {cafe.hasMenu && dishCount > 0 ? (
-        <View style={styles.menu}>
-          <Text style={styles.sectionTitle}>Menu</Text>
-          <View style={styles.tabs}>
-            {MEAL_TABS.map((t) => (
+            ))}
+            {mapsUrl ? (
+              /* Same system handoff as ActivitySheet's Location action — one
+                 Linking.openURL on the shared Google-Maps URL, no map SDK and
+                 no webview, exactly as the existing pattern does it. */
               <TouchableOpacity
-                key={t}
-                style={[styles.tab, tab === t && styles.tabActive]}
                 activeOpacity={0.85}
                 accessibilityRole="button"
-                accessibilityState={{ selected: tab === t }}
-                accessibilityLabel={`${t} menu`}
-                onPress={() => setTab(t)}
+                accessibilityLabel={`Open ${cafe.name} in Maps`}
+                onPress={() => Linking.openURL(mapsUrl)}
+                style={styles.mapsBtn}
               >
-                <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t}</Text>
+                <Text style={styles.mapsText}>Open in Maps</Text>
               </TouchableOpacity>
-            ))}
+            ) : null}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Show the meal card to cafe staff"
+              onPress={() => setCardOpen(true)}
+              style={styles.cardBtn}
+            >
+              <Text style={styles.cardText}>Show this card to cafe staff</Text>
+            </TouchableOpacity>
           </View>
-          {dishes.length === 0 ? (
-            <Text style={styles.muted}>Nothing listed under {tab}.</Text>
-          ) : (
-            dishes.map((d, i) => {
-              const picked = selected.some((s) => s.name === d.name);
-              return (
+        ) : null}
+
+        {cafe.hasMenu && dishCount > 0 ? (
+          <View style={styles.menu}>
+            <Text style={styles.sectionTitle}>Menu</Text>
+            <View style={styles.tabs}>
+              {MEAL_TABS.map((t) => (
                 <TouchableOpacity
-                  key={`${d.name}-${i}`}
-                  style={[styles.dish, picked && styles.dishPicked]}
+                  key={t}
+                  style={[styles.tab, tab === t && styles.tabActive]}
                   activeOpacity={0.85}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: picked }}
-                  accessibilityLabel={`${d.name}, ${formatPHP(d.price)}`}
-                  onPress={() => toggleDish(d)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: tab === t }}
+                  accessibilityLabel={`${t} menu`}
+                  onPress={() => setTab(t)}
                 >
-                  <View style={[styles.checkbox, picked && styles.checkboxPicked]}>
-                    {picked ? <Text style={styles.checkboxTick}>✓</Text> : null}
-                  </View>
-                  <View style={styles.dishText}>
-                    <Text style={styles.dishName}>{d.name}</Text>
-                    {d.description && d.description !== 'No description available — yet.' ? (
-                      <Text style={styles.dishDesc} numberOfLines={2}>{d.description}</Text>
-                    ) : null}
-                  </View>
-                  <Text style={styles.dishPrice}>{formatPHP(d.price)}</Text>
+                  <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t}</Text>
                 </TouchableOpacity>
-              );
-            })
-          )}
-        </View>
-      ) : null}
+              ))}
+            </View>
+            {dishes.length === 0 ? (
+              <Text style={styles.muted}>Nothing listed under {tab}.</Text>
+            ) : (
+              dishes.map((d, i) => {
+                const picked = selected.some((s) => s.name === d.name);
+                return (
+                  <TouchableOpacity
+                    key={`${d.name}-${i}`}
+                    style={[styles.dish, picked && styles.dishPicked]}
+                    activeOpacity={0.85}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: picked }}
+                    accessibilityLabel={`${d.name}, ${formatPHP(d.price)}`}
+                    onPress={() => toggleDish(d)}
+                  >
+                    <View style={[styles.checkbox, picked && styles.checkboxPicked]}>
+                      {picked ? <Text style={styles.checkboxTick}>✓</Text> : null}
+                    </View>
+                    <View style={styles.dishText}>
+                      <Text style={styles.dishName}>{d.name}</Text>
+                      {d.description && d.description !== 'No description available — yet.' ? (
+                        <Text style={styles.dishDesc} numberOfLines={2}>{d.description}</Text>
+                      ) : null}
+                    </View>
+                    <Text style={styles.dishPrice}>{formatPHP(d.price)}</Text>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </View>
+        ) : null}
 
-      {selected.length > 0 ? (
-        <Text style={styles.selectionTotal}>
-          {selected.length} {selected.length === 1 ? 'dish' : 'dishes'} · {formatPHP(selectedDishTotal(selected))}
-        </Text>
-      ) : null}
+        {selected.length > 0 ? (
+          <Text style={styles.selectionTotal}>
+            {selected.length} {selected.length === 1 ? 'dish' : 'dishes'} · {formatPHP(selectedDishTotal(selected))}
+          </Text>
+        ) : null}
 
-      {savedId ? (
+        {savedId ? (
+          <TouchableOpacity
+            style={[styles.unsaveBtn, arming && styles.unsaveArmed]}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={arming ? 'Confirm remove cafe' : 'Remove saved cafe'}
+            onPress={onUnsave}
+            disabled={busy}
+          >
+              <Text style={styles.unsaveText}>
+                {busy ? 'Removing…' : arming ? 'Tap again to remove' : 'Saved — tap to remove'}
+              </Text>
+          </TouchableOpacity>
+        ) : (
+          <GradientCTA
+            variant="app"
+            title={selected.length > 0 ? `Save ${selected.length} ${selected.length === 1 ? 'dish' : 'dishes'}` : 'Save cafe'}
+            loadingTitle="Saving…"
+            loading={busy}
+            onPress={onSave}
+            accessibilityLabel="Save selected dishes"
+          />
+        )}
+        <StatusBar style="auto" />
+      </ScrollView>
+
+      <MealCard
+        visible={cardOpen}
+        restaurantName={cafe.name}
+        restaurantLocation={cafe.location}
+        items={cardItems}
+        onClose={() => setCardOpen(false)}
+      />
+    </>
+  );
+}
+
+/**
+ * MealCard — native sheet for the card shown to cafe staff.
+ *
+ * Web parity: `src/app/saved-meals/components/MealCardPopup.tsx` renders the
+ * blue header ("Tarana Eats" + "Show this card to cafe staff for
+ * confirmation."), the cafe name and location, one row per dish with
+ * "₱price x quantity" beside a blue line total, and a footer with
+ * "Selected Items (n)", "Total: ₱N" and the valid-until date. The web card
+ * also closes on "Mark as Used" — that writes nothing on mobile (no server
+ * call behind it) and the row stays saved, so the sheet simply closes; the
+ * action would be a lie without a write.
+ *
+ * Sheet grammar copied from ActivitySheet: transparent backdrop, slide-up
+ * animation, drag handle, and a dismiss target covering the whole backdrop,
+ * so a tap anywhere outside closes. Same primitives, same look.
+ */
+function MealCard({
+  visible,
+  restaurantName,
+  restaurantLocation,
+  items,
+  onClose,
+}: {
+  visible: boolean;
+  restaurantName: string;
+  restaurantLocation: string;
+  items: MealCardItem[];
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      accessibilityViewIsModal
+    >
+      <View style={styles.backdrop}>
         <TouchableOpacity
-          style={[styles.unsaveBtn, arming && styles.unsaveArmed]}
-          activeOpacity={0.85}
+          style={styles.dismiss}
+          activeOpacity={1}
           accessibilityRole="button"
-          accessibilityLabel={arming ? 'Confirm remove cafe' : 'Remove saved cafe'}
-          onPress={onUnsave}
-          disabled={busy}
-        >
-            <Text style={styles.unsaveText}>
-              {busy ? 'Removing…' : arming ? 'Tap again to remove' : 'Saved — tap to remove'}
-            </Text>
-        </TouchableOpacity>
-      ) : (
-        <GradientCTA
-          variant="app"
-          title={selected.length > 0 ? `Save ${selected.length} ${selected.length === 1 ? 'dish' : 'dishes'}` : 'Save cafe'}
-          loadingTitle="Saving…"
-          loading={busy}
-          onPress={onSave}
-          accessibilityLabel="Save selected dishes"
+          accessibilityLabel="Close meal card"
+          onPress={onClose}
         />
-      )}
-      <StatusBar style="auto" />
-    </ScrollView>
+        <View style={styles.card}>
+          {/* ActivitySheet's drag handle, so this sheet announces itself as
+              the same kind of surface. It sits on white above the blue
+              header, which is what makes the sheet read as a sheet. */}
+          <View style={styles.cardHandleHit}>
+            <View style={styles.cardHandle} />
+          </View>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardHeaderText}>
+              <Text style={styles.cardBrand}>Tarana Eats</Text>
+              <Text style={styles.cardBrandSub}>Show this card to cafe staff for confirmation.</Text>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Close meal card"
+              onPress={onClose}
+              style={styles.cardCloseHit}
+            >
+              <Text style={styles.cardClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.cardBody}>
+            <Text style={styles.cardCafe}>{restaurantName}</Text>
+            <Text style={styles.cardLocation}>{restaurantLocation}</Text>
+
+            {items.length === 0 ? (
+              <Text style={styles.cardEmpty}>No dishes saved on this meal yet.</Text>
+            ) : (
+              items.map((item, i) => (
+                <View key={`${item.name}-${i}`} style={styles.cardRow}>
+                  <View style={styles.cardRowText}>
+                    <Text style={styles.cardDishName}>{item.name}</Text>
+                    <Text style={styles.cardDishMeta}>
+                      {formatPHP(item.price) ?? '—'} x {item.quantity}
+                    </Text>
+                  </View>
+                  <Text style={styles.cardLineTotal}>{formatPHP(item.lineTotal) ?? '—'}</Text>
+                </View>
+              ))
+            )}
+          </View>
+
+          <View style={styles.cardFooter}>
+            <View style={styles.cardFooterRow}>
+              <Text style={styles.cardFooterTotal}>
+                Selected Items ({mealCardDishCount(items)}) · Total: {formatPHP(mealCardTotal(items)) ?? '₱0'}
+              </Text>
+              <Text style={styles.cardFooterValid}>Valid until {mealCardValidUntil()}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -331,4 +505,86 @@ const styles = StyleSheet.create({  root: { flex: 1, backgroundColor: '#F2F2F7' 
   unsaveBtn: { marginTop: 8, borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', paddingVertical: 14, alignItems: 'center' },
   unsaveArmed: { backgroundColor: '#fef2f2', borderColor: '#dc2626' },
   unsaveText: { color: '#374151', fontSize: 15, fontWeight: '600' },
+  // "Open in Maps" — the one red-bordered action, same treatment as
+  // ActivitySheet's Location button so the two are recognizable as siblings.
+  mapsBtn: {
+    marginTop: 4,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    paddingVertical: 14,
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  mapsText: { color: BLUE, fontSize: 15, fontWeight: '600' },
+  // Meal-card action — the blue filled CTA, one step below the primary
+  // save CTA in weight so the two are never confused for each other.
+  cardBtn: {
+    marginTop: 4,
+    borderRadius: 16,
+    backgroundColor: BLUE,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cardText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
+  // Meal card sheet — ActivitySheet's backdrop/handle grammar with this
+  // sheet's own inner card (blue header, dish rows, totals footer).
+  backdrop: { flex: 1, backgroundColor: 'rgba(17, 24, 39, 0.4)', justifyContent: 'flex-end' },
+  dismiss: { flex: 1 },
+  card: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 24,
+    maxHeight: '85%',
+  },
+  cardHandleHit: { alignItems: 'center', paddingVertical: 8 },
+  cardHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#e5e7eb' },
+  cardHeader: {
+    backgroundColor: BLUE,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  cardHeaderText: { flex: 1, gap: 2 },
+  cardBrand: { color: '#ffffff', fontSize: 18, fontWeight: '700' },
+  cardBrandSub: { color: 'rgba(255, 255, 255, 0.9)', fontSize: 13 },
+  cardCloseHit: { padding: 4 },
+  cardClose: { color: '#ffffff', fontSize: 18, fontWeight: '700' },
+  cardBody: { paddingHorizontal: 16, paddingTop: 16, gap: 8 },
+  cardCafe: { fontSize: 22, fontWeight: '700', color: '#111827' },
+  cardLocation: { fontSize: 13, color: '#6b7280', marginBottom: 4 },
+  cardEmpty: { fontSize: 13, color: '#6b7280' },
+  // One row per dish, matching the detail's own dish row (white card, 12
+  // radius, 12 pad) so the sheet reads as the same surface, not a new one.
+  cardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    padding: 12,
+  },
+  cardRowText: { flex: 1, gap: 2 },
+  cardDishName: { fontSize: 15, fontWeight: '600', color: '#111827' },
+  cardDishMeta: { fontSize: 13, color: '#6b7280', fontVariant: ['tabular-nums'] },
+  cardLineTotal: { fontSize: 18, fontWeight: '700', color: BLUE, fontVariant: ['tabular-nums'] },
+  cardFooter: {
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+    gap: 4,
+  },
+  cardFooterRow: { gap: 2 },
+  cardFooterTotal: { fontSize: 14, fontWeight: '700', color: '#111827', fontVariant: ['tabular-nums'] },
+  cardFooterValid: { fontSize: 13, color: '#6b7280' },
 });
