@@ -51,5 +51,12 @@ module.exports = {
     '^tarana-web/(.*)$': '<rootDir>/../src/lib/$1',
     '^tarana-web$': '<rootDir>/../src/lib',
     '^zod$': '<rootDir>/../node_modules/zod',
+    // SDK 57 ships TypeScript source as the legacy entry point's default and
+    // no mobile spec writes files, so the require parses as raw ESM and dies
+    // on Linux. Map it to the shared stub, the same way the root config does
+    // for the same reason. See jest.expoFileSystemMock.js for why a transform
+    // was tried first and does not close.
+    '^expo-file-system/legacy$': '<rootDir>/../jest.expoFileSystemMock.js',
+    '^expo-file-system$': '<rootDir>/../jest.expoFileSystemMock.js',
   },
 };
