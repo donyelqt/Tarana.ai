@@ -24,19 +24,6 @@ import type { PlanInput } from '../data';
 
 const MODEL_CONTEXT = 4096;
 
-/** Diagnostic: absolute path this module's `./modelManager` spec resolves to. */
-function resolveModelManagerSpec(): string {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require.resolve('./modelManager');
-  } catch (e: unknown) {
-    return `UNRESOLVED: ${String(e)}`;
-  }
-}
-
-/** Diagnostic: module-scope identity, evaluated once at import time. */
-console.log('[PROBE-A] module scope: modelManager file =', resolveModelManagerSpec());
-
 /** Minimal JSON-schema subset llama.rn accepts for grammar-constrained sampling. */
 const sectionJsonSchema = {
   type: 'object',
@@ -112,31 +99,6 @@ export async function generateWithLlama(
   input: PlanInput,
   onProgress?: (message: string) => void
 ): Promise<LocalGenerationResult> {
-  // Diagnostic only: is the imported model manager the jest double or the real one?
-  let identity = 'REAL (getModelStatus is a real function)';
-  let sourceHint = String(getModelStatus).slice(0, 160).replace(/\s+/g, ' ');
-  let hasGetModelPath = false;
-  let hasDownloadModel = false;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mm: unknown = require('./modelManager');
-    if (typeof mm === 'object' && mm !== null) {
-      hasGetModelPath = 'getModelPath' in mm;
-      hasDownloadModel = 'downloadModel' in mm;
-    }
-  } catch (e: unknown) {
-    sourceHint = `require threw: ${String(e)}`;
-  }
-  // The prompt.test.ts factory exports exactly initLlama-less set: isLlamaAvailable,
-  // getModelStatus, getModelPath. The real module additionally exports
-  // downloadModel/cancelDownload/deleteModel.
-  if (hasDownloadModel) {
-    identity = 'REAL (downloadModel export present — real module)';
-  } else if (hasGetModelPath && !hasDownloadModel) {
-    identity = 'MOCK (only the 3 factory exports — the double)';
-  }
-  console.log('[PROBE-A] prompt.test.ts modelManager identity =', identity, '| hint:', sourceHint, '| hasGetModelPath=', hasGetModelPath, 'hasDownloadModel=', hasDownloadModel);
-  console.log('[PROBE-A] getModelStatus source =', sourceHint.slice(0, 200));
   if (!isLlamaAvailable()) throw new Error('The local model engine is unavailable in this build.');
   const status = await getModelStatus();
   if (status.state !== 'ready' || !status.path) {
