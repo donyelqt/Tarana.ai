@@ -183,15 +183,20 @@ const MEAL_TYPE_LABELS: Record<WebMealType, string> = {
  * - `300-500` — `meal.price > 300 && meal.price <= 500`
  * - `500+`    — `meal.price > 500`
  *
- * A band is a closed-open/half-open interval on each end, so the seams are
- * the values the web page uses: 300 belongs to the first band, 500 to the
- * second. Any price below 100 belongs to no band — web has no "under 100"
- * band, so inventing one here would put a row in a bucket web cannot show.
+ * Only the first band's LOWER edge is inclusive. The upper two exclude it,
+ * so a boundary price lands in exactly one band: 300 belongs to `100-300`,
+ * 500 to `300-500`. `minInclusive` is data rather than a baked-in `+1`
+ * trick because the exclusion is the point — the seams are the values the
+ * web page uses, and a band that double-counted 300 would surface a row
+ * under both of the lower bands on mobile while web shows it in one.
+ *
+ * Any price below 100 belongs to no band: web has no "under 100" band, so
+ * inventing one here would put a row in a bucket web cannot show.
  */
 export const BUDGET_BANDS = [
-  { value: '100-300', label: '₱100-300', min: 100, max: 300 },
-  { value: '300-500', label: '₱300-500', min: 300, max: 500 },
-  { value: '500+', label: '₱500+', min: 500, max: null },
+  { value: '100-300', label: '₱100-300', min: 100, minInclusive: true, max: 300 },
+  { value: '300-500', label: '₱300-500', min: 300, minInclusive: false, max: 500 },
+  { value: '500+', label: '₱500+', min: 500, minInclusive: false, max: null },
 ] as const;
 
 export type BudgetBand = (typeof BUDGET_BANDS)[number];
@@ -295,8 +300,13 @@ export function savedMealMatchesBudget(meal: LocalMeal, filter: string): boolean
   // An unrecognized band id cannot match anything; offering it would be a
   // dead control, and matching everything would be a silent no-op filter.
   if (!band) return false;
-  const max = band.max ?? Infinity;
-  return meal.price >= band.min && meal.price <= max;
+  const aboveMin = band.minInclusive ? meal.price >= band.min : meal.price > band.min;
+  // The upper edge is inclusive and absent on the open-ended top band, so
+  // 900 lands in '500+' only and 300 lands in '100-300' only. Without this
+  // the matcher tests just the lower bound and every band also swallows the
+  // bands above it.
+  const belowMax = band.max === null || meal.price <= band.max;
+  return aboveMin && belowMax;
 }
 
 /**
