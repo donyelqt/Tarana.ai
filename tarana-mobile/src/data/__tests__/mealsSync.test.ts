@@ -56,6 +56,44 @@ jest.mock('../../llm/modelManager', () => ({
 }), { virtual: true });
 
 /**
+ * Diagnostic (temporary): print the identity this spec's relative mock
+ * resolves to, so it can be compared with the failing prompt.test.ts side.
+ */
+describe('PROBE-B mock identity', () => {
+  it('prints the modelManager mock identity', async () => {
+    const mod: unknown = jest.requireMock('../../llm/modelManager');
+    const statusFn = mod as unknown;
+    let identity = 'UNKNOWN SHAPE';
+    if (typeof statusFn === 'object' && statusFn !== null && 'getModelStatus' in statusFn) {
+      const fn = (statusFn as { getModelStatus: unknown }).getModelStatus;
+      const inner = fn as unknown;
+      identity =
+        typeof inner === 'function' && '_isMockFunction' in inner
+          ? 'MOCK (getModelStatus is a jest mock fn)'
+          : typeof fn === 'function'
+            ? 'REAL/SOURCE-SHAPED (a plain function, not a jest mock wrapper)'
+            : 'NOT A FUNCTION';
+    }
+    let resolved = 'UNRESOLVED';
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      resolved = jest.requireMock('../../llm/modelManager') ? 'requireMock ok' : 'empty';
+    } catch (e: unknown) {
+      resolved = `UNRESOLVED: ${String(e)}`;
+    }
+    // The fingerprint: this spec's factory returns `path: null`, while the real
+    // module also exports downloadModel/cancelDownload/deleteModel. If the mock
+    // is the executed module, getModelPath is undefined here.
+    const hasGetModelPath = 'getModelPath' in (statusFn as object);
+    console.log(
+      '[PROBE-B] mealsSync mock identity =', identity, '|', resolved,
+      '| hasGetModelPath(REAL has it) =', hasGetModelPath,
+      '| getModelStatus source =', String(((statusFn as { getModelStatus?: unknown }).getModelStatus ?? '')).slice(0, 120)
+    );
+  });
+});
+
+/**
  * `../supabase` imports `expo-secure-store` (a native module whose package
  * entry jest cannot transform) and `tarana-web/data/supabaseClient`, which
  * reads `process.env.NEXT_PUBLIC_*` at load. Neither is on the export path —
