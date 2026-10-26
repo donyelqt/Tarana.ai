@@ -44,6 +44,14 @@ jest.mock(
  * The model manager is a native boundary (llama.rn + FileSystem), so it is
  * replaced with a switchable double. The defaults force the state every
  * generation gate must reject: engine present, model absent on disk.
+ *
+ * `virtual: true` is required, not optional: it registers the factory against
+ * the resolved specifier so the double is the module that executes. Without
+ * it this registration can be silently skipped while the suite still passes
+ * on a developer machine (where the real module happens to reach the same
+ * honest rejection for a different reason), and only fails on CI. This is the
+ * same flag `sync`/`mealsSync`/`mealTypeMapping` use for their relative
+ * boundary mocks, so the whole suite now registers the same way.
  */
 const mockStatus = {
   available: true,
@@ -60,7 +68,7 @@ jest.mock('../modelManager', () => ({
     path: mockStatus.path,
   }),
   getModelPath: () => '/models/model.gguf',
-}));
+}), { virtual: true });
 
 const baseInput: PlanInput = {
   city: 'baguio',
