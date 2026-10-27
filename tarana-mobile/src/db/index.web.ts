@@ -227,3 +227,37 @@ export async function upsertImportedMeal(input: {
   meals.set(created.id, created);
   return created;
 }
+
+// ── Export → web id link ──────────────────────────────────
+
+/**
+ * The two tables that carry the import idempotency key `(source, source_id)`.
+ * Mirrors the native export in `index.ts`, where the doc comment explains why
+ * the web id has to be written back at all (a NULL `source_id` cannot match an
+ * import's ON CONFLICT, so the round trip would duplicate the row).
+ */
+export type ExportedTable = 'trips' | 'meals';
+
+/**
+ * In-memory twin of `index.ts`'s `linkExportedRow`: write the web id onto one
+ * local row, scoped by `id`, nothing else touched.
+ *
+ * `source` is left as it is, for the same reason as native — the export
+ * candidate set filters `source === 'local'`, and flipping it would hide the
+ * row from a later export. An unknown `id` is a no-op rather than a throw.
+ */
+export async function linkExportedRow(
+  table: ExportedTable,
+  id: string,
+  sourceId: string
+): Promise<void> {
+  if (table === 'trips') {
+    const trip = trips.get(id);
+    if (!trip) return;
+    trips.set(trip.id, { ...trip, source_id: sourceId });
+    return;
+  }
+  const meal = meals.get(id);
+  if (!meal) return;
+  meals.set(meal.id, { ...meal, source_id: sourceId });
+}

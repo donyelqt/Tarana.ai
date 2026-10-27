@@ -17,6 +17,7 @@
  */
 import * as SQLite from 'expo-sqlite';
 import * as TokenStorage from '../tokenStorage';
+import { parseStoredGoodFor } from './goodFor';
 
 const DB_NAME = 'tarana.db';
 const SCHEMA_VERSION = 3;
@@ -316,15 +317,7 @@ export async function deleteTrip(id: string, profileId: string): Promise<void> {
 // ── Meals ────────────────────────────────────────────────
 
 function toMeal(row: MealRow): LocalMeal {
-  let goodFor: string[] = [];
-  if (row.good_for) {
-    try {
-      const parsed: unknown = JSON.parse(row.good_for);
-      if (Array.isArray(parsed)) goodFor = parsed.filter((t): t is string => typeof t === 'string');
-    } catch {
-      goodFor = [];
-    }
-  }
+  const goodFor = parseStoredGoodFor(row.good_for);
   return {
     id: row.id,
     profile_id: row.profile_id,
@@ -433,4 +426,51 @@ export async function upsertImportedMeal(input: {
   );
   if (!row) throw new Error('Imported meal was not saved.');
   return toMeal(row);
+}
+
+// ── Export → web id link ──────────────────────────────────
+
+/** The two tables that carry the import idempotency key `(source, source_id)`. */
+export type ExportedTable = 'trips' | 'meals';
+
+/**
+ * Record the web id of an exported LOCAL row on that row (`source_id`).
+ *
+ * Why this exists: `upsertImportedTrip`/`upsertImportedMeal` dedupe on
+ * `(source, source_id)` with `ON CONFLICT(source, source_id)`, and SQLite
+ * treats NULLs as DISTINCT in a UNIQUE index, so a local row that was
+ * pushed to the web but kept `source_id IS NULL` can never match a later
+ * import of that same web row — the import inserts a SECOND row and the user
+ * sees the trip or meal twice. Writing the returned web id here is what
+ * closes that round trip.
+ *
+ * Scope, deliberately narrow:
+ * - `source` is NOT touched. The export candidate set filters
+ *   `source === 'local'`, so flipping it to 'web-import' would hide the row
+ *   from a later export while the idempotency key already converges a repeat
+ *   POST. `source_id` is the only column the import contract keys on.
+ * - Exactly one row is written, and ONLY that row: the `WHERE id = ?` is the
+ *   scoping, matching `deleteTrip`/`deleteMeal`'s shape. A row that no longer
+ *   exists is a no-op (0 changes), never a throw — the caller may be a
+ *   background sync whose row the user deleted meanwhile.
+ *
+ * Idempotent: re-linking the same (id, sourceId) writes the same value, so a
+ * retried export cannot produce a different row or a constraint failure.
+ *
+ * The table name is a closed union selected by the caller, NOT an arbitrary
+ * identifier: SQL identifiers cannot be bound as `?` parameters, so the name
+ * picks one of two STATIC statement strings written here. No caller input is
+ * ever interpolated into SQL, which is the file's security contract.
+ */
+export async function linkExportedRow(
+  table: ExportedTable,
+  id: string,
+  sourceId: string
+): Promise<void> {
+  const db = await getDb();
+  if (table === 'trips') {
+    await db.runAsync('UPDATE trips SET source_id = ? WHERE id = ?', sourceId, id);
+    return;
+  }
+  await db.runAsync('UPDATE meals SET source_id = ? WHERE id = ?', sourceId, id);
 }
