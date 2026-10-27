@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { getActiveProfileId, listTrips, deleteTrip, resolveWebImage, type LocalTrip } from '../data';
+import { getActiveProfileId, listTrips, deleteTrip, updateTrip, resolveWebImage, type LocalTrip } from '../data';
 import { formatDate, firstPayloadImage, TrafficBadge } from './ui';
+import {
+  draftFromTrip,
+  tripEditChanged,
+  tripEditError,
+  tripEditPayload,
+  type TripEditDraft,
+} from './tripEdit';
 import { activityTrafficLevel, isTrafficTag } from './tripTraffic';
 import Thumb from './Thumb';
 import ActivitySheet, { type SheetActivity } from './ActivitySheet';
@@ -58,6 +65,9 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
   const [error, setError] = useState<string | null>(null);
   const [arming, setArming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<TripEditDraft | null>(null);
+  const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<SheetActivity | null>(null);
 
   const load = useCallback(async () => {
@@ -96,6 +106,53 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
       setArming(false);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  /**
+   * Edit mode. Entering copies the row into a draft rather than editing it
+   * in place: a half-typed title must never sit in the row a back-tap
+   * would render, and leaving without saving discards the draft.
+   *
+   * Only the trip's own four fields are editable. `payload` — the generated
+   * itinerary body, day sections and all — is deliberately read-only, so an
+   * edit can never silently rewrite a generated plan (see tripEdit.ts).
+   */
+  const onEdit = () => {
+    if (!trip) return;
+    setError(null);
+    setDraft(draftFromTrip(trip));
+    setEditing(true);
+  };
+
+  const onCancelEdit = () => {
+    setDraft(null);
+    setEditing(false);
+  };
+
+  const onSave = async () => {
+    if (!trip || !draft) return;
+    const reason = tripEditError(draft);
+    if (reason) {
+      setError(reason);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const profileId = await getActiveProfileId();
+      if (!profileId) throw new Error('Create a profile first.');
+      const updated = await updateTrip(trip.id, profileId, tripEditPayload(draft));
+      // A null return means the row vanished under us (or belongs to another
+      // profile); leave edit mode rather than showing a form for a trip that
+      // is no longer the one on screen.
+      if (updated) setTrip(updated);
+      setDraft(null);
+      setEditing(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save trip.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -160,10 +217,75 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={styles.title}>{trip.title ?? 'Untitled trip'}</Text>
-      {heroUri ? <TripHero uri={heroUri} title={trip.title ?? 'Trip photo'} /> : null}
-      <Text style={styles.meta}>{[formatDate(trip.date), trip.budget].filter(Boolean).join(' · ') || 'No details'}</Text>
-      {trip.tags.length > 0 ? <Text style={styles.tags}>{trip.tags.join(', ')}</Text> : null}
+      {editing && draft ? (
+        <View style={styles.editForm}>
+          <Text style={styles.editLabel}>Title</Text>
+          <TextInput
+            style={styles.input}
+            value={draft.title}
+            onChangeText={(title) => setDraft({ ...draft, title })}
+            placeholder="Trip title"
+            accessibilityLabel="Trip title"
+          />
+          <Text style={styles.editLabel}>Date</Text>
+          <TextInput
+            style={styles.input}
+            value={draft.date}
+            onChangeText={(date) => setDraft({ ...draft, date })}
+            placeholder="YYYY-MM-DD"
+            accessibilityLabel="Trip date"
+          />
+          <Text style={styles.editLabel}>Budget</Text>
+          <TextInput
+            style={styles.input}
+            value={draft.budget}
+            onChangeText={(budget) => setDraft({ ...draft, budget })}
+            placeholder="5000"
+            keyboardType="numeric"
+            accessibilityLabel="Trip budget"
+          />
+          <Text style={styles.editLabel}>Tags</Text>
+          <TextInput
+            style={styles.input}
+            value={draft.tags}
+            onChangeText={(tags) => setDraft({ ...draft, tags })}
+            placeholder="Baguio, food trip"
+            accessibilityLabel="Trip tags, separated by commas"
+          />
+          <View style={styles.editActions}>
+            <TouchableOpacity
+              style={[styles.saveBtn, saving && styles.btnDisabled]}
+              activeOpacity={0.85}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel="Save trip"
+              onPress={() => void onSave()}
+            >
+              <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              activeOpacity={0.85}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel edit"
+              onPress={onCancelEdit}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+          {error ? <Text style={styles.editError}>{error}</Text> : null}
+        </View>
+      ) : (
+        <>
+          <Text style={styles.title}>{trip.title ?? 'Untitled trip'}</Text>
+          {heroUri ? <TripHero uri={heroUri} title={trip.title ?? 'Trip photo'} /> : null}
+          <Text style={styles.meta}>
+            {[formatDate(trip.date), trip.budget].filter(Boolean).join(' · ') || 'No details'}
+          </Text>
+          {trip.tags.length > 0 ? <Text style={styles.tags}>{trip.tags.join(', ')}</Text> : null}
+        </>
+      )}
 
       {form ? (
         <View style={styles.tiles}>
@@ -245,13 +367,27 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
         ))
       )}
 
+      {/* Edit sits above Delete and is hidden while the form is open, so
+          the screen never offers both an unfinished edit and a delete of
+          the trip being edited. */}
+      {editing ? null : (
+        <TouchableOpacity
+          style={styles.editBtn}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Edit trip"
+          onPress={onEdit}
+        >
+          <Text style={styles.editBtnText}>Edit trip</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity
         style={[styles.deleteBtn, arming && styles.deleteArmed]}
         activeOpacity={0.85}
         accessibilityRole="button"
         accessibilityLabel={arming ? 'Confirm delete trip' : 'Delete trip'}
         onPress={onDelete}
-        disabled={deleting}
+        disabled={deleting || editing}
       >
         <Text style={styles.deleteText}>
           {deleting ? 'Deleting…' : arming ? 'Tap again to delete' : 'Delete trip'}
@@ -284,6 +420,60 @@ function TripHero({ uri, title }: { uri: string; title: string }) {
 }
 
 const styles = StyleSheet.create({
+  editForm: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    gap: 6,
+    marginTop: 4,
+  },
+  editLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#111827',
+  },
+  editActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  saveBtn: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: BLUE,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  saveText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
+  cancelBtn: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  cancelText: { color: '#374151', fontSize: 15, fontWeight: '600' },
+  btnDisabled: { opacity: 0.6 },
+  editError: { fontSize: 13, color: '#dc2626', marginTop: 8 },
+  editBtn: {
+    marginTop: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    backgroundColor: '#ffffff',
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  editBtnText: { color: BLUE, fontSize: 15, fontWeight: '600' },
   root: { flex: 1, backgroundColor: '#F2F2F7' },
   content: { paddingHorizontal: 24, paddingVertical: 24, gap: 12 },
   center: { flex: 1, backgroundColor: '#F2F2F7', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 },

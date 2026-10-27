@@ -59,6 +59,7 @@ export async function signOut(): Promise<void> {
 
 export const listTrips = Db.listTripsByProfile;
 export const createTrip = Db.createTrip;
+export const updateTrip = Db.updateTrip;
 export const deleteTrip = Db.deleteTrip;
 export const upsertImportedTrip = Db.upsertImportedTrip;
 

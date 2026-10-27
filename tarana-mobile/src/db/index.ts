@@ -309,6 +309,35 @@ export async function upsertImportedTrip(input: {
   return toTrip(row);
 }
 
+/**
+ * Edit a local trip's own fields. Web-import rows keep their body: this
+ * updates title/date/budget/tags only and leaves `payload` (the itinerary
+ * JSON) to the import/regenerate paths, so an edit here can never silently
+ * rewrite a generated itinerary.
+ *
+ * A missing id is a no-op rather than an error, matching deleteTrip: both
+ * are scoped by (id, profile) so a row belonging to another profile is
+ * simply not found.
+ */
+export async function updateTrip(
+  id: string,
+  profileId: string,
+  input: { title?: string | null; date?: string | null; budget?: string | null; tags?: string[] }
+): Promise<LocalTrip | null> {
+  const db = await getDb();
+  await db.runAsync(
+    'UPDATE trips SET title = ?, date = ?, budget = ?, tags = ? WHERE id = ? AND profile_id = ?',
+    input.title ?? null,
+    input.date ?? null,
+    input.budget ?? null,
+    JSON.stringify(input.tags ?? []),
+    id,
+    profileId
+  );
+  const row = await db.getFirstAsync<TripRow>('SELECT * FROM trips WHERE id = ? AND profile_id = ?', id, profileId);
+  return row ? toTrip(row) : null;
+}
+
 export async function deleteTrip(id: string, profileId: string): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM trips WHERE id = ? AND profile_id = ?', id, profileId);
