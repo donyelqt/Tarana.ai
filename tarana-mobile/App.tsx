@@ -9,6 +9,7 @@ import SavedTrips from './src/screens/SavedTrips';
 import TripDetail from './src/screens/TripDetail';
 import SavedCafes from './src/screens/SavedCafes';
 import CafeDetail from './src/screens/CafeDetail';
+import SavedMealDetail from './src/screens/SavedMealScreen';
 import Eats from './src/screens/Eats';
 import Plan from './src/screens/Plan';
 import Explore from './src/screens/Explore';
@@ -38,6 +39,7 @@ export type RootStackParamList = {
   TripDetail: { id: string };
   SavedCafes: undefined;
   CafeDetail: { name: string };
+  SavedMealDetail: { id: string };
   Eats: undefined;
   Plan: undefined;
   Explore: undefined;
@@ -231,6 +233,7 @@ export default function App() {
           }}
         />
         <Stack.Screen name="CafeDetail" component={CafeDetail} options={{ title: 'Cafe' }} />
+        <Stack.Screen name="SavedMealDetail" component={SavedMealDetail} options={{ title: 'Meal' }} />
         <Stack.Screen
           name="Eats"
           component={Eats}
