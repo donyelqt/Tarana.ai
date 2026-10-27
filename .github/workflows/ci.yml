@@ -40,7 +40,15 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          # Node 22, not 20: the mobile test suite exercises a REAL SQLite
+          # engine (`node:sqlite`) through an `expo-sqlite` double, because
+          # UNIQUE/NULL semantics are the whole point of the convergence fix
+          # and a behavioural mock cannot reproduce the duplication it
+          # prevents. `node:sqlite` was added in Node 22.5 and does not exist
+          # on Node 20, so the suite would not even collect here — it failed
+          # CI with "No such built-in module: node:sqlite". Node 22 is inside
+          # the repo's declared `engines` range (>=18.17.0 <23).
+          node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
