@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { getActiveProfileId, listMeals, exportLocalMeals, type ExportSummary, type LocalMeal } from '../data';
+import { getActiveProfileId, listMeals, deleteMeal, exportLocalMeals, type ExportSummary, type LocalMeal } from '../data';
 import {
   ALL_FILTER,
   BUDGET_OPTIONS,
@@ -16,6 +16,19 @@ import {
 } from './savedMeals';
 import { formatPHP, GRADIENT } from './ui';
 import { ChevronLeftIcon } from './icons';
+import {
+  idleRowDelete,
+  nextArmedId,
+  tapDeletes,
+  afterDelete,
+  rowDeleteErrorMessage,
+  rowDeleteLabel,
+  rowDeleteCaption,
+  rowDeleteState,
+  ROW_DELETE_FALLBACK_REASON,
+  mealRow,
+  type RowDeleteModel,
+} from './savedRowDelete';
 
 /**
  * SavedCafes — the active profile's saved meals from SQLite (§8).
@@ -34,6 +47,7 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
   const [budget, setBudget] = useState<string>(ALL_FILTER);
   const [cuisine, setCuisine] = useState<string>(ALL_FILTER);
   const [error, setError] = useState<string | null>(null);
+  const [deleteModel, setDeleteModel] = useState<RowDeleteModel>(idleRowDelete);
   const [exporting, setExporting] = useState(false);
   const [exportSummary, setExportSummary] = useState<ExportSummary | null>(null);
 
@@ -84,6 +98,47 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  /**
+   * Per-row delete: first tap arms, second tap deletes. Same two-step
+   * contract as SavedTrips' delete (SavedTrips.tsx:116-160) — the rules
+   * themselves live in savedRowDelete.ts so both saved lists share ONE
+   * definition and the "never deletes on the first tap" part is covered
+   * by headless tests.
+   *
+   * LOCAL ONLY, same as the trips side: this removes the SQLite row and
+   * nothing else, so a row already exported to web comes back on the next
+   * import. Web-side delete propagation is a separate change with its own
+   * auth and idempotency questions.
+   *
+   * On failure the row stays put and the reason reaches the error line,
+   * because a silent no-op reads as a broken control.
+   */
+  const onDeleteMeal = useCallback(
+    async (meal: LocalMeal) => {
+      if (!tapDeletes(deleteModel, meal.id)) {
+        setDeleteModel({ ...deleteModel, armedId: nextArmedId(deleteModel, meal.id) });
+        return;
+      }
+      setDeleteModel({ ...deleteModel, armedId: null, deletingId: meal.id });
+      let deleted = false;
+      try {
+        const profileId = await getActiveProfileId();
+        if (!profileId) throw new Error('No active profile; the row was not removed.');
+        await deleteMeal(meal.id, profileId);
+        deleted = true;
+        // Refresh from the seam rather than splicing state: the list is
+        // already re-read on focus, and a local filter would drift from
+        // what SQLite actually holds.
+        await load();
+      } catch (e) {
+        setError(rowDeleteErrorMessage(e, ROW_DELETE_FALLBACK_REASON));
+      } finally {
+        setDeleteModel(afterDelete(deleteModel, deleted ? 'deleted' : 'failed'));
+      }
+    },
+    [deleteModel, load]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -191,12 +246,19 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
       <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
+        // Saved rows are RECORDS (what the user keeps), while CafeDetail is
+        // catalog browsing — a saved row must show what was saved, its total
+        // and its actions, which is SavedMealDetail's job. Re-picking dishes
+        // stays CafeDetail's, reachable from Eats.
+        renderItem={({ item }) => {
+          const del = rowDeleteState(deleteModel, item.id);
+          return (
+          <View>
           <TouchableOpacity
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel={`Open ${item.cafe_name}`}
-            onPress={() => navigation.navigate('CafeDetail', { name: item.cafe_name })}
+            accessibilityLabel={`View saved meal for ${item.cafe_name}`}
+            onPress={() => navigation.navigate('SavedMealDetail', { id: item.id })}
             className="mb-3 rounded-lg bg-card p-3"
           >
             <Text className="text-base font-semibold text-foreground">{item.cafe_name}</Text>
@@ -207,7 +269,23 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
               <Text className="mt-1 text-xs text-muted-foreground">{item.location}</Text>
             ) : null}
           </TouchableOpacity>
-        )}
+          {/* Sibling of the row, not a child: nesting two pressables is what
+              makes a delete arm the row (or open the row) by accident. */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            disabled={del === 'deleting'}
+            accessibilityRole="button"
+            accessibilityLabel={rowDeleteLabel(mealRow(item), del)}
+            onPress={() => void onDeleteMeal(item)}
+            className={del === 'armed' ? 'mb-3 self-end rounded-full border border-destructive px-3 py-1' : 'mb-3 self-end rounded-full border border-border px-3 py-1'}
+          >
+            <Text className={del === 'armed' ? 'text-xs font-semibold text-destructive' : 'text-xs text-muted-foreground'}>
+              {rowDeleteCaption(del) ?? 'Remove'}
+            </Text>
+          </TouchableOpacity>
+          </View>
+          );
+        }}
         // Progress + summary live below the list, matching the card/row
         // language above rather than introducing a modal. Nothing is hidden
         // behind a tap: the counts the seam returns are the whole report.
