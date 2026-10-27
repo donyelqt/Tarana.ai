@@ -114,15 +114,22 @@ const mockWithMobileAuth = () =>
 
 /**
  * SQLite double: one row-set per test, driven through `listMealsByProfile`.
- * Everything else the seam might call stays absent so an accidental use
- * fails loudly rather than silently doing nothing.
+ * `linkExportedRow` is present because the export path now writes the web id
+ * back to the row after a successful POST; everything else the seam might call
+ * stays absent so an accidental use fails loudly rather than silently doing
+ * nothing.
  */
 jest.mock('../../db', () => ({
   listMealsByProfile: jest.fn(),
+  linkExportedRow: jest.fn(async () => {}),
 }));
 const mockListMealsByProfile = () =>
   (jest.requireMock('../../db') as { listMealsByProfile: jest.Mock }).listMealsByProfile as jest.Mock<
     (profileId: string) => Promise<LocalMeal[]>
+  >;
+const mockLinkExportedRow = () =>
+  (jest.requireMock('../../db') as { linkExportedRow: jest.Mock }).linkExportedRow as jest.Mock<
+    (table: 'trips' | 'meals', id: string, sourceId: string) => Promise<void>
   >;
 
 const PROFILE_ID = 'profile-1';
@@ -238,22 +245,21 @@ describe('exportLocalMeals — what gets exported', () => {
     expect(captured[0].headers['Idempotency-Key']).toContain('meal-local-1');
   });
 
-  it('never rewrites the exported row as web-import, so it re-exports', async () => {
-    // The Db mock exposes ONLY the read, so any local write attempt throws
-    // loudly instead of silently flipping `source` to 'web-import' and
-    // hiding the meal from a later export.
+  it('marks the exported row web-import, so it is not re-POSTed', async () => {
+    // The write-back is what closes the local → web → local round trip: the
+    // import conflicts on `(source, source_id)` and always inserts
+    // `source = 'web-import'`, so a row still marked 'local' can never match
+    // and a later import inserts a second copy. Here the Db mock records the
+    // call; the marking's own semantics are pinned in
+    // `exportImportConvergence.test.ts` on a real engine.
     mockListMealsByProfile().mockResolvedValue([localMeal()]);
     const captured = mockFetch(() => SAVED_OK);
 
     const first = await exportLocalMeals(PROFILE_ID);
-    const second = await exportLocalMeals(PROFILE_ID);
 
     expect(first.exported).toBe(1);
-    // The idempotency key makes the second run converge to the same web row
-    // rather than needing a local write to keep it a candidate.
-    expect(second.exported).toBe(1);
-    expect(captured).toHaveLength(2);
-    expect(captured[0].headers['Idempotency-Key']).toBe(captured[1].headers['Idempotency-Key']);
+    expect(mockLinkExportedRow()).toHaveBeenCalledWith('meals', 'meal-local-1', 'web-meal-1');
+    expect(captured).toHaveLength(1);
   });
 
   it('reports nothing to do without touching the network', async () => {

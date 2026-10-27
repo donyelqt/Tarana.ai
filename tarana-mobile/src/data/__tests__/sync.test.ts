@@ -113,15 +113,22 @@ const mockWithMobileAuth = () =>
 
 /**
  * SQLite double: one row-set per test, driven through `listTripsByProfile`.
- * Everything else the seam might call stays absent so an accidental use
- * fails loudly rather than silently doing nothing.
+ * `linkExportedRow` is present because the export path now writes the web id
+ * back to the row after a successful POST; everything else the seam might call
+ * stays absent so an accidental use fails loudly rather than silently doing
+ * nothing.
  */
 jest.mock('../../db', () => ({
   listTripsByProfile: jest.fn(),
+  linkExportedRow: jest.fn(async () => {}),
 }));
 const mockListTripsByProfile = () =>
   (jest.requireMock('../../db') as { listTripsByProfile: jest.Mock }).listTripsByProfile as jest.Mock<
     (profileId: string) => Promise<LocalTrip[]>
+  >;
+const mockLinkExportedRow = () =>
+  (jest.requireMock('../../db') as { linkExportedRow: jest.Mock }).linkExportedRow as jest.Mock<
+    (table: 'trips' | 'meals', id: string, sourceId: string) => Promise<void>
   >;
 
 const PROFILE_ID = 'profile-1';

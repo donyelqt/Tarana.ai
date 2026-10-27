@@ -98,13 +98,24 @@ jest.mock('../../auth', () => ({
  * hands back the meal objects as written, so a test that wants the STORAGE
  * shape (`good_for` as a JSON string) must say so explicitly — that is how
  * the bug survived here in the first place.
+ *
+ * `linkExportedRow` is present because the export path now writes the web id
+ * back to the row after a successful POST. It resolves without tracking
+ * anything: this suite asserts the REQUEST the seam builds, and the write-back
+ * is the db layer's contract, covered by `linkExportedRow.test.ts` and
+ * `exportImportConvergence.test.ts`.
  */
 jest.mock('../../db', () => ({
   listMealsByProfile: jest.fn(),
+  linkExportedRow: jest.fn(async () => {}),
 }));
 const mockListMealsByProfile = () =>
   (jest.requireMock('../../db') as { listMealsByProfile: jest.Mock }).listMealsByProfile as jest.Mock<
     (profileId: string) => Promise<LocalMeal[]>
+  >;
+const mockLinkExportedRow = () =>
+  (jest.requireMock('../../db') as { linkExportedRow: jest.Mock }).linkExportedRow as jest.Mock<
+    (table: 'trips' | 'meals', id: string, sourceId: string) => Promise<void>
   >;
 
 const PROFILE_ID = 'profile-1';
