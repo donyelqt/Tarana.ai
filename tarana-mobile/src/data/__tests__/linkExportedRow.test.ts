@@ -14,9 +14,12 @@
  * What is pinned here, and why each is a contract:
  * 1. It writes `source_id` on the ONE row addressed by `id`, leaving every
  *    other row untouched — same scoping as `deleteTrip`/`deleteMeal`.
- * 2. It never writes `source`. The export candidate set filters
- *    `source === 'local'`; flipping it would hide the row from a later export
- *    while the idempotency key already converges a repeat POST.
+ * 2. It ALSO writes `source: 'web-import'`. `source_id` alone does NOT
+ *    converge: the import inserts `source = 'web-import'` and conflicts on
+ *    `(source, source_id)`, so a linked row still marked 'local' never
+ *    matches that conflict and the import inserts a second copy anyway. The
+ *    consequence — the marked row leaves the `source === 'local'` candidate
+ *    set — is correct, because the row IS on the web now.
  * 3. It is a no-op on an unknown `id`, never a throw. A background sync can
  *    outlive the row the user deleted while it was in flight.
  * 4. It is idempotent: re-linking the same value changes nothing and cannot
@@ -34,7 +37,7 @@
  */
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DatabaseSync } from 'node:sqlite';
-import { getDb, linkExportedRow, upsertImportedTrip } from '../../db';
+import { getDb, linkExportedRow, upsertImportedMeal, upsertImportedTrip } from '../../db';
 import type { ExportedTable } from '../../db';
 
 /**
@@ -100,6 +103,11 @@ jest.mock('expo-sqlite', () => {
       id TEXT PRIMARY KEY NOT NULL,
       profile_id TEXT NOT NULL,
       cafe_name TEXT NOT NULL,
+      meal_type TEXT NULL,
+      price REAL NULL,
+      good_for TEXT NULL,
+      location TEXT NULL,
+      items TEXT NULL,
       source TEXT NOT NULL DEFAULT 'local',
       source_id TEXT NULL,
       imported_at TEXT NULL,
@@ -182,7 +190,7 @@ describe('linkExportedRow — writes the web id on the one row asked for', () =>
     await linkExportedRow('trips', 'trip-local-1', 'web-trip-1');
 
     expect(rows('trips')).toEqual([
-      { id: 'trip-local-1', source: 'local', source_id: 'web-trip-1' },
+      { id: 'trip-local-1', source: 'web-import', source_id: 'web-trip-1' },
     ]);
   });
 
@@ -191,7 +199,7 @@ describe('linkExportedRow — writes the web id on the one row asked for', () =>
     await linkExportedRow('meals', 'meal-local-1', 'web-meal-1');
 
     expect(rows('meals')).toEqual([
-      { id: 'meal-local-1', source: 'local', source_id: 'web-meal-1' },
+      { id: 'meal-local-1', source: 'web-import', source_id: 'web-meal-1' },
     ]);
   });
 
@@ -204,18 +212,21 @@ describe('linkExportedRow — writes the web id on the one row asked for', () =>
 
     expect(rows('trips')).toEqual([
       { id: 'trip-1', source: 'local', source_id: null },
-      { id: 'trip-2', source: 'local', source_id: 'web-2' },
+      { id: 'trip-2', source: 'web-import', source_id: 'web-2' },
       { id: 'trip-3', source: 'local', source_id: null },
     ]);
   });
 
-  it('does not touch the source column, so the row stays an export candidate', async () => {
+  it('marks the row web-import, so the import conflict can match it', async () => {
     seed('trips', 'trip-local-1');
     await linkExportedRow('trips', 'trip-local-1', 'web-trip-1');
 
     const run = issued().find((r) => r.sql.startsWith('UPDATE'));
-    expect(run?.sql).toContain('SET source_id = ?');
-    expect(run?.sql).not.toContain('source =');
+    // The marking is not incidental: the import inserts
+    // `source = 'web-import'` and conflicts on `(source, source_id)`, so a
+    // row left as 'local' can never match and a second copy gets inserted.
+    expect(run?.sql).toMatch(/SET source = \?, source_id = \? WHERE id = \?/);
+    expect(run?.params).toEqual(['web-import', 'web-trip-1', 'trip-local-1']);
   });
 
   it('addresses both tables of the same id independently', async () => {
@@ -225,7 +236,7 @@ describe('linkExportedRow — writes the web id on the one row asked for', () =>
 
     await linkExportedRow('trips', 'same-id', 'web-trip-1');
 
-    expect(rows('trips')).toEqual([{ id: 'same-id', source: 'local', source_id: 'web-trip-1' }]);
+    expect(rows('trips')).toEqual([{ id: 'same-id', source: 'web-import', source_id: 'web-trip-1' }]);
     expect(rows('meals')).toEqual([{ id: 'same-id', source: 'local', source_id: null }]);
   });
 });
@@ -285,24 +296,22 @@ describe('linkExportedRow — the round trip it makes possible', () => {
    * web id, then imported again from the web with the SAME id, must converge
    * on ONE row.
    *
-   * VERIFIED STATUS: this does NOT hold with the contract as built. The
-   * import inserts `source = 'web-import'` and conflicts on
-   * `(source, source_id)` (`db/index.ts:284-291` for trips, `:409-416` for
-   * meals), so a linked row that is still `source = 'local'` never matches the
-   * conflict and a second row is inserted. Setting `source_id` alone therefore
-   * does not close the round trip — the duplicate is identical with and
-   * without the link.
+   * Why both columns are written: the import inserts
+   * `source = 'web-import'` and conflicts on `(source, source_id)`
+   * (`db/index.ts` trips and meals `upsertImported*`), so a linked row that
+   * is still `source = 'local'` never matches the conflict and the import
+   * inserts a SECOND row — the duplicate survives identically whether or not
+   * `source_id` was written. Setting `source` too is what makes the conflict
+   * fire, and this is the assertion that proves it.
    *
-   * Left in as a FAILING assertion on purpose. It is the assertion the ticket
-   * is actually about; deleting or loosening it would make the suite green
-   * while the user-visible duplicate stays. Whichever way the resolution goes
-   * (extend the link to also set `source`, or change the conflict key), this
-   * test becomes the acceptance criterion for slice 2.
+   * It was shipped as a RED test in the previous slice (linking
+   * `source_id` only) and is now an honest passing assertion: the marking is
+   * the fix, and the row below is what convergence looks like.
    *
    * Asserted through the real `upsertImportedTrip` on the real engine, because
    * a mocked upsert would prove nothing about the interaction that broke.
    */
-  it('RED: a re-import does NOT converge — this slice links source_id only, so the duplicate survives', async () => {
+  it('a re-import of a linked local row converges on ONE row', async () => {
     seed('trips', 'trip-local-1');
 
     await linkExportedRow('trips', 'trip-local-1', 'web-trip-1');
@@ -313,16 +322,32 @@ describe('linkExportedRow — the round trip it makes possible', () => {
     });
 
     // Two rows would mean the bug is back. The import must have updated the
-    // linked local row in place.
+    // linked local row IN PLACE, so the local row the user already has keeps
+    // its identity and only the web-sourced fields are refreshed.
     const linked = rows('trips');
     expect(linked).toHaveLength(1);
-    expect(linked[0]).toEqual({ id: 'trip-local-1', source: 'local', source_id: 'web-trip-1' });
+    expect(linked[0]).toEqual({ id: 'trip-local-1', source: 'web-import', source_id: 'web-trip-1' });
   });
 
-  it('a re-import of an UNLINKED local row duplicates — the failure the link prevents', async () => {
-    // The contrast case: without the link, the same import also inserts a
-    // second row, which is why the two outcomes above are indistinguishable
-    // as built. Equivalence is the finding, not a passing contrast.
+  it('a re-import of a linked local meal also converges on ONE row', async () => {
+    seed('meals', 'meal-local-1');
+
+    await linkExportedRow('meals', 'meal-local-1', 'web-meal-1');
+    await upsertImportedMeal({
+      profileId: 'profile-1',
+      sourceId: 'web-meal-1',
+      cafeName: 'Good Shepherd Cafe',
+    });
+
+    expect(rows('meals')).toEqual([
+      { id: 'meal-local-1', source: 'web-import', source_id: 'web-meal-1' },
+    ]);
+  });
+
+  it('a re-import of an UNLINKED local row still duplicates — the failure the link prevents', async () => {
+    // The contrast case: without the link, `source_id IS NULL` and the import
+    // inserts a second row. Kept as the control that makes the assertion above
+    // meaningful rather than trivially true.
     seed('trips', 'trip-local-1');
 
     await upsertImportedTrip({
@@ -349,11 +374,12 @@ describe('linkExportedRow — the statement is safe by construction', () => {
     await linkExportedRow('trips', 'trip-1', 'web-1');
 
     const update = issued().find((r) => r.sql.startsWith('UPDATE'));
-    // Parameters, in order: the web id then the row id — both bound, both
-    // passed as variadic params, so neither is part of the SQL text.
-    expect(update?.params).toEqual(['web-1', 'trip-1']);
-    // No placeholder text other than the two bound `?`.
-    expect(update?.sql.match(/\?/g)).toHaveLength(2);
+    // Parameters, in order: the source marking, the web id, then the row id —
+    // all bound, all passed as variadic params, so none is in the SQL text.
+    // The marking is a module literal, not caller input.
+    expect(update?.params).toEqual(['web-import', 'web-1', 'trip-1']);
+    // No placeholder text other than the three bound `?`.
+    expect(update?.sql.match(/\?/g)).toHaveLength(3);
     expect(update?.sql).not.toMatch(/\$\{|"|\`/);
   });
 });

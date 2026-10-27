@@ -444,15 +444,22 @@ export type ExportedTable = 'trips' | 'meals';
  * sees the trip or meal twice. Writing the returned web id here is what
  * closes that round trip.
  *
- * Scope, deliberately narrow:
- * - `source` is NOT touched. The export candidate set filters
- *   `source === 'local'`, so flipping it to 'web-import' would hide the row
- *   from a later export while the idempotency key already converges a repeat
- *   POST. `source_id` is the only column the import contract keys on.
+ * Scope:
+ * - BOTH `source` and `source_id` are written. `source_id` alone was NOT
+ *   enough: the import inserts `source = 'web-import'` and conflicts on
+ *   `(source, source_id)`, so a linked row left as 'local' never matches the
+ *   conflict and the import inserts a second copy anyway. Marking the row is
+ *   what actually converges the round trip.
  * - Exactly one row is written, and ONLY that row: the `WHERE id = ?` is the
  *   scoping, matching `deleteTrip`/`deleteMeal`'s shape. A row that no longer
  *   exists is a no-op (0 changes), never a throw — the caller may be a
  *   background sync whose row the user deleted meanwhile.
+ * - Because `source` becomes 'web-import', the export candidate filter
+ *   (`source === 'local'`) drops the row. That is correct, not a
+ *   regression: it IS on the web now, so a re-export is work that would
+ *   produce nothing. The idempotency key still covers the failure path (a
+ *   POST that landed but whose reply was lost) because the local id stays
+ *   the row's id and the key stays derived from it.
  *
  * Idempotent: re-linking the same (id, sourceId) writes the same value, so a
  * retried export cannot produce a different row or a constraint failure.
@@ -468,9 +475,14 @@ export async function linkExportedRow(
   sourceId: string
 ): Promise<void> {
   const db = await getDb();
+  // `source_id` AND `source`: the import inserts `source = 'web-import'` and
+  // conflicts on `(source, source_id)`, so a row left as 'local' can never
+  // match that conflict no matter what its `source_id` is — the import would
+  // insert a second copy. Marking the row is what makes the round trip
+  // converge to one row.
   if (table === 'trips') {
-    await db.runAsync('UPDATE trips SET source_id = ? WHERE id = ?', sourceId, id);
+    await db.runAsync('UPDATE trips SET source = ?, source_id = ? WHERE id = ?', 'web-import', sourceId, id);
     return;
   }
-  await db.runAsync('UPDATE meals SET source_id = ? WHERE id = ?', sourceId, id);
+  await db.runAsync('UPDATE meals SET source = ?, source_id = ? WHERE id = ?', 'web-import', sourceId, id);
 }

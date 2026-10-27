@@ -242,9 +242,11 @@ export type ExportedTable = 'trips' | 'meals';
  * In-memory twin of `index.ts`'s `linkExportedRow`: write the web id onto one
  * local row, scoped by `id`, nothing else touched.
  *
- * `source` is left as it is, for the same reason as native — the export
- * candidate set filters `source === 'local'`, and flipping it would hide the
- * row from a later export. An unknown `id` is a no-op rather than a throw.
+ * `source` is ALSO set to 'web-import', exactly as native does: the import
+ * conflicts on `(source, source_id)` and always inserts
+ * `source = 'web-import'`, so a linked row left as 'local' can never match
+ * that conflict and the import would insert a second copy. An unknown `id` is
+ * a no-op rather than a throw.
  */
 export async function linkExportedRow(
   table: ExportedTable,
@@ -254,10 +256,10 @@ export async function linkExportedRow(
   if (table === 'trips') {
     const trip = trips.get(id);
     if (!trip) return;
-    trips.set(trip.id, { ...trip, source_id: sourceId });
+    trips.set(trip.id, { ...trip, source: 'web-import', source_id: sourceId });
     return;
   }
   const meal = meals.get(id);
   if (!meal) return;
-  meals.set(meal.id, { ...meal, source_id: sourceId });
+  meals.set(meal.id, { ...meal, source: 'web-import', source_id: sourceId });
 }

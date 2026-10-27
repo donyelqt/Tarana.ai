@@ -243,6 +243,16 @@ function savedTripId(body: unknown): string | null {
  *   partial failure returns the SAME web id instead of inserting a second
  *   row. This is the export-side mirror of `upsertImportedTrip`'s
  *   `(source, source_id)` dedupe on the import side.
+ * - After a successful POST the exported row is rewritten
+ *   `source: 'web-import'` with the returned web id (`linkExportedRow`). The
+ *   idempotency key alone does NOT close the round trip: it only makes a
+ *   repeat POST harmless, while the import side inserts
+ *   `source = 'web-import'` and conflicts on `(source, source_id)`, so a row
+ *   still marked 'local' can never match that conflict and a later import
+ *   inserts a SECOND copy of the same trip. A second consequence, and the
+ *   one this rule accepts: the marked row leaves the `source === 'local'`
+ *   candidate set, so it is reported as neither exported nor failed on the
+ *   next export — correctly, because it is already on the web.
  * - A trip whose payload cannot produce a valid `SaveItinerarySchema` body
  *   is skipped with a reason, never POSTed.
  *
@@ -325,6 +335,14 @@ export async function exportLocalTrips(profileId: string): Promise<ExportSummary
       summary.failures.push(`${label}: the web reply did not include the saved trip.`);
       continue;
     }
+
+    // Close the local → web → local round trip on this row: record the web id
+    // AND mark it `web-import`. Without the marking the import's
+    // `ON CONFLICT(source, source_id)` can never match this row, so a later
+    // import of the same web trip inserts a SECOND copy. The local id is
+    // untouched, so the idempotency key stays derived from it and a lost
+    // reply is still recoverable.
+    await Db.linkExportedRow('trips', trip.id, savedId);
 
     // 201 created, or any non-replay 2xx that still carries an id.
     summary.exported += 1;
@@ -510,10 +528,16 @@ function buildMealExportBody(meal: LocalMeal): SaveMealBody | null {
  *   key, so a retry after a partial failure returns the SAME web id instead
  *   of inserting a second row. This is the export-side mirror of
  *   `upsertImportedMeal`'s (source, source_id) dedupe on the import side.
- * - The exported row is NOT rewritten as `source: 'web-import'`. Marking it
- *   would hide it from the candidate set of a later export, and the
- *   idempotency key already makes a repeat POST converge, so no local write
- *   is needed and none is made.
+ * - After a successful POST the exported row is rewritten
+ *   `source: 'web-import'` with the returned web id (`linkExportedRow`). The
+ *   idempotency key alone does NOT close the round trip: it only makes a
+ *   repeat POST harmless, while the import side inserts
+ *   `source = 'web-import'` and conflicts on `(source, source_id)`, so a row
+ *   still marked 'local' can never match that conflict and a later import
+ *   inserts a SECOND copy of the same meal. A second consequence, and the
+ *   one this rule accepts: the marked row leaves the `source === 'local'`
+ *   candidate set, so it is reported as neither exported nor failed on the
+ *   next export — correctly, because it is already on the web.
  * - A meal that cannot produce a valid `SavedMealSchema` body is skipped
  *   with a reason, never POSTed.
  *
@@ -600,6 +624,14 @@ export async function exportLocalMeals(profileId: string): Promise<ExportSummary
       summary.failures.push(`${label}: the web reply did not include the saved meal.`);
       continue;
     }
+
+    // Close the local → web → local round trip on this row: record the web id
+    // AND mark it `web-import`, mirroring `exportLocalTrips`. Without the
+    // marking the import's `ON CONFLICT(source, source_id)` can never match
+    // this row, so a later import of the same web meal inserts a SECOND copy.
+    // The local id is untouched, so the idempotency key stays derived from it
+    // and a lost reply is still recoverable.
+    await Db.linkExportedRow('meals', meal.id, savedId);
 
     // 200 created, or any non-replay 2xx that still carries an id.
     summary.exported += 1;
