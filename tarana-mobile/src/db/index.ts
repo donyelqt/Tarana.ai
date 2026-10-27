@@ -17,6 +17,7 @@
  */
 import * as SQLite from 'expo-sqlite';
 import * as TokenStorage from '../tokenStorage';
+import { parseStoredGoodFor } from './goodFor';
 
 const DB_NAME = 'tarana.db';
 const SCHEMA_VERSION = 3;
@@ -316,15 +317,7 @@ export async function deleteTrip(id: string, profileId: string): Promise<void> {
 // ── Meals ────────────────────────────────────────────────
 
 function toMeal(row: MealRow): LocalMeal {
-  let goodFor: string[] = [];
-  if (row.good_for) {
-    try {
-      const parsed: unknown = JSON.parse(row.good_for);
-      if (Array.isArray(parsed)) goodFor = parsed.filter((t): t is string => typeof t === 'string');
-    } catch {
-      goodFor = [];
-    }
-  }
+  const goodFor = parseStoredGoodFor(row.good_for);
   return {
     id: row.id,
     profile_id: row.profile_id,
@@ -433,4 +426,63 @@ export async function upsertImportedMeal(input: {
   );
   if (!row) throw new Error('Imported meal was not saved.');
   return toMeal(row);
+}
+
+// ── Export → web id link ──────────────────────────────────
+
+/** The two tables that carry the import idempotency key `(source, source_id)`. */
+export type ExportedTable = 'trips' | 'meals';
+
+/**
+ * Record the web id of an exported LOCAL row on that row (`source_id`).
+ *
+ * Why this exists: `upsertImportedTrip`/`upsertImportedMeal` dedupe on
+ * `(source, source_id)` with `ON CONFLICT(source, source_id)`, and SQLite
+ * treats NULLs as DISTINCT in a UNIQUE index, so a local row that was
+ * pushed to the web but kept `source_id IS NULL` can never match a later
+ * import of that same web row — the import inserts a SECOND row and the user
+ * sees the trip or meal twice. Writing the returned web id here is what
+ * closes that round trip.
+ *
+ * Scope:
+ * - BOTH `source` and `source_id` are written. `source_id` alone was NOT
+ *   enough: the import inserts `source = 'web-import'` and conflicts on
+ *   `(source, source_id)`, so a linked row left as 'local' never matches the
+ *   conflict and the import inserts a second copy anyway. Marking the row is
+ *   what actually converges the round trip.
+ * - Exactly one row is written, and ONLY that row: the `WHERE id = ?` is the
+ *   scoping, matching `deleteTrip`/`deleteMeal`'s shape. A row that no longer
+ *   exists is a no-op (0 changes), never a throw — the caller may be a
+ *   background sync whose row the user deleted meanwhile.
+ * - Because `source` becomes 'web-import', the export candidate filter
+ *   (`source === 'local'`) drops the row. That is correct, not a
+ *   regression: it IS on the web now, so a re-export is work that would
+ *   produce nothing. The idempotency key still covers the failure path (a
+ *   POST that landed but whose reply was lost) because the local id stays
+ *   the row's id and the key stays derived from it.
+ *
+ * Idempotent: re-linking the same (id, sourceId) writes the same value, so a
+ * retried export cannot produce a different row or a constraint failure.
+ *
+ * The table name is a closed union selected by the caller, NOT an arbitrary
+ * identifier: SQL identifiers cannot be bound as `?` parameters, so the name
+ * picks one of two STATIC statement strings written here. No caller input is
+ * ever interpolated into SQL, which is the file's security contract.
+ */
+export async function linkExportedRow(
+  table: ExportedTable,
+  id: string,
+  sourceId: string
+): Promise<void> {
+  const db = await getDb();
+  // `source_id` AND `source`: the import inserts `source = 'web-import'` and
+  // conflicts on `(source, source_id)`, so a row left as 'local' can never
+  // match that conflict no matter what its `source_id` is — the import would
+  // insert a second copy. Marking the row is what makes the round trip
+  // converge to one row.
+  if (table === 'trips') {
+    await db.runAsync('UPDATE trips SET source = ?, source_id = ? WHERE id = ?', 'web-import', sourceId, id);
+    return;
+  }
+  await db.runAsync('UPDATE meals SET source = ?, source_id = ? WHERE id = ?', 'web-import', sourceId, id);
 }
