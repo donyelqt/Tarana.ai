@@ -463,10 +463,14 @@ describe('the marked row leaves the candidate set', () => {
     const summary = await exportLocalTrips(PROFILE_ID);
 
     expect(summary.exported).toBe(2);
-    expect(tripRows()).toEqual([
-      { id: first.id, source: 'web-import', source_id: 'web-trip-1' },
-      { id: second.id, source: 'web-import', source_id: 'web-trip-2' },
-    ]);
+    // Asserted per row, not as an array: the two rows have random ids, so
+    // which one the fetch responder saw first is not something this suite
+    // controls, and ordering the assertion on it would make the test flaky
+    // rather than wrong. Each row got the web id its own POST returned.
+    const rows = tripRows();
+    expect(rows).toHaveLength(2);
+    expect(rows).toContainEqual({ id: first.id, source: 'web-import', source_id: 'web-trip-1' });
+    expect(rows).toContainEqual({ id: second.id, source: 'web-import', source_id: 'web-trip-2' });
   });
 });
 
