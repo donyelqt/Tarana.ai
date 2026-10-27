@@ -26,6 +26,7 @@ import { exchangeForMobileToken, clearStoredToken, withMobileAuth } from '../aut
 import { createMobileSupabaseClient } from '../supabase';
 import { getCityCenter, getCityTimezone } from 'tarana-web/data/cityConfig';
 import * as Db from '../db';
+import { parseStoredGoodFor } from '../db/goodFor';
 import { generateWithLlama } from '../llm/generateWithLlama';
 import { toWebMealType } from './mealTypeMapping';
 import type { WebMealType } from './mealTypeMapping';
@@ -458,7 +459,14 @@ function buildMealExportBody(meal: LocalMeal): SaveMealBody | null {
     typeof meal.price === 'number' && Number.isFinite(meal.price) && meal.price > 0 ? meal.price : null;
   if (price === null) return null;
 
-  const goodForEntry = (meal.good_for ?? []).find((v) => typeof v === 'string' && v.trim());
+  // `meal.good_for` is stored as a JSON STRING in the `meals` TEXT column
+  // (what `createMeal`/`upsertImportedMeal` write), so `[]` is not its empty
+  // form — the string form is. Parsing it here is the same inverse `toMeal`
+  // applies on the read path, so the export body and the on-device list agree
+  // on what a row's labels are instead of one path crashing on the other's
+  // shape. A malformed or blank value is `[]`, never a throw: the export is a
+  // batch over every local meal, and one bad column must not abort the rest.
+  const goodForEntry = parseStoredGoodFor(meal.good_for).find((v) => typeof v === 'string' && v.trim());
   const goodFor = goodForEntry ? goodForEntry.trim() : null;
   // The cap is 20 characters. A first entry over it would 400, so the row is
   // skipped here rather than sent.
