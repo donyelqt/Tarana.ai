@@ -268,8 +268,8 @@ beforeEach(async () => {
 });
 
 /** A local trip the export can actually POST, written through the real seam. */
-async function seedLocalTrip(): Promise<LocalTrip> {
-  return createTrip({
+async function seedLocalTrip(createdAt?: string): Promise<LocalTrip> {
+  const trip = await createTrip({
     profileId: PROFILE_ID,
     title: 'Burnham Loop',
     date: '2026-11-02',
@@ -280,6 +280,14 @@ async function seedLocalTrip(): Promise<LocalTrip> {
       itineraryData: { title: 'Burnham Loop', subtitle: 'A day out', items: [] },
     }),
   });
+  // `created_at` defaults to strftime('now'), so two trips seeded in the same
+  // millisecond sort identically under `ORDER BY created_at DESC` and the
+  // export's iteration order is undefined. Pin it explicitly so the
+  // per-row web-id assertion below is stable rather than a coin flip.
+  if (createdAt) {
+    slot.db.prepare('UPDATE trips SET created_at = ? WHERE id = ?').run(createdAt, trip.id);
+  }
+  return trip;
 }
 
 /** A local meal the export can actually POST, written through the real seam. */
@@ -454,8 +462,13 @@ describe('the marked row leaves the candidate set', () => {
   });
 
   it('keeps other local rows exporting after one is marked', async () => {
-    const first = await seedLocalTrip();
-    const second = await seedLocalTrip();
+    // Seeded with distinct `created_at` values so `ORDER BY created_at DESC`
+    // in `listTripsByProfile` yields a stable iteration order: the later row
+    // is exported first and gets the first web id. Without this the two rows
+    // share strftime('now') and the order is undefined, which made the
+    // per-row web-id assertion below a coin flip rather than a claim.
+    const first = await seedLocalTrip('2026-11-02T10:00:00.000Z');
+    const second = await seedLocalTrip('2026-11-02T09:00:00.000Z');
     mockFetch((_body, n) =>
       n === 1 ? TRIP_SAVED_OK : { ok: true, status: 201, json: { success: true, data: { id: 'web-trip-2' } } }
     );
