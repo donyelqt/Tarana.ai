@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown, PiggyBank, Wallet, CreditCard, Gem, DollarSign, X } from 'lucide-react';
 import { cn } from '@/lib/core';
 import { budgetOptions, BUDGET_ICONS } from '@/app/itinerary-generator/data/tripFieldOptions';
+import { endDateForDuration } from '@/app/itinerary-generator/utils/travelDates';
 import {
   draftFromTrip,
   tripEditChanged,
@@ -18,6 +19,7 @@ import {
   dateRangeFromDraft,
   dateRangeFromRowDate,
   rowDateFromDateRange,
+  dateToIso,
   parseTags,
   type TripEditDraft,
   type TripDateRange,
@@ -97,7 +99,21 @@ export function TripEditDialog({
 
   const handleDateChange = (field: 'start' | 'end', value: Date | undefined) => {
     const isoDate = value ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}` : '';
-    const next = { ...dateRange, [field]: isoDate };
+    let next: TripDateRange;
+    if (field === 'start') {
+      // End date auto-derives from start + duration, matching Gala and Plan
+      // Mode. A hand-edited end date is overridden when start moves, because
+      // the duration is fixed by the trip and a new start needs a new end.
+      const duration = itinerary?.formData?.duration ?? '';
+      if (value && duration) {
+        const derived = endDateForDuration(value, duration);
+        next = { start: isoDate, end: derived ? dateToIso(derived) : '' };
+      } else {
+        next = { start: isoDate, end: '' };
+      }
+    } else {
+      next = { ...dateRange, end: isoDate };
+    }
     setDateRange(next);
     // One-sided → null (empty) so we never write a half-filled pair.
     const written = rowDateFromDateRange(next);
