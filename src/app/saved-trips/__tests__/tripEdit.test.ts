@@ -56,6 +56,24 @@ const trip = (over: Partial<TripEditSource> = {}): TripEditSource => ({
   ...over,
 });
 
+/** A full formData the editor passes through unchanged except for its dates. */
+const formData = (
+  over: Partial<{
+    budget: string;
+    pax: string;
+    duration: string;
+    dates: { start: string; end: string };
+    selectedInterests: string[];
+  }> = {}
+) => ({
+  budget: '5000',
+  pax: '2',
+  duration: '1 day',
+  dates: { start: '2026-03-04', end: '2026-03-04' },
+  selectedInterests: ['Culture & Arts'],
+  ...over,
+});
+
 /** `count` non-blank tags as the comma-separated input would hold them. */
 const manyTags = (count: number): string =>
   Array.from({ length: count }, (_, index) => `tag${index}`).join(', ');
@@ -212,45 +230,98 @@ describe('tripEditChanged — only a real edit writes', () => {
 
 describe('tripEditPayload — what a permitted save sends', () => {
   it('trims the title', () => {
-    expect(tripEditPayload({ title: '  Baguio Loop  ', date: '', budget: '', tags: '' }).title).toBe(
-      'Baguio Loop'
-    );
+    expect(
+      tripEditPayload(
+        { title: '  Baguio Loop  ', date: '', budget: '', tags: '' },
+        { dates: { start: '', end: '' }, formData: formData() }
+      ).title
+    ).toBe('Baguio Loop');
   });
 
   it('writes a blank date as null, not an empty string', () => {
-    expect(tripEditPayload({ title: 'T', date: '', budget: '', tags: '' }).date).toBeNull();
+    expect(
+      tripEditPayload(
+        { title: 'T', date: '', budget: '', tags: '' },
+        { dates: { start: '', end: '' }, formData: formData() }
+      ).date
+    ).toBeNull();
   });
 
   it('writes a blank budget as null, not an empty string', () => {
-    expect(tripEditPayload({ title: 'T', date: '', budget: '', tags: '' }).budget).toBeNull();
+    expect(
+      tripEditPayload(
+        { title: 'T', date: '', budget: '', tags: '' },
+        { dates: { start: '', end: '' }, formData: formData() }
+      ).budget
+    ).toBeNull();
   });
 
   it('keeps a supplied date and budget, trimmed', () => {
-    const payload = tripEditPayload({ title: 'T', date: ' 2026-03-04 ', budget: ' 5000 ', tags: '' });
+    const payload = tripEditPayload(
+      { title: 'T', date: ' 2026-03-04 ', budget: ' 5000 ', tags: '' },
+      { dates: { start: '', end: '' }, formData: formData() }
+    );
     expect(payload.date).toBe('2026-03-04');
     expect(payload.budget).toBe('5000');
   });
 
   it('keeps a supplied budget and drops a blank one, independently', () => {
-    const payload = tripEditPayload({
-      title: 'T',
-      date: '',
-      budget: ' 5000 ',
-      tags: 'Baguio',
-    });
+    const payload = tripEditPayload(
+      {
+        title: 'T',
+        date: '',
+        budget: ' 5000 ',
+        tags: 'Baguio',
+      },
+      { dates: { start: '', end: '' }, formData: formData() }
+    );
     expect(payload.budget).toBe('5000');
     expect(payload.date).toBeNull();
     expect(payload.tags).toEqual(['Baguio']);
   });
 
   it('carries tags the generator wrote but the detail page has no icon for', () => {
-    const payload = tripEditPayload({
-      title: 'T',
-      date: '',
-      budget: '',
-      tags: 'Nature & Scenery, Weather-Flexible, food trip',
-    });
+    const payload = tripEditPayload(
+      {
+        title: 'T',
+        date: '',
+        budget: '',
+        tags: 'Nature & Scenery, Weather-Flexible, food trip',
+      },
+      { dates: { start: '', end: '' }, formData: formData() }
+    );
     expect(payload.tags).toEqual(['Nature & Scenery', 'Weather-Flexible', 'food trip']);
+  });
+
+  it('writes the date pair into formData.dates', () => {
+    const payload = tripEditPayload(
+      { title: 'T', date: '2026-03-04', budget: '5000', tags: '' },
+      {
+        dates: { start: '2026-03-04', end: '2026-03-06' },
+        formData: formData({ dates: { start: '2026-02-01', end: '2026-02-01' } }),
+      }
+    );
+    expect(payload.formData.dates.start).toBe('2026-03-04');
+    expect(payload.formData.dates.end).toBe('2026-03-06');
+  });
+
+  it('keeps the rest of formData untouched when the dates change', () => {
+    const payload = tripEditPayload(
+      { title: 'T', date: '2026-03-04', budget: '5000', tags: '' },
+      { dates: { start: '2026-03-04', end: '2026-03-06' }, formData: formData() }
+    );
+    expect(payload.formData.budget).toBe('5000');
+    expect(payload.formData.pax).toBe('2');
+    expect(payload.formData.duration).toBe('1 day');
+    expect(payload.formData.selectedInterests).toEqual(['Culture & Arts']);
+  });
+
+  it('clears formData.dates to an empty pair when the range is empty', () => {
+    const payload = tripEditPayload(
+      { title: 'T', date: '', budget: '', tags: '' },
+      { dates: { start: '', end: '' }, formData: formData() }
+    );
+    expect(payload.formData.dates).toEqual({ start: '', end: '' });
   });
 });
 
