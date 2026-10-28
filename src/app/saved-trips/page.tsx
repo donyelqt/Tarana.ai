@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { getSavedItineraries, SavedItinerary, deleteItinerary } from "@/lib/data"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
-import { Trash2 } from "lucide-react"
+import { Trash2, Pencil } from "lucide-react"
+import { TripEditDialog } from "./TripEditDialog"
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 
@@ -23,6 +24,7 @@ const SavedTrips = () => {
   const MAX_VISIBLE_TAGS = 2
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [itineraryToDelete, setItineraryToDelete] = useState<SavedItinerary | null>(null)
+  const [itineraryToEdit, setItineraryToEdit] = useState<SavedItinerary | null>(null)
   const { toast } = useToast()
 
   // React Query - Cached itineraries list
@@ -82,6 +84,13 @@ const SavedTrips = () => {
   const handleCancelDelete = () => {
     setShowDeleteModal(false)
     setItineraryToDelete(null)
+  }
+
+  const handleEditClick = (itinerary: SavedItinerary, e: React.MouseEvent) => {
+    // The edit control lives inside the card, so the click must not also fire
+    // the row's own View Itinerary navigation.
+    e.stopPropagation()
+    setItineraryToEdit(itinerary)
   }
 
   return (
@@ -161,7 +170,7 @@ const SavedTrips = () => {
                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    {itinerary.date}
+                    {itinerary.date || 'Date not set'}
                   </div>
                 </div>
 
@@ -171,7 +180,7 @@ const SavedTrips = () => {
                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                     </svg>
-                    Budget: {itinerary.budget}
+                    Budget: {itinerary.budget || 'Not set'}
                   </div>
                 </div>
 
@@ -210,6 +219,13 @@ const SavedTrips = () => {
                     onClick={() => router.push(`/saved-trips/${itinerary.id}`)}
                   >
                     View Itinerary
+                  </Button>
+                  <Button
+                    className="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-medium py-2 px-4 rounded-xl transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                    onClick={(e) => handleEditClick(itinerary, e)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit
                   </Button>
                   {/*<Button 
                     className="bg-gray-200 hover:bg-gray-300 text-black font-medium py-2 px-4 rounded-xl transition-colors"
@@ -263,6 +279,23 @@ const SavedTrips = () => {
             </div>
           </div>
         )}
+
+        {/* Trip Editor — writes only the row's own four fields */}
+        <TripEditDialog
+          itinerary={itineraryToEdit}
+          open={itineraryToEdit !== null}
+          onOpenChange={(open) => {
+            if (!open) setItineraryToEdit(null);
+          }}
+          onSaved={async () => {
+            // Invalidate both keys: the list re-renders from these rows, and
+            // an already-open detail tab reads its own single-trip key.
+            await queryClient.invalidateQueries({ queryKey: ['itineraries'] });
+            if (itineraryToEdit) {
+              await queryClient.invalidateQueries({ queryKey: ['itinerary', itineraryToEdit.id] });
+            }
+          }}
+        />
       </main>
     </div>
   )

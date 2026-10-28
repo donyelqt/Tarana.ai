@@ -148,13 +148,16 @@ export const SaveItinerarySchema = z.object({
   weatherData: z.record(z.string(), z.unknown()).optional(),
 });
 
-// Partial update: every field optional. Refresh fields stay passthrough JSON
-// so the refresh flow's Date instances serialize unchanged.
+// Partial update: every field optional. The three editable trip fields also
+// accept an explicit null so a user clearing one in the editor persists a
+// NULL column rather than being rejected by a `min(1)` guard that the clear
+// path would always hit. `SaveItinerarySchema` still requires all three on
+// create, so a new row can never be saved without them.
 export const UpdateItinerarySchema = z
   .object({
-    title: z.string().min(1).max(200).optional(),
-    date: z.string().min(1).max(100).optional(),
-    budget: z.string().min(1).max(100).optional(),
+    title: z.string().min(1).max(200).nullable().optional(),
+    date: z.string().min(1).max(100).nullable().optional(),
+    budget: z.string().min(1).max(100).nullable().optional(),
     image: ImageInputSchema.optional(),
     tags: z.array(z.string().max(100)).max(50).optional(),
     formData: ItineraryFormDataSchema.optional(),
