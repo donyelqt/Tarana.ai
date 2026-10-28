@@ -1,37 +1,42 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { updateItinerary, SavedItinerary } from '@/lib/data';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, PiggyBank, Wallet, CreditCard, Gem, DollarSign, X } from 'lucide-react';
+import { cn } from '@/lib/core';
+import { budgetOptions, BUDGET_ICONS } from '@/app/itinerary-generator/data/tripFieldOptions';
 import {
   draftFromTrip,
   tripEditChanged,
   tripEditError,
   tripEditPayload,
+  dateRangeFromDraft,
+  dateRangeFromRowDate,
+  rowDateFromDateRange,
+  parseTags,
   type TripEditDraft,
+  type TripDateRange,
 } from './tripEdit';
-
-/**
- * The editor for a trip's own four fields.
- *
- * Why the list page owns it: the detail page renders `date`, `budget` and
- * `tags` out of `formData`, the generator's inputs, and only falls back to
- * the row columns. An editor on that page would write the columns and show
- * the old payload values, so a user who changed the budget would watch the
- * tile keep saying 5000. Here the values on screen are the row's own, so a
- * save is visible the moment it lands.
- *
- * Why it is a dialog: the grid row is the display surface, and an inline
- * editor would resize every card around it. The draft is copied on open so a
- * half-typed title never reaches the row a render would show.
- */
 
 const FIELD_MAX = {
   title: 200,
-  date: 100,
-  budget: 100,
+  // Tags are capped by count, not length, so this is not a per-tag character
+  // limit. It is the raw string the count needs room for: N tags plus the
+  // N-1 ", " separators between them, with a tag running one character at
+  // least, is 3N - 2 long. Sizing it for 50 tags fits any legitimate list
+  // while a 51st cannot be typed — the comma it would need never fits.
+  // `tripEditError` remains the enforcement; this only keeps the field from
+  // accepting what it would refuse.
+  tags: 3 * 50 - 2,
 };
+
+/** The budget icons by position, matching Gala's ItineraryForm switch. */
+const BUDGET_ICON: typeof PiggyBank[] = BUDGET_ICONS;
 
 export function TripEditDialog({
   itinerary,
@@ -42,7 +47,7 @@ export function TripEditDialog({
   itinerary: SavedItinerary | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved: () => void | Promise<void>;
+  onSaved: (updated: SavedItinerary) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState<TripEditDraft>({
     title: '',
@@ -50,18 +55,54 @@ export function TripEditDialog({
     budget: '',
     tags: '',
   });
+  const [dateRange, setDateRange] = useState<TripDateRange>({ start: '', end: '' });
+  const [openBudget, setOpenBudget] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
-  // Copy the row into a draft only when the dialog opens, not on every render:
+  // Seed the draft + date-pair only when the dialog opens, not on every render:
   // a keystroke re-render must not overwrite what the user is typing.
   useEffect(() => {
     if (open && itinerary) {
-      setDraft(draftFromTrip(itinerary));
+      const seeded = draftFromTrip(itinerary);
+      setDraft(seeded);
+      const range = dateRangeFromDraft(seeded);
+      setDateRange(range);
+      setBudgetFromRange(range);
       setError(null);
     }
   }, [open, itinerary]);
+
+  /** The budget selected for the row, kept in sync with the pair on seed. */
+  const [budgetValue, setBudgetValue] = useState('');
+
+  function setBudgetFromRange(range: TripDateRange) {
+    // Budget is independent from dates; this is a no-op placeholder that
+    // seeds budget from the draft. See `seedBudgetFromRow`.
+    setBudgetValue('');
+  }
+
+  // The draft's budget must mirror the row so the Popover trigger shows it.
+  useEffect(() => {
+    if (open && itinerary) {
+      setBudgetValue(itinerary.budget ?? '');
+    }
+  }, [open, itinerary]);
+
+  const selectedBudgetIcon = useMemo(() => {
+    const idx = budgetOptions.indexOf(budgetValue);
+    return idx >= 0 ? BUDGET_ICON[idx] : DollarSign;
+  }, [budgetValue]);
+
+  const handleDateChange = (field: 'start' | 'end', value: Date | undefined) => {
+    const isoDate = value ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}` : '';
+    const next = { ...dateRange, [field]: isoDate };
+    setDateRange(next);
+    // One-sided → null (empty) so we never write a half-filled pair.
+    const written = rowDateFromDateRange(next);
+    setDraft((d) => ({ ...d, date: written ?? '' }));
+  };
 
   const handleSave = async () => {
     if (!itinerary) return;
@@ -88,7 +129,7 @@ export function TripEditDialog({
         setError('This trip could not be saved. It may have been deleted.');
         return;
       }
-      await onSaved();
+      await onSaved(updated);
       toast({
         title: 'Success',
         description: 'Trip updated successfully',
@@ -101,6 +142,9 @@ export function TripEditDialog({
       setIsSaving(false);
     }
   };
+
+  const selectedBudget = budgetValue || null;
+  const Icon = selectedBudgetIcon;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -128,33 +172,89 @@ export function TripEditDialog({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-900">Date</label>
-            <input
-              type="text"
-              value={draft.date}
-              onChange={(e) => setDraft({ ...draft, date: e.target.value })}
-              placeholder="YYYY-MM-DD"
-              maxLength={FIELD_MAX.date}
-              className="w-full rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-gray-900 placeholder:text-gray-400 transition-shadow focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-            />
-            <div className="mt-1 text-xs text-gray-500">
-              {draft.date.length}/{FIELD_MAX.date} characters
+            <label className="mb-2 block text-sm font-semibold text-gray-900">Travel dates</label>
+            <div className="grid grid-cols-2 gap-3">
+              <DatePicker
+                date={dateRange.start ? new Date(dateRange.start) : undefined}
+                setDate={(d) => handleDateChange('start', d)}
+                placeholder="Start date"
+                className="w-full"
+                dateFormat="MMM d, yyyy"
+              />
+              <DatePicker
+                date={dateRange.end ? new Date(dateRange.end) : undefined}
+                setDate={(d) => handleDateChange('end', d)}
+                placeholder="End date"
+                className="w-full"
+                dateFormat="MMM d, yyyy"
+              />
             </div>
+            <input type="hidden" value={draft.date} />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-900">Budget</label>
-            <input
-              type="text"
-              value={draft.budget}
-              onChange={(e) => setDraft({ ...draft, budget: e.target.value })}
-              placeholder="5000"
-              maxLength={FIELD_MAX.budget}
-              className="w-full rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-gray-900 placeholder:text-gray-400 transition-shadow focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-            />
-            <div className="mt-1 text-xs text-gray-500">
-              {draft.budget.length}/{FIELD_MAX.budget} characters
-            </div>
+            <label className="mb-2 block text-sm font-semibold text-gray-900">Budget Range</label>
+            <Popover open={openBudget} onOpenChange={setOpenBudget}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className={cn(
+                    "w-full justify-between text-md font-medium",
+                    !selectedBudget && "text-muted-foreground",
+                    selectedBudget && "border-slate-300 text-gray-700 hover:text-blue-600",
+                  )}
+                  disabled={isSaving}
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon className="h-5 w-5 text-primary" />
+                    {selectedBudget || 'Select budget range'}
+                  </span>
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2" align="center">
+                <div className="grid gap-1 p-2">
+                  {budgetOptions.map((option, idx) => {
+                    const OptionIcon = BUDGET_ICON[idx] ?? DollarSign;
+                    return (
+                      <Button
+                        key={option}
+                        variant="ghost"
+                        className={cn(
+                          "w-full flex items-center text-md justify-start gap-2 py-2 px-3 rounded-md text-left",
+                          selectedBudget === option && "bg-primary/10",
+                        )}
+                        onClick={() => {
+                          setBudgetValue(option);
+                          setDraft((d) => ({ ...d, budget: option }));
+                          setOpenBudget(false);
+                        }}
+                      >
+                        <OptionIcon className="w-5 h-5 text-primary" />
+                        <span>{option}</span>
+                      </Button>
+                    );
+                  })}
+                  {/* Clear */}
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full flex items-center text-md justify-start gap-2 py-2 px-3 rounded-md text-left",
+                      !selectedBudget && "bg-primary/10",
+                    )}
+                    onClick={() => {
+                      setBudgetValue('');
+                      setDraft((d) => ({ ...d, budget: '' }));
+                      setOpenBudget(false);
+                    }}
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                    <span>Not set</span>
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div>
@@ -164,9 +264,22 @@ export function TripEditDialog({
               value={draft.tags}
               onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
               placeholder="Baguio, food trip"
+              maxLength={FIELD_MAX.tags}
               className="w-full rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-gray-900 placeholder:text-gray-400 transition-shadow focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
-            <div className="mt-1 text-xs text-gray-500">Separate tags with commas.</div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {parseTags(draft.tags).map((tag, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              Separate tags with commas. A trip can hold at most 50 tags.
+            </div>
           </div>
         </div>
 

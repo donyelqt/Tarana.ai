@@ -10,7 +10,6 @@ import {
   getSavedItineraries,
   SavedItinerary,
   formatDateRange,
-  updateItinerary,
   ItineraryPeriod,
   ItineraryActivity,
 } from "@/lib/data";
