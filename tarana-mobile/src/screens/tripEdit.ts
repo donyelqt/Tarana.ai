@@ -10,7 +10,76 @@
  * empty string, and a save with nothing changed must not write.
  */
 
-/** A trip's own editable fields. `payload` is never editable here. */
+/**
+ * Trip date arithmetic shared by the edit form's end-date derivation.
+ *
+ * Ported from the web app (src/app/itinerary-generator/utils/travelDates.ts):
+ * when a trip has a fixed duration, editing the start date must also move the
+ * end date so the payload stays internally consistent. The mobile app stores
+ * `formData.dates.start` and `formData.dates.end` inside the opaque `payload`
+ * JSON — editing only `date` left `dates.end` stale, the same bug the web
+ * dialog had before its fix.
+ */
+
+/** Days implied by a duration label such as "1 Day", "2 Days". `null` if no leading number. */
+export function durationDays(label: string): number | null {
+  const match = label.match(/\d+/);
+  if (!match) return null;
+  const days = parseInt(match[0], 10);
+  return Number.isNaN(days) || days <= 0 ? null : days;
+}
+
+/**
+ * The end date implied by a start date and a duration label.
+ *
+ * Inclusive of the first day, so "1 Day" ends on the start date and "2 Days"
+ * ends one day later. Returns undefined when either input is missing.
+ */
+export function endDateForDuration(
+  start: Date | undefined,
+  durationLabel: string
+): Date | undefined {
+  if (!start) return undefined;
+  const days = durationDays(durationLabel);
+  if (days === null) return undefined;
+  const end = new Date(start);
+  end.setDate(start.getDate() + days - 1);
+  return end;
+}
+
+/** `yyyy-mm-dd` ISO string from a Date, built to avoid Date's UTC rollover. */
+export function dateToIso(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${pad(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Locale date string (e.g. "March 4, 2026") → yyyy-mm-dd ISO, or null. */
+export function parseLocaleDateToIso(token: string): string | null {
+  const d = new Date(token);
+  if (Number.isNaN(d.getTime())) return null;
+  return dateToIso(d);
+}
+
+/**
+ * Derive the end-date ISO for a trip whose start date and duration are known.
+ *
+ * Returns null when either side is missing, leaving the existing end untouched
+ * rather than clearing it. This is the single source of truth for the
+ * "auto calculated end date" feature, shared by every surface that edits a
+ * start date.
+ */
+export function deriveEndDate(
+  startIso: string | null,
+  durationLabel: string
+): string | null {
+  if (!startIso) return null;
+  const start = new Date(startIso);
+  if (Number.isNaN(start.getTime())) return null;
+  const derived = endDateForDuration(start, durationLabel);
+  return derived ? dateToIso(derived) : null;
+}
+
+/** A trip's own editable fields. The `date` column holds the start date. */
 export type TripEditDraft = {
   title: string;
   date: string;
@@ -73,17 +142,71 @@ export function tripEditChanged(trip: {
   return stored.some((tag, i) => tag !== edited[i]);
 }
 
-/** The payload a permitted save sends to the seam. */
-export function tripEditPayload(draft: TripEditDraft): {
+/**
+ * The payload a permitted save sends to the seam.
+ *
+ * The end date is re-derived from the edited start date + the trip's duration
+ * so the payload's `formData.dates` stays consistent — the same rule the web
+ * dialog uses (endDateForDuration from travelDates.ts). If the start date was
+ * cleared or the duration cannot be parsed, the existing end is left alone.
+ */
+export function tripEditPayload(
+  draft: TripEditDraft,
+  options?: {
+    /** The trip's `formData.duration` label (e.g. "1 day", "3 Days"). */
+    duration?: string | null;
+    /** The existing payload to patch in the new end date. */
+    payload?: string | null;
+  }
+): {
   title: string;
   date: string | null;
   budget: string | null;
   tags: string[];
+  /** When an end date is derivable, the patched payload string. */
+  payload?: string | null;
 } {
-  return {
+  const base = {
     title: draft.title.trim(),
     date: draft.date.trim() === '' ? null : draft.date.trim(),
     budget: draft.budget.trim() === '' ? null : draft.budget.trim(),
     tags: parseTags(draft.tags),
   };
+
+  const duration = options?.duration ?? null;
+  const startIso = base.date;
+
+  // When start is cleared, drop the dates pair from the payload too — a
+  // one-sided range has no honest serialized form.
+  if (!startIso) {
+    return { ...base, payload: patchPayloadEndDate(options?.payload ?? null, '', '') };
+  }
+
+  if (!duration) return { ...base, payload: options?.payload ?? null };
+
+  const endIso = deriveEndDate(startIso, duration);
+  if (!endIso) return { ...base, payload: options?.payload ?? null };
+
+  const patched = patchPayloadEndDate(options?.payload ?? null, startIso, endIso);
+  return { ...base, payload: patched };
+}
+
+/** Inject `dates.start` and `dates.end` into the payload's formData. */
+function patchPayloadEndDate(
+  rawPayload: string | null,
+  startIso: string,
+  endIso: string
+): string | null {
+  if (!rawPayload) return null;
+  try {
+    const parsed = JSON.parse(rawPayload);
+    if (typeof parsed !== 'object' || parsed === null) return rawPayload;
+    if (!parsed.formData || typeof parsed.formData !== 'object') {
+      parsed.formData = {};
+    }
+    parsed.formData.dates = { start: startIso, end: endIso };
+    return JSON.stringify(parsed);
+  } catch {
+    return rawPayload;
+  }
 }

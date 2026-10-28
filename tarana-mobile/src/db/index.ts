@@ -310,10 +310,12 @@ export async function upsertImportedTrip(input: {
 }
 
 /**
- * Edit a local trip's own fields. Web-import rows keep their body: this
- * updates title/date/budget/tags only and leaves `payload` (the itinerary
- * JSON) to the import/regenerate paths, so an edit here can never silently
- * rewrite a generated itinerary.
+ * Edit a local trip's own fields.
+ *
+ * `payload` (the itinerary JSON) is updated only when tripEditPayload supplies it,
+ * which only happens for end-date re-derivation on a start-date edit, so an
+ * edit here still cannot silently rewrite a generated itinerary body.
+ * All other edits leave the payload untouched, matching the prior contract.
  *
  * A missing id is a no-op rather than an error, matching deleteTrip: both
  * are scoped by (id, profile) so a row belonging to another profile is
@@ -322,22 +324,34 @@ export async function upsertImportedTrip(input: {
 export async function updateTrip(
   id: string,
   profileId: string,
-  input: { title?: string | null; date?: string | null; budget?: string | null; tags?: string[] }
+  input: { title?: string | null; date?: string | null; budget?: string | null; tags?: string[]; payload?: string | null }
 ): Promise<LocalTrip | null> {
   const db = await getDb();
-  await db.runAsync(
-    'UPDATE trips SET title = ?, date = ?, budget = ?, tags = ? WHERE id = ? AND profile_id = ?',
-    input.title ?? null,
-    input.date ?? null,
-    input.budget ?? null,
-    JSON.stringify(input.tags ?? []),
-    id,
-    profileId
-  );
+  if (input.payload !== undefined) {
+    await db.runAsync(
+      'UPDATE trips SET title = ?, date = ?, budget = ?, tags = ?, payload = ? WHERE id = ? AND profile_id = ?',
+      input.title ?? null,
+      input.date ?? null,
+      input.budget ?? null,
+      JSON.stringify(input.tags ?? []),
+      input.payload,
+      id,
+      profileId
+    );
+  } else {
+    await db.runAsync(
+      'UPDATE trips SET title = ?, date = ?, budget = ?, tags = ? WHERE id = ? AND profile_id = ?',
+      input.title ?? null,
+      input.date ?? null,
+      input.budget ?? null,
+      JSON.stringify(input.tags ?? []),
+      id,
+      profileId
+    );
+  }
   const row = await db.getFirstAsync<TripRow>('SELECT * FROM trips WHERE id = ? AND profile_id = ?', id, profileId);
   return row ? toTrip(row) : null;
 }
-
 export async function deleteTrip(id: string, profileId: string): Promise<void> {
   const db = await getDb();
   await db.runAsync('DELETE FROM trips WHERE id = ? AND profile_id = ?', id, profileId);

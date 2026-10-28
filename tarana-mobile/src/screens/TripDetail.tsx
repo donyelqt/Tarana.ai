@@ -114,9 +114,10 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
    * in place: a half-typed title must never sit in the row a back-tap
    * would render, and leaving without saving discards the draft.
    *
-   * Only the trip's own four fields are editable. `payload` — the generated
-   * itinerary body, day sections and all — is deliberately read-only, so an
-   * edit can never silently rewrite a generated plan (see tripEdit.ts).
+   * The trip's own four fields (title, date, budget, tags) are editable.
+   * A start-date edit also re-derives the end date inside the payload's
+   * `formData.dates` (see tripEdit.ts) — the rest of the payload body stays
+   * read-only, so an edit can never rewrite a generated itinerary.
    */
   const onEdit = () => {
     if (!trip) return;
@@ -142,7 +143,11 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
     try {
       const profileId = await getActiveProfileId();
       if (!profileId) throw new Error('Create a profile first.');
-      const updated = await updateTrip(trip.id, profileId, tripEditPayload(draft));
+      const payload = tripEditPayload(draft, {
+        duration: form?.duration ?? null,
+        payload: trip.payload,
+      });
+      const updated = await updateTrip(trip.id, profileId, payload);
       // A null return means the row vanished under us (or belongs to another
       // profile); leave edit mode rather than showing a form for a trip that
       // is no longer the one on screen.
