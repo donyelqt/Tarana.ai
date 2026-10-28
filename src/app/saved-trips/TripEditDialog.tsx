@@ -138,10 +138,7 @@ export function TripEditDialog({
     setIsSaving(true);
     setError(null);
     try {
-      const updated = await updateItinerary(
-        itinerary.id,
-        tripEditPayload(draft, { dates: dateRange, formData: itinerary.formData })
-      );
+      const updated = await updateItinerary(itinerary.id, tripEditPayload(draft));
       // A null return means the row is gone or belongs to someone else; leave
       // the open form rather than silently claiming success.
       if (!updated) {

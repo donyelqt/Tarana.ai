@@ -108,6 +108,7 @@ describe('TripEditDialog — a permitted save writes the edited fields', () => {
       fireEvent.click(screen.getByText('Save Changes'));
     });
 
+    await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0]).toEqual({
       id: 'itin-1',
       payload: {
@@ -115,13 +116,6 @@ describe('TripEditDialog — a permitted save writes the edited fields', () => {
         date: '2026-03-04',
         budget: '5000',
         tags: ['Baguio', 'food trip'],
-        formData: {
-          budget: '9000',
-          pax: '2',
-          duration: '1 day',
-          dates: { start: '2026-03-04', end: '2026-03-04' },
-          selectedInterests: ['Culture & Arts'],
-        },
       },
     });
   });
