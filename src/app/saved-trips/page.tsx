@@ -287,7 +287,19 @@ const SavedTrips = () => {
           onOpenChange={(open) => {
             if (!open) setItineraryToEdit(null);
           }}
-          onSaved={async () => {
+          onSaved={async (updated) => {
+            // Optimistically update the list cache with just the fields the
+            // edit touched — title, budget, date — so the tile reflects the save
+            // before the refetch arrives. We spread the old row and overwrite
+            // only what the edit returned, preserving every other column.
+            queryClient.setQueryData(['itineraries'], (old: SavedItinerary[] | undefined) => {
+              if (!old) return old;
+              return old.map((it) =>
+                it.id === updated.id
+                  ? { ...it, title: updated.title, budget: updated.budget, date: updated.date }
+                  : it
+              );
+            });
             // Invalidate both keys: the list re-renders from these rows, and
             // an already-open detail tab reads its own single-trip key.
             await queryClient.invalidateQueries({ queryKey: ['itineraries'] });

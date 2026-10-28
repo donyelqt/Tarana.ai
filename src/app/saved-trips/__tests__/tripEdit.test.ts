@@ -21,9 +21,8 @@
  *    row with identical values cannot happen.
  * 5. Each field counts on its own — a per-field comparison that ORs everything
  *    together would look right and still miss a real edit.
- * 6. Tags are read-only: the dialog mirrors what the row holds, so a tag
- *    mismatch is not a user edit. `parseTags`/`tripEditPayload` still govern
- *    the array's order; this pins the change-detector's exclusion only.
+ * 6. Reordering tags IS a change: the row's rendering order is user-visible,
+ *    so nobody "optimizes" this into a set compare.
  * 7. A blanked date or budget saves as null, not '' — the columns are nullable
  *    and a cleared field should be absent, not an empty string.
  * 8. Blanks are not tags: "Baguio, , food" is two.
@@ -180,14 +179,16 @@ describe('tripEditChanged — only a real edit writes', () => {
     expect(tripEditChanged(trip(), { ...draft, budget: '9000' })).toBe(true);
   });
 
-  it('counts reordering tags in the payload, because the row order is what renders', () => {
-    expect(parseTags('food trip, Baguio')).toEqual(['food trip', 'Baguio']);
+  it('counts reordering tags, because the row order is what renders', () => {
+    expect(tripEditChanged(trip(), { ...draft, tags: 'food trip, Baguio' })).toBe(true);
   });
 
-  it('does not count tag whitespace, a reordering, or a removal as a change', () => {
+  it('does not count tag whitespace typing as a change', () => {
     expect(tripEditChanged(trip(), { ...draft, tags: 'Baguio,  food trip' })).toBe(false);
-    expect(tripEditChanged(trip(), { ...draft, tags: 'food trip, Baguio' })).toBe(false);
-    expect(tripEditChanged(trip(), { ...draft, tags: 'food trip' })).toBe(false);
+  });
+
+  it('counts removing a tag', () => {
+    expect(tripEditChanged(trip(), { ...draft, tags: 'Baguio' })).toBe(true);
   });
 
   it('still counts a title, date or budget edit when tags differ too', () => {

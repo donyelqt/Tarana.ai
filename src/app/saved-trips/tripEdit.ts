@@ -12,19 +12,12 @@
  * The four fields are the row's own columns. `formData` and `itineraryData`
  * are generator inputs and are deliberately never editable here, matching
  * mobile #736: an edit must not silently rewrite the generated day plan.
- * Tags sit on the same side of that line: the itinerary generator writes them
- * from the interests the user picked (and from activity tags when none were
- * picked), so the dialog shows them read-only. They still travel in the draft
- * and the payload untouched, and the cap below still applies, because a direct
- * API caller is not this dialog.
  */
 
 /**
  * A trip's own editable fields as the form holds them. The three text fields
  * are raw user strings; `tags` carries the stored array as one comma-separated
- * string so the payload builder reads it back through `parseTags`. The dialog
- * shows tags read-only — they are written by the itinerary generator — so this
- * is the form's mirror of the column, not an editable input.
+ * string so the payload builder reads it back through `parseTags`.
  */
 export type TripEditDraft = {
   title: string;
@@ -310,12 +303,10 @@ export function tripEditError(draft: TripEditDraft): string | null {
 /**
  * Whether the draft actually differs from the stored row.
  *
- * Tags are excluded: the dialog renders them read-only because the itinerary
- * generator writes them, so a draft can only ever mirror what the row already
- * holds and a tag difference is not a user edit. `tripEditPayload` still sends
- * the array, so a caller that does change tags programmatically is unaffected
- * — this guard only decides whether a dialog save counts as "something to
- * write".
+ * Tags count because the dialog still renders an editable tag input: the row's
+ * rendering order is user-visible, so neither reordering nor removal is folded
+ * into a set compare. If the dialog is later rewritten to show tags read-only,
+ * this is the place to drop the comparison, not `tripEditPayload`.
  */
 export function tripEditChanged(
   trip: TripEditSource,
@@ -329,7 +320,11 @@ export function tripEditChanged(
   if (rowDateFromDateRange(dateRangeFromRowDate(effectiveDateSeed(trip))) !== rowDateFromDateRange(dateRangeFromDraft(draft))) {
     return true;
   }
-  return (trip.budget ?? '') !== draft.budget;
+  if ((trip.budget ?? '') !== draft.budget) return true;
+  const stored = trip.tags ?? [];
+  const edited = parseTags(draft.tags);
+  if (stored.length !== edited.length) return true;
+  return stored.some((tag, index) => tag !== edited[index]);
 }
 
 /**
