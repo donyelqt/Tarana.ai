@@ -116,6 +116,13 @@ describe('TripEditDialog — a permitted save writes the edited fields', () => {
         date: '2026-03-04',
         budget: '5000',
         tags: ['Baguio', 'food trip'],
+        formData: {
+          budget: '9000',
+          pax: '2',
+          duration: '1 day',
+          dates: { start: '2026-03-04', end: '2026-03-04' },
+          selectedInterests: ['Culture & Arts'],
+        },
       },
     });
   });
@@ -253,6 +260,46 @@ describe('TripEditDialog — the end date follows the start date and the duratio
         2,
         10
       ).toLocaleDateString()}`,
+    });
+  });
+
+  it('writes the derived pair into formData.dates, not just the date column', async () => {
+    // The detail view reads its dates from formData.dates, so a save that
+    // only updated the date column left the detail page showing the old
+    // dates. The two have to move together.
+    renderDialog();
+    fireEvent.change(screen.getAllByTestId('Start date')[0], {
+      target: { value: '2026-03-10' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Changes'));
+    });
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0].payload).toMatchObject({
+      formData: { dates: { start: '2026-03-10', end: '2026-03-10' } },
+    });
+  });
+
+  it('writes a multi-day derived end into formData.dates', async () => {
+    render(
+      <ToastProvider>
+        <TripEditDialog
+          itinerary={{ ...itinerary, formData: { ...itinerary.formData, duration: '3 Days' } }}
+          open={true}
+          onOpenChange={() => {}}
+          onSaved={async () => {}}
+        />
+      </ToastProvider>
+    );
+    fireEvent.change(screen.getAllByTestId('Start date')[0], {
+      target: { value: '2026-03-10' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Changes'));
+    });
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0].payload).toMatchObject({
+      formData: { dates: { start: '2026-03-10', end: '2026-03-12' } },
     });
   });
 });
