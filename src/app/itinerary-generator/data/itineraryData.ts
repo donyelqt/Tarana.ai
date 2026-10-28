@@ -16,30 +16,54 @@ import { agara_ramen, baguio_cathedral, baguio_panorama, baguio_public_market, b
   import { StaticImageData } from "next/image";
   import { Dices, Mountain, Utensils, Palette, ShoppingBag, Compass } from 'lucide-react';
   import React from "react";
+
+  import { budgetOptions, interestLabels } from './tripFieldOptions';
+
+  // The two option lists live in `tripFieldOptions.ts` so a screen that only
+  // needs the vocabulary does not pull in the activity catalog below. They are
+  // re-exported here to keep every existing importer's `from ...itineraryData`
+  // specifier working, and because the strings must exist exactly once.
+  export { budgetOptions, interestLabels };
+
+   export {
+   baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, caferuins, 
+   campjohnhay, goodtaste, hillstation, mtulap, nightmarket, smbaguio, tamawan, 
+   taranaai, the_mansion_baguio, treetopcampjohnhay, viewspark, vizcossessionroad, wrightpark
+ };    
   
-  export {
-  baguio_cathedral, baguio_panorama, bencab, botanicalbaguio, burnham, caferuins, 
-  campjohnhay, goodtaste, hillstation, mtulap, nightmarket, smbaguio, tamawan, 
-  taranaai, the_mansion_baguio, treetopcampjohnhay, viewspark, vizcossessionroad, wrightpark
-};    
+  // `budgetOptions` and `interestLabels` are re-exported above.
+   export const paxOptions = ["1", "2", "3-5", "6+"];
+   export const durationOptions = ["1 Day", "2 Days", "3 Days", "4-5 Days"];
+   /**
+    * The icon beside each canonical interest label.
+    *
+    * The labels come from `tripFieldOptions.ts`; the icon is the generator's own
+    * presentation layer, so a surface that needs only the vocabulary (the
+    * saved-trips editor) can import the labels without the catalog, and a
+    * surface that wants icons maps them here as this module always has.
+    *
+    * Keyed by the label union, so adding a label to `interestLabels` is a
+    * compile error here until the icon that carries it exists.
+    */
+   type InterestLabel = (typeof interestLabels)[number];
+
+   const interestIconComponents: Record<InterestLabel, typeof Dices> = {
+     Random: Dices,
+     "Nature & Scenery": Mountain,
+     "Food & Culinary": Utensils,
+     "Culture & Arts": Palette,
+     "Shopping & Local Finds": ShoppingBag,
+     Adventure: Compass,
+   };
+
+   export const interests = interestLabels.map((label) => ({
+     label,
+     icon: React.createElement(interestIconComponents[label], {
+       "aria-label": `${label} interest`,
+       size: 16,
+     }),
+   }));
   
-  export const budgetOptions = [
-    "less than ₱3,000/day",
-    "₱3,000 - ₱5,000/day",
-    "₱5,000 - ₱10,000/day",
-    "₱10,000+/day"
-  ];
-  
-  export const paxOptions = ["1", "2", "3-5", "6+"];
-  export const durationOptions = ["1 Day", "2 Days", "3 Days", "4-5 Days"];
-  export const interests = [
-    { label: "Random", icon: React.createElement(Dices, { "aria-label": "Random interest", size: 16 }) },
-    { label: "Nature & Scenery", icon: React.createElement(Mountain, { "aria-label": "Nature & Scenery interest", size: 16 }) },
-    { label: "Food & Culinary", icon: React.createElement(Utensils, { "aria-label": "Food & Culinary interest", size: 16 }) },
-    { label: "Culture & Arts", icon: React.createElement(Palette, { "aria-label": "Culture & Arts interest", size: 16 }) },
-    { label: "Shopping & Local Finds", icon: React.createElement(ShoppingBag, { "aria-label": "Shopping & Local Finds interest", size: 16 }) },
-    { label: "Adventure", icon: React.createElement(Compass, { "aria-label": "Adventure interest", size: 16 }) }
-  ];
   
   export interface Activity {
   image: StaticImageData | string; // Allow string for potential future API responses
