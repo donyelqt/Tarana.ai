@@ -1,3 +1,4 @@
+import type { SavedItinerary } from '@/lib/data';
 /**
  * Pure logic behind the saved-trips editor: what the form holds, whether a
  * save is allowed, and what the save sends.
@@ -330,32 +331,40 @@ export function tripEditChanged(
 /**
  * The payload a permitted save sends.
  *
- * `date` and `budget` clear to `null`, not `''`, because the columns are
- * nullable text and the list page renders the raw value — an empty string
- * would leave a blank cell where a cleared field should be absent. The
- * write path (`updateItinerary`) drops empty strings before they reach the
- * route, so sending null is also what makes a clear survive at all.
+ * formData.dates is merged into the trip's existing formData so the detail
+ * view's dates.start/end stays in sync with the date column. They are two
+ * serializations of the same pair. The rest of formData is passed through
+ * unchanged.
  *
- * `date` is trimmed but otherwise left as the form holds it: the dialog writes
- * the canonical `locale - locale` range into the draft when the user picks
- * dates, so a draft that came through the UI already carries the generator's
- * own shape. A programmatic caller may pass any parseable token; the
- * change-detector compares in pair space, so a reformatting is never an edit,
- * and whatever reaches the route round-trips back through `dateRangeFromRowDate`.
- *
- * `title` is required and never null: an untitled row is what the schema
- * forbids, and 'Untitled trip' is not a name the user chose.
+ * date and budget clear to null, not '', because the columns are nullable
+ * text and the list page renders the raw value. An empty string would leave
+ * a blank cell where a cleared field should be absent.
  */
-export function tripEditPayload(draft: TripEditDraft): {
+export function tripEditPayload(
+  draft: TripEditDraft,
+  options: { dates: TripDateRange; formData: SavedItinerary['formData'] } = {
+    dates: { start: '', end: '' },
+    formData: {} as SavedItinerary['formData'],
+  }
+): {
   title: string;
   date: string | null;
   budget: string | null;
   tags: string[];
+  formData: SavedItinerary['formData'];
 } {
+  const dateStr = draft.date.trim();
+  const hasPair = options.dates.start !== '' && options.dates.end !== '';
   return {
     title: draft.title.trim(),
-    date: draft.date.trim() === '' ? null : draft.date.trim(),
+    date: dateStr === '' ? null : dateStr,
     budget: draft.budget.trim() === '' ? null : draft.budget.trim(),
     tags: parseTags(draft.tags),
+    formData: {
+      ...options.formData,
+      dates: hasPair
+        ? { start: options.dates.start, end: options.dates.end }
+        : { start: '', end: '' },
+    },
   };
 }
