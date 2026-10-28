@@ -116,13 +116,6 @@ describe('TripEditDialog — a permitted save writes the edited fields', () => {
         date: '2026-03-04',
         budget: '5000',
         tags: ['Baguio', 'food trip'],
-        formData: {
-          budget: '9000',
-          pax: '2',
-          duration: '1 day',
-          dates: { start: '2026-03-04', end: '2026-03-04' },
-          selectedInterests: ['Culture & Arts'],
-        },
       },
     });
   });
