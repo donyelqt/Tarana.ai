@@ -158,4 +158,23 @@ describe('updateTrip — an edit reaches the stored row', () => {
   it('returns null for an unknown id instead of throwing', async () => {
     expect(await updateTrip('no-such-trip', profileId, { title: 'x', tags: [] })).toBeNull();
   });
+
+  it('writes the supplied payload when one is provided', async () => {
+    const patched = '{"formData":{"dates":{"start":"2026-03-10","end":"2026-03-12"}}}';
+    await updateTrip(tripId, profileId, {
+      title: 'Renamed',
+      date: '2026-03-10',
+      budget: '1',
+      tags: ['x'],
+      payload: patched,
+    });
+    const reread = (await listTrips(profileId)).find((t) => t.id === tripId);
+    expect(reread?.payload).toBe(patched);
+  });
+
+  it('preserves the existing payload when none is supplied', async () => {
+    await updateTrip(tripId, profileId, { title: 'Renamed', budget: '1', tags: ['x'] });
+    const reread = (await listTrips(profileId)).find((t) => t.id === tripId);
+    expect(reread?.payload).toBe('{"formData":{}}');
+  });
 });

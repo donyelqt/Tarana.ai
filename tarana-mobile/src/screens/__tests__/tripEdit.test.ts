@@ -33,6 +33,10 @@ import {
   tripEditChanged,
   tripEditError,
   tripEditPayload,
+  endDateForDuration,
+  deriveEndDate,
+  durationDays,
+  dateToIso,
   type TripEditDraft,
 } from '../tripEdit';
 import type { LocalTrip } from '../../data';
@@ -141,5 +145,115 @@ describe('parseTags — blanks are not tags', () => {
 
   it('returns an empty list for a blank field', () => {
     expect(parseTags('')).toEqual([]);
+  });
+});
+
+
+describe('durationDays — reads a leading integer from a duration label', () => {
+  it('parses "1 day" as 1', () => {
+    expect(durationDays('1 day')).toBe(1);
+  });
+
+  it('parses "3 Days" as 3', () => {
+    expect(durationDays('3 Days')).toBe(3);
+  });
+
+  it('returns null for a label with no number', () => {
+    expect(durationDays('Weekend')).toBeNull();
+  });
+});
+
+describe('endDateForDuration — the single source of truth for end-date derivation', () => {
+  it('ends on the same day for a 1-day trip', () => {
+    const start = new Date(2026, 2, 10);
+    const end = endDateForDuration(start, '1 day');
+    expect(end).toBeInstanceOf(Date);
+    expect(dateToIso(end!)).toBe('2026-03-10');
+  });
+
+  it('ends one day later for a 2-day trip', () => {
+    const start = new Date(2026, 2, 10);
+    const end = endDateForDuration(start, '2 Days');
+    expect(dateToIso(end!)).toBe('2026-03-11');
+  });
+
+  it('ends three days later for a 3-day trip', () => {
+    const start = new Date(2026, 2, 10);
+    const end = endDateForDuration(start, '3 Days');
+    expect(dateToIso(end!)).toBe('2026-03-12');
+  });
+
+  it('returns undefined when there is no start', () => {
+    expect(endDateForDuration(undefined, '3 Days')).toBeUndefined();
+  });
+
+  it('returns undefined when the duration has no number', () => {
+    expect(endDateForDuration(new Date(2026, 2, 10), 'Weekend')).toBeUndefined();
+  });
+});
+
+describe('deriveEndDate — end-date derivation for the edit form', () => {
+  it('derives a same-day end for a 1-day trip', () => {
+    expect(deriveEndDate('2026-03-10', '1 day')).toBe('2026-03-10');
+  });
+
+  it('derives a 3-day end from start + duration', () => {
+    expect(deriveEndDate('2026-03-10', '3 Days')).toBe('2026-03-12');
+  });
+
+  it('returns null when the start is missing', () => {
+    expect(deriveEndDate(null, '3 Days')).toBeNull();
+  });
+
+  it('returns null when the duration has no number', () => {
+    expect(deriveEndDate('2026-03-10', 'Weekend')).toBeNull();
+  });
+});
+
+describe('tripEditPayload — auto-derived end date lands in the payload', () => {
+  it('derives the end date and writes it into formData.dates', () => {
+    const p = tripEditPayload(draft({ date: '2026-03-10' }), {
+      duration: '3 Days',
+      payload: JSON.stringify({
+        formData: { dates: { start: '2026-03-04', end: '2026-03-04' } },
+      }),
+    });
+    expect(p.date).toBe('2026-03-10');
+    const parsed = JSON.parse(p.payload!);
+    expect(parsed.formData.dates.start).toBe('2026-03-10');
+    expect(parsed.formData.dates.end).toBe('2026-03-12');
+  });
+
+  it('derives a same-day end for a 1-day trip', () => {
+    const p = tripEditPayload(draft({ date: '2026-03-10' }), {
+      duration: '1 day',
+      payload: JSON.stringify({
+        formData: { dates: { start: '2026-03-04', end: '2026-03-04' } },
+      }),
+    });
+    const parsed = JSON.parse(p.payload!);
+    expect(parsed.formData.dates.end).toBe('2026-03-10');
+  });
+
+  it('clears the dates pair when the start is cleared', () => {
+    const p = tripEditPayload(draft({ date: '' }), {
+      duration: '3 Days',
+      payload: JSON.stringify({
+        formData: { dates: { start: '2026-03-10', end: '2026-03-12' } },
+      }),
+    });
+    expect(p.date).toBeNull();
+    const parsed = JSON.parse(p.payload!);
+    expect(parsed.formData.dates.start).toBe('');
+    expect(parsed.formData.dates.end).toBe('');
+  });
+
+  it('returns the original payload when duration is missing', () => {
+    const raw = JSON.stringify({ formData: { duration: null } });
+    const p = tripEditPayload(draft({ date: '2026-03-10' }), {
+      duration: null,
+      payload: raw,
+    });
+    expect(p.payload).toBe(raw);
   });
 });
