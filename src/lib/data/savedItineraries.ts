@@ -49,8 +49,10 @@ export interface ItineraryData {
 export interface SavedItinerary {
   id: string;
   title: string;
-  date: string;
-  budget: string;
+  // The columns are nullable text, and the editor can clear either; a null
+  // means "not set", which the list page renders as an absent line.
+  date: string | null;
+  budget: string | null;
   image: string | StaticImageData;
   tags: string[];
   formData: {
@@ -245,13 +247,19 @@ export const deleteItinerary = async (id: string): Promise<void> => {
 
 // Single builder for partial updates; the [id] API takes these camelCase
 // keys while the direct server path translates them to snake_case below.
+//
+// `title`, `date` and `budget` pass through on explicit null/empty so a
+// user clearing a field in the editor persists, instead of being dropped as
+// falsy. The remaining fields keep their truthiness guards: dropping a
+// cleared `image` or an empty `formData` is the existing behavior, and
+// changing it would alter writes the editor never makes.
 function buildUpdatePayload(
   updatedData: Partial<Omit<SavedItinerary, 'id' | 'createdAt' | 'userId'>>
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
-  if (updatedData.title) payload.title = updatedData.title;
-  if (updatedData.date) payload.date = updatedData.date;
-  if (updatedData.budget) payload.budget = updatedData.budget;
+  if (updatedData.title !== undefined && updatedData.title !== null) payload.title = updatedData.title;
+  if ('date' in updatedData) payload.date = updatedData.date ?? null;
+  if ('budget' in updatedData) payload.budget = updatedData.budget ?? null;
   if (updatedData.image) {
     payload.image = typeof updatedData.image === 'string' ? updatedData.image : updatedData.image.src;
   }
