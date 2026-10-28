@@ -9,6 +9,10 @@
  * payload handed to `updateItinerary`, not about Supabase. jsdom provides the
  * DOM; `ToastProvider` is required because the component toasts on success and
  * `useToast` throws outside one.
+ *
+ * `DatePicker` is mocked as a plain `<input type="date">` because the real
+ * picker renders a full calendar grid that jsdom cannot drive; the dialog's
+ * contract for dates is "read/write an ISO string", which the mock preserves.
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
@@ -20,6 +24,17 @@ jest.mock('@/lib/data', () => ({
     calls.push({ id, payload });
     return { id, ...(payload as Record<string, unknown>) };
   },
+}));
+
+jest.mock('@/components/ui/date-picker', () => ({
+  DatePicker: ({ date, setDate, placeholder }: any) => (
+    <input
+      type="date"
+      data-testid={placeholder}
+      value={date instanceof Date ? date.toISOString().split('T')[0] : ''}
+      onChange={(e) => setDate(e.target.value ? new Date(e.target.value) : undefined)}
+    />
+  ),
 }));
 
 import { ToastProvider } from '@/components/ui/use-toast';
@@ -66,8 +81,10 @@ describe('TripEditDialog — the form is seeded from the row, not the payload', 
   it('shows the row title, date, budget and tags', () => {
     renderDialog();
     expect((screen.getByPlaceholderText('Trip title') as HTMLInputElement).value).toBe('Baguio Loop');
-    expect((screen.getByPlaceholderText('YYYY-MM-DD') as HTMLInputElement).value).toBe('2026-03-04');
-    expect((screen.getByPlaceholderText('5000') as HTMLInputElement).value).toBe('5000');
+    const dateInputs = screen.getAllByTestId('Start date');
+    expect((dateInputs[0] as HTMLInputElement).value).toBe('2026-03-04');
+    expect((screen.getAllByTestId('End date')[0] as HTMLInputElement).value).toBe('2026-03-04');
+    expect(screen.getByText('5000')).toBeTruthy();
     expect((screen.getByPlaceholderText('Baguio, food trip') as HTMLInputElement).value).toBe(
       'Baguio, food trip'
     );
@@ -77,7 +94,7 @@ describe('TripEditDialog — the form is seeded from the row, not the payload', 
     renderDialog();
     // formData.budget is 9000; the row's is 5000. Showing 9000 would mean the
     // editor is reading the payload it is not allowed to edit.
-    expect((screen.getByPlaceholderText('5000') as HTMLInputElement).value).toBe('5000');
+    expect(screen.getByText('5000')).toBeTruthy();
   });
 });
 
@@ -105,7 +122,14 @@ describe('TripEditDialog — a permitted save writes the edited fields', () => {
 
   it('sends null for a cleared budget while a date remains', async () => {
     renderDialog();
-    fireEvent.change(screen.getByPlaceholderText('5000'), { target: { value: '' } });
+    // Open the budget popover and click "Not set".
+    const budgetButton = screen.getByText('5000').closest('button')!;
+    await act(async () => {
+      fireEvent.click(budgetButton);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Not set'));
+    });
     await act(async () => {
       fireEvent.click(screen.getByText('Save Changes'));
     });
@@ -141,8 +165,15 @@ describe('TripEditDialog — a refused save writes nothing', () => {
 
   it('allows clearing both date and budget and writes nulls', async () => {
     renderDialog();
-    fireEvent.change(screen.getByPlaceholderText('YYYY-MM-DD'), { target: { value: '' } });
-    fireEvent.change(screen.getByPlaceholderText('5000'), { target: { value: '' } });
+    fireEvent.change(screen.getAllByTestId('Start date')[0], { target: { value: '' } });
+    fireEvent.change(screen.getAllByTestId('End date')[0], { target: { value: '' } });
+    // Clear budget via the popover.
+    await act(async () => {
+      fireEvent.click(screen.getByText('5000').closest('button')!);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Not set'));
+    });
     await act(async () => {
       fireEvent.click(screen.getByText('Save Changes'));
     });
