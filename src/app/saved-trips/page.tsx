@@ -10,9 +10,15 @@ import { getSavedItineraries, SavedItinerary, deleteItinerary } from "@/lib/data
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
 import { Trash2, Pencil } from "lucide-react"
-import { TripEditDialog } from "./TripEditDialog"
+import dynamic from "next/dynamic"
+import type { ComponentProps } from "react"
+// The editor carries the calendar picker, so it is loaded only when the user
+// opens it. Importing it eagerly put react-day-picker in the list page's
+// first-load bundle and broke the bundle budget gate.
+const TripEditDialog = dynamic<
+  ComponentProps<typeof import("./TripEditDialog").TripEditDialog>
+>(() => import("./TripEditDialog").then((mod) => mod.TripEditDialog), { ssr: false })
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-
 
 
 const SavedTrips = () => {

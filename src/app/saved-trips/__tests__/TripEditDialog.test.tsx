@@ -190,3 +190,69 @@ describe('TripEditDialog — a refused save writes nothing', () => {
     expect(calls).toHaveLength(0);
   });
 });
+
+describe('TripEditDialog — the end date follows the start date and the duration', () => {
+  it('derives the end date from the start date when the start changes', () => {
+    renderDialog();
+    // The row's duration is '1 day', so a one-day trip that starts on the 10th
+    // ends on the 10th. Before this rule the end picker stayed on the row's
+    // old date, so a moved start produced a range nobody asked for.
+    fireEvent.change(screen.getAllByTestId('Start date')[0], {
+      target: { value: '2026-03-10' },
+    });
+    expect((screen.getAllByTestId('Start date')[0] as HTMLInputElement).value).toBe(
+      '2026-03-10'
+    );
+    expect((screen.getAllByTestId('End date')[0] as HTMLInputElement).value).toBe(
+      '2026-03-10'
+    );
+  });
+
+  it('derives a multi-day end date from the start date and the duration', () => {
+    // A 3-day duration from the 10th ends on the 12th, inclusive of the
+    // first day — the same rule Gala and Plan Mode use.
+    render(
+      <ToastProvider>
+        <TripEditDialog
+          itinerary={{ ...itinerary, formData: { ...itinerary.formData, duration: '3 Days' } }}
+          open={true}
+          onOpenChange={() => {}}
+          onSaved={async () => {}}
+        />
+      </ToastProvider>
+    );
+    fireEvent.change(screen.getAllByTestId('Start date')[0], {
+      target: { value: '2026-03-10' },
+    });
+    expect((screen.getAllByTestId('End date')[0] as HTMLInputElement).value).toBe(
+      '2026-03-12'
+    );
+  });
+
+  it('clears the end date when the start date is cleared', () => {
+    // A one-sided pair has no honest single-string form, so the end goes with
+    // the start rather than being left behind as a stale half-pair.
+    renderDialog();
+    fireEvent.change(screen.getAllByTestId('Start date')[0], { target: { value: '' } });
+    expect((screen.getAllByTestId('Start date')[0] as HTMLInputElement).value).toBe('');
+    expect((screen.getAllByTestId('End date')[0] as HTMLInputElement).value).toBe('');
+  });
+
+  it('writes the derived pair when the trip is saved', async () => {
+    renderDialog();
+    fireEvent.change(screen.getAllByTestId('Start date')[0], {
+      target: { value: '2026-03-10' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Changes'));
+    });
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0].payload).toMatchObject({
+      date: `${new Date(2026, 2, 10).toLocaleDateString()} - ${new Date(
+        2026,
+        2,
+        10
+      ).toLocaleDateString()}`,
+    });
+  });
+});
