@@ -1,3 +1,4 @@
+import type { SavedItinerary } from '@/lib/data';
 /**
  * Pure logic behind the saved-trips editor: what the form holds, whether a
  * save is allowed, and what the save sends.
@@ -346,16 +347,31 @@ export function tripEditChanged(
  * `title` is required and never null: an untitled row is what the schema
  * forbids, and 'Untitled trip' is not a name the user chose.
  */
-export function tripEditPayload(draft: TripEditDraft): {
+export function tripEditPayload(
+  draft: TripEditDraft,
+  options: { dates: TripDateRange; formData: SavedItinerary['formData'] } = {
+    dates: { start: '', end: '' },
+    formData: {} as SavedItinerary['formData'],
+  }
+): {
   title: string;
   date: string | null;
   budget: string | null;
   tags: string[];
+  formData: SavedItinerary['formData'];
 } {
+  const dateStr = draft.date.trim();
+  const hasPair = options.dates.start !== '' && options.dates.end !== '';
   return {
     title: draft.title.trim(),
-    date: draft.date.trim() === '' ? null : draft.date.trim(),
+    date: dateStr === '' ? null : dateStr,
     budget: draft.budget.trim() === '' ? null : draft.budget.trim(),
     tags: parseTags(draft.tags),
+    formData: {
+      ...options.formData,
+      dates: hasPair
+        ? { start: options.dates.start, end: options.dates.end }
+        : { start: '', end: '' },
+    },
   };
 }
