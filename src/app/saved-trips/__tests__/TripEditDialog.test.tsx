@@ -139,17 +139,15 @@ describe('TripEditDialog — a refused save writes nothing', () => {
     expect(calls).toHaveLength(0);
   });
 
-  it('blocks clearing both date and budget', async () => {
+  it('allows clearing both date and budget and writes nulls', async () => {
     renderDialog();
     fireEvent.change(screen.getByPlaceholderText('YYYY-MM-DD'), { target: { value: '' } });
     fireEvent.change(screen.getByPlaceholderText('5000'), { target: { value: '' } });
     await act(async () => {
       fireEvent.click(screen.getByText('Save Changes'));
     });
-    expect(
-      await screen.findByText('A trip needs at least a date or a budget to sync to mobile.')
-    ).toBeTruthy();
-    expect(calls).toHaveLength(0);
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0].payload).toMatchObject({ date: null, budget: null });
   });
 
   it('blocks a save with nothing changed', async () => {

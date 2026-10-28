@@ -9,6 +9,7 @@ import {
   tripEditChanged,
   tripEditError,
   tripEditPayload,
+  MAX_TAGS,
   type TripEditDraft,
 } from './tripEdit';
 
@@ -31,6 +32,14 @@ const FIELD_MAX = {
   title: 200,
   date: 100,
   budget: 100,
+  // Tags are capped by count, not length, so this is not a per-tag character
+  // limit. It is the raw string the count needs room for: N tags plus the
+  // N-1 ", " separators between them, with a tag running one character at
+  // least, is 3N - 2 long. Sizing it for 50 tags fits any legitimate list
+  // while a 51st cannot be typed — the comma it would need never fits.
+  // `tripEditError` remains the enforcement; this only keeps the field from
+  // accepting what it would refuse.
+  tags: 3 * MAX_TAGS - 2,
 };
 
 export function TripEditDialog({
@@ -164,9 +173,12 @@ export function TripEditDialog({
               value={draft.tags}
               onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
               placeholder="Baguio, food trip"
+              maxLength={FIELD_MAX.tags}
               className="w-full rounded-xl border border-gray-300 bg-transparent px-3 py-2 text-gray-900 placeholder:text-gray-400 transition-shadow focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
-            <div className="mt-1 text-xs text-gray-500">Separate tags with commas.</div>
+            <div className="mt-1 text-xs text-gray-500">
+              Separate tags with commas. A trip can hold at most {MAX_TAGS} tags.
+            </div>
           </div>
         </div>
 

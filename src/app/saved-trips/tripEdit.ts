@@ -4,9 +4,10 @@
  *
  * Split out of the page for the same reason mobile keeps `tripEdit.ts` beside
  * its screen: the repo's test suite can exercise a module directly, while a
- * rule that only exists as JSX is invisible to it. Two rules are worth that
- * guarantee — a blank title must never reach the database, and a save with
- * nothing changed must not write — and both would otherwise live in onClick.
+ * rule that only exists as JSX is invisible to it. Three rules are worth that
+ * guarantee — a blank title must never reach the database, a save with nothing
+ * changed must not write, and more tags than the schema allows must not go
+ * anywhere near the route — and all of them would otherwise live in onClick.
  *
  * The four fields are the row's own columns. `formData` and `itineraryData`
  * are generator inputs and are deliberately never editable here, matching
@@ -59,21 +60,41 @@ export function parseTags(raw: string): string[] {
 }
 
 /**
+ * How many tags a save may carry. `UpdateItinerarySchema` declares
+ * `tags: z.array(z.string().max(100)).max(50)` (`src/lib/data/itineraryMapper.ts:162`),
+ * so the 51st tag is refused by the route; counting here keeps the reason on
+ * screen instead of coming back as a generic 400.
+ */
+export const MAX_TAGS = 50;
+
+/**
  * Why a save cannot proceed, or null when it can.
  *
- * A blank title is rejected rather than trimmed away: the column is
- * declared `min(1)` in `UpdateItinerarySchema`, so a blank title would be
- * refused by the route anyway — refusing it here keeps the reason on screen
- * instead of coming back as a generic 400.
+ * A blank title is rejected rather than trimmed away: `UpdateItinerarySchema`
+ * declares `title` as `.nullable().optional()`
+ * (`src/lib/data/itineraryMapper.ts:158`), so a NULL title is accepted by the
+ * schema and would write a NULL column. That row renders as an empty string in
+ * the saved-trips list (`src/app/saved-trips/page.tsx:164`) — an unnameable row
+ * with nothing to click by. Refusing it here names the problem instead.
+ *
+ * `date` and `budget` are freely clearable and get no guard of their own: both
+ * are nullable text (`supabase/migrations/20231231000000_baseline_users_and_itineraries.sql:74-75`)
+ * and `UpdateItinerarySchema` accepts an explicit null for each
+ * (`src/lib/data/itineraryMapper.ts:159-160`), mobile's import binds each column
+ * with `row.date ?? null` / `row.budget ?? null`
+ * (`tarana-mobile/src/data/index.ts:132-133`) and so loses nothing in the round
+ * trip, and the renderers degrade to an explicit placeholder rather than a
+ * broken row — the saved-trips list prints `{itinerary.date || 'Date not set'}`
+ * and `{itinerary.budget || 'Not set'}` (`src/app/saved-trips/page.tsx:173,183`),
+ * `formatDateRange` returns 'Date not specified'
+ * (`src/lib/data/savedItineraries.ts:347`) and the mobile detail view falls back
+ * to 'No details' (`tarana-mobile/src/screens/TripDetail.tsx:284`). Clearing
+ * either is a value the user chose to drop, not a state that needs this
+ * module's permission.
  */
 export function tripEditError(draft: TripEditDraft): string | null {
   if (draft.title.trim().length === 0) return 'Give the trip a title before saving.';
-  // Clearing both date and budget would strand the trip on mobile:
-  // `toWebTrip` refuses to export a trip missing either, so the row would stop
-  // syncing rather than merely losing a value.
-  if (!draft.date.trim() && !draft.budget.trim()) {
-    return 'A trip needs at least a date or a budget to sync to mobile.';
-  }
+  if (parseTags(draft.tags).length > MAX_TAGS) return `A trip can hold at most ${MAX_TAGS} tags.`;
   return null;
 }
 
