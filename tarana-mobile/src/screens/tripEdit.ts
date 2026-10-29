@@ -79,10 +79,15 @@ export function deriveEndDate(
   return derived ? dateToIso(derived) : null;
 }
 
-/** A trip's own editable fields. The `date` column holds the start date. */
+/**
+ * A trip's own editable fields. The `date` column holds the start date;
+ * `endDate` is the ISO end date derived from start + duration (or user-set),
+ * mirrored into `formData.dates` inside the payload JSON.
+ */
 export type TripEditDraft = {
   title: string;
   date: string;
+  endDate: string;
   budget: string;
   tags: string;
 };
@@ -93,13 +98,34 @@ export function draftFromTrip(trip: {
   date: string | null;
   budget: string | null;
   tags: string[];
+  /** The payload JSON, parsed just enough to read formData.dates.end. */
+  payload?: string | null;
 }): TripEditDraft {
+  const form = parsePayloadDates(trip.payload);
   return {
     title: trip.title ?? '',
     date: trip.date ?? '',
+    endDate: form.end ?? '',
     budget: trip.budget ?? '',
     tags: (trip.tags ?? []).join(', '),
   };
+}
+
+/** Read formData.dates from the raw payload JSON, or empty strings if absent. */
+function parsePayloadDates(raw: string | null | undefined): { start: string; end: string } {
+  if (!raw) return { start: '', end: '' };
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed?.formData?.dates) {
+      return {
+        start: parsed.formData.dates.start ?? '',
+        end: parsed.formData.dates.end ?? '',
+      };
+    }
+  } catch {
+    // Fall through to defaults.
+  }
+  return { start: '', end: '' };
 }
 
 /**
@@ -132,9 +158,13 @@ export function tripEditChanged(trip: {
   date: string | null;
   budget: string | null;
   tags: string[];
+  /** The payload JSON, parsed just enough to read formData.dates.end. */
+  payload?: string | null;
 }, draft: TripEditDraft): boolean {
   if ((trip.title ?? '') !== draft.title) return true;
   if ((trip.date ?? '') !== draft.date) return true;
+  const form = parsePayloadDates(trip.payload);
+  if (form.end !== draft.endDate) return true;
   if ((trip.budget ?? '') !== draft.budget) return true;
   const stored = [...(trip.tags ?? [])];
   const edited = parseTags(draft.tags);
@@ -145,17 +175,15 @@ export function tripEditChanged(trip: {
 /**
  * The payload a permitted save sends to the seam.
  *
- * The end date is re-derived from the edited start date + the trip's duration
- * so the payload's `formData.dates` stays consistent — the same rule the web
- * dialog uses (endDateForDuration from travelDates.ts). If the start date was
- * cleared or the duration cannot be parsed, the existing end is left alone.
+ * `formData.dates` is patched with the draft's start and end ISO dates,
+ * keeping the payload JSON in sync with the `date` column — the same
+ * synchronization the web dialog enforces. The end date follows the start
+ * when it changes (see endDateForDuration), matching Gala and Plan Mode.
  */
 export function tripEditPayload(
   draft: TripEditDraft,
   options?: {
-    /** The trip's `formData.duration` label (e.g. "1 day", "3 Days"). */
-    duration?: string | null;
-    /** The existing payload to patch in the new end date. */
+    /** The existing payload to patch in the new dates pair. */
     payload?: string | null;
   }
 ): {
@@ -173,8 +201,8 @@ export function tripEditPayload(
     tags: parseTags(draft.tags),
   };
 
-  const duration = options?.duration ?? null;
   const startIso = base.date;
+  const endIso = draft.endDate.trim() === '' ? null : draft.endDate.trim();
 
   // When start is cleared, drop the dates pair from the payload too — a
   // one-sided range has no honest serialized form.
@@ -182,9 +210,8 @@ export function tripEditPayload(
     return { ...base, payload: patchPayloadEndDate(options?.payload ?? null, '', '') };
   }
 
-  if (!duration) return { ...base, payload: options?.payload ?? null };
-
-  const endIso = deriveEndDate(startIso, duration);
+  // When end is blank, leave the existing payload untouched (the user cleared
+  // the end but left the start — a valid intermediate state while typing).
   if (!endIso) return { ...base, payload: options?.payload ?? null };
 
   const patched = patchPayloadEndDate(options?.payload ?? null, startIso, endIso);
