@@ -112,6 +112,16 @@ export function formatDate(raw: string | null | undefined): string | null {
     return raw;
   }
 }
+/**
+ * Render an ISO date pair as "Mar 4, 2026 - Mar 6, 2026". Returns null if
+ * either date is missing, matching the web app's `formatDateRange`.
+ */
+export function formatDateRange(start: string, end: string): string | null {
+  const s = formatDate(start);
+  const e = formatDate(end);
+  if (!s || !e) return null;
+  return s + ' - ' + e;
+}
 
 let phpFormatter: Intl.NumberFormat | null = null;
 
