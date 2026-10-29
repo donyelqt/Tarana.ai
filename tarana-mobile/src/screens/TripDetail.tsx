@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { getActiveProfileId, listTrips, deleteTrip, updateTrip, resolveWebImage, type LocalTrip } from '../data';
-import { formatDate, firstPayloadImage, TrafficBadge } from './ui';
+import { formatDate, formatDateRange, firstPayloadImage, TrafficBadge } from './ui';
 import {
   draftFromTrip,
   tripEditChanged,
@@ -300,13 +300,17 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
         <>
           <Text style={styles.title}>{trip.title ?? 'Untitled trip'}</Text>
           {heroUri ? <TripHero uri={heroUri} title={trip.title ?? 'Trip photo'} /> : null}
-          <Text style={styles.meta}>
-            {[formatDate(trip.date), trip.budget].filter(Boolean).join(' · ') || 'No details'}
-          </Text>
-          {trip.tags.length > 0 ? <Text style={styles.tags}>{trip.tags.join(', ')}</Text> : null}
+          {form?.dates?.start && form?.dates?.end ? (
+            <Text style={styles.meta}>
+              {formatDateRange(form.dates.start, form.dates.end)} · {trip.budget || 'Not set'}
+            </Text>
+          ) : (
+            <Text style={styles.meta}>
+              {[formatDate(trip.date), trip.budget].filter(Boolean).join(' · ') || 'No details'}
+            </Text>
+          )}
         </>
       )}
-
       {form ? (
         <View style={styles.tiles}>
           {[
