@@ -8,6 +8,7 @@ import {
   tripEditChanged,
   tripEditError,
   tripEditPayload,
+  deriveEndDate,
   type TripEditDraft,
 } from './tripEdit';
 import { activityTrafficLevel, isTrafficTag } from './tripTraffic';
@@ -114,10 +115,11 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
    * in place: a half-typed title must never sit in the row a back-tap
    * would render, and leaving without saving discards the draft.
    *
-   * The trip's own four fields (title, date, budget, tags) are editable.
-   * A start-date edit also re-derives the end date inside the payload's
-   * `formData.dates` (see tripEdit.ts) — the rest of the payload body stays
-   * read-only, so an edit can never rewrite a generated itinerary.
+   * The trip's own four fields (title, date, endDate, budget, tags) are
+   * editable. A start-date edit re-derives the end date live (matching the
+   * web dialog), and on save both dates are patched into the payload's
+   * `formData.dates` — the rest of the payload body stays read-only, so an
+   * edit can never rewrite a generated itinerary.
    */
   const onEdit = () => {
     if (!trip) return;
@@ -144,7 +146,6 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
       const profileId = await getActiveProfileId();
       if (!profileId) throw new Error('Create a profile first.');
       const payload = tripEditPayload(draft, {
-        duration: form?.duration ?? null,
         payload: trip.payload,
       });
       const updated = await updateTrip(trip.id, profileId, payload);
@@ -152,8 +153,6 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
       // profile); leave edit mode rather than showing a form for a trip that
       // is no longer the one on screen.
       if (updated) setTrip(updated);
-      setDraft(null);
-      setEditing(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save trip.');
     } finally {
@@ -232,15 +231,31 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
             placeholder="Trip title"
             accessibilityLabel="Trip title"
           />
-          <Text style={styles.editLabel}>Date</Text>
+          <Text style={styles.editLabel}>Start date</Text>
           <TextInput
             style={styles.input}
             value={draft.date}
-            onChangeText={(date) => setDraft({ ...draft, date })}
+            onChangeText={(date) => {
+              setDraft({ ...draft, date });
+              // End date auto-derives from start + duration, matching the web
+              // dialog. A hand-typed end is overridden when start moves; the
+              // duration is fixed by the trip and a new start needs a new end.
+              if (date && form?.duration) {
+                const end = deriveEndDate(date, form.duration);
+                if (end) setDraft((d) => (d ? { ...d, endDate: end } : d));
+              }
+            }}
             placeholder="YYYY-MM-DD"
-            accessibilityLabel="Trip date"
+            accessibilityLabel="Trip start date"
           />
-          <Text style={styles.editLabel}>Budget</Text>
+          <Text style={styles.editLabel}>End date</Text>
+          <TextInput
+            style={styles.input}
+            value={draft.endDate}
+            onChangeText={(endDate) => setDraft({ ...draft, endDate })}
+            placeholder="YYYY-MM-DD"
+            accessibilityLabel="Trip end date (auto-derived)"
+          />
           <TextInput
             style={styles.input}
             value={draft.budget}
