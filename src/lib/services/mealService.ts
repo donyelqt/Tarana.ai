@@ -125,3 +125,40 @@ export async function deleteMealById(id: string, userId: string): Promise<boolea
 
   return true;
 }
+
+/**
+ * Upsert the caller's notes row for one meal. Uses upsert (not update +
+ * insert) so the first note creation and every subsequent edit share one
+ * code path — the route never has to distinguish "did a row exist".
+ * Returns the saved row or null when the meal is missing/not owned.
+ */
+export interface MealNotesInput {
+  title: string | null;
+  notes: string | null;
+}
+
+export async function updateMealNotes(
+  mealId: string,
+  userId: string,
+  input: MealNotesInput
+) {
+  const { data, error } = await supabaseAdmin
+    .from('saved_meal_notes')
+    .upsert({
+      meal_id: mealId,
+      user_id: userId,
+      title: input.title,
+      notes: input.notes,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'user_id,meal_id',
+    })
+    .select()
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
