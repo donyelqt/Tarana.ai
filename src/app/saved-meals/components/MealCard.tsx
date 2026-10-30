@@ -2,12 +2,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { SavedMeal } from "@/app/saved-meals/data";
-import { Utensils, Users, MapPin, Coffee, Pizza, Croissant, Trash2 } from "lucide-react";
+import { Utensils, Users, MapPin, Coffee, Pizza, Croissant, Trash2, Pencil, X } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { useSession } from 'next-auth/react'
-import { deleteMeal, saveMeal } from '@/lib/data/supabaseMeals';
+import { deleteMeal, saveMeal, getMealNotes, updateMealNotes } from '@/lib/data/supabaseMeals';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface MealCardProps {
@@ -73,6 +73,51 @@ const MealCard = ({ meal }: MealCardProps) => {
     setShowDeleteModal(false);
   };
 
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState(meal.cafeName);
+  const [editNotes, setEditNotes] = useState('');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  const handleEditClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const existing = await getMealNotes(meal.id);
+    if (existing) {
+      setEditTitle(existing.title ?? meal.cafeName);
+      setEditNotes(existing.notes ?? '');
+    } else {
+      setEditTitle(meal.cafeName);
+      setEditNotes('');
+    }
+    setShowEditModal(true);
+  };
+
+  const handleSaveNotes = async () => {
+    if (!session?.user?.id) return;
+    setIsSavingNotes(true);
+    try {
+      const success = await updateMealNotes(meal.id, {
+        title: editTitle.trim() || null,
+        notes: editNotes.trim() || null,
+      });
+      if (success) {
+        toast({ title: 'Success', description: 'Notes saved successfully', variant: 'success' });
+        queryClient.invalidateQueries({ queryKey: ['saved-meals'] });
+        setShowEditModal(false);
+      } else {
+        toast({ title: 'Error', description: 'Failed to save notes', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to save notes', variant: 'destructive' });
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+  };
+
   return (
     <>
       <div className="group relative overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-1">
@@ -119,6 +164,13 @@ const MealCard = ({ meal }: MealCardProps) => {
             </Link>
             <Button 
               variant="outline" 
+              className="h-10 border-gray-300 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-gray-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+              onClick={handleEditClick}
+            >
+              <Pencil size={16} />
+            </Button>
+            <Button 
+              variant="outline" 
               className="h-10 border-gray-300 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
               onClick={handleDeleteClick}
             >
@@ -143,8 +195,48 @@ const MealCard = ({ meal }: MealCardProps) => {
           </div>
         </div>
       )}
-    </>
-  );
-};
+      {/* Notes Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-3xl shadow-[0_20px_60px_rgb(0,0,0,0.15)] border border-gray-200/60 p-8 max-w-md w-full animate-in zoom-in-95 duration-300">
+            <h2 className="text-lg font-bold mb-4 text-gray-900">Edit Notes</h2>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  maxLength={200}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Nickname for this meal"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  maxLength={5000}
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[100px]"
+                  placeholder="What did you think? Any dietary notes?"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button className="bg-gray-200 hover:bg-gray-300 text-black rounded-xl transition-all duration-300 hover:-translate-y-0.5" onClick={handleCancelEdit}>Cancel</Button>
+              <Button
+                className="bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
+                onClick={handleSaveNotes}
+                disabled={isSavingNotes}
+              >
+                {isSavingNotes ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>);
+  };
 
 export default MealCard;
