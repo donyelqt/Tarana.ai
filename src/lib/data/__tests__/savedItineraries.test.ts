@@ -1,9 +1,3 @@
-/**
- * Prove-it tests for the save/list cutover: the browser must never touch
- * Supabase directly (anon key + auth.uid() RLS always fails). jsdom provides
- * `window`, so these exercise the fetch branches: POST/PATCH/DELETE hit the
- * session-cookie API routes, GET maps server errors to the legacy [] shape.
- */
 describe('savedItineraries browser cutover', () => {
   const validItinerary = {
     title: 'Your 1 Day Itinerary',

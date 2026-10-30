@@ -1,14 +1,3 @@
-/**
- * The Visit Spot deep link is parsed DURING RENDER, not in an effect, so the
- * destination exists on the first paint and can seed the map's initial camera.
- *
- * That change is a performance fix: the old path initialised the map on Baguio
- * and could only slide to the spot once the TomTom SDK finished loading, which
- * read as "it went to the wrong place, then it was slow".
- *
- * Parsing during render means the guards must be right on the first pass —
- * there is no second chance to correct a bad value.
- */
 
 import { parseDeepLink } from '../ExploreMapView'
 
@@ -46,8 +35,6 @@ describe('parseDeepLink', () => {
   })
 
   it('never lands on Null Island when the coordinates are missing', () => {
-    // Number(null) is 0, and 0 is finite. Without an explicit presence check a
-    // name-only link would silently target lat 0, lon 0.
     expect(parseDeepLink(params('to=Boracay%20Island')).destination).toBeNull()
     expect(parseDeepLink(params('to=Boracay%20Island&toLat=11.9674')).destination).toBeNull()
   });

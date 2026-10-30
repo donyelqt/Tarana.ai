@@ -19,7 +19,7 @@ interface AmenityProps {
 }
 
 interface ReviewsProps {
-  placeName: string; // Add placeName property
+  placeName: string; 
   overallRating: number
   totalReviews: number
   amenities: AmenityProps[]
@@ -63,12 +63,11 @@ const Reviews = ({
     currentPage * reviewsPerPage
   )
 
-  // Check if reviews are unavailable
   const reviewsUnavailable = !reviews || reviews.length === 0
 
   return (
     <div className="group relative mb-4 sm:mb-6 lg:mb-8 overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-3 sm:p-4 lg:p-6">
-      {/* Rating Overview - Only show when reviews are available */}
+      {}
       {!reviewsUnavailable && (
         <div className="flex flex-col md:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-gray-200">
           <div className="flex flex-col items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-3 sm:p-4 rounded-2xl w-20 h-20 sm:w-24 sm:h-24 shadow-lg shadow-blue-500/30 mx-auto md:mx-0">
@@ -88,7 +87,7 @@ const Reviews = ({
         </div>
       )}
       
-      {/* Amenities - Only show when reviews are available */}
+      {}
       {!reviewsUnavailable && (
         <div className="mb-6 sm:mb-8">
           <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Amenities</h3>
@@ -103,7 +102,7 @@ const Reviews = ({
         </div>
       )}
       
-      {/* Reviews */}
+      {}
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
           <h3 className="text-base sm:text-lg font-semibold">Reviews</h3>
@@ -115,17 +114,16 @@ const Reviews = ({
         </div>
         
         {reviewsUnavailable ? (
-          /* Modern Empty State Placeholder */
           <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 border border-slate-200/60 px-4 sm:px-8 py-12 sm:py-16 text-center">
-            {/* Decorative Background Elements */}
+            {}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
               <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-400/5 rounded-full blur-3xl" />
               <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-400/5 rounded-full blur-3xl" />
             </div>
             
-            {/* Content */}
+            {}
             <div className="relative z-10 flex flex-col items-center justify-center space-y-6">
-              {/* Icon Container with Glassmorphic Effect */}
+              {}
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-indigo-500/30 rounded-full blur-xl animate-pulse" />
                 <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-[0_8px_32px_rgba(59,130,246,0.25)] border border-white/60">
@@ -142,7 +140,7 @@ const Reviews = ({
                 </div>
               </div>
               
-              {/* Text Content */}
+              {}
               <div className="space-y-2 sm:space-y-3 max-w-md px-2">
                 <h3 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
                   Reviews Unavailable
@@ -155,7 +153,7 @@ const Reviews = ({
                 </p>
               </div>
               
-              {/* Status Badge */}
+              {}
               <div className="inline-flex items-center gap-2 rounded-full bg-white/80 backdrop-blur-sm px-6 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.04)] border border-slate-200/60">
                 <div className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -199,7 +197,7 @@ const Reviews = ({
           </div>
         )}
         
-        {/* Pagination */}
+        {}
         {!reviewsUnavailable && totalPages > 1 && (
           <div className="flex justify-center items-center gap-2 mt-4 sm:mt-6">
             <Button

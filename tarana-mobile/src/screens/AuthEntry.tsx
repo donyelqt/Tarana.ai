@@ -1,13 +1,3 @@
-/**
- * Auth entry — the shared shell for first-run fresh start / web import.
- *
- * Keeps the Phase 3b segmented pill shell (and its exact styling) with
- * rebound semantics (§2.1, §7.4): the toggle no longer selects an auth
- * method. `fresh` creates a local SQLite profile (offline); `import`
- * links a web account once and copies trips on-device (online).
- *
- * Owns no identity logic. It only selects which screen to render.
- */
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,18 +21,9 @@ export default function AuthEntry({
   navigation: any;
   route?: AuthEntryRoute;
 }) {
-  // Read the initial `mode` param ONCE — the toggle owns it afterwards.
-  // Landing lands here with no param (defaults `fresh`); Settings links
-  // here with `{ mode: 'import' }`.
   const [mode, setMode] = useState<Mode>(route?.params?.mode ?? 'fresh');
-  // Safe-area top inset keeps the absolute Home button below the camera/notch
-  // and the time/battery row, so it never overlaps the system chrome.
   const insets = useSafeAreaInsets();
 
-  // After profile creation or a completed import, drop into the tabbed
-  // app through a one-way door: replace (never navigate) so back can
-  // never re-enter the auth shell. Reset the toggle to `fresh` first so
-  // a return visit never strands the user on the import screen.
   const onDone = () => {
     setMode('fresh');
     navigation.replace('MainTabs');
@@ -52,10 +33,7 @@ export default function AuthEntry({
     <SafeAreaView style={styles.root} edges={['top']}>
       <DotsGrid />
       <Sparkles />
-      {/* Mobile Back to Home — mirrors the web signin page's md:hidden Home button
-          (`src/app/auth/signin/page.tsx:157-163`), which is the mobile-view
-          affordance the web app ships. Pinned to the safe-area top so it sits
-          below the camera/notch and the time/battery row. */}
+      {}
       <TouchableOpacity
         style={[styles.homeBtn, { top: insets.top + 16 }]}
         activeOpacity={0.85}
@@ -77,7 +55,7 @@ export default function AuthEntry({
         </Text>
       </View>
 
-      {/* Segmented fresh/import toggle — same pill shell, rebound semantics. */}
+      {}
       <View style={styles.toggleRow}>
         <TouchableOpacity
           style={[styles.pill, mode === 'fresh' && styles.pillActive]}

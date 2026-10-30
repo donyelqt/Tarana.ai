@@ -7,7 +7,6 @@ import { useTaranaEatsService } from '@/app/tarana-eats/hooks/useTaranaEatsServi
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 
-// Loading messages
 const loadingMessages = [
   "Finding the best restaurants for you...",
   "Analyzing menus and preferences...",
@@ -23,7 +22,6 @@ interface FoodMatchesPreviewProps {
 }
 
 export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }: FoodMatchesPreviewProps) {
-  // All hooks must be called at the top level, before any early returns
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [activeMatch, setActiveMatch] = useState<ResultMatch | null>(null);
   const [savedSelections, setSavedSelections] = useState<Record<string, MenuItem[]>>({});
@@ -37,13 +35,12 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
         setCurrentMessageIndex((prevIndex) =>
           (prevIndex + 1) % loadingMessages.length
         );
-      }, 2500); // Change message every 2.5 seconds to sync with fade-in-out animation
+      }, 2500); 
 
       return () => clearInterval(interval);
     }
   }, [isLoading]);
 
-  // Early return for loading state - all hooks are already called above
   if (isLoading) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm z-10 rounded-2xl shadow-lg p-8">
@@ -78,12 +75,10 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
   };
 
   const handleSaveAllMeals = async () => {
-    // Only run on client side
     if (typeof window === 'undefined') {
       return;
     }
     
-    // Check if there are any selections to save
     const selectionEntries = Object.entries(savedSelections);
     if (selectionEntries.length === 0) {
       toast({
@@ -94,11 +89,9 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
       return;
     }
 
-    // Track how many meals were saved
     let savedMealsCount = 0;
     let failedSavesCount = 0;
     
-    // Save each selected restaurant's meals
     for (const [restaurantName, menuItems] of selectionEntries) {
       const restaurantMatch = results?.matches.find(match => match.name === restaurantName);
       
@@ -107,7 +100,6 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
         continue;
       }
       
-      // Determine meal type based on time of day (or could be selected by user)
       const hour = new Date().getHours();
       let mealType: 'Breakfast' | 'Dinner' | 'Snack';
       
@@ -115,7 +107,6 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
       else if (hour < 16) mealType = 'Dinner';
       else mealType = 'Dinner';
       
-      // Save the meal
       try {
         const savedMealId = await saveToMeals(restaurantMatch, menuItems, mealType);
         
@@ -129,7 +120,6 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
       }
     }
     
-    // Show appropriate notification based on results
     if (savedMealsCount > 0) {
       toast({
         title: "Success",
@@ -137,7 +127,6 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
         variant: "success"
       });
       
-      // Navigate to the main saved meals page after a short delay
       setTimeout(() => {
         router.push("/saved-meals");
       }, 1200);
@@ -188,7 +177,7 @@ export default function FoodMatchesPreview({ results, isLoading, taranaaiLogo }:
                   <div className="font-semibold text-lg">{match.name}</div>
                   <div className="text-gray-500 text-sm">{match.meals} meals under ₱{match.price}</div>
                   
-                  {/* AI Recommendation Reason */}
+                  {}
                   {match.reason && (
                     <div className="mt-2 px-2 py-1 bg-blue-50 rounded text-sm text-blue-800 border border-blue-100">
                       <p className="italic">"{match.reason}"</p>

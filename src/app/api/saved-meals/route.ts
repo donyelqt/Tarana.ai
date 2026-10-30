@@ -9,17 +9,7 @@ import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
 
 const IDEMPOTENCY_ROUTE = '/api/saved-meals';
-/**
- * `image` accepts the shapes the app actually stores. Every catalog entry
- * uses a site-relative path (`/images/comingsoon.png`), so requiring an
- * absolute URL rejected 20 of 20 real save payloads with a 400. Absolute
- * http(s) URLs are still allowed for externally hosted images, and anything
- * else (javascript:, data:) is rejected.
- *
- * `//host/path` is refused even though it starts with `/`: a
- * protocol-relative URL resolves against whatever host serves the image, so
- * it is an off-site reference dressed as a local one.
- */
+
 const imageField = z
   .string()
   .max(2048, 'Image path is too long')
@@ -31,8 +21,8 @@ const imageField = z
     'Image must be a site-relative path or an http(s) URL'
   );
 
-// `good_for` is nullable: the client sends null when the model reports no
-// headcount, and the column is nullable.
+
+
 const SavedMealSchema = z.object({
   cafe_name: z.string().min(1, 'Cafe name is required').max(200),
   meal_type: z.string().min(1, 'Meal type is required'),
@@ -69,7 +59,7 @@ export const POST = withAuth(async (request: NextRequest, userId: string) => {
   try {
     const body = await request.json();
 
-    // Validate input with Zod
+    
     const validation = SavedMealSchema.safeParse(body);
 
     if (!validation.success) {

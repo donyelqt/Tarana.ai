@@ -3,10 +3,6 @@ import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 
 const IN_PROGRESS_STATUS = 0;
 
-/**
- * A cached replay result, returned verbatim to a caller who re-sends a key
- * after its mutation has completed.
- */
 export interface IdempotencyReplay {
   status: number;
   body: unknown;
@@ -45,21 +41,14 @@ function toError(error: unknown): Error {
 }
 
 function pendingClaimExpiry(pendingTtlMs: number): string {
-  // Crashed owners must not brick their key, but long-running owners need a
-  // TTL longer than their maximum execution window.
   return new Date(Date.now() + pendingTtlMs).toISOString();
 }
 
 function completedResponseExpiry(): string {
-  // Successful and failed responses keep the original 30-day replay window
-  // even though their claim started with the short pending TTL.
   return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 }
 
 async function cleanupExpiredIdempotencyKeys(): Promise<void> {
-  // Enforce the TTL before claiming or replaying. Without this call,
-  // expires_at would be inert metadata and an expired response could be
-  // replayed indefinitely.
   const { error } = await supabaseAdmin.rpc('cleanup_expired_idempotency_keys');
   if (error) throw toError(error);
 }
@@ -81,16 +70,10 @@ async function readStoredResult(
   if (error) throw toError(error);
   if (!data) throw new Error('Idempotency key disappeared during claim');
 
-  // A reused key with a different payload is a client bug: fail loudly
-  // instead of replaying the wrong response, even while the first request
-  // is still in flight. Legacy rows stored before request_hash existed
-  // carry NULL and replay as before.
   if (data.request_hash != null && data.request_hash !== requestHash) {
     return { kind: 'payload-mismatch' };
   }
 
-  // Status 0 is reserved for a key that has been claimed but not completed.
-  // A concurrent caller must not run the mutation while that claim is live.
   if (data.status === IN_PROGRESS_STATUS) return { kind: 'conflict' };
 
   return {
@@ -99,11 +82,6 @@ async function readStoredResult(
   };
 }
 
-/**
- * Atomically reserve an idempotency key before any route mutation runs.
- * Exactly one caller owns a new key. Other callers either replay the cached
- * result or receive a conflict while the owner is still processing.
- */
 export async function claimIdempotency(
   userId: string,
   route: string,
@@ -136,11 +114,6 @@ export async function claimIdempotency(
   return readStoredResult(userId, route, key, requestHash);
 }
 
-/**
- * Complete an owned claim and cache the exact response for future replays.
- * The status predicate prevents a stale caller from overwriting a newer
- * claim if a row is ever reclaimed after expiry.
- */
 export async function completeIdempotency(
   rowId: number,
   status: number,
@@ -158,13 +131,6 @@ export async function completeIdempotency(
   if (!data) throw new Error('Idempotency claim is no longer pending');
 }
 
-/**
- * Extract a caller-supplied idempotency key from a request header.
- *
- * The standard Idempotency-Key header is primary. X-Idempotency-Key is
- * accepted for clients that used the legacy alias. A missing, empty, or
- * oversized key means the request does not opt into idempotency.
- */
 export function getIdempotencyKey(request: Request): string | null {
   const raw = request.headers.get('Idempotency-Key') ?? request.headers.get('X-Idempotency-Key');
   if (!raw) return null;

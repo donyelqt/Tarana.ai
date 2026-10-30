@@ -19,21 +19,16 @@ export const useItineraryForm = ({
 }: UseItineraryFormProps = {}) => {
   const { toast } = useToast();
   
-  // Form state
   const [budget, setBudget] = useState(initialBudget);
   const [pax, setPax] = useState(initialPax);
   const [duration, setDuration] = useState(initialDuration);
   const [dates, setDates] = useState(initialDates);
   const [selectedInterests, setSelectedInterests] = useState<string[]>(initialInterests);
 
-  // Form UI state
   const [showPreview, setShowPreview] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingItinerary, setIsLoadingItinerary] = useState(false);
 
-  /**
-   * Handle interest selection/deselection
-   */
   const handleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
       prev.includes(interest)
@@ -42,9 +37,6 @@ export const useItineraryForm = ({
     );
   };
 
-  /**
-   * Validate the form data
-   */
   const validateForm = (formData: FormData): { isValid: boolean; error?: string } => {
     if (!formData.budget || !formData.pax || !formData.duration || formData.selectedInterests.length === 0) {
       return {
@@ -53,7 +45,6 @@ export const useItineraryForm = ({
       };
     }
 
-    // Validate travel dates match duration if both are provided
     if (formData.dates.start && formData.dates.end && formData.duration) {
       const startDate = new Date(formData.dates.start);
       const endDate = new Date(formData.dates.end);
@@ -74,9 +65,6 @@ export const useItineraryForm = ({
     return { isValid: true };
   };
 
-  /**
-   * Reset the form to its initial state
-   */
   const resetForm = () => {
     setBudget(initialBudget);
     setPax(initialPax);
@@ -88,9 +76,6 @@ export const useItineraryForm = ({
     setIsLoadingItinerary(false);
   };
 
-  /**
-   * Get the current form data as an object
-   */
   const getFormData = (): FormData => ({
     budget,
     pax,
@@ -99,9 +84,6 @@ export const useItineraryForm = ({
     selectedInterests,
   });
 
-  /**
-   * Prepare the form for submission
-   */
   const prepareFormSubmission = (): { formData: FormData | null; isValid: boolean } => {
     const formData = getFormData();
     const { isValid, error } = validateForm(formData);
@@ -119,7 +101,6 @@ export const useItineraryForm = ({
   };
 
   return {
-    // Form state
     budget,
     setBudget,
     pax,
@@ -131,7 +112,6 @@ export const useItineraryForm = ({
     selectedInterests,
     setSelectedInterests,
     
-    // UI state
     showPreview,
     setShowPreview,
     isGenerating,
@@ -139,7 +119,6 @@ export const useItineraryForm = ({
     isLoadingItinerary,
     setIsLoadingItinerary,
     
-    // Functions
     handleInterest,
     validateForm,
     resetForm,

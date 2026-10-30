@@ -2,22 +2,6 @@ import { NextResponse } from 'next/server';
 import { logger } from '@/lib/observability/logger';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 
-/**
- * Dedicated health endpoint.
- *
- * Per §3.2 invariant 8: checks dependencies CHEAPLY. No Gemini generation —
- * the itinerary-generator's `action=health` variant calls the model, which
- * means a monitoring probe costs money and can take up to 60s. This endpoint
- * does connection-level checks only, each with its own timeout, so a single
- * probe answers in well under a second even when a dependency is down.
- *
- * Check status semantics:
- * - `ok`   — the dependency answered
- * - `fail` — the dependency timed out or errored (typed, logged, but the
- *            endpoint still returns 200: an unhealthy dependency is a state,
- *            not a request failure. Load balancers gate on 5xx; alerting
- *            gates on the `checks` payload.)
- */
 
 export const dynamic = 'force-dynamic';
 
@@ -60,8 +44,6 @@ async function checkSupabase(): Promise<CheckStatus> {
 }
 
 function checkGeminiKey(): CheckStatus {
-  // Key-presence only: validity is proven by any real generation. A probe
-  // that calls the model costs money per request.
   return process.env.GOOGLE_GEMINI_API_KEY ? 'ok' : 'fail';
 }
 
@@ -84,9 +66,6 @@ export async function GET(): Promise<NextResponse> {
       tomtom,
     };
     const allOk = Object.values(checks).every((s) => s === 'ok');
-    // Degraded is a state the load balancer must act on: 503 lets it fail
-    // over instead of pinning traffic to a sick instance. Short public TTL
-    // keeps anonymous polling from burning Supabase and TomTom quota.
     return NextResponse.json(
       { status: allOk ? 'ok' : 'degraded', checks, timestamp: new Date().toISOString() },
       { status: allOk ? 200 : 503, headers: { 'Cache-Control': 'public, max-age=10, stale-while-revalidate=30' } }

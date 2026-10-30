@@ -1,18 +1,3 @@
-/**
- * Regression tests for the tarana-explore floating search card.
- *
- * Covers the two reported defects:
- *  1. Committing one endpoint must hand focus to the other one.
- *  2. Committing an endpoint must NOT collapse the island back to the
- *     "Where to?" phase. On iOS/Safari a tap on a <button> does not move DOM
- *     focus, so the resulting focusout carries relatedTarget === null. The old
- *     implementation derived "expanded" from that focus/blur pair and closed
- *     the card the moment a suggestion was tapped.
- *
- * Also pins the two intended collapse behaviours:
- *  - after a route calculation finishes the island returns to "Where to?"
- *  - pressing outside the card collapses it.
- */
 
 import React, { useState } from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
@@ -20,8 +5,6 @@ import userEvent from '@testing-library/user-event'
 import FloatingSearchCard from '../FloatingSearchCard'
 import { LocationPoint, RoutePreferences } from '@/types/route-optimization'
 
-// framer-motion does no layout work in jsdom; render plain elements so the test
-// exercises DynamicIsland's own expanded/collapsed branching, nothing else.
 jest.mock('framer-motion', () => {
   const ReactLib = jest.requireActual<typeof import('react')>('react')
   const MOTION_ONLY_PROPS = new Set([
@@ -46,7 +29,6 @@ jest.mock('framer-motion', () => {
   }
 })
 
-// jsdom implements neither of these; DynamicIsland and the suggestion list use them.
 beforeAll(() => {
   global.ResizeObserver = class {
     observe() {}
@@ -63,7 +45,6 @@ const POPULAR: LocationPoint[] = [
 
 const DEFAULT_PREFS: RoutePreferences = { routeType: 'fastest', vehicleType: 'car' }
 
-/** Mirrors ExploreMapView: the card is controlled, the parent owns the endpoints. */
 const Harness: React.FC<{
   onSubmit?: () => void
   isCalculating?: boolean
@@ -90,7 +71,6 @@ const Harness: React.FC<{
   )
 }
 
-/** The collapsed pill exists only while the island is NOT expanded. */
 const compactPill = () => screen.queryByRole('button', { name: /open search|edit route/i })
 const fromInput = () => screen.getByLabelText('From')
 const toInput = () => screen.getByLabelText('To')
@@ -99,7 +79,6 @@ const routeState = () => JSON.parse(screen.getByTestId('state').textContent || '
 
 const openCard = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(compactPill() as HTMLElement)
-  // The "From" field opens its popular list only after its focus event fires.
   await screen.findByRole('option', { name: /Burnham Park/i })
 }
 
@@ -126,7 +105,7 @@ describe('FloatingSearchCard', () => {
     await openCard(user)
 
     await user.click(screen.getByRole('option', { name: /Burnham Park/i }))
-    await screen.findByRole('option', { name: /Burnham Park/i }) // To list opens
+    await screen.findByRole('option', { name: /Burnham Park/i }) 
 
     expect(fromInput()).toHaveValue('Burnham Park')
     expect(routeState().o).toBe('burnham')
@@ -149,7 +128,6 @@ describe('FloatingSearchCard', () => {
     render(<Harness />)
     await openCard(user)
 
-    // Exactly what Safari/iOS emits when a non-focusable control is tapped.
     fireEvent.focusOut(fromInput(), { relatedTarget: null })
 
     expect(compactPill()).not.toBeInTheDocument()
@@ -212,8 +190,6 @@ describe('FloatingSearchCard', () => {
     await screen.findByRole('option', { name: /Burnham Park/i })
     expect(routeState().o).toBe('burnham')
 
-    // Clear re-focuses the field (single char stays under MIN_QUERY, so no
-    // geocode fires). Editing the text must invalidate the committed origin.
     await user.click(screen.getByRole('button', { name: /clear from/i }))
     expect(fromInput()).toHaveFocus()
     await user.keyboard('x')
@@ -224,7 +200,6 @@ describe('FloatingSearchCard', () => {
 
   it('collapses back to "Where to?" once a route calculation finishes', async () => {
     const { rerender } = render(<Harness isCalculating />)
-    // While calculating the card is held open.
     expect(compactPill()).not.toBeInTheDocument()
 
     rerender(<Harness isCalculating={false} />)
@@ -232,12 +207,7 @@ describe('FloatingSearchCard', () => {
     expect(compactPill()).toBeInTheDocument()
   })
 
-  // The "Avoid" options drawer (Tolls / Ferries / Traffic / Highways) was
-  // untested, leaving its render + toggle branches uncovered. These tests pin
-  // the behaviour and push the global branch coverage floor above threshold.
   const moreOptions = () => screen.getByRole('button', { name: /more options/i })
-  // Re-query on every call: toggling a pill re-renders it, so a captured node
-  // becomes stale the moment the preference flips.
   const avoidPill = (label: 'Tolls' | 'Ferries' | 'Traffic' | 'Highways') =>
     screen.getByRole('button', { name: label })
 

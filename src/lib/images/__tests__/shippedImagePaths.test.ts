@@ -1,24 +1,3 @@
-/**
- * Drift guard: every `/images/...` path a production file can hand to
- * `next/image` must exist on disk.
- *
- * The bug class this catches is silent. `getFallbackImage()` branched across
- * six themed placeholders; none of the six existed in `public/`, so each
- * branch 404'd, `next/image` fired `onError`, and the card degraded to the
- * logo — reached through a path that never loaded. Same for
- * `/images/default.jpg`, `/images/placeholder.png` and
- * `/assets/images/placeholder.png`. Every one looks correct in review and
- * produces no log line; the only symptom is the wrong picture.
- *
- * Excluded, deliberately:
- * - test files — their literals are fixtures, not shipped paths
- * - `enhancedPromptEngine.ts` — its `/images/...` strings are few-shot
- *   examples inside prompt text, never rendered
- * - remote `http(s)` URLs — served by a provider, not `public/`
- *
- * Compared against the real directory listing, never `existsSync`: a
- * case-insensitive filesystem must not be able to pass a broken path.
- */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 const ROOT = process.cwd();
@@ -31,8 +10,6 @@ function publicIndex(): Set<string> {
   const walk = (dir: string, prefix: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const abs = join(dir, entry.name);
-      // Keep the leading slash: production literals are site-absolute
-      // ("/images/x.png"), and posix.join('', 'images') drops it.
       const url = `${prefix}/${entry.name}`;
       if (entry.isDirectory()) walk(abs, url);
       else out.add(url);
@@ -98,7 +75,6 @@ describe('every shipped image path exists on disk', () => {
   });
 
   it('keeps the documented fallback resolving', () => {
-    // The card base layer and the server re-attach both assume this asset.
     expect(index.has('/images/taranaai.png')).toBe(true);
   });
 });

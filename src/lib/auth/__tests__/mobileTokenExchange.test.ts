@@ -10,9 +10,6 @@ jest.mock('next-auth/jwt', () => ({
   decode: jest.fn(),
 }));
 
-// Faithful NextResponse shim mirroring the contract used by the exchange
-// (redirect → 302 + location; json → status + body), so assertions stay on
-// behavior rather than on a Next.js internal that is mangled by jest.setup.
 jest.mock('next/server', () => {
   class MockHeaders {
     public store = new Map<string, string>();
@@ -81,7 +78,6 @@ describe('runMobileTokenExchange', () => {
     process.env.NEXTAUTH_SECRET = 'test-secret';
     mockedCheck.mockReturnValue({ allowed: true, remaining: 4, resetTime: 0 });
     mockedEncode.mockResolvedValue('issued-jwt');
-    // Default: the source session is current. Individual tests override.
     readPasswordChangedAt.mockResolvedValue(null);
     isSessionTokenCurrent.mockReturnValue(true);
   });
@@ -163,9 +159,6 @@ describe('runMobileTokenExchange', () => {
   });
 
   it('refuses to mint a token from a session that predates a password change', async () => {
-    // `getToken` only verifies signature + expiry, so it hands back the very
-    // session the jwt/session callbacks would reject. Without this check the
-    // reset would still yield a working 15-minute bearer token.
     mockedGetToken.mockResolvedValue(SESSION);
     isSessionTokenCurrent.mockReturnValue(false);
 

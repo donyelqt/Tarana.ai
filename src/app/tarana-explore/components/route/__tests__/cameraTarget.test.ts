@@ -1,15 +1,3 @@
-/**
- * Regression tests for "Visit Spot does not move the map".
- *
- * The reported symptom: the arrival card renders, the DynamicIsland already
- * reads "Edit route to <spot>", yet the camera never leaves Baguio city centre.
- * Great Wall of Baguio is 5.2km from that centre, so it sat off-centre; a Cebu or
- * Manila spot sat hundreds of km off-screen entirely.
- *
- * Root cause: the recenter effect hardcoded Baguio as its fallback and was
- * triggered by the deep link, so it overrode the endpoint framing. These tests
- * pin the decision as a pure function so the priority order cannot regress.
- */
 
 import { resolveCameraTarget, applyCameraTarget } from '../cameraTarget'
 
@@ -36,7 +24,6 @@ describe('resolveCameraTarget', () => {
   })
 
   it('never falls back to home while any endpoint is selected', () => {
-    // The exact regression: a selected spot must never resolve to 'home'.
     for (const destination of [GREAT_WALL, SM_SEASIDE]) {
       expect(resolveCameraTarget({ ...base, destination }).kind).not.toBe('home')
     }
@@ -51,7 +38,6 @@ describe('resolveCameraTarget', () => {
 
     expect(target.kind).toBe('center')
     if (target.kind !== 'center') throw new Error('unreachable')
-    // Not the home centre — the camera must actually travel.
     expect(target.center).not.toEqual(BAGUIO_CENTER)
     expect(target.center[0]).toBeCloseTo(123.880608, 5)
     expect(target.center[1]).toBeCloseTo(10.281732, 5)
@@ -84,8 +70,6 @@ describe('resolveCameraTarget', () => {
   })
 
   it('routes route-mode empties home to Baguio — the unchanged fallback', () => {
-    // Pins the fallthrough at cameraTarget.ts:83 (`return { kind: 'home' }`):
-    // route mode with nothing selected must still ease to Baguio.
     expect(resolveCameraTarget({ ...base, origin: null, destination: null }).kind).toBe('home')
     expect(
       resolveCameraTarget({ ...base, origin: null, destination: null, planMode: false }).kind,
@@ -93,16 +77,12 @@ describe('resolveCameraTarget', () => {
   })
 
   it('plan-on with no generated plan holds instead of sliding home to Baguio', () => {
-    // "No plan yet": planMode on, no planRoute endpoints, no waypoints, no
-    // currentRoute geometry. Fails on the old `{ kind: 'home' }` fallthrough.
     const target = resolveCameraTarget({ ...base, origin: null, destination: null, planMode: true })
 
     expect(target).toEqual({ kind: 'hold' })
   })
 
   it('plan-on with an unresolvable day (zero resolved stops) holds Day 1 view', () => {
-    // Twin case: the day published [] so planRoute is null — switching tabs
-    // must hold, not slide home. Same empty shape, planMode on.
     const target = resolveCameraTarget({
       ...base,
       origin: null,
@@ -135,8 +115,6 @@ describe('applyCameraTarget', () => {
   })
 
   it('easeTo the destination for a centre target, without needing LngLatBounds', () => {
-    // The single-point path must work even when the SDK does not expose the
-    // bounds class — that gate is what made the original easeTo skip silently.
     const easeTo = jest.fn()
     const applied = applyCameraTarget(
       { easeTo },

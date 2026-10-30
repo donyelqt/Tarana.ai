@@ -13,7 +13,6 @@ const INTERESTS = ['Food', 'Nature', 'Culture', 'Adventure', 'Cafes', 'History',
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Human copy for the reason a plan cannot be built on this device right now. */
 const DOWNLOAD_REASON =
   'This device has no planning model yet. Tarana plans offline, so the model lives on your phone instead of a server.';
 const PREPARE_REASON =
@@ -26,22 +25,6 @@ function megabytes(bytes: number): string {
   return `${(bytes / MEGABYTE).toFixed(0)} MB`;
 }
 
-/**
- * Plan — Tarana Gala form, native (§8).
- *
- * Web field order recomposed single-column: destination → budget → pax →
- * duration → dates → interests → CTA. No traffic toggle yet (it only
- * affects generation, and nothing but the model reads it — a toggle that
- * changes no output would be dishonest UI).
- *
- * Generate validates, then works through three states, all visible:
- * 1. no model on disk → a real download affordance with byte progress,
- *    gating generation instead of letting it start and then fail;
- * 2. generating → the generator's own per-slot message, so a ~40s local
- *    run reads as progress rather than a hung button;
- * 3. failure → the honest pending card, carrying the thrown Error.message
- *    verbatim (the seam's contract) prefixed by the request it answers.
- */
 export default function Plan() {
   const [city, setCity] = useState<CityId>('baguio');
   const [budget, setBudget] = useState('');
@@ -53,9 +36,6 @@ export default function Plan() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  // Model gate + progress. Kept out of `pending` on purpose: a progress
-  // line and a failure reason are different content and must not overwrite
-  // one another (the pending card is what the user reads after a failure).
   const [progress, setProgress] = useState<string | null>(null);
   const [model, setModel] = useState<ModelStatus | null>(null);
   const [modelLoading, setModelLoading] = useState(false);
@@ -68,7 +48,6 @@ export default function Plan() {
     setPending(null);
   };
 
-  /** The model is a ~1.1 GB download: ask before a long wait, never mid-run. */
   const checkModel = async (): Promise<boolean> => {
     setModelLoading(true);
     try {
@@ -92,8 +71,6 @@ export default function Plan() {
         setDownloading({ fraction, bytesDownloaded, bytesTotal });
         setProgress(`Downloading the planning model… ${Math.round(fraction * 100)}%`);
       });
-      // Re-read rather than trusting the resolved value: the manager caches
-      // status, and a later build could plausibly change what "ready" means.
       const status = await getModelStatus();
       setModel(status);
       setProgress(null);
@@ -126,9 +103,6 @@ export default function Plan() {
       `${CITY_CONFIGS[city].name} · ₱${n} · ${pax} ${pax === 1 ? 'person' : 'people'} · ` +
       `${days} ${days === 1 ? 'day' : 'days'} · ${interests.join(', ')}`;
 
-    // Gate on the model before spending generator time. The seam throws the
-    // same reason, but asking here avoids a long wait that ends in the same
-    // "Download the local model" line.
     if (model !== null && model.state === 'unsupported') {
       setPending(`${summary}\n\n${PREPARE_REASON}`);
       return;
@@ -154,8 +128,6 @@ export default function Plan() {
       );
       setProgress(null);
     } catch (e) {
-      // Seam contract (§6): every failure path is a user-readable reason,
-      // rendered here verbatim below the request it answers.
       setProgress(null);
       setPending(`${summary}\n\n${e instanceof Error ? e.message : 'Generation is unavailable.'}`);
     } finally {

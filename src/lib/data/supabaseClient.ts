@@ -26,9 +26,6 @@ export const createSupabaseClientWithToken = (accessToken: string) =>
 
 let cachedBaseClient: SupabaseClient | null = null;
 
-/** Lazily-created shared client. Importing this module must NEVER throw for
- *  missing env (mobile bundling injects env after import); the identical error
- *  surfaces at first use instead. */
 export function getSupabase(): SupabaseClient {
   if (!cachedBaseClient) cachedBaseClient = createAuthedClient();
   return cachedBaseClient;

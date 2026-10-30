@@ -1,10 +1,3 @@
-// ====================================================================
-// KUBO GRILL BAGUIO MENU DATA
-// ====================================================================
-// Kubo Grill Baguio offers a cozy, laid-back dining experience with a diverse menu 
-// of grilled specialties, hearty Filipino comfort food, and refreshing beverages, 
-// all served in a charming rustic ambiance perfect for family and friends.
-// ====================================================================
 
 import { FullMenu } from "../types";
 

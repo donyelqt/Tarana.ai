@@ -11,7 +11,7 @@ import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 
 const IDEMPOTENCY_ROUTE = '/api/profile';
 
-// GET - Fetch user profile
+
 export const GET = withAuthEmail(async (req: NextRequest, { email }) => {
   return timedHttp('/api/profile', 'GET', async () => {
   try {
@@ -42,7 +42,7 @@ export const GET = withAuthEmail(async (req: NextRequest, { email }) => {
   }
   }, (res) => res.status);
 });
-// PATCH - Update user profile
+
 export const PATCH = withAuthEmail(async (req: NextRequest, { userId, email }) => {
   return timedHttp('/api/profile', 'PATCH', async () => {
   try {
@@ -54,7 +54,7 @@ export const PATCH = withAuthEmail(async (req: NextRequest, { userId, email }) =
     const sanitizedLocation = location ? sanitizeText(location).slice(0, 200) : undefined;
     const sanitizedBio = bio ? sanitizeText(bio).slice(0, 500) : undefined;
 
-    // Validation
+    
     if (!sanitizedFullName || sanitizedFullName.length === 0) {
       return NextResponse.json(
         { error: 'Full name is required' },
@@ -90,8 +90,8 @@ export const PATCH = withAuthEmail(async (req: NextRequest, { userId, email }) =
     };
 
     const key = getIdempotencyKey(req);
-    // The idempotency store keys user_id as uuid: claim by the stable user
-    // id (not the session email) or every keyed PATCH 500s on insert.
+    
+    
     const claim = key
       ? await claimIdempotency(userId, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload(sanitizedUpdate))
       : null;
@@ -116,7 +116,7 @@ export const PATCH = withAuthEmail(async (req: NextRequest, { userId, email }) =
       );
     }
 
-    // Update user profile
+    
     let updatedUser;
     try {
       updatedUser = await updateProfileByEmail(email, sanitizedUpdate);

@@ -10,8 +10,8 @@ export interface FormData {
   dates: { start: Date | undefined; end: Date | undefined };
   selectedInterests: string[];
   peakHours?: boolean;
-  trafficAware?: boolean; // NEW: traffic-aware planning toggle
-  cityId?: CityId; // NEW: strict geographic scope — only this city is generated
+  trafficAware?: boolean; 
+  cityId?: CityId; 
 }
 
 export interface Activity {
@@ -20,15 +20,15 @@ export interface Activity {
   time: string;
   desc: string;
   tags: string[];
-  peakHours?: string; // Peak hours information
-  relevanceScore?: number; // Optional relevance score from RAG results
-  isCurrentlyPeak?: boolean; // Whether activity is currently in peak hours
+  peakHours?: string; 
+  relevanceScore?: number; 
+  isCurrentlyPeak?: boolean; 
 }
 
 export interface ItinerarySection {
   period: string;
   activities: Activity[];
-  reason?: string; // AI-generated reason for empty time slots
+  reason?: string; 
 }
 
 export interface ItineraryData {
@@ -62,8 +62,8 @@ export interface ItineraryFormProps {
   remainingCredits?: number;
   nextRefreshTime?: string;
   showOutOfCredits?: boolean;
-  trafficAware: boolean; // NEW: traffic-aware mode toggle
-  setTrafficAware: React.Dispatch<React.SetStateAction<boolean>>; // NEW
+  trafficAware: boolean; 
+  setTrafficAware: React.Dispatch<React.SetStateAction<boolean>>; 
   selectedCity: CityId;
   setSelectedCity: React.Dispatch<React.SetStateAction<CityId>>;
 }
@@ -75,7 +75,7 @@ export interface ItineraryPreviewProps {
   weatherData: WeatherData | null;
   onSave: () => void;
   taranaaiLogo: StaticImageData | string;
-  cityName?: string; // destination label for the weather card
+  cityName?: string; 
 }
 
 export interface SavedItineraryItem {

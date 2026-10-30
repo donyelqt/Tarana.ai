@@ -1,8 +1,3 @@
-/**
- * The fallback object is the dashboard's only signal for WHY live weather is
- * missing — the badge renders fallbackReason verbatim. These pin that
- * contract: every failure mode must produce a specific, non-empty reason.
- */
 import { fetchWeatherFromAPI, summariseProxyFailure } from '../utils';
 
 describe('summariseProxyFailure', () => {

@@ -1,6 +1,5 @@
 import { Metadata } from 'next';
 
-// Extended data for individual meal pages
 const mealDetailsData = {
   '1': {
     name: 'Cafe Ysap',
@@ -25,10 +24,8 @@ export async function generateMetadata({
 }: { 
   params: Promise<Params>;
 }): Promise<Metadata> {
-  // Read route params
   const { id } = await params;
 
-  // Fetch data
   const mealDetails = mealDetailsData[id as keyof typeof mealDetailsData];
 
   return {

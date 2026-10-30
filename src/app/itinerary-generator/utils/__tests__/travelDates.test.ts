@@ -1,8 +1,3 @@
-/**
- * Travel-date arithmetic is the contract both the Gala form and Explore's Plan
- * Mode depend on. The inclusive-day rule is the part worth pinning: an
- * off-by-one here silently shifts every saved trip's date range.
- */
 import {
   durationDays,
   endDateForDuration,
@@ -44,9 +39,9 @@ describe('endDateForDuration', () => {
   })
 
   it('crosses a month boundary correctly', () => {
-    const start = new Date(2026, 9, 30) // Oct 30
+    const start = new Date(2026, 9, 30) 
     const end = endDateForDuration(start, '3 Days')
-    expect(end?.getMonth()).toBe(10) // November
+    expect(end?.getMonth()).toBe(10) 
     expect(end?.getDate()).toBe(1)
   })
 

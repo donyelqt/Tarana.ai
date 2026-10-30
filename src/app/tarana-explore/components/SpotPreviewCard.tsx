@@ -4,18 +4,6 @@ import React, { useState } from 'react'
 import Image from 'next/image'
 import { MapPin, TrafficCone, X } from 'lucide-react'
 
-/**
- * Arrival card for a spot deep-linked from Suggested Spots / Recommended Cafes.
- *
- * The map marker alone is not enough context: the user picked a card from the
- * dashboard and expects that same card — photo, title, traffic — on the other
- * side of the link. The image and traffic tag ride the URL (`&img=`, `&traffic=`)
- * so this renders real content instead of a bare popup; both are optional and
- * the card degrades honestly when they are absent.
- *
- * This is a LOCATION view, not a route: no origin is invented, so nothing here
- * claims a driving time.
- */
 
 export type SpotTraffic = 'Low' | 'Moderate' | 'High'
 
@@ -27,9 +15,7 @@ const TRAFFIC_STYLES: Record<SpotTraffic, string> = {
 
 export interface SpotPreviewCardProps {
   name: string
-  /** http(s) photo URL from the deep link; null falls back to the brand mark. */
   image: string | null
-  /** Measured traffic from the deep link; null hides the tag rather than guessing. */
   traffic: SpotTraffic | null
   onDismiss: () => void
 }
@@ -60,7 +46,7 @@ const SpotPreviewCard: React.FC<SpotPreviewCardProps> = ({ name, image, traffic,
               <Image src="/images/taranaai2.png" alt="Tarana.ai" width={56} height={56} className="object-contain" />
             </div>
           )}
-          {/* Real button, not a div: the dismiss must be reachable by keyboard. */}
+          {}
           <button
             type="button"
             onClick={onDismiss}

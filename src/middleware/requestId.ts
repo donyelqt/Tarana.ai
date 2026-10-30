@@ -1,22 +1,3 @@
-/**
- * Request ID middleware.
- *
- * Generates a UUID per request, echoes it back as the `x-request-id`
- * response header, and stashes it on the request so every downstream
- * middleware and the route handler can read it.
- *
- * Why a header and not module state: Next.js middleware and the route handler
- * that serves the request are separate serverless invocations. Nothing shared
- * between them survives, so the only reliable handoff is a request header.
- * Handlers read the id from `request.headers.get('x-request-id')` and pass it
- * explicitly to the logger.
- *
- * The id is generated here rather than accepted blindly from the client: a
- * client-supplied id is a trivial DoS vector (attacker controls log volume and
- * correlation). We accept a client value only when it is a well-formed UUID,
- * otherwise we generate one — keeps distributed tracing honest without
- * opening the door to arbitrary strings.
- */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
@@ -35,13 +16,6 @@ export function getRequestId(request: NextRequest): string {
 
 export function requestIdMiddleware(request: NextRequest): NextResponse {
   const requestId = getRequestId(request);
-  // Forward the id to the route handler. `NextResponse.next()` alone does NOT
-  // do this: Next only propagates request headers when they are passed as
-  // `next({ request: { headers } })`, which it serialises into
-  // `x-middleware-override-headers` / `x-middleware-request-*` (see
-  // next/dist/server/web/spec-extension/response.js). Without this the
-  // middleware's id and the handler's `getRequestId` diverge, so an incident
-  // report cannot be joined across logs.
   const headers = new Headers(request.headers);
   headers.set('x-request-id', requestId);
   const response = NextResponse.next({ request: { headers } });

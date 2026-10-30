@@ -98,8 +98,6 @@ describe('touristPoiService.getTouristPois', () => {
   });
 
   it('continues buckets until the accepted target is reached', async () => {
-    // Every bucket returns one in-bounds tourist POI; the loop must not stop
-    // after the first bucket just because it returned a full raw batch.
     const d = deps({
       searchPois: jest.fn(async (query: string) => [
         poi({
@@ -165,7 +163,6 @@ describe('touristPoiService.getTouristPois', () => {
     });
     const d = deps({ searchPois: jest.fn().mockResolvedValue([boracayPoi, elNidoPoi]) });
 
-    // Boracay accepts White Beach; El Nido data must not leak into the Boracay pool.
     const boracay = await getTouristPois('boracay', 50, d);
     expect(boracay.map((r) => r.id)).toEqual(['boracay-white-beach']);
 
@@ -186,7 +183,6 @@ describe('touristPoiService.getTouristPois', () => {
       ]),
     });
 
-    // Cebu coordinates cannot pass Boracay bounds — same strict-city rule as existing scopes.
     await expect(getTouristPois('boracay', 50, d)).resolves.toEqual([]);
   });
 });
@@ -194,7 +190,6 @@ describe('touristPoiService.getInterestPois', () => {
   it('queries the interest term and returns non-tourist POIs the allowlist would reject', async () => {
     const d = deps({
       searchPois: jest.fn().mockResolvedValue([
-        // A restaurant: rejected by isTouristPoi, allowed by the interest layer.
         poi({
           id: 'r1',
           name: 'Manila Bistro',

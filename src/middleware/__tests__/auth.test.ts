@@ -8,11 +8,6 @@ jest.mock('next-auth/jwt', () => ({
   decode: jest.fn(),
 }));
 
-// jest.setup.js stubs global Response/Headers with classes that mangle
-// NextResponse headers (location is unreadable), so this suite swaps in a
-// faithful NextResponse shim. It mirrors the real contract used by the
-// middleware (redirect → 307 + location; next → 200, no location), keeping
-// the assertions on branching/URLs — the logic under test here.
 jest.mock('next/server', () => {
   class MockHeaders {
     public store = new Map<string, string>();
@@ -55,9 +50,6 @@ jest.mock('next/server', () => {
 const mockedGetToken = getToken as unknown as jest.Mock;
 
 function makeRequest(path: string): NextRequest {
-  // Hand-rolled request: authMiddleware only touches `nextUrl`/`url`/`headers`, and
-  // getToken is mocked, so a real NextRequest (broken under jest.setup.js's
-  // Request stub) is unnecessary.
   const url = new URL(path, 'http://localhost');
   return { nextUrl: url, url: url.toString(), headers: new Headers() } as unknown as NextRequest;
 }
@@ -176,23 +168,15 @@ describe('authMiddleware ToS consent gate', () => {
   });
 
   test('returns JSON 403 for an unaccepted ToS on API routes', async () => {
-    // A web session cookie (not a mobile bearer) is the credential here: a
-    // mobile token can only ever be issued to a ToS-accepted user, so the
-    // unaccepted-ToS state is only reachable through the session path.
     mockedGetToken.mockResolvedValue({ sub: 'user-1', tosAccepted: false });
 
     const res = await authMiddleware(makeRequest('/api/trips'));
 
-    // API callers get a JSON 403, not a redirect to an HTML consent page.
     expect(res.status).toBe(403);
     expect(res.headers.get('location')).toBeNull();
   });
 
   test('rejects a mobile bearer token carrying an unaccepted ToS as invalid', async () => {
-    // Mobile tokens are only ever issued to ToS-accepted users (the exchange
-    // endpoint is ToS-gated), so a bearer token with tosAccepted:false is not
-    // a legitimate mobile credential — it fails validation and is treated as
-    // an invalid token, not as a session that happens to lack consent.
     const { decode } = require('next-auth/jwt') as { decode: jest.Mock };
     decode.mockResolvedValue({
       sub: 'user-1',
@@ -229,7 +213,6 @@ describe('authMiddleware ToS consent gate', () => {
       makeRequestWithHeaders('/dashboard', { authorization: 'Bearer abc123.jwt.token' })
     );
 
-    // UI routes reject the bearer credential rather than upgrading it to page access.
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toContain('/auth/signin');
   });
@@ -253,8 +236,6 @@ describe('authMiddleware ToS consent gate', () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get('location')).toBeNull();
-    // The synthetic cookie must carry the raw encrypted JWT, not the decoded
-    // user id — downstream getServerSession expects an encrypted token.
     expect(res.headers.get('cookie')).toBe('next-auth.session-token=abc123.jwt.token');
   });
 

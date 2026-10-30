@@ -41,10 +41,10 @@ const PlaceDetail = ({ place, initialTab = 'description' }: PlaceDetailProps) =>
 
   return (
     <div className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-0">
-      {/* Header */}
+      {}
       <div className="group relative mb-4 sm:mb-6 lg:mb-8 overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-3 sm:p-4 lg:p-6">
         <div className="flex flex-col md:flex-row gap-4 sm:gap-6">
-          {/* Logo */}
+          {}
           <div className="w-full md:w-1/3 flex justify-center items-center">
             <div className="relative w-full max-w-[240px] sm:max-w-[300px] h-[160px] sm:h-[200px]">
               <Image 
@@ -56,12 +56,12 @@ const PlaceDetail = ({ place, initialTab = 'description' }: PlaceDetailProps) =>
             </div>
           </div>
           
-          {/* Details */}
+          {}
           <div className="flex-1">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight">{place.name}</h1>
               
-              {/* Show rating and reviews when available, otherwise show placeholder */}
+              {}
               {hasReviews ? (
                 <div className="flex items-center gap-2">
                   <div className="flex">
@@ -100,7 +100,7 @@ const PlaceDetail = ({ place, initialTab = 'description' }: PlaceDetailProps) =>
             
             <p className="text-xs sm:text-sm text-gray-700 mb-4 sm:mb-6 leading-relaxed">{place.address}</p>
             
-            {/* Gallery */}
+            {}
             <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
               {place.images.slice(1, 4).map((image, index) => (
                 <div key={index} className="relative h-20 sm:h-24 lg:h-28 rounded-xl sm:rounded-2xl overflow-hidden border border-gray-200/40 shadow-sm transition-all duration-300 hover:shadow-md active:scale-95 sm:hover:scale-[1.02] touch-manipulation">
@@ -114,7 +114,7 @@ const PlaceDetail = ({ place, initialTab = 'description' }: PlaceDetailProps) =>
               ))}
             </div>
             
-            {/* Action Buttons */}
+            {}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <Button className="w-full sm:w-auto bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 active:scale-95 sm:hover:-translate-y-0.5 rounded-xl py-2.5 sm:py-2 text-sm font-medium touch-manipulation">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -133,7 +133,7 @@ const PlaceDetail = ({ place, initialTab = 'description' }: PlaceDetailProps) =>
         </div>
       </div>
       
-      {/* Tabs */}
+      {}
       <div className="flex border-b border-gray-200/60 mb-4 sm:mb-6 bg-white/50 backdrop-blur-sm rounded-t-xl sm:rounded-t-2xl overflow-x-auto scrollbar-hide touch-pan-x -mx-2 px-2 sm:mx-0 sm:px-0">
         <button
           className={`flex-shrink-0 px-4 sm:px-6 py-3 font-semibold text-xs sm:text-sm transition-all duration-300 touch-manipulation active:scale-95 ${activeTab === 'description' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50/50'}`}
@@ -155,7 +155,7 @@ const PlaceDetail = ({ place, initialTab = 'description' }: PlaceDetailProps) =>
         </button>
       </div>
       
-      {/* Tab Content */}
+      {}
       {activeTab === 'description' && (
         <div className="group relative mb-4 sm:mb-6 lg:mb-8 overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] p-3 sm:p-4 lg:p-6">
           <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Description</h2>

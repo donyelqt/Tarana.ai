@@ -1,8 +1,5 @@
 import { validateEmailConfig, getEmailTransportConfig } from '../email/emailConfig';
 
-// Mock environment variables. Strips SMTP_FROM_EMAIL so the ambient machine
-// env (set in .env/.env.local) cannot leak into tests that exercise the
-// fromEmail fallback chain — see specs audit §4.4.
 const mockEnv = (vars: Record<string, string | undefined>) => {
   const originalEnv = process.env;
   process.env = { ...originalEnv, SMTP_FROM_EMAIL: undefined, ...vars };
@@ -84,7 +81,7 @@ describe('Email Configuration', () => {
         user: 'apikey',
         pass: 'SG.test_api_key',
         fromName: 'Tarana.ai',
-        fromEmail: 'apikey', // Falls back to SMTP_USER
+        fromEmail: 'apikey', 
       });
     });
 
@@ -162,9 +159,9 @@ describe('Email Configuration', () => {
         tls: {
           rejectUnauthorized: true,
         },
-        connectionTimeout: 60000, // SendGrid optimized
-        socketTimeout: 60000, // SendGrid optimized
-        greetingTimeout: 30000, // SendGrid optimized
+        connectionTimeout: 60000, 
+        socketTimeout: 60000, 
+        greetingTimeout: 30000, 
         debug: false,
         logger: false,
         headers: {

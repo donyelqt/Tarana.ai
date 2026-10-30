@@ -1,11 +1,3 @@
-/**
- * Shared presentation helpers (canonical — use these, don't duplicate).
- *
- * Shape lock (plan §9): actions are pills, cards 16, inputs 12.
- * Canvas is iOS-grouped (#F2F2F7); cards are flat white, borders off —
- * elevation would fight the grouped language, so there is no shadow
- * system. NOT here: brand colors/gradients (live with their screens).
- */
 import React, { useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,24 +5,12 @@ import { TrafficConeIcon } from './icons';
 import type { SpotTraffic } from '../data';
 import { resolveWebImage } from '../data';
 
-/** Web gradient truth (verified in src/, not from memory). */
 export const GRADIENT = {
-  /** Auth/form CTAs: horizontal #0066FF → #1E90FF; pressed #0052CC → #3388FF. */
   auth: { from: '#0066FF', to: '#1E90FF', pressedFrom: '#0052CC', pressedTo: '#3388FF' },
-  /** In-app CTAs: vertical #1D4ED8 → #3B82F6; pressed collapses to #1D4ED8. */
   app: { from: '#1D4ED8', to: '#3B82F6', pressedFrom: '#1D4ED8', pressedTo: '#1D4ED8' },
   disabled: { from: '#d1d5db', to: '#d1d5db' },
 } as const;
 
-/**
- * Canonical CTA — the ONLY gradient button in the app.
- *
- * `auth` (horizontal brand) for auth-flow screens mirrors
- * `auth/signin:253` + `signup:245`; `app` (vertical blue-700→500) for
- * in-app screens mirrors SpotlightCard/MealCard/saved-pages CTAs.
- * Pressed state = the web `:hover` gradient swap (press-in, ~100ms,
- * native); disabled = web `disabled:bg-gray-300` + grey label.
- */
 export function GradientCTA({
   variant,
   title,
@@ -82,7 +62,6 @@ export function GradientCTA({
   );
 }
 
-/** "Good morning/afternoon/evening" by Manila clock. Greeting only. */
 export function manilaDaypart(now: Date = new Date()): 'morning' | 'afternoon' | 'evening' {
   let h = 12;
   try {
@@ -98,10 +77,6 @@ export function manilaDaypart(now: Date = new Date()): 'morning' | 'afternoon' |
   return 'evening';
 }
 
-/**
- * Defensive date display: valid inputs render "Mar 4, 2026" (Intl);
- * anything unparseable passes through untouched (never blank, never crash).
- */
 export function formatDate(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const d = new Date(raw);
@@ -112,10 +87,6 @@ export function formatDate(raw: string | null | undefined): string | null {
     return raw;
   }
 }
-/**
- * Render an ISO date pair as "Mar 4, 2026 - Mar 6, 2026". Returns null if
- * either date is missing, matching the web app's `formatDateRange`.
- */
 export function formatDateRange(start: string, end: string): string | null {
   const s = formatDate(start);
   const e = formatDate(end);
@@ -125,11 +96,6 @@ export function formatDateRange(start: string, end: string): string | null {
 
 let phpFormatter: Intl.NumberFormat | null = null;
 
-/**
- * Peso rendering: Intl en-PH, zero fractions ("₱250"). Falls back to a
- * plain ₱-prefix if Intl is unavailable. Tabular numerals stay the
- * caller's job (fontVariant on the Text).
- */
 export function formatPHP(value: number | null | undefined): string | null {
   if (value == null || !Number.isFinite(value)) return null;
   try {
@@ -144,9 +110,6 @@ export function formatPHP(value: number | null | undefined): string | null {
   }
 }
 
-/** Web parity: TrafficBadge matches web SpotlightCard.tsx:9-13 exactly.
- *  Bordered pill with TrafficCone icon, "X Traffic" text.
- *  Colors = web Tailwind: green-300/bg-50/text-600, yellow-*, red-*. */
 const BADGE: Record<SpotTraffic, { bg: string; border: string; fg: string; label: string }> = {
   VERY_LOW: { bg: '#f0fdf4', border: '#86efac', fg: '#16a34a', label: 'Low' },
   LOW: { bg: '#f0fdf4', border: '#86efac', fg: '#16a34a', label: 'Low' },
@@ -155,11 +118,7 @@ const BADGE: Record<SpotTraffic, { bg: string; border: string; fg: string; label
   SEVERE: { bg: '#fef2f2', border: '#fca5a5', fg: '#dc2626', label: 'Severe' },
 };
 
-/** Web parity: TrafficBadge matches web SpotlightCard.tsx:72-78 exactly.
- *  Bordered pill, TrafficCone icon (14px), "{label} Traffic" text,
- *  hover:scale-105 → RN activeOpacity press. */
 export function TrafficBadge({ level }: { level: SpotTraffic }) {
-  // Normalize level to uppercase to handle API casing differences
   const normalizedLevel = (level?.toUpperCase() ?? 'MODERATE') as SpotTraffic;
   const c = BADGE[normalizedLevel] ?? BADGE.MODERATE;
   return (
@@ -170,16 +129,6 @@ export function TrafficBadge({ level }: { level: SpotTraffic }) {
   );
 }
 
-/**
- * SpotPhoto — photo-led slot with branded absence (canonical — use this,
- * don't duplicate). Consumed by Home preview cards and Spots full cards.
- *
- * The Tarana.ai mark is the permanent base layer; the remote photo (if any)
- * overlays it via absoluteFill. Null uri or load failure therefore degrades
- * to the logo on `#eff6ff` — never a broken-image box, never an initial
- * letter. Fixed `height` keeps carousels from reflowing (no CLS); `radius`
- * follows the caller (both spot cards pass 0 and let the card clip).
- */
 export function SpotPhoto({
   uri,
   name,
@@ -215,12 +164,6 @@ export function SpotPhoto({
   );
 }
 
-/**
- * Spot card shell — shared by Home preview cards and Spots full cards
- * (one visual language, don't fork it). Photo-led top via SpotPhoto
- * (full-bleed), padded body, title, pin meta, badge. Geometry (card width,
- * photo height) and actions (Spots' Maps CTA) stay with the caller.
- */
 export const spotCardStyles = StyleSheet.create({
   card: {
     backgroundColor: '#ffffff',
@@ -260,11 +203,6 @@ const styles = StyleSheet.create({
   ctaTextDisabled: { color: '#6b7280' },
 });
 
-/**
- * First real photo in a saved-trip payload (string http URL only).
- * Canonical home (moved from SavedTrips): list thumbs and the detail
- * hero share one extractor, one rule — photo-led depth, Airbnb pattern.
- */
 export function firstPayloadImage(payload: string | null): string | null {
   if (!payload) return null;
   try {

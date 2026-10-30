@@ -1,19 +1,3 @@
-/**
- * Expo / React Native contract for the mobile token bridge.
- *
- * This file is intentionally dependency-free and framework-agnostic so it can
- * be copied into an Expo project as the single source of truth for how the
- * mobile app interacts with the web backend.
- *
- * Storage target: `expo-secure-store` (never localStorage or
- * `AsyncStorage` — tokens must not be readable by other apps or JS).
- *
- * Usage:
- *   import { saveMobileToken, getMobileToken, clearMobileToken } from './mobileTokenStore';
- *   await saveMobileToken(token);
- *   const token = await getMobileToken();
- *   await clearMobileToken();
- */
 
 import * as SecureStore from 'expo-secure-store';
 
@@ -31,8 +15,6 @@ export interface MobileTokenResponse {
 export async function saveMobileToken(token: string): Promise<void> {
   await SecureStore.setItemAsync(MOBILE_TOKEN_KEY, token, {
     keychainService: MOBILE_TOKEN_KEY,
-    // Token is short-lived; if the device is locked for a while the value
-    // simply expires on the server side.
     requireAuthentication: false,
   });
 }
@@ -45,13 +27,6 @@ export async function clearMobileToken(): Promise<void> {
   await SecureStore.deleteItemAsync(MOBILE_TOKEN_KEY, { keychainService: MOBILE_TOKEN_KEY });
 }
 
-/**
- * Exchange a web session for a mobile token.
- *
- * Must be called with the web app's cookies present (e.g. via a shared
- * cookie jar / SFSafariView / WebKit-based browser), never with a bearer
- * token already in the header.
- */
 export async function exchangeSessionForMobileToken(
   baseUrl: string,
   fetchImpl: typeof fetch = fetch
@@ -74,9 +49,6 @@ export async function exchangeSessionForMobileToken(
   return body as MobileTokenResponse;
 }
 
-/**
- * Attach the stored mobile token to outgoing API requests as a bearer token.
- */
 export async function withMobileAuth(
   input: string,
   init: RequestInit = {}

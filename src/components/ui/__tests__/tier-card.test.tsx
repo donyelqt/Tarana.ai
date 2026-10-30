@@ -78,7 +78,6 @@ describe('TierCard', () => {
       icon: <Check className="w-5 h-5 text-white" />
     };
 
-    // All required props should be defined
     expect(requiredProps.tierName).toBeDefined();
     expect(requiredProps.dailyCredits).toBeDefined();
     expect(requiredProps.totalCredits).toBeDefined();

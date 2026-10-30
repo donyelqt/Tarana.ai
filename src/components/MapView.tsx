@@ -49,7 +49,6 @@ const MapView = ({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [mapHeight, setMapHeight] = useState(320)
 
-  // Mobile detection and responsive height calculation
   useEffect(() => {
     if (typeof window === "undefined") return
 
@@ -57,14 +56,13 @@ const MapView = ({
       const mobile = window.innerWidth < 768
       setIsMobile(mobile)
       
-      // Dynamic height calculation based on screen size
       const vh = window.innerHeight
       if (mobile) {
-        setMapHeight(Math.min(vh * 0.5, 400)) // 50vh max 400px on mobile
+        setMapHeight(Math.min(vh * 0.5, 400)) 
       } else if (window.innerWidth < 1024) {
-        setMapHeight(360) // Tablet
+        setMapHeight(360) 
       } else {
-        setMapHeight(480) // Desktop
+        setMapHeight(480) 
       }
     }
 
@@ -74,7 +72,6 @@ const MapView = ({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Toggle fullscreen mode for mobile
   const toggleFullscreen = useCallback(() => {
     setIsFullscreen(prev => !prev)
   }, [])
@@ -106,7 +103,6 @@ const MapView = ({
     return wrapper
   }, [])
 
-  // Close fullscreen on escape key
   useEffect(() => {
     if (!isFullscreen) return
     
@@ -139,7 +135,6 @@ const MapView = ({
       setError(null)
       setIsLoaded(false)
 
-      // Clean up any existing map before re-initializing
       if (mapInstanceRef.current?.map) {
         try {
           mapInstanceRef.current.map.remove()
@@ -275,7 +270,7 @@ const MapView = ({
 
   return (
     <>
-      {/* Custom Popup Close Button Styling */}
+      {}
       <style jsx global>{`
         .tomtom-popup-modern .mapboxgl-popup-close-button {
           width: 26px;
@@ -321,9 +316,9 @@ const MapView = ({
           border-top-color: rgba(255, 255, 255, 0.95);
         }
       `}</style>
-      {/* Main Map Container */}
+      {}
       <div className="group relative mb-4 sm:mb-6 lg:mb-8 overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
-        {/* Header - Mobile Optimized */}
+        {}
         <div className="flex flex-col gap-3 sm:gap-4 px-3 sm:px-4 lg:px-6 pt-4 sm:pt-5 lg:pt-6 pb-3 sm:pb-4 lg:pb-5 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100/80">
           <h2 className="flex items-center gap-3 text-lg font-bold tracking-tight text-gray-900 sm:text-xl">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
@@ -345,7 +340,7 @@ const MapView = ({
             <span>Map Overview</span>
           </h2>
 
-          {/* Action Button - Mobile Optimized */}
+          {}
           <Button
             variant="ghost"
             className="w-full rounded-full border border-blue-500/40 bg-white/60 px-4 py-2 text-sm font-medium text-blue-600 shadow-[0_18px_35px_-20px_rgba(59,130,246,0.85)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white sm:w-auto"
@@ -371,7 +366,7 @@ const MapView = ({
           </Button>
         </div>
 
-        {/* Error State - Enhanced Mobile UI */}
+        {}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 p-3 sm:p-4 rounded-xl mb-4 flex items-start gap-3 animate-in fade-in duration-300">
             <svg
@@ -392,7 +387,7 @@ const MapView = ({
           </div>
         )}
 
-        {/* Map Container - Responsive with Touch Optimization */}
+        {}
         <div className="relative mx-2 sm:mx-3 mt-2 mb-4 sm:mb-6 overflow-hidden rounded-[20px] sm:rounded-[26px] border border-slate-200/30 bg-gradient-to-br from-slate-100/70 via-white/60 to-slate-100/30">
           <div
             ref={mapRef}
@@ -404,7 +399,7 @@ const MapView = ({
             }}
           />
 
-          {/* Loading State - Enhanced Animation */}
+          {}
           {!isLoaded && !error && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-gradient-to-br from-white/80 via-blue-50/70 to-white/60 backdrop-blur-xl">
               <div className="flex w-40 flex-col gap-3">
@@ -416,7 +411,7 @@ const MapView = ({
             </div>
           )}
 
-          {/* Map Controls Hint - Mobile Only */}
+          {}
           {isLoaded && !error && isMobile && (
             <div className="absolute bottom-3 left-3 right-3 rounded-2xl border border-white/40 bg-white/70 px-3 py-2 text-xs text-gray-600 shadow-[0_16px_40px_-25px_rgba(15,23,42,0.55)] backdrop-blur-md animate-in slide-in-from-bottom duration-500">
               <p className="flex items-center gap-2">
@@ -440,7 +435,7 @@ const MapView = ({
           )}
         </div>
         
-        {/* Address - Enhanced Typography */}
+        {}
         <div className="mx-2 sm:mx-3 lg:mx-6 mb-3 sm:mb-4 lg:mb-6 flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border border-white/60 bg-white/70 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-slate-600 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.35)]">
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
@@ -460,10 +455,10 @@ const MapView = ({
         </div>
       </div>
 
-      {/* Fullscreen Modal - Mobile Only */}
+      {}
       {isFullscreen && isMobile && (
         <div className="fixed inset-0 z-[9999] bg-black animate-in fade-in duration-300">
-          {/* Fullscreen Header */}
+          {}
           <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent backdrop-blur-sm z-10 px-4 py-3 safe-area-top">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-white">
@@ -506,17 +501,17 @@ const MapView = ({
             </div>
           </div>
 
-          {/* Fullscreen Map */}
+          {}
           <div 
             className="w-full h-full no-touch-select"
           >
-            {/* Map will be re-rendered here or use portal */}
+            {}
             <div className="w-full h-full flex items-center justify-center text-white">
               <p className="text-sm">Fullscreen map view</p>
             </div>
           </div>
 
-          {/* Fullscreen Footer */}
+          {}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent backdrop-blur-sm z-10 px-4 py-4 safe-area-bottom">
             <Button
               className="w-full bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-medium py-3 rounded-xl shadow-lg transition-all duration-200 active:scale-98"

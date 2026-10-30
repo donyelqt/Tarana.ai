@@ -8,14 +8,6 @@ export interface TaranaStats {
   explorers: number;
 }
 
-/**
- * Public aggregate counters for the dashboard Tarana Stats widget.
- *
- * No session required — all values are global aggregates, no per-user data.
- * Cafes come from the static restaurant dataset; the rest are exact-count
- * head queries (no rows transferred). Any failing query rejects the whole
- * batch so the widget never renders partial counts.
- */
 export async function getStats(): Promise<TaranaStats> {
   const [itineraries, meals, explorers] = await Promise.all([
     supabaseAdmin.from('itineraries').select('id', { count: 'exact', head: true }),

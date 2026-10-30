@@ -1,7 +1,4 @@
-/**
- * Traffic-Aware Activity Search Enhancement
- * Integrates real-time traffic data with activity search and scoring
- */
+
 
 import { agenticTrafficAnalyzer, createTrafficContext, TrafficAnalysisResult } from './agenticTrafficAnalyzer';
 import { getActivityCoordinates } from '../data/baguioCoordinates';
@@ -10,7 +7,7 @@ import type { Activity } from '@/app/itinerary-generator/data/itineraryData';
 
 export interface TrafficEnhancedActivity extends Activity {
   trafficAnalysis?: TrafficAnalysisResult;
-  combinedTrafficScore: number; // 0-100 (higher = better to visit now)
+  combinedTrafficScore: number; 
   trafficRecommendation: 'VISIT_NOW' | 'VISIT_SOON' | 'AVOID_NOW' | 'PLAN_LATER';
   crowdLevel: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH';
 }
@@ -24,16 +21,14 @@ export interface TrafficAwareSearchOptions {
 }
 
 class TrafficAwareActivitySearchService {
-  /**
-   * Enhance activities with real-time traffic data
-   */
+  
   async enhanceActivitiesWithTraffic(
     activities: Activity[],
     options: TrafficAwareSearchOptions = {
       prioritizeTraffic: true,
-      avoidCrowds: false, // Allow more variety
+      avoidCrowds: false, 
       flexibleTiming: true,
-      maxTrafficLevel: 'MODERATE' // Allow VERY_LOW, LOW and MODERATE traffic
+      maxTrafficLevel: 'MODERATE' 
     }
   ): Promise<TrafficEnhancedActivity[]> {
     const context = createTrafficContext({
@@ -44,8 +39,8 @@ class TrafficAwareActivitySearchService {
 
     const enhancedActivities: TrafficEnhancedActivity[] = [];
 
-    // Process activities in batches — 5 concurrent to respect TomTom rate limits (was 40 → 429s)
-    const batchSize = 3; // p-limit(3) per-instance PH peak cap (was 5, spec 9.3/5b)
+    
+    const batchSize = 3; 
     for (let i = 0; i < activities.length; i += batchSize) {
       const batch = activities.slice(i, i + batchSize);
       
@@ -53,7 +48,7 @@ class TrafficAwareActivitySearchService {
 
       const batchPromises = batch.map(async (activity) => {
         try {
-          // Get coordinates for the activity — prefer lat/lon from search (world/PH) over Baguio lookup
+          
           const coordsFromActivity = (activity.lat != null && activity.lon != null)
             ? { lat: activity.lat, lon: activity.lon, name: activity.title, category: (activity as any).category || 'search' } as any
             : null
@@ -63,9 +58,9 @@ class TrafficAwareActivitySearchService {
             return this.createFallbackEnhancedActivity(activity);
           }
 
-          // Analyze traffic for this activity
+          
           const trafficAnalysis = await agenticTrafficAnalyzer.analyzeActivityTraffic(
-            activity.title, // Use title as ID since Activity type doesn't have id property
+            activity.title, 
             activity.title,
             coordinates.lat,
             coordinates.lon,
@@ -105,24 +100,21 @@ class TrafficAwareActivitySearchService {
           enhancedActivities.push(this.createFallbackEnhancedActivity(batch[index]));
         }
       });
-      // 5b: 200ms sleep removed (floor breaker)
     }
 
     console.log(`✅ Traffic Enhancement: Completed processing ${enhancedActivities.length} activities`);
     return enhancedActivities;
   }
 
-  /**
-   * Filter and sort activities based on traffic conditions
-   */
+  
   filterAndSortByTraffic(
     activities: TrafficEnhancedActivity[],
     options: TrafficAwareSearchOptions
   ): TrafficEnhancedActivity[] {
     console.log(`🔍 Traffic Filtering: Starting with ${activities.length} activities`);
 
-    // Soft ranking: keep all activities, penalize HIGH/SEVERE via combinedTrafficScore (no hard drop)
-    // Previously hard-filtered HIGH/SEVERE/AVOID_NOW → 0 results on congested days
+    
+    
     const filtered = activities.filter(activity => {
       const lvl = activity.trafficAnalysis?.realTimeTraffic.trafficLevel
       if (lvl === 'HIGH' || lvl === 'SEVERE') {
@@ -134,26 +126,26 @@ class TrafficAwareActivitySearchService {
       if (activity.trafficRecommendation === 'AVOID_NOW') {
         console.log(`⚠️ SOFT PENALTY: "${activity.title}" AVOID_NOW will rank lower`)
       }
-      return true // keep all — sorting will penalize via combinedTrafficScore
+      return true 
     });
 
     console.log(`📊 Traffic Filtering: ${filtered.length} activities passed filters`);
 
-    // Sort by traffic-aware scoring
+    
     filtered.sort((a, b) => {
       if (options.prioritizeTraffic) {
-        // Primary sort by traffic score
+        
         const scoreDiff = b.combinedTrafficScore - a.combinedTrafficScore;
         if (Math.abs(scoreDiff) > 10) return scoreDiff;
         
-        // Secondary sort by relevance score if traffic scores are similar
+        
         return (b.relevanceScore || 0) - (a.relevanceScore || 0);
       } else {
-        // Primary sort by relevance score
+        
         const relevanceDiff = (b.relevanceScore || 0) - (a.relevanceScore || 0);
         if (Math.abs(relevanceDiff) > 0.1) return relevanceDiff;
         
-        // Secondary sort by traffic score
+        
         return b.combinedTrafficScore - a.combinedTrafficScore;
       }
     });
@@ -163,9 +155,7 @@ class TrafficAwareActivitySearchService {
     return filtered;
   }
 
-  /**
-   * Update activity descriptions with traffic insights
-   */
+  
   updateDescriptionsWithTrafficInsights(activities: TrafficEnhancedActivity[]): TrafficEnhancedActivity[] {
     console.log(`📝 Traffic Insights: Adding traffic information to ${activities.length} activity descriptions`);
 
@@ -175,9 +165,9 @@ class TrafficAwareActivitySearchService {
       }
 
       const { trafficAnalysis } = activity;
-      let enhancedDescription = activity.desc || ''; // Activity type uses 'desc' property, not 'description'
+      let enhancedDescription = activity.desc || ''; 
 
-      // Add traffic timing insights
+      
       const trafficInsight = this.generateTrafficInsight(trafficAnalysis);
       if (trafficInsight) {
         enhancedDescription += ` ${trafficInsight}`;
@@ -193,15 +183,13 @@ class TrafficAwareActivitySearchService {
     });
   }
 
-  /**
-   * Generate traffic insight text for activity descriptions
-   */
+  
   private generateTrafficInsight(trafficAnalysis: TrafficAnalysisResult): string {
     const { recommendation, trafficSummary, bestTimeToVisit, crowdLevel } = trafficAnalysis;
 
     const insights: string[] = [];
 
-    // Add recommendation-based insight
+    
     switch (recommendation) {
       case 'VISIT_NOW':
         insights.push('🎯 Perfect time to visit right now!');
@@ -217,14 +205,14 @@ class TrafficAwareActivitySearchService {
         break;
     }
 
-    // Add crowd level insight
+    
     if (crowdLevel === 'VERY_LOW' || crowdLevel === 'LOW') {
       insights.push('✨ Expect minimal crowds.');
     } else if (crowdLevel === 'VERY_HIGH') {
       insights.push('⚠️ High crowd levels expected.');
     }
 
-    // Add traffic summary if relevant
+    
     if (trafficSummary && !trafficSummary.includes('moderate')) {
       insights.push(trafficSummary);
     }
@@ -232,9 +220,7 @@ class TrafficAwareActivitySearchService {
     return insights.length > 0 ? insights.join(' ') : '';
   }
 
-  /**
-   * Create fallback enhanced activity when traffic analysis fails
-   */
+  
   private createFallbackEnhancedActivity(activity: Activity): TrafficEnhancedActivity {
     const isCurrentlyPeak = activity.peakHours ? isCurrentlyPeakHours(activity.peakHours) : false;
     
@@ -248,18 +234,16 @@ class TrafficAwareActivitySearchService {
 
 }
 
-// Export singleton instance
+
 export const trafficAwareActivitySearch = new TrafficAwareActivitySearchService();
 
-/**
- * Create default traffic-aware search options
- */
+
 export function createDefaultTrafficOptions(): TrafficAwareSearchOptions {
   return {
     prioritizeTraffic: true,
-    avoidCrowds: false, // Allow more variety
+    avoidCrowds: false, 
     flexibleTiming: true,
-    maxTrafficLevel: 'MODERATE', // Allow VERY_LOW, LOW and MODERATE traffic
+    maxTrafficLevel: 'MODERATE', 
     weatherCondition: undefined
   };
 }

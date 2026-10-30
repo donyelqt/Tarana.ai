@@ -83,15 +83,6 @@ function isAllowedHostname(hostname: string, allowedHosts: readonly string[] | u
   return allowedHosts.some((allowed) => hostname === allowed.toLowerCase());
 }
 
-/**
- * SSRF URL guard.
- *
- * Predicate only: it never fetches. Resolve every hostname and reject if any
- * resolved address is internal/sensitive. Allowlisted hosts bypass the
- * general allowlist rule, but never the loopback/unspecified/link-local
- * sensitive-address rules. DNS validation is point-in-time; callers that
- * fetch must revalidate or pin the resolved address because of DNS TOCTOU.
- */
 export async function isSafeUrl(raw: string, options: SafeUrlOptions = {}): Promise<boolean> {
   if (typeof raw !== 'string' || raw.length === 0 || raw.length > 2048) return false;
 

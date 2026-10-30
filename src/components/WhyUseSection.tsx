@@ -18,40 +18,40 @@ type CardData = {
     iconHeightSmall: number
 }
 
-// Desktop dimensions & transforms (≥768px)
+
 const DESKTOP = {
     width: 320,
     height: 380,
     padding: 'p-12',
     slots: {
-        0: { tx: -20, ty: 15, rot: -8, zIndex: 10, ml: '0px', mr: '-80px' },   // left
-        1: { tx: 0, ty: 0, rot: 0, zIndex: 30, ml: '0px', mr: '0px' },        // center
-        2: { tx: 20, ty: 15, rot: 8, zIndex: 10, ml: '-80px', mr: '0px' },    // right
+        0: { tx: -20, ty: 15, rot: -8, zIndex: 10, ml: '0px', mr: '-80px' },   
+        1: { tx: 0, ty: 0, rot: 0, zIndex: 30, ml: '0px', mr: '0px' },        
+        2: { tx: 20, ty: 15, rot: 8, zIndex: 10, ml: '-80px', mr: '0px' },    
     } as const,
 }
 
-// Mobile dimensions & transforms (480–767px) — standard mobile, wider phones
+
 const MOBILE = {
     width: 260,
     height: 240,
     padding: 'p-5',
     slots: {
-        0: { tx: -8, ty: 8, rot: -5, zIndex: 10, ml: '0px', mr: '-60px' },    // left
-        1: { tx: 0, ty: 0, rot: 0, zIndex: 30, ml: '0px', mr: '0px' },         // center
-        2: { tx: 8, ty: 8, rot: 5, zIndex: 10, ml: '-60px', mr: '0px' },     // right
+        0: { tx: -8, ty: 8, rot: -5, zIndex: 10, ml: '0px', mr: '-60px' },    
+        1: { tx: 0, ty: 0, rot: 0, zIndex: 30, ml: '0px', mr: '0px' },         
+        2: { tx: 8, ty: 8, rot: 5, zIndex: 10, ml: '-60px', mr: '0px' },     
     } as const,
 }
 
-// Small mobile dimensions & transforms (<480px) — iPhone 12 Pro (390px), Samsung S21 (360px), iPhone SE (375px)
-// Aggressive scaling + tighter overlap so cards fit naturally in narrow viewports without heavy clipping
+
+
 const MOBILE_SMALL = {
     width: 180,
     height: 200,
     padding: 'p-4',
     slots: {
-        0: { tx: -5, ty: 6, rot: -5, zIndex: 10, ml: '0px', mr: '-70px' },    // left
-        1: { tx: 0, ty: 0, rot: 0, zIndex: 30, ml: '0px', mr: '0px' },         // center
-        2: { tx: 5, ty: 6, rot: 5, zIndex: 10, ml: '-70px', mr: '0px' },     // right
+        0: { tx: -5, ty: 6, rot: -5, zIndex: 10, ml: '0px', mr: '-70px' },    
+        1: { tx: 0, ty: 0, rot: 0, zIndex: 30, ml: '0px', mr: '0px' },         
+        2: { tx: 5, ty: 6, rot: 5, zIndex: 10, ml: '-70px', mr: '0px' },     
     } as const,
 }
 
@@ -117,16 +117,16 @@ const WhyUseSection = ({ id }: { id?: string }) => {
     ])
 
     const handleCardClick = (slotIndex: number) => {
-        if (slotIndex === 1) return // already center, no swap
+        if (slotIndex === 1) return 
         setSlots((prev) => {
             const next = [...prev]
-            // Swap clicked slot with center slot (index 1)
+            
             ;[next[slotIndex], next[1]] = [next[1], next[slotIndex]]
             return next
         })
     }
 
-    // Use viewport-appropriate config after hydration, desktop during SSR (prevents hydration mismatch)
+    
     const config =
         !mounted ? DESKTOP :
         viewportTier === 'small' ? MOBILE_SMALL :
@@ -137,7 +137,7 @@ const WhyUseSection = ({ id }: { id?: string }) => {
     const paddingClass = config.padding
     const slotStyles = config.slots
 
-    // Icon dimensions based on viewport tier
+    
     const getIconDimensions = (card: CardData) => {
         if (!mounted) return { w: card.iconWidth, h: card.iconHeight }
         if (viewportTier === 'small') return { w: card.iconWidthSmall, h: card.iconHeightSmall }
@@ -156,7 +156,7 @@ const WhyUseSection = ({ id }: { id?: string }) => {
                     Click any card to feature it
                 </p>
 
-                {/* Horizontal row on ALL breakpoints — same scattered layout, just scaled for mobile */}
+                {}
                 <div className="flex flex-row items-center justify-center">
                     {slots.map((card, slotIndex) => {
                         const style = slotStyles[slotIndex as 0 | 1 | 2]

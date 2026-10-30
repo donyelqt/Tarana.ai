@@ -12,9 +12,6 @@ import { useToast } from "@/components/ui/use-toast"
 import { Trash2, Pencil } from "lucide-react"
 import dynamic from "next/dynamic"
 import type { ComponentProps } from "react"
-// The editor carries the calendar picker, so it is loaded only when the user
-// opens it. Importing it eagerly put react-day-picker in the list page's
-// first-load bundle and broke the bundle budget gate.
 const TripEditDialog = dynamic<
   ComponentProps<typeof import("./TripEditDialog").TripEditDialog>
 >(() => import("./TripEditDialog").then((mod) => mod.TripEditDialog), { ssr: false })
@@ -33,14 +30,12 @@ const SavedTrips = () => {
   const [itineraryToEdit, setItineraryToEdit] = useState<SavedItinerary | null>(null)
   const { toast } = useToast()
 
-  // React Query - Cached itineraries list
   const { data: savedItineraries = [], isLoading } = useQuery({
     queryKey: ['itineraries'],
     queryFn: getSavedItineraries,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, 
   })
 
-  // Filtered itineraries based on search (memoized for performance)
   const filteredItineraries = useMemo(() => {
     if (searchQuery.trim() === "") {
       return savedItineraries
@@ -66,7 +61,6 @@ const SavedTrips = () => {
     try {
       await deleteItinerary(itineraryToDelete.id)
       
-      // Invalidate cache to trigger refetch
       queryClient.invalidateQueries({ queryKey: ['itineraries'] })
       queryClient.invalidateQueries({ queryKey: ['itinerary', itineraryToDelete.id] })
       
@@ -93,8 +87,6 @@ const SavedTrips = () => {
   }
 
   const handleEditClick = (itinerary: SavedItinerary, e: React.MouseEvent) => {
-    // The edit control lives inside the card, so the click must not also fire
-    // the row's own View Itinerary navigation.
     e.stopPropagation()
     setItineraryToEdit(itinerary)
   }
@@ -103,11 +95,11 @@ const SavedTrips = () => {
     <div className="p-8 min-h-screen bg-[#f7f9fb]">
       <Sidebar />
       <main className={`${contentClass('md:pl-64')} flex-1`}>
-        {/* Header */}
+        {}
         <div className="mb-8">
           <h1 className="text-2xl bg-white p-4 rounded-3xl md:text-3xl font-bold border border-gray-200/60 text-gray-900 mb-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">Saved Itineraries</h1>
 
-          {/* Search Bar */}
+          {}
           <div className="relative max-w-full bg-white rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.04)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -124,7 +116,7 @@ const SavedTrips = () => {
           </div>
         </div>
 
-        {/* Loading State */}
+        {}
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
@@ -144,12 +136,12 @@ const SavedTrips = () => {
           </div>
         )}
 
-        {/* Itineraries Grid */}
+        {}
         {!isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredItineraries.map((itinerary) => (
             <div key={itinerary.id} className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-1">
-              {/* Image */}
+              {}
               <div className="relative h-48 w-full">
                 <Image
                   src={itinerary.image}
@@ -163,14 +155,14 @@ const SavedTrips = () => {
                 />
               </div>
 
-              {/* Content */}
+              {}
               <div className="flex flex-1 flex-col p-6">
-                {/* Title and ID */}
+                {}
                 <div className="mb-3">
                   <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2 min-h-[3.5rem]">{itinerary.title} <span className="text-sm text-gray-400 font-normal break-all">#{itinerary.id}</span></h3>
                 </div>
 
-                {/* Date and Time */}
+                {}
                 <div className="mb-3">
                   <div className="flex items-center text-sm text-gray-600">
                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -180,7 +172,7 @@ const SavedTrips = () => {
                   </div>
                 </div>
 
-                {/* Budget */}
+                {}
                 <div className="mb-4">
                   <div className="flex items-center text-sm text-gray-600">
                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -190,7 +182,7 @@ const SavedTrips = () => {
                   </div>
                 </div>
 
-                {/* Tags */}
+                {}
                 <div className="mb-2 md:min-h-[2.75rem]">
                   <div className="flex flex-wrap items-center gap-2">
                     {(expandedTags[itinerary.id] ? itinerary.tags : itinerary.tags.slice(0, MAX_VISIBLE_TAGS)).map((tag, index) => (
@@ -218,7 +210,7 @@ const SavedTrips = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
+                {}
                 <div className="mt-auto flex gap-2 pt-2">
                   <Button
                     className="flex-1 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-medium py-2 px-4 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
@@ -233,12 +225,7 @@ const SavedTrips = () => {
                     <Pencil className="h-4 w-4" />
                     Edit
                   </Button>
-                  {/*<Button 
-                    className="bg-gray-200 hover:bg-gray-300 text-black font-medium py-2 px-4 rounded-xl transition-colors"
-                    onClick={(e) => handleDeleteClick(itinerary, e)}
-                  >
-                    Delete
-                  </Button>*/}
+                  {}
                   <Button
                     onClick={(e) =>  handleDeleteClick(itinerary, e)}
                     variant="outline"
@@ -253,7 +240,7 @@ const SavedTrips = () => {
           </div>
         )}
 
-        {/* Empty State */}
+        {}
         {!isLoading && filteredItineraries.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
@@ -272,7 +259,7 @@ const SavedTrips = () => {
           </div>
         )}
 
-        {/* Delete Confirmation Modal */}
+        {}
         {showDeleteModal && itineraryToDelete && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
             <div className="bg-white rounded-3xl shadow-[0_20px_60px_rgb(0,0,0,0.15)] border border-gray-200/60 p-8 max-w-sm w-full animate-in zoom-in-95 duration-300">
@@ -286,7 +273,7 @@ const SavedTrips = () => {
           </div>
         )}
 
-        {/* Trip Editor — writes only the row's own four fields */}
+        {}
         <TripEditDialog
           itinerary={itineraryToEdit}
           open={itineraryToEdit !== null}
@@ -294,10 +281,6 @@ const SavedTrips = () => {
             if (!open) setItineraryToEdit(null);
           }}
           onSaved={async (updated) => {
-            // Optimistically update the list cache with just the fields the
-            // edit touched — title, budget, date — so the tile reflects the save
-            // before the refetch arrives. We spread the old row and overwrite
-            // only what the edit returned, preserving every other column.
             queryClient.setQueryData(['itineraries'], (old: SavedItinerary[] | undefined) => {
               if (!old) return old;
               return old.map((it) =>
@@ -306,8 +289,6 @@ const SavedTrips = () => {
                   : it
               );
             });
-            // Invalidate both keys: the list re-renders from these rows, and
-            // an already-open detail tab reads its own single-trip key.
             await queryClient.invalidateQueries({ queryKey: ['itineraries'] });
             if (itineraryToEdit) {
               await queryClient.invalidateQueries({ queryKey: ['itinerary', itineraryToEdit.id] });

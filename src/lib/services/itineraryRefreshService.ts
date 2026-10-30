@@ -1,10 +1,3 @@
-/**
- * Enterprise-Grade Itinerary Refresh Service
- * Detects significant weather and traffic changes to trigger itinerary updates
- * 
- * @module itineraryRefreshService
- * @author Tarana.ai Engineering Team
- */
 
 import { WeatherData } from '../core/utils';
 import { tomtomTrafficService, LocationTrafficData } from '../traffic/tomtomTraffic';
@@ -12,9 +5,6 @@ import { SavedItinerary } from '../data/savedItineraries';
 import { logger } from '@/lib/observability/logger';
 import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 
-// ============================================================================
-// TYPES & INTERFACES
-// ============================================================================
 
 export type RefreshReason = 
   | 'WEATHER_SIGNIFICANT_CHANGE'
@@ -61,7 +51,7 @@ export interface ChangeDetectionResult {
   weatherChange: WeatherChangeDetails | null;
   trafficChange: TrafficChangeDetails | null;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  confidence: number; // 0-100
+  confidence: number; 
 }
 
 export interface WeatherChangeDetails {
@@ -83,8 +73,8 @@ export interface TrafficChangeDetails {
 }
 
 export interface RefreshConfiguration {
-  temperatureThreshold: number; // Celsius
-  congestionThreshold: number; // Percentage points
+  temperatureThreshold: number; 
+  congestionThreshold: number; 
   enableAutoRefresh: boolean;
   evaluationIntervalHours: number;
   maxRefreshesPerDay: number;
@@ -92,16 +82,13 @@ export interface RefreshConfiguration {
   trafficLevelThreshold: 'LOW' | 'MODERATE' | 'HIGH';
 }
 
-// ============================================================================
-// DEFAULT CONFIGURATION
-// ============================================================================
 
 const DEFAULT_CONFIG: RefreshConfiguration = {
-  temperatureThreshold: 5, // 5°C change triggers refresh
-  congestionThreshold: 30, // 30% increase in congestion
-  enableAutoRefresh: false, // Manual-only: disable proactive auto refresh
-  evaluationIntervalHours: 6, // Check every 6 hours
-  maxRefreshesPerDay: 4, // Max 4 refreshes per day
+  temperatureThreshold: 5, 
+  congestionThreshold: 30, 
+  enableAutoRefresh: false, 
+  evaluationIntervalHours: 6, 
+  maxRefreshesPerDay: 4, 
   weatherConditionPriority: [
     'thunderstorm',
     'tornado',
@@ -111,19 +98,16 @@ const DEFAULT_CONFIG: RefreshConfiguration = {
     'snow',
     'clear'
   ],
-  trafficLevelThreshold: 'MODERATE' // Refresh if traffic exceeds MODERATE
+  trafficLevelThreshold: 'MODERATE' 
 };
 const LOG_ENTRY_POINT = 'itineraryRefreshService';
 
 
-// ============================================================================
-// ITINERARY REFRESH SERVICE
-// ============================================================================
 
 class ItineraryRefreshService {
   private config: RefreshConfiguration;
   private evaluationCache: Map<string, ChangeDetectionResult> = new Map();
-  private readonly CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+  private readonly CACHE_DURATION = 15 * 60 * 1000; 
 
   constructor(config: Partial<RefreshConfiguration> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -138,13 +122,7 @@ class ItineraryRefreshService {
     });
   }
 
-  // ==========================================================================
-  // CORE CHANGE DETECTION
-  // ==========================================================================
 
-  /**
-   * Evaluate if an itinerary needs refresh based on current conditions
-   */
   async evaluateRefreshNeed(
     itinerary: SavedItinerary,
     currentWeather: WeatherData,
@@ -158,25 +136,20 @@ class ItineraryRefreshService {
     const cacheKey = `${itinerary.id}_${Date.now()}`;
     
     try {
-      // 1. Weather Change Detection
       const weatherChange = this.detectWeatherChange(
         itinerary.weatherData || null,
         currentWeather
       );
 
-      // 2. Traffic Change Detection
       const trafficChange = await this.detectTrafficChange(
         itinerary,
         activityCoordinates
       );
 
-      // 3. Determine if refresh is needed
       const needsRefresh = this.shouldRefresh(weatherChange, trafficChange);
       
-      // 4. Collect reasons
       const reasons = this.collectRefreshReasons(weatherChange, trafficChange);
       
-      // 5. Calculate severity and confidence
       const severity = this.calculateSeverity(weatherChange, trafficChange);
       const confidence = this.calculateConfidence(weatherChange, trafficChange);
 
@@ -197,7 +170,6 @@ class ItineraryRefreshService {
         confidence,
       });
 
-      // Cache result
       this.evaluationCache.set(cacheKey, result);
       
       return result;
@@ -208,7 +180,6 @@ class ItineraryRefreshService {
         ...getSafeErrorMetadata(error),
       });
       
-      // Return conservative result on error
       return {
         needsRefresh: false,
         reasons: [],
@@ -220,21 +191,12 @@ class ItineraryRefreshService {
     }
   }
 
-  // ==========================================================================
-  // WEATHER CHANGE DETECTION
-  // ==========================================================================
 
-  /**
-   * Detect significant weather changes
-   */
   private detectWeatherChange(
     previousWeather: WeatherData | null,
     currentWeather: WeatherData
   ): WeatherChangeDetails | null {
     if (!previousWeather || !previousWeather.main) {
-      // No baseline: report the current condition honestly but do not claim a
-      // change. shouldRefresh only fires on measured deltas, so a missing
-      // snapshot must not manufacture one.
       logger.info('No previous weather data; reporting current condition without change', { entryPoint: LOG_ENTRY_POINT });
       return {
         temperatureDelta: 0,
@@ -272,20 +234,12 @@ class ItineraryRefreshService {
     };
   }
 
-  /**
-   * Check if weather condition is extreme
-   */
   private isExtremeWeather(weather: WeatherData): boolean {
     const condition = weather.weather[0]?.main.toLowerCase() || '';
     return ['thunderstorm', 'tornado', 'squall', 'hurricane'].includes(condition);
   }
 
-  /**
-   * Detect precipitation state changes
-   */
   private detectPrecipitationChange(prev: string, curr: string): boolean {
-    // Unknown baselines must not manufacture a change: without a previous
-    // condition there is nothing to compare against.
     if (!prev || prev === 'unknown' || !curr || curr === 'unknown') return false;
     const wetConditions = ['rain', 'drizzle', 'thunderstorm', 'snow'];
     const wasWet = wetConditions.includes(prev);
@@ -293,13 +247,7 @@ class ItineraryRefreshService {
     return wasWet !== isWet;
   }
 
-  // ==========================================================================
-  // TRAFFIC CHANGE DETECTION
-  // ==========================================================================
 
-  /**
-   * Detect significant traffic changes across activity locations
-   */
   private async detectTrafficChange(
     itinerary: SavedItinerary,
     activityCoordinates: Array<{ lat: number; lon: number }>
@@ -310,7 +258,6 @@ class ItineraryRefreshService {
     });
 
     try {
-      // Fetch current traffic data for all locations
       const trafficDataPromises = activityCoordinates.map(coord =>
         tomtomTrafficService.getLocationTrafficData(coord.lat, coord.lon)
       );
@@ -328,7 +275,6 @@ class ItineraryRefreshService {
         return null;
       }
 
-      // Calculate current traffic metrics
       const avgCongestion = validTrafficData.reduce((sum, data) => 
         sum + data.congestionScore, 0
       ) / validTrafficData.length;
@@ -341,11 +287,9 @@ class ItineraryRefreshService {
         sum + data.incidents.filter(i => i.magnitudeOfDelay >= 4).length, 0
       );
 
-      // Determine average traffic level
       const trafficLevels = validTrafficData.map(d => d.trafficLevel);
       const avgTrafficLevel = this.calculateAverageTrafficLevel(trafficLevels);
 
-      // Compare with previous snapshot if available
       const previousSnapshot = this.extractTrafficSnapshot(itinerary);
       
       if (!previousSnapshot) {
@@ -393,9 +337,6 @@ class ItineraryRefreshService {
     }
   }
 
-  /**
-   * Calculate average traffic level from multiple samples
-   */
   private calculateAverageTrafficLevel(
     levels: Array<'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE'>
   ): 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE' {
@@ -418,34 +359,21 @@ class ItineraryRefreshService {
     return 'VERY_LOW';
   }
 
-  /**
-   * Extract traffic snapshot from saved itinerary metadata
-   */
   private extractTrafficSnapshot(itinerary: SavedItinerary): TrafficSnapshot | null {
-    // Check if itinerary has traffic snapshot in metadata
-    // This will be stored when itinerary is first created/refreshed
     const metadata = (itinerary as any).refreshMetadata as RefreshMetadata | undefined;
     return metadata?.trafficSnapshot || null;
   }
 
-  // ==========================================================================
-  // DECISION LOGIC
-  // ==========================================================================
 
-  /**
-   * Determine if refresh should be triggered
-   */
   private shouldRefresh(
     weatherChange: WeatherChangeDetails | null,
     trafficChange: TrafficChangeDetails | null
   ): boolean {
-    // Extreme weather always triggers refresh
     if (weatherChange?.extremeWeatherDetected) {
       logger.info('Extreme weather detected; refresh required', { entryPoint: LOG_ENTRY_POINT });
       return true;
     }
 
-    // Significant temperature change
     if (weatherChange && weatherChange.temperatureDelta > this.config.temperatureThreshold) {
       logger.info('Weather temperature change requires refresh', {
         entryPoint: LOG_ENTRY_POINT,
@@ -455,13 +383,11 @@ class ItineraryRefreshService {
       return true;
     }
 
-    // Precipitation state change
     if (weatherChange?.precipitationChange) {
       logger.info('Precipitation state changed; refresh required', { entryPoint: LOG_ENTRY_POINT });
       return true;
     }
 
-    // Critical traffic incidents
     if (trafficChange && trafficChange.criticalIncidents > 0) {
       logger.info('Critical traffic incidents require refresh', {
         entryPoint: LOG_ENTRY_POINT,
@@ -470,7 +396,6 @@ class ItineraryRefreshService {
       return true;
     }
 
-    // Significant congestion increase
     if (trafficChange && trafficChange.congestionDelta > this.config.congestionThreshold) {
       logger.info('Traffic congestion increase requires refresh', {
         entryPoint: LOG_ENTRY_POINT,
@@ -480,7 +405,6 @@ class ItineraryRefreshService {
       return true;
     }
 
-    // Traffic level degradation beyond threshold
     if (trafficChange?.levelChanged) {
       const currentLevel = trafficChange.currentLevel;
       const thresholdMet = this.isTrafficLevelAboveThreshold(currentLevel);
@@ -498,9 +422,6 @@ class ItineraryRefreshService {
     return false;
   }
 
-  /**
-   * Check if traffic level exceeds configured threshold
-   */
   private isTrafficLevelAboveThreshold(level: string): boolean {
     const levelOrder = ['VERY_LOW', 'LOW', 'MODERATE', 'HIGH', 'SEVERE'];
     const currentIndex = levelOrder.indexOf(level);
@@ -508,9 +429,6 @@ class ItineraryRefreshService {
     return currentIndex > thresholdIndex;
   }
 
-  /**
-   * Collect all applicable refresh reasons
-   */
   private collectRefreshReasons(
     weatherChange: WeatherChangeDetails | null,
     trafficChange: TrafficChangeDetails | null
@@ -543,16 +461,12 @@ class ItineraryRefreshService {
     return reasons;
   }
 
-  /**
-   * Calculate severity of changes
-   */
   private calculateSeverity(
     weatherChange: WeatherChangeDetails | null,
     trafficChange: TrafficChangeDetails | null
   ): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
     let score = 0;
 
-    // Weather severity scoring
     if (weatherChange) {
       if (weatherChange.extremeWeatherDetected) score += 40;
       if (weatherChange.precipitationChange) score += 20;
@@ -560,7 +474,6 @@ class ItineraryRefreshService {
       else if (weatherChange.temperatureDelta > this.config.temperatureThreshold) score += 10;
     }
 
-    // Traffic severity scoring
     if (trafficChange) {
       if (trafficChange.criticalIncidents > 0) score += 30;
       if (trafficChange.congestionDelta > this.config.congestionThreshold * 2) score += 20;
@@ -575,33 +488,22 @@ class ItineraryRefreshService {
     return 'LOW';
   }
 
-  /**
-   * Calculate confidence in the evaluation
-   */
   private calculateConfidence(
     weatherChange: WeatherChangeDetails | null,
     trafficChange: TrafficChangeDetails | null
   ): number {
-    let confidence = 50; // Base confidence
+    let confidence = 50; 
 
-    // Increase confidence with more data
     if (weatherChange) confidence += 25;
     if (trafficChange) confidence += 25;
 
-    // Reduce confidence for edge cases
     if (weatherChange && weatherChange.temperatureDelta < 2) confidence -= 10;
     if (trafficChange && Math.abs(trafficChange.congestionDelta) < 10) confidence -= 10;
 
     return Math.min(100, Math.max(0, confidence));
   }
 
-  // ==========================================================================
-  // UTILITY METHODS
-  // ==========================================================================
 
-  /**
-   * Create traffic snapshot from current data
-   */
   async createTrafficSnapshot(
     activityCoordinates: Array<{ lat: number; lon: number }>
   ): Promise<TrafficSnapshot> {
@@ -642,9 +544,6 @@ class ItineraryRefreshService {
     };
   }
 
-  /**
-   * Get human-readable summary of changes
-   */
   getChangeSummary(result: ChangeDetectionResult): string {
     if (!result.needsRefresh) {
       return 'No significant changes detected. Your itinerary is still optimal.';
@@ -685,15 +584,11 @@ class ItineraryRefreshService {
     return parts.join(' • ');
   }
 
-  /**
-   * Clear expired cache entries
-   */
   clearExpiredCache(): void {
     const now = Date.now();
     let cleared = 0;
     
     for (const [key, _] of this.evaluationCache.entries()) {
-      // Simple time-based expiry (could be enhanced with metadata)
       cleared++;
       this.evaluationCache.delete(key);
     }
@@ -707,8 +602,6 @@ class ItineraryRefreshService {
   }
 }
 
-// Export singleton instance
 export const itineraryRefreshService = new ItineraryRefreshService();
 
-// Export for testing with custom config
 export { ItineraryRefreshService };

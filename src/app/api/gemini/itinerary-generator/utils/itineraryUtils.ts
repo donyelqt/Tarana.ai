@@ -5,7 +5,6 @@ import { isCurrentlyPeakHours } from "@/lib/traffic";
 import { supabaseAdmin } from "@/lib/data/supabaseAdmin";
 import { logger } from "@/lib/observability/logger";
 
-// Utilities for itinerary post-processing
 
 function cloneAllowedActivity(activity: any) {
   const cloned: any = {
@@ -33,9 +32,6 @@ function cloneAllowedActivity(activity: any) {
 
 const normalizeText = (value: unknown) =>
   typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().toLowerCase() : '';
-// Model desc/reason strings render as card text. Strip URLs, @-handles, and
-// instruction-shaped lines so smuggled directives never reach the UI.
-// Mirrors the Eats sanitizeReasonText contract (second consumer).
 function sanitizeModelText(reason: unknown): string {
   if (typeof reason !== "string") return "";
   return reason
@@ -206,9 +202,8 @@ function distributeRemainingAllowedActivities(itinerary: any, durationDays: numb
 
   const periodsInOrder: any[] = itinerary.items.filter((item: any) => Array.isArray(item.activities));
   const isRelaxedPace = typeof durationDays === 'number' && durationDays >= 3;
-  const maxPerSlot = isRelaxedPace ? 1 : 2; // Relax to one per slot on longer trips
+  const maxPerSlot = isRelaxedPace ? 1 : 2; 
 
-  // Fill empty periods first using remaining activities
   let cursor = 0;
   for (const period of periodsInOrder) {
     if (cursor >= remaining.length) break;
@@ -221,7 +216,6 @@ function distributeRemainingAllowedActivities(itinerary: any, durationDays: numb
     return itinerary;
   }
 
-  // Balance across periods, aiming for at least two activities per slot before adding extras
   const targetPerSlot = maxPerSlot;
   const sortedByLoad: any[] = [...periodsInOrder].sort((a, b) => a.activities.length - b.activities.length);
 
@@ -239,7 +233,6 @@ function distributeRemainingAllowedActivities(itinerary: any, durationDays: numb
     }
   }
 
-  // If activities remain, append them round-robin without exceeding per-slot cap
   while (cursor < remaining.length) {
     for (const period of periodsInOrder) {
       if (cursor >= remaining.length) break;
@@ -249,7 +242,6 @@ function distributeRemainingAllowedActivities(itinerary: any, durationDays: numb
       period.activities.push(cloneAllowedActivity(remaining[cursor++]));
     }
 
-    // Stop when every slot hit the cap
     if (periodsInOrder.every(period => period.activities.length >= maxPerSlot)) {
       break;
     }
@@ -258,7 +250,6 @@ function distributeRemainingAllowedActivities(itinerary: any, durationDays: numb
   return itinerary;
 }
 
-// Function to check for duplicate activities across days
 export function removeDuplicateActivities(parsedItinerary: any) {
   if (!parsedItinerary || !parsedItinerary.items || !Array.isArray(parsedItinerary.items)) {
     return parsedItinerary;
@@ -287,7 +278,6 @@ export function removeDuplicateActivities(parsedItinerary: any) {
   return result;
 }
 
-// Helpers to organize itinerary by exact duration with Morning/Afternoon/Evening buckets
 const inferSlot = (label: string) => {
   const l = (label || '').toLowerCase();
   if (/morning|\bam\b/.test(l)) return 'Morning';
@@ -301,10 +291,7 @@ const inferSlot = (label: string) => {
 export function organizeItineraryByDays(it: any, days: number | null, serverAllowedActivities?: unknown) {
   const injectedAllowList = Array.isArray(serverAllowedActivities) ? serverAllowedActivities : null;
   if (!days || !it || !Array.isArray(it.items) || days <= 0) return it;
-  // Allocation guard: days feeds Array.from({length: days}) below, so an
-  // unclamped duration (e.g. 999999) allocates millions of buckets → CPU/OOM.
   const safeDays = Math.min(Math.max(Math.floor(days), 1), 14);
-  // Collect all activities by inferred slot
   const pool: Record<string, any[]> = { Morning: [], Afternoon: [], Evening: [], Flexible: [] };
   const activityIndex = new Map<string, any>();
   for (const period of it.items) {
@@ -356,10 +343,8 @@ export function organizeItineraryByDays(it: any, days: number | null, serverAllo
     queues.Evening.length > 0 ||
     queues.Flexible.length > 0;
 
-  // Prepare day buckets
   const daysBuckets = Array.from({ length: safeDays }, () => ({ Morning: [] as any[], Afternoon: [] as any[], Evening: [] as any[] }));
 
-  // First pass: ensure every slot gets at most one best-fit activity
   for (let dayIndex = 0; dayIndex < safeDays; dayIndex++) {
     const bucket = daysBuckets[dayIndex];
     slotOrder.forEach(slot => {
@@ -370,7 +355,6 @@ export function organizeItineraryByDays(it: any, days: number | null, serverAllo
     });
   }
 
-  // Additional passes: distribute any remaining activities while maintaining uniqueness
   while (anyQueuesRemaining()) {
     let assignedThisRound = false;
     for (let dayIndex = 0; dayIndex < safeDays; dayIndex++) {
@@ -390,11 +374,10 @@ export function organizeItineraryByDays(it: any, days: number | null, serverAllo
       }
     }
     if (!assignedThisRound) {
-      break; // Safeguard against infinite loops if queues cannot be depleted
+      break; 
     }
   }
 
-  // Build new items: Day N - Morning/Afternoon/Evening
   const newItems: any[] = [];
   for (let i = 0; i < daysBuckets.length; i++) {
     const dayNum = i + 1;
@@ -434,8 +417,6 @@ export function organizeItineraryByDays(it: any, days: number | null, serverAllo
     return normalized;
   };
 
-  // mergeAllowedActivity removed with the observed-title promotion block:
-  // merging model output into the allowlist is exactly the trust inversion.
 
   const existingAllowedActivities = injectedAllowList
     ?? (Array.isArray(it?.searchMetadata?.allowedActivities)
@@ -458,19 +439,12 @@ export function organizeItineraryByDays(it: any, days: number | null, serverAllo
     registerAllowed(key, normalized);
   });
 
-  // Never promote model-observed titles: a hallucinated "Evil Cafe" merged
-  // here would become a first-class card and poison allowedActivities. Only
-  // pre-model server entries certify names.
   void activityIndex
 
   const allowedActivities = orderedKeys
     .map(key => allowedMap.get(key))
     .filter(Boolean);
 
-  // Server-truth image re-attach: the LLM is instructed to copy image URLs,
-  // but any model-supplied URL is untrusted (tracker/phishing). Only an
-  // allowlisted server image wins; anything else degrades to the Gala logo
-  // (last resort — the card base layer already renders the same mark).
   for (const item of newItems) {
     if (!Array.isArray(item.activities)) continue;
     for (const activity of item.activities) {
@@ -499,15 +473,10 @@ export function organizeItineraryByDays(it: any, days: number | null, serverAllo
   };
 }
 
-/**
- * Get the correct image URL for an activity title by searching in Supabase vector database
- * Falls back to the vector database image if no match exists
- */
 export async function getActivityImage(title: string, fallbackImage?: string): Promise<any> {
-  // Check if we can find the activity in Supabase vector database
   if (!supabaseAdmin) {
     logger.error("Supabase admin client is not initialized for getActivityImage.", { entryPoint: 'itineraryUtils' });
-    return fallbackImage || taranaai; // Use taranaai as final fallback
+    return fallbackImage || taranaai; 
   }
 
   const { data, error } = await supabaseAdmin
@@ -517,21 +486,15 @@ export async function getActivityImage(title: string, fallbackImage?: string): P
     .single();
 
   if (error || !data) {
-    return fallbackImage || taranaai; // Use taranaai as final fallback
+    return fallbackImage || taranaai; 
   }
 
-  // Extract image from metadata
   const metadata = data.metadata as Record<string, any>;
   return metadata?.image || fallbackImage || taranaai;
 }
 
-/**
- * Validate that an activity exists in our Supabase vector database and return the validated activity
- * with correct image URL from local imports
- */
 
 export async function validateAndEnrichActivity(activity: any): Promise<any | null> {
-  // Check if the activity exists in our Supabase vector database
   if (!supabaseAdmin) {
     logger.error("Supabase admin client is not initialized for validateAndEnrichActivity.", { entryPoint: 'itineraryUtils' });
     return null;
@@ -550,17 +513,14 @@ export async function validateAndEnrichActivity(activity: any): Promise<any | nu
 
   const canonicalActivity = data.metadata;
 
-  // Check if activity is currently in peak hours
   if (canonicalActivity.peakHours && isCurrentlyPeakHours(canonicalActivity.peakHours)) {
     logger.warn(`Activity "${activity.title}" is currently in peak hours (${canonicalActivity.peakHours}), excluding from itinerary`, { entryPoint: 'itineraryUtils', title: activity.title, peakHours: canonicalActivity.peakHours });
     return null;
   }
   
-  // Return enriched activity with correct local image
   return {
     ...activity,
     image: await getActivityImage(activity.title, activity.image),
-    // Ensure we use canonical data for consistency
     desc: canonicalActivity.desc,
     tags: canonicalActivity.tags,
     peakHours: canonicalActivity.peakHours,
@@ -577,7 +537,6 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
   processed = distributeRemainingAllowedActivities(processed, durationDays);
   processed = enrichActivityDescriptions(processed);
 
-  // Log peak hours filtering for debugging (kept concise)
   let totalActivities = 0;
   let filteredActivities = 0;
   
@@ -597,7 +556,6 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
   
   logger.info(`=== PEAK HOURS FILTERING SUMMARY ===\nTotal activities: ${totalActivities}\nActivities in peak hours: ${filteredActivities}\n=======================================`, { entryPoint: 'itineraryUtils', totalActivities, filteredActivities });
 
-  // Final cleanup pass - only remove duplicates, preserve reasons and activities as-is
   if (processed && typeof processed === "object" && Array.isArray((processed as any).items)) {
     const inferredDuration = durationDays ?? (() => {
       const dayLabels = new Set<string>();
@@ -627,18 +585,17 @@ export async function processItinerary(parsed: any, prompt: string, durationDays
         const validatedActivities = period.activities.filter((act: any) => {
           const normalizedTitle = typeof act?.title === 'string' ? act.title.trim().toLowerCase() : '';
           if (!normalizedTitle || normalizedTitle === "no available activity" || normalizedTitle === "activity") {
-            return false; // Filter out nulls and placeholders
+            return false; 
           }
 
           if (periodSeen!.has(normalizedTitle)) {
-            return false; // Filter out duplicates within the same period
+            return false; 
           }
           periodSeen!.add(normalizedTitle);
           return true;
         });
 
         const finalPeriod = { ...period, activities: validatedActivities };
-        // Always preserve the reason field, even if activities array is empty
         if (finalPeriod.activities.length === 0) {
           if (period.reason) {
             finalPeriod.reason = period.reason;

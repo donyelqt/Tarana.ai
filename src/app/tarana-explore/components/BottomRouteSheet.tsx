@@ -87,7 +87,7 @@ const BottomRouteSheet: React.FC<BottomRouteSheetProps> = ({
     <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
       <div className="mx-auto max-w-2xl px-3 pb-3 pointer-events-auto">
         <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border border-gray-200/70 overflow-hidden">
-          {/* Drag handle */}
+          {}
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
@@ -97,7 +97,7 @@ const BottomRouteSheet: React.FC<BottomRouteSheetProps> = ({
             <div className="w-10 h-1 rounded-full bg-gray-300" />
           </button>
 
-          {/* Primary summary row — Google Maps style */}
+          {}
           <div className="px-4 pt-2 pb-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
@@ -141,7 +141,7 @@ const BottomRouteSheet: React.FC<BottomRouteSheetProps> = ({
               )}
             </div>
 
-            {/* Alternatives pill bar */}
+            {}
             {alternatives.length > 0 && (
               <div className="mt-3 flex items-center gap-1.5 overflow-x-auto -mx-1 px-1">
                 <button
@@ -176,7 +176,7 @@ const BottomRouteSheet: React.FC<BottomRouteSheetProps> = ({
             </button>
           </div>
 
-          {/* Expanded details */}
+          {}
           {expanded && (
             <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-gray-50/50">
               {routeComparison && (

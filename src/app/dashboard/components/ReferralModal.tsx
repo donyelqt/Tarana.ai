@@ -47,7 +47,6 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
   const [stats, setStats] = useState<ReferralStats | null>(null)
   const [balance, setBalance] = useState<CreditBalance | null>(null)
   
-  // Fetch referral data when modal opens
   useEffect(() => {
     if (open && session?.user) {
       fetchReferralData()
@@ -57,7 +56,6 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
   const fetchReferralData = async () => {
     setLoading(true)
     try {
-      // Fetch referral stats and credit balance in parallel
       const [statsRes, balanceRes] = await Promise.all([
         fetch('/api/referrals/stats'),
         fetch('/api/credits/balance')
@@ -102,7 +100,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
     
     const urls = {
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
-      instagram: `https://www.instagram.com/`, // Instagram doesn't support direct sharing URLs
+      instagram: `https://www.instagram.com/`, 
       linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`
     }
     
@@ -112,7 +110,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full max-w-lg p-0 gap-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {/* Header */}
+        {}
         <DialogHeader className="px-5 pt-6 pb-4 sm:px-6">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-2 bg-blue-50 rounded-lg">
@@ -127,10 +125,10 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Credits Card */}
+        {}
         <div className="px-5 sm:px-6">
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-blue-700 to-blue-500 p-5 text-white shadow-[0_18px_35px_-18px_rgba(37,99,235,0.7)]">
-            {/* Background pattern effect */}
+            {}
             <div className="absolute top-0 right-0 h-32 w-32 -translate-y-16 translate-x-16 rounded-full bg-white/10" />
             <div className="absolute bottom-0 left-0 h-24 w-24 translate-y-12 -translate-x-12 rounded-full bg-white/10" />
 
@@ -173,7 +171,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
           </div>
         </div>
 
-        {/* Tabs */}
+        {}
         <div className="px-5 pt-4 sm:px-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full">
@@ -182,9 +180,9 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
               <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
             </TabsList>
 
-            {/* Share Tab */}
+            {}
             <TabsContent value="share" className="space-y-4 mt-4 pb-6">
-              {/* Referral Link */}
+              {}
               <div>
                 <label className="text-sm font-semibold text-gray-900 mb-2 block">
                   Your Referral Link
@@ -209,7 +207,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                 </div>
               </div>
 
-              {/* Referral Code */}
+              {}
               <div>
                 <label className="text-sm font-semibold text-gray-900 mb-2 block">
                   Referral Code
@@ -237,7 +235,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                 </p>
               </div>
 
-              {/* Social Media Share */}
+              {}
               <div>
                 <label className="text-sm font-semibold text-gray-900 mb-3 block">
                   Share on Social Media
@@ -270,7 +268,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                 </div>
               </div>
 
-              {/* How It Works */}
+              {}
               <div className="bg-blue-50 rounded-xl p-4 mt-4">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="p-1.5 bg-blue-600 rounded-lg">
@@ -309,9 +307,9 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                 </div>
               </div>
 
-              {/* Credit Usage Containers */}
+              {}
               <div className="grid grid-cols-1 gap-3 mt-4 sm:grid-cols-2">
-                {/* Smart Plans Container */}
+                {}
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="p-2 bg-blue-600 rounded-lg flex-shrink-0">
@@ -327,7 +325,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                   </div>
                 </div>
 
-                {/* Tarana Eats Container */}
+                {}
                 <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="p-2 bg-orange-500 rounded-lg flex-shrink-0">
@@ -345,7 +343,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
               </div>
             </TabsContent>
 
-            {/* Credit Tiers Tab */}
+            {}
             <TabsContent value="credit-tiers" className="space-y-3 mt-4">
               <CreditTiersContent
                 loading={loading}
@@ -354,9 +352,9 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
               />
             </TabsContent>
 
-            {/* Activity Tab */}
+            {}
             <TabsContent value="activity" className="space-y-4 mt-4">
-              {/* Referral Statistics */}
+              {}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-4">Referral Statistics</h3>
                 {loading ? (
@@ -409,7 +407,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                 )}
               </div>
 
-              {/* How Credits Work */}
+              {}
               <div className="bg-blue-50 rounded-xl p-4">
                 <h3 className="font-semibold text-gray-900 mb-3">How Credits Work</h3>
                 <div className="space-y-2">

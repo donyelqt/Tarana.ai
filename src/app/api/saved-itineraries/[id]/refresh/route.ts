@@ -1,10 +1,4 @@
-/**
- * Enterprise-Grade Itinerary Refresh API Endpoint
- * Regenerates itineraries when weather/traffic conditions significantly change
- * 
- * @route POST /api/saved-itineraries/[id]/refresh
- * @author Tarana.ai Engineering Team
- */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { BENCH_TOKEN_HEADER } from '@/lib/auth/benchToken';
@@ -28,28 +22,16 @@ import {
 import { z } from 'zod';
 import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 
-// ============================================================================
-// CROSS-ROUTE CREDENTIAL FORWARDING
-// ============================================================================
 
-/**
- * Build the auth headers for an internal server-to-server call.
- *
- * The generator enforces its own auth boundary (`withAuth`), and Node's
- * `fetch` does not attach the browser's cookies to an outbound server call.
- * Without this, the internal POST carries no credential, the generator
- * returns 401, and the refresh path can never regenerate.
- *
- * Only the caller's own credential is forwarded — never a service token —
- * so the downstream call is scoped to the requesting user exactly as their
- * own browser request would be. Session cookies are still validated
- * upstream by NextAuth on the generator side.
- */
+
+
+
+
 function forwardCallerCredential(request: NextRequest): Record<string, string> {
   const headers: Record<string, string> = {};
   const benchToken = request.headers.get(BENCH_TOKEN_HEADER);
   if (benchToken) {
-    // Bench requests carry no session cookie; the HMAC token is their proof.
+    
     headers[BENCH_TOKEN_HEADER] = benchToken;
     return headers;
   }
@@ -58,20 +40,20 @@ function forwardCallerCredential(request: NextRequest): Record<string, string> {
   return headers;
 }
 
-// ============================================================================
-// ROUTE SEGMENT CONFIG (Next.js 13+ App Router)
-// ============================================================================
-export const maxDuration = 60; // 60 seconds (requires Vercel Pro plan)
-export const dynamic = 'force-dynamic'; // Disable caching for fresh data
-export const runtime = 'nodejs'; // Use Node.js runtime (default)
 
-// ============================================================================
-// TYPES
-// ============================================================================
+
+
+export const maxDuration = 60; 
+export const dynamic = 'force-dynamic'; 
+export const runtime = 'nodejs'; 
+
+
+
+
 
 interface RefreshRequest {
-  force?: boolean; // Force refresh even if no significant changes
-  evaluateOnly?: boolean; // Only evaluate, don't regenerate
+  force?: boolean; 
+  evaluateOnly?: boolean; 
 }
 
 const IDEMPOTENCY_ROUTE = '/api/saved-itineraries/[id]/refresh';
@@ -95,9 +77,9 @@ function classifyRefreshError(error: unknown): RefreshErrorCategory {
   return 'unknown';
 }
 
-// ============================================================================
-// GET /api/saved-itineraries/[id]/refresh (Evaluation Only)
-// ============================================================================
+
+
+
 
 export const GET = withAuth(async (
   request: NextRequest,
@@ -112,7 +94,7 @@ export const GET = withAuth(async (
   return timedHttp('/api/saved-itineraries/[id]/refresh', 'GET', async () => {
   try {
 
-    // Fetch itinerary
+    
     const allItineraries = await getSavedItineraries();
     const itinerary = allItineraries.find(i => i.id === id);
 
@@ -123,13 +105,13 @@ export const GET = withAuth(async (
       );
     }
 
-    // Extract coordinates
+    
     const activityCoordinates = extractActivityCoordinates(itinerary);
     if (activityCoordinates.length === 0) {
       activityCoordinates.push({ lat: 16.4023, lon: 120.5960, name: 'Baguio City Center' });
     }
 
-    // Fetch weather
+    
     const currentWeather = await fetchWeatherFromAPI();
     if (!currentWeather) {
       return NextResponse.json(
@@ -138,7 +120,7 @@ export const GET = withAuth(async (
       );
     }
 
-    // Evaluate
+    
     const evaluation = await itineraryRefreshService.evaluateRefreshNeed(
       itinerary,
       currentWeather,
@@ -161,9 +143,9 @@ export const GET = withAuth(async (
   }, (res) => res.status);
 });
 
-// ============================================================================
-// POST /api/saved-itineraries/[id]/refresh
-// ============================================================================
+
+
+
 
 export const POST = withAuth(async (
   request: NextRequest,
@@ -177,7 +159,7 @@ export const POST = withAuth(async (
   logger.info('Itinerary refresh requested', { itineraryIdLength: id.length }, requestId);
 
   return timedHttp('/api/saved-itineraries/[id]/refresh', 'POST', async () => {
-  // Declared outside the try so the outer catch can complete a claimed key.
+  
   let refreshClaim: IdempotencyClaim | null = null;
   const completeRefresh = async (status: number, body: unknown): Promise<void> => {
     if (refreshClaim?.kind === 'owner') {
@@ -190,13 +172,13 @@ export const POST = withAuth(async (
     }
   };
   try {
-    // ========================================================================
-    // 1. AUTHENTICATION (withAuth resolved the session identity)
-    // ========================================================================
+    
+    
+    
 
-    // ========================================================================
-    // 2. PARSE REQUEST BODY
-    // ========================================================================
+    
+    
+    
     let requestBody: RefreshRequest = {};
 
     try {
@@ -208,12 +190,12 @@ export const POST = withAuth(async (
       requestBody = parsed.data;
       logger.info('Refresh request options received', { force: requestBody.force === true, evaluateOnly: requestBody.evaluateOnly === true }, requestId);
     } catch {
-      // Empty body is OK for force refresh
+      
       logger.info('Empty refresh request body - using defaults', {}, requestId);
     }
 
-    // Idempotency: retries must not double-bill the downstream generator
-    // nor rewrite the row twice. Claim after validation, before evaluation.
+    
+    
     const refreshKey = getIdempotencyKey(request);
     refreshClaim = refreshKey
       ? await claimIdempotency(userId, IDEMPOTENCY_ROUTE, refreshKey, hashIdempotencyPayload({ id, ...requestBody }))
@@ -230,9 +212,9 @@ export const POST = withAuth(async (
       return NextResponse.json({ success: false, message: 'Idempotency key was already used with a different payload' } as RefreshResponse, { status: 422 });
     }
 
-    // ========================================================================
-    // 3. FETCH ITINERARY
-    // ========================================================================
+    
+    
+    
     logger.info('Fetching itinerary', { itineraryIdLength: id.length }, requestId);
     
     const allItineraries = await getSavedItineraries();
@@ -252,9 +234,9 @@ export const POST = withAuth(async (
 
     logger.info('Itinerary found', { itineraryIdLength: id.length }, requestId);
 
-    // ========================================================================
-    // 4. EXTRACT ACTIVITY COORDINATES
-    // ========================================================================
+    
+    
+    
     logger.info(`\n📍 Extracting activity coordinates...`, {}, requestId);
     
     const activityCoordinates = extractActivityCoordinates(itinerary);
@@ -266,9 +248,9 @@ export const POST = withAuth(async (
     
     logger.info(`✅ Found ${activityCoordinates.length} activity locations`, {}, requestId);
 
-    // ========================================================================
-    // 5. FETCH CURRENT WEATHER
-    // ========================================================================
+    
+    
+    
     logger.info(`\n🌤️ Fetching current weather data...`, {}, requestId);
     
     const currentWeather = await fetchWeatherFromAPI();
@@ -287,9 +269,9 @@ export const POST = withAuth(async (
 
     logger.info('Weather fetched', { entryPoint: 'refresh', available: true }, requestId);
 
-    // ========================================================================
-    // 6. EVALUATE REFRESH NEED
-    // ========================================================================
+    
+    
+    
     logger.info(`\n🔍 Evaluating refresh need...`, {}, requestId);
     
     const evaluation = await itineraryRefreshService.evaluateRefreshNeed(
@@ -306,9 +288,9 @@ export const POST = withAuth(async (
       reasonCount: evaluation.reasons.length,
     }, requestId);
 
-    // ========================================================================
-    // 7. DETERMINE ACTION
-    // ========================================================================
+    
+    
+    
     if (requestBody.evaluateOnly) {
       const body = { success: true, message: itineraryRefreshService.getChangeSummary(evaluation), evaluation };
       await completeRefresh(200, body);
@@ -327,9 +309,9 @@ export const POST = withAuth(async (
     if (requestBody.force) logger.info(`   Reason: Force refresh requested`, {}, requestId);
     if (evaluation.needsRefresh) logger.info(`   Reason: Significant changes detected`, {}, requestId);
 
-    // ========================================================================
-    // 8. REGENERATE ITINERARY
-    // ========================================================================
+    
+    
+    
     logger.info(`\n🤖 Regenerating itinerary with current conditions...`, {}, requestId);
     
     let regeneratedItinerary;
@@ -370,7 +352,7 @@ export const POST = withAuth(async (
 
     logger.info('✅ Itinerary regenerated successfully', {}, requestId);
     
-    // ✅ DEBUG: Log traffic metadata preservation
+    
     const activitiesWithTraffic = regeneratedItinerary.items
       .flatMap((item: any) => item.activities || [])
       .filter((activity: any) => activity.trafficAnalysis || activity.trafficLevel);
@@ -392,9 +374,9 @@ export const POST = withAuth(async (
     }
 
 
-    // ========================================================================
-    // 9. CREATE TRAFFIC SNAPSHOT
-    // ========================================================================
+    
+    
+    
     logger.info(`\n📸 Creating traffic snapshot...`, {}, requestId);
     
     const trafficSnapshot = await itineraryRefreshService.createTrafficSnapshot(
@@ -403,14 +385,14 @@ export const POST = withAuth(async (
 
     logger.info(`✅ Traffic snapshot created`, {}, requestId);
 
-    // ========================================================================
-    // 10. ENRICH WITH TRAFFIC & UPDATE DATABASE
-    // ========================================================================
+    
+    
+    
     logger.info(`\n💾 Preparing database update...`, {}, requestId);
     
     const enrichedItineraryData = await enrichItineraryWithTraffic(regeneratedItinerary);
     
-    // 🔍 CRITICAL DEBUG: Log data before database update
+    
     logger.info('\n📝 DATA BEING SENT TO DATABASE:', {}, requestId);
     logger.info('Database update payload validated', {
       entryPoint: 'refresh',
@@ -421,13 +403,13 @@ export const POST = withAuth(async (
     }, requestId);
 
     const updatedItinerary = await updateItinerary(id, {
-      // ✅ Preserve original form data (essential for UI display)
+      
       title: itinerary.title,
       date: itinerary.date,
       budget: itinerary.budget,
       tags: itinerary.tags,
-      formData: itinerary.formData, // ✅ CRITICAL: Preserve original form data
-      // Update with new generated data
+      formData: itinerary.formData, 
+      
       itineraryData: enrichedItineraryData,
       weatherData: currentWeather,
       trafficSnapshot,
@@ -457,15 +439,15 @@ export const POST = withAuth(async (
 
     logger.info(`✅ Itinerary updated in database`, {}, requestId);
 
-    // ========================================================================
-    // 11. SUCCESS RESPONSE & METRICS
-    // ========================================================================
+    
+    
+    
     const duration = Date.now() - startTime;
     logger.info(`\n${'='.repeat(80)}`, {}, requestId);
     logger.info(`✅ REFRESH COMPLETED SUCCESSFULLY - Duration: ${duration}ms`, {}, requestId);
     logger.info(`${'='.repeat(80)}`, {}, requestId);
     
-    // 📊 Production Metrics
+    
     logger.info('\n📊 REFRESH METRICS:', {}, requestId);
     logger.info(`   Total Duration: ${duration}ms`, {}, requestId);
     logger.info(`   Severity: ${evaluation.severity}`, {}, requestId);
@@ -507,30 +489,28 @@ export const POST = withAuth(async (
   }, (res) => res.status);
 });
 
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
 
-/**
- * Transform API response to frontend-compatible structure
- */
+
+
+
+
 function transformItineraryStructure(apiResponse: any): any {
   try {
     let itineraryData;
     
-    // Extract from different possible response formats
+    
     if (apiResponse.text) {
-      // Format 1: JSON string in "text" field
+      
       itineraryData = JSON.parse(apiResponse.text);
     } else if (apiResponse.itinerary) {
-      // Format 2: Direct "itinerary" field
+      
       itineraryData = apiResponse.itinerary;
     } else {
-      // Format 3: Direct structure
+      
       itineraryData = apiResponse;
     }
     
-    // Ensure it has the required structure for frontend
+    
     if (!itineraryData.items || !Array.isArray(itineraryData.items)) {
       logger.error('❌ Invalid itinerary structure - missing items array', { entryPoint: 'refresh' });
       return {
@@ -540,8 +520,8 @@ function transformItineraryStructure(apiResponse: any): any {
       };
     }
     
-    // Ensure each item has the required fields
-    // ✅ CRITICAL: Preserve ALL traffic metadata for UI display
+    
+    
     const transformedItems = itineraryData.items.map((item: any) => ({
       period: item.period || "Unknown Period",
       activities: (item.activities || []).map((activity: any) => {
@@ -684,10 +664,7 @@ const harmonizeTrafficDescription = (
   return `${normalizedBase} ${narrative}`.trim();
 };
 
-/**
- * Enrich itinerary with real-time traffic metadata
- * ✅ Production-optimized with comprehensive error handling and logging
- */
+
 async function enrichItineraryWithTraffic(itinerary: any) {
   const enrichmentStartTime = Date.now();
   logger.info('\n🚗 TRAFFIC ENRICHMENT: Starting...', { entryPoint: 'refresh' });
@@ -811,30 +788,28 @@ async function enrichItineraryWithTraffic(itinerary: any) {
   } catch (error) {
     const enrichmentDuration = Date.now() - enrichmentStartTime;
     logger.error('Traffic enrichment failed', { entryPoint: 'refresh', durationMs: enrichmentDuration, ...getSafeErrorMetadata(error) });
-    // Return original itinerary without traffic enrichment rather than failing
+    
     return itinerary;
   }
 }
 
-/**
- * Extract activity coordinates from itinerary
- */
+
 function extractActivityCoordinates(
   itinerary: SavedItinerary
 ): Array<{ lat: number; lon: number; name: string }> {
   const coordinates: Array<{ lat: number; lon: number; name: string }> = [];
 
-  // Check if coordinates are already stored
+  
   if (itinerary.activityCoordinates && itinerary.activityCoordinates.length > 0) {
     return itinerary.activityCoordinates;
   }
 
-  // Extract from itinerary data
+  
   if (itinerary.itineraryData && itinerary.itineraryData.items) {
     for (const period of itinerary.itineraryData.items) {
       for (const activity of period.activities) {
-        // Try to extract coordinates from activity data
-        // This assumes activities have lat/lon stored (from previous implementations)
+        
+        
         const activityData = activity as any;
         
         if (activityData.lat && activityData.lon) {
@@ -848,7 +823,7 @@ function extractActivityCoordinates(
     }
   }
 
-  // Remove duplicates and return
+  
   const seen = new Set();
   const uniqueCoordinates = coordinates.filter(coord => {
     const key = `${coord.lat},${coord.lon}`;
@@ -860,11 +835,7 @@ function extractActivityCoordinates(
   return uniqueCoordinates;
 }
 
-/**
- * Regenerate itinerary via the authenticated generation endpoint.
- * Internal HTTP call: the caller's credential is forwarded (see
- * forwardCallerCredential) because server-to-server fetch attaches nothing.
- */
+
 async function regenerateItinerary(
   originalItinerary: SavedItinerary,
   currentWeather: any,
@@ -877,33 +848,33 @@ async function regenerateItinerary(
 
     const { formData } = originalItinerary;
     
-    // Build context-aware prompt
+    
     const prompt = buildRefreshPrompt(originalItinerary, evaluation);
 
-    // ✅ PRODUCTION FIX: Robust base URL construction with multiple fallbacks
+    
     const getBaseUrl = (): string => {
-      // Priority 1: Explicit NEXTAUTH_URL (recommended for production)
+      
       if (process.env.NEXTAUTH_URL) {
         return process.env.NEXTAUTH_URL;
       }
       
-      // Priority 2: Vercel deployment URL
+      
       if (process.env.VERCEL_URL) {
         return `https://${process.env.VERCEL_URL}`;
       }
       
-      // Priority 3: Vercel branch deployment URL
+      
       if (process.env.VERCEL === '1' && process.env.VERCEL_BRANCH_URL) {
         return `https://${process.env.VERCEL_BRANCH_URL}`;
       }
       
-      // Priority 4: Development fallback
+      
       return 'http://localhost:3000';
     };
     
     const baseUrl = getBaseUrl();
     
-    // Enhanced safety validation
+    
     if (!baseUrl || baseUrl === 'undefined' || baseUrl.includes('undefined') || baseUrl === 'null') {
       logger.error('Invalid base URL constructed', { entryPoint: 'refresh', hasBaseUrl: Boolean(baseUrl) });
       logger.error('Refresh environment configuration incomplete', {
@@ -918,7 +889,7 @@ async function regenerateItinerary(
     logger.info('Calling itinerary generator', { entryPoint: 'refresh', target: 'itinerary-generator' });
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s timeout (under Vercel limit)
+    const timeoutId = setTimeout(() => controller.abort(), 55000); 
 
     logger.info('Refresh generation request prepared', {
       entryPoint: 'refresh',
@@ -935,17 +906,17 @@ async function regenerateItinerary(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-refresh-request': 'true', // Flag for cache bypass
-        'x-bypass-cache': 'true', // Additional cache bypass flag
-        // The generator is an authenticated endpoint (withAuth). This is a
-        // server-to-server call, so the browser's session cookie is not
-        // attached automatically — forward the caller's credential or the
-        // request 401s and every refresh fails. Bench tokens win when
-        // present (k6 path); otherwise the session cookie is forwarded.
+        'x-refresh-request': 'true', 
+        'x-bypass-cache': 'true', 
+        
+        
+        
+        
+        
         ...forwardCallerCredential(request),
-        // Forward the caller's key only when supplied. A missing key keeps
-        // the generator's opt-in unkeyed path; synthesizing one here would
-        // conflate distinct refresh operations for the same itinerary.
+        
+        
+        
         ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
       },
       body: JSON.stringify({
@@ -993,7 +964,7 @@ async function regenerateItinerary(
       keys: Object.keys(result)
     });
     
-    // ✅ CRITICAL: Transform to frontend-compatible structure
+    
     const transformedItinerary = transformItineraryStructure(result);
     logger.info('✅ Itinerary transformed for frontend compatibility', { entryPoint: 'refresh' });
     
@@ -1005,13 +976,11 @@ async function regenerateItinerary(
       throw new Error('Generation timeout - please try again');
     }
     logger.error('Error regenerating itinerary', { entryPoint: 'refresh', ...getSafeErrorMetadata(error) });
-    throw error; // Propagate error instead of returning null
+    throw error; 
   }
 }
 
-/**
- * Build context-aware prompt for refresh
- */
+
 function buildRefreshPrompt(
   itinerary: SavedItinerary,
   evaluation: ChangeDetectionResult

@@ -1,31 +1,3 @@
-/**
- * The two saved-meal detail actions' observable contracts.
- *
- * `savedMealDetail.ts` is pure (no rendering, no I/O), so each failure it
- * could have is a wrong value a user or a cafe would see, not a crash — and
- * each is pinned here for that reason.
- *
- * Maps target:
- * 1. A cafe in the shared database gets its real pin, not a nearby
- *    landmark's. "Beside Baguio Cathedral" must NOT resolve to the
- *    cathedral: the cafe is beside it, not at it, and a confident wrong pin
- *    walks the user across town.
- * 2. The exact-match contract must survive spelling drift between the two
- *    spellings of "Good Shepherd"/"Good Sheperd" — that is the one
- *    normalisation the function does on purpose.
- * 3. Normalisation must NOT over-collapse: "Kubo Grill" and "Kubo Grill
- *    Baguio" are two catalogued cafes, so dropping non-alphanumerics must
- *    not merge them into one key.
- * 4. No coordinate means null, and null is what disables the action.
- *
- * Meal card:
- * 5. The total matches web's `price * quantity` sum, because the staff
- *    member adding it up by hand is the real consumer.
- * 6. A null price contributes nothing — a card showing "₱NaN" to staff is
- *    the one failure that costs money.
- * 7. A row with no quantity is one dish, not zero.
- * 8. Unparseable `items` degrades to no rows, never a phantom line.
- */
 import { describe, expect, it } from '@jest/globals';
 import { CAFES, findCafe } from '../../data/catalog';
 import {
@@ -38,7 +10,6 @@ import {
 
 describe('cafe coordinates — resolves a real pin when one exists', () => {
   it('returns the pinned coordinate for a cafe in the shared database', () => {
-    // 16.4118/120.5981 is "Oh My Gulay" in BAGUIO_COORDINATES.
     expect(cafeCoordinates('Oh My Gulay')).toEqual({ lat: 16.4118, lon: 120.5981 });
   });
 
@@ -47,37 +18,26 @@ describe('cafe coordinates — resolves a real pin when one exists', () => {
   });
 
   it('bridges the spelling drift between the two data sources', () => {
-    // The shared database spells it with an accent- and case-free key in
-    // several places; "Café De Casa"/"Cafe De Casa" style drift is what
-    // normalisation exists for, and it must keep working.
     expect(cafeCoordinates('OH MY GULAY')).toEqual({ lat: 16.4118, lon: 120.5981 });
     expect(cafeCoordinates('oh  my   gulay')).toEqual({ lat: 16.4118, lon: 120.5981 });
   });
 
   it('does NOT bridge a genuine misspelling — that stays a disabled action', () => {
-    // "Good Sheperd Cafe" (the database) vs "Good Shepherd Cafe" (the
-    // catalog) differ by a real letter. Guessing across that gap is how a
-    // wrong pin happens, so the honest answer is null.
     expect(cafeCoordinates('Good Shepherd Cafe')).toBeNull();
     expect(cafeCoordinates('Good Sheperd Cafe')).toEqual({ lat: 16.4063, lon: 120.6025 });
   });
 
   it('ignores case, accents and punctuation', () => {
-    expect(cafeCoordinates('café  de casa')).toBeNull(); // not in the database
+    expect(cafeCoordinates('café  de casa')).toBeNull(); 
     expect(cafeCoordinates('  oH mY gUlAy! ')).toEqual({ lat: 16.4118, lon: 120.5981 });
   });
 });
 
 describe('cafe coordinates — never resolves a wrong pin', () => {
   it('does not mine a landmark out of the prose location', () => {
-    // The exact contract: a cafe pinned only by its own name must never
-    // inherit a landmark's pin from its prose address. "Upper Session Road"
-    // sits on Session Road, whose pin belongs to the session_road entry.
     const cafe = findCafe('K-Flavors Buffet');
     expect(cafe?.location).toBe('Upper Session Road');
     expect(cafeCoordinates(cafe!.name)).toEqual({ lat: 16.407, lon: 120.5923 });
-    // Baguio Cathedral's pin is a different number — the landmark is not
-    // being substituted for the cafe's own.
     expect(cafeCoordinates(cafe!.name)).not.toEqual({ lat: 16.4075, lon: 120.5923 });
   });
 
@@ -90,7 +50,6 @@ describe('cafe coordinates — never resolves a wrong pin', () => {
   });
 
   it('returns null for a cafe the database does not cover', () => {
-    // 10 of the 20 catalogued cafes have no pinned coordinate.
     expect(cafeCoordinates('Ali House of Shawarma Halal')).toBeNull();
   });
 
@@ -102,17 +61,12 @@ describe('cafe coordinates — never resolves a wrong pin', () => {
   });
 
   it('resolves a coordinate for every catalogued cafe that has one', () => {
-    // Guards the normalization against drifting away from the database as
-    // either side gets edited — a silent regression here would disable the
-    // action for cafes that should have it.
     const resolved = CAFES.filter((c) => cafeCoordinates(c) !== null);
     expect(resolved.length).toBeGreaterThan(9);
     for (const cafe of resolved) {
       const coords = cafeCoordinates(cafe)!;
       expect(Number.isFinite(coords.lat)).toBe(true);
       expect(Number.isFinite(coords.lon)).toBe(true);
-      // Every pin is inside Baguio's envelope, so a mismatched entry cannot
-      // slip through as a plausible-looking number.
       expect(coords.lat).toBeGreaterThan(16.3);
       expect(coords.lat).toBeLessThan(16.5);
       expect(coords.lon).toBeGreaterThan(120.5);

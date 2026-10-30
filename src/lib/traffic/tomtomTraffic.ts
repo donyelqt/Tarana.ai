@@ -1,7 +1,3 @@
-/**
- * TomTom Traffic API Integration
- * Provides real-time traffic data for Baguio City activities
- */
 
 export interface TrafficIncident {
   id: string;
@@ -27,8 +23,8 @@ export interface LocationTrafficData {
   lon: number;
   incidents: TrafficIncident[];
   trafficLevel: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
-  congestionScore: number; // 0-100 (0 = no congestion, 100 = severe congestion)
-  recommendationScore: number; // 0-100 (0 = avoid, 100 = perfect time to visit)
+  congestionScore: number; 
+  recommendationScore: number; 
   lastUpdated: Date;
 }
 
@@ -41,7 +37,7 @@ interface TomTomConfig {
 class TomTomTrafficService {
   private config: TomTomConfig;
   private cache: Map<string, { data: LocationTrafficData; expiry: number }> = new Map();
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+  private readonly CACHE_DURATION = 5 * 60 * 1000; 
 
   constructor() {
     const timeoutOverride = Number(process.env.TOMTOM_TIMEOUT_MS);
@@ -62,9 +58,6 @@ class TomTomTrafficService {
     }
   }
 
-  /**
-   * Get comprehensive traffic data for a location
-   */
   async getLocationTrafficData(lat: number, lon: number): Promise<LocationTrafficData> {
     const cacheKey = `${lat.toFixed(4)},${lon.toFixed(4)}`;
     const cached = this.cache.get(cacheKey);
@@ -77,7 +70,6 @@ class TomTomTrafficService {
     console.log(`🔍 TomTom: Fetching fresh traffic data for coordinates ${lat}, ${lon}`);
     
     try {
-      // Always try to get flow data (primary), incidents are secondary
       const flowData = await this.getTrafficFlow(lat, lon);
 
       if (!flowData) {
@@ -91,7 +83,6 @@ class TomTomTrafficService {
         return this.createFallbackTrafficData(lat, lon);
       }
       
-      // Try to get incidents but don't fail if unavailable
       let incidents: TrafficIncident[] = [];
       try {
         incidents = await this.getTrafficIncidents(lat, lon, 1000);
@@ -113,7 +104,6 @@ class TomTomTrafficService {
         lastUpdated: new Date()
       };
 
-      // Cache the result
       this.cache.set(cacheKey, {
         data: result,
         expiry: Date.now() + this.CACHE_DURATION
@@ -139,18 +129,10 @@ class TomTomTrafficService {
     }
   }
 
-  /**
-   * Get traffic flow data from TomTom Flow API
-   */
-  /**
-   * Headers for TomTom API requests.
-   * Keys with referer restrictions reject requests without a matching Referer —
-   * server-side calls send none by default, so fall back to the registered app origin.
-   */
   private tomTomHeaders(): Record<string, string> {
     const referer = process.env.TOMTOM_REFERER || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://tarana-ai.vercel.app';
     let origin = referer;
-    try { origin = new URL(referer).origin; } catch { /* keep raw */ }
+    try { origin = new URL(referer).origin; } catch {  }
     return {
       'Accept': 'application/json',
       'User-Agent': 'Tarana.ai/1.0',
@@ -206,9 +188,6 @@ class TomTomTrafficService {
     }
   }
 
-  /**
-   * Get traffic incidents from TomTom Incidents API with corrected parameters
-   */
   private async getTrafficIncidents(lat: number, lon: number, radiusMeters: number): Promise<TrafficIncident[]> {
     if (!this.config.apiKey) {
       console.log(`⚠️ TomTom: No API key, skipping incidents for ${lat}, ${lon}`);
@@ -216,11 +195,9 @@ class TomTomTrafficService {
     }
 
     try {
-      // Use correct TomTom Incidents API v5 endpoint with proper parameters
       const url = `${this.config.baseUrl}/traffic/services/5/incidentDetails`;
       
-      // Create bounding box (smaller area for better API response)
-      const offset = 0.005; // ~500m radius
+      const offset = 0.005; 
       const bbox = `${lon - offset},${lat - offset},${lon + offset},${lat + offset}`;
       
       const params = new URLSearchParams({
@@ -245,7 +222,6 @@ class TomTomTrafficService {
       console.log(`📡 TomTom: Incidents API response status: ${response.status}`);
 
       if (!response.ok) {
-        // Try alternative simpler request format
         return await this.getTrafficIncidentsSimple(lat, lon);
       }
 
@@ -270,18 +246,13 @@ class TomTomTrafficService {
       }));
 
     } catch (error) {
-      // Graceful degradation - log warning but don't fail the entire traffic analysis
       console.log(`⚠️ TomTom: Incidents API failed, continuing with flow data only:`, error instanceof Error ? error.message : 'Unknown error');
       return [];
     }
   }
 
-  /**
-   * Fallback method with simplified incidents API request
-   */
   private async getTrafficIncidentsSimple(lat: number, lon: number): Promise<TrafficIncident[]> {
     try {
-      // Use minimal parameters for incidents API
       const url = `${this.config.baseUrl}/traffic/services/5/incidentDetails`;
       const offset = 0.01;
       const bbox = `${lon - offset},${lat - offset},${lon + offset},${lat + offset}`;
@@ -336,27 +307,6 @@ class TomTomTrafficService {
     }
   }
 
-  /**
-   * Calculate congestion score based on flow data and incidents
-   */
-  /**
-   * Calculate congestion score (0-100) from TomTom flow data and any
-   * nearby incidents.
-   *
-   * H1-fix (2026-09-04): previous version let 3 incidents at magnitude 4
-   * each add 30 points per incident (capped per-incident) → 90 total,
-   * pushing a free-flow 30/30 km/h road into SEVERE. That was wrong:
-   * speed is the dominant signal; incidents on a free-flowing road are
-   * advisories, not blockers.
-   *
-   * New rule: per-incident impact is dampened by current speed ratio.
-   * On a free-flow road (ratio >= 0.9), each incident contributes at
-   * most 8 points (a "soft" advisory). As the road slows, incidents
-   * weigh more — at stop-and-go (ratio <= 0.3) the old cap of 30 each
-   * applies. The TOTAL incident contribution is also capped at 25
-   * regardless of incident count, so 50 small incidents don't push
-   * a free-flow reading into SEVERE.
-   */
   private calculateCongestionScore(flowData: any, incidents: TrafficIncident[]): number {
     let score = 0;
     let speedRatio = 1.0;
@@ -370,10 +320,6 @@ class TomTomTrafficService {
       console.log('🚗 TomTom: Using default congestion score: ' + score + ' (no flow data)');
     }
 
-    // Per-incident impact: cap = lerp(8, 30, 1 - speedRatio).
-    //   speedRatio=1.0 (free-flow) → cap=8 per incident
-    //   speedRatio=0.3 (slow)     → cap=23.4 per incident
-    //   speedRatio=0.0 (stopped)  → cap=30 per incident
     const perIncidentCap = 8 + (1 - speedRatio) * 22;
     let incidentTotal = 0;
     incidents.forEach(incident => {
@@ -381,8 +327,6 @@ class TomTomTrafficService {
       incidentTotal += incidentImpact;
       console.log('🚧 TomTom: Incident impact +' + incidentImpact.toFixed(1) + ' (magnitude: ' + incident.magnitudeOfDelay + ', speedRatio: ' + speedRatio.toFixed(2) + ')');
     });
-    // Hard cap on total incident contribution — 25 max regardless of count.
-    // This prevents "5 small incidents on a clear road" → SEVERE.
     const TOTAL_INCIDENT_CAP = 25;
     const cappedIncidentTotal = Math.min(incidentTotal, TOTAL_INCIDENT_CAP);
     if (incidentTotal > TOTAL_INCIDENT_CAP) {
@@ -396,14 +340,6 @@ class TomTomTrafficService {
     return finalScore;
   }
 
-  /**
-   * Determine traffic level from congestion score.
-   *
-   * Incident impact is already baked into the congestion score by
-   * calculateCongestionScore, so we do NOT override based on raw
-   * incident data.  Thresholds match getTrafficLevelFromScore()
-   * in src/lib/utils/trafficColors.ts.
-   */
   private getTrafficLevel(congestionScore: number): 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE' {
     if (congestionScore >= 75) {
       console.log(`🔴 TomTom: SEVERE traffic level (score: ${congestionScore})`);
@@ -423,22 +359,17 @@ class TomTomTrafficService {
     }
   }
 
-  /**
-   * Calculate recommendation score (higher = better time to visit)
-   */
   private calculateRecommendationScore(
     congestionScore: number, 
     trafficLevel: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE',
     incidents: TrafficIncident[]
   ): number {
-    let score = 100 - congestionScore; // Inverse of congestion
+    let score = 100 - congestionScore; 
 
-    // Penalty for incidents
     incidents.forEach(incident => {
       score -= Math.min(incident.magnitudeOfDelay * 5, 20);
     });
 
-    // Traffic level adjustments
     switch (trafficLevel) {
       case 'SEVERE':
         score -= 30;
@@ -463,9 +394,6 @@ class TomTomTrafficService {
     return finalScore;
   }
 
-  /**
-   * Create fallback traffic data when API is unavailable
-   */
   private createFallbackTrafficData(lat: number, lon: number): LocationTrafficData {
     console.log(`🔄 TomTom: Creating fallback traffic data for ${lat}, ${lon}`);
     
@@ -480,9 +408,6 @@ class TomTomTrafficService {
     };
   }
 
-  /**
-   * Clear expired cache entries
-   */
   clearExpiredCache(): void {
     const now = Date.now();
     let cleared = 0;
@@ -500,12 +425,8 @@ class TomTomTrafficService {
   }
 }
 
-// Export singleton instance
 export const tomtomTrafficService = new TomTomTrafficService();
 
-/**
- * Get traffic summary text for display
- */
 export function getTrafficSummary(trafficData: LocationTrafficData): string {
   const { trafficLevel, congestionScore, incidents } = trafficData;
   
@@ -526,9 +447,6 @@ export function getTrafficSummary(trafficData: LocationTrafficData): string {
   return summary;
 }
 
-/**
- * Get traffic-based time recommendation
- */
 export function getTrafficTimeRecommendation(trafficData: LocationTrafficData): string {
   const { recommendationScore, trafficLevel } = trafficData;
   

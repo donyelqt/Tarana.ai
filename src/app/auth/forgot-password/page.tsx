@@ -32,7 +32,7 @@ const ForgotPassword = () => {
 
             if (response.ok) {
                 setMessage(data.message)
-                setEmail("") // Clear the form
+                setEmail("") 
             } else {
                 setError(data.error || 'An error occurred')
             }
@@ -46,7 +46,7 @@ const ForgotPassword = () => {
 
     return (
         <div className="min-h-screen flex">
-            {/* Left Panel */}
+            {}
             <div className="hidden md:flex w-1/2 bg-[#0066FF] flex-col justify-center items-center text-white">
                 <div className="max-w-xs text-left">
                     <div className="text-4xl font-bold mb-2">Tarana.ai</div>
@@ -57,9 +57,9 @@ const ForgotPassword = () => {
                 </div>
             </div>
             
-            {/* Right Panel */}
+            {}
             <div className="flex flex-1 items-center justify-center bg-gray-100 relative">
-                {/* Mobile Back to Home Button */}
+                {}
                 <Link href="/" className="md:hidden absolute top-4 left-4 bg-white text-[#0066FF] font-medium rounded-xl px-6 py-2 text-base shadow-md hover:bg-gray-100 transition z-10">
                     Back to Home
                 </Link>

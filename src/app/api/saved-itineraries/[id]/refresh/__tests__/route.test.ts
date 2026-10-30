@@ -1,16 +1,3 @@
-/**
- * Regression suite for POST /api/saved-itineraries/[id]/refresh.
- *
- * Primary bug this pins: the route regenerates by calling the authenticated
- * generator endpoint (`/api/gemini/itinerary-generator`) server-to-server.
- * Node's fetch attaches no cookies, so unless the caller's credential is
- * forwarded the generator answers 401 and every refresh fails. The "forwards
- * the caller's credential" and "401s become an explicit failure" cases below
- * both fail against the pre-fix route.
- *
- * Secondary: response bodies must never carry raw upstream error text
- * (safe-error boundary).
- */
 import { NextRequest } from 'next/server';
 
 const MockedResponse = globalThis.Response as unknown as {
@@ -79,13 +66,11 @@ const sessionMock = getServerSession as unknown as jest.Mock;
 const mockedList = getSavedItineraries as unknown as jest.Mock;
 const mockedUpdate = updateItinerary as unknown as jest.Mock;
 const mockedWeather = fetchWeatherFromAPI as unknown as jest.Mock;
-// jest.mock hoists the factory, so the imported service object is already the mock.
 const mockedService = itineraryRefreshService as unknown as { evaluateRefreshNeed: jest.Mock };
 const mockedEvaluate = mockedService.evaluateRefreshNeed;
 
 const SENTINEL = 'SUPER_SECRET_UPSTREAM_DETAIL_xyz789';
 
-// Fixture typed against the domain object the route reads from the service.
 import type { SavedItinerary } from '@/lib/data/savedItineraries';
 const storedItinerary: SavedItinerary = {
   id: 'itin-1',
@@ -171,7 +156,6 @@ describe('saved-itineraries/[id]/refresh route', () => {
     expect(res.status).toBe(200);
     const [url, init] = fetchMock.mock.calls[0] as [string, { headers: Record<string, string> }];
     expect(url).toContain('/api/gemini/itinerary-generator');
-    // The regression: without this header the generator answers 401.
     expect(init.headers.cookie).toBe('next-auth.session-token=abc123');
   });
 
@@ -203,14 +187,11 @@ describe('saved-itineraries/[id]/refresh route', () => {
 
     await callPost({ cookie: 'next-auth.session-token=abc123', 'idempotency-key': 'refresh-op-1' });
 
-    // The refresh route now claims the key itself (not just forwards it):
-    // retries must not re-call the billed generator nor rewrite the row.
     expect(mockedClaim).toHaveBeenCalledWith('user-1', '/api/saved-itineraries/[id]/refresh', 'refresh-op-1', 'hash-1');
     const firstHeaders = (fetchMock.mock.calls[0] as [string, { headers: Record<string, string> }])[1].headers;
     expect(firstHeaders['Idempotency-Key']).toBe('refresh-op-1');
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    // Second identical call: the store replays, so no second generator call.
     mockedClaim.mockResolvedValue({ kind: 'replay', replay: { status: 200, body: { success: true, message: 'summary' } } });
     const replayRes = await callPost({ cookie: 'next-auth.session-token=abc123', 'idempotency-key': 'refresh-op-1' });
 

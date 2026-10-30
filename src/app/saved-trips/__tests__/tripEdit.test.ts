@@ -1,37 +1,3 @@
-/**
- * Trip edit logic — the observable contract of an edit either reaching the
- * database as something coherent or not being saved at all.
- *
- * The editor's wiring is a dialog, and the repo's suite can render React, but
- * pinning these rules here keeps them in the same form mobile pins its
- * equivalents: the two failures that actually matter are a blank title written
- * to the row and a re-save of an untouched form, and both are easier to keep
- * correct when they cannot depend on a render.
- *
- * Each pin is a contract, not a detail:
- * 1. A draft reads a missing column as '' — a form must never render "null".
- * 2. A blank title is refused, so no edit produces an unnameable row.
- * 3. A whitespace-only title is also refused; trimming on the way out is not
- *    the same as accepting "   ".
- * 3b. Clearing both date and budget is allowed: the columns are nullable and
- *     mobile preserves NULLs, and every renderer degrades to a placeholder.
- * 3c. Exactly MAX_TAGS tags are allowed and the next one is refused, blank
- *     segments excluded — the route's `max(50)` is the only real limit.
- * 4. An untouched draft reports no change, so a save that would rewrite the
- *    row with identical values cannot happen.
- * 5. Each field counts on its own — a per-field comparison that ORs everything
- *    together would look right and still miss a real edit.
- * 6. Reordering tags IS a change: the row's rendering order is user-visible,
- *    so nobody "optimizes" this into a set compare.
- * 7. A blanked date or budget saves as null, not '' — the columns are nullable
- *    and a cleared field should be absent, not an empty string.
- * 8. Blanks are not tags: "Baguio, , food" is two.
- * 9. The date column holds either the row's own string (a locale pair the
- *    generator wrote, a lone date, or the 'Date not specified' literal) or
- *    null — and when it is null, the draft is seeded from formData.dates.
- * 10. A date reformatting (locale ↔ ISO) is never an edit: the comparison
- *     happens in pair space, not string space.
- */
 import { describe, expect, it } from '@jest/globals';
 import {
   dateRangeFromDraft,
@@ -56,7 +22,6 @@ const trip = (over: Partial<TripEditSource> = {}): TripEditSource => ({
   ...over,
 });
 
-/** A full formData the editor passes through unchanged except for its dates. */
 const formData = (
   over: Partial<{
     budget: string;
@@ -74,11 +39,9 @@ const formData = (
   ...over,
 });
 
-/** `count` non-blank tags as the comma-separated input would hold them. */
 const manyTags = (count: number): string =>
   Array.from({ length: count }, (_, index) => `tag${index}`).join(', ');
 
-/** `count` real tags padded with blank segments, which are not tags. */
 const paddedTags = (count: number = MAX_TAGS): string =>
   Array.from({ length: count }, (_, index) => `tag${index}`)
     .join(', , , ');
@@ -338,8 +301,6 @@ describe('dateToIso / isoToDate — ISO date conversion', () => {
   });
 
   it('parses a full ISO datetime string to its date part', () => {
-    // formData.dates stores `.toISOString()` output; the date must come back
-    // without a timezone rollover.
     const parsed = isoToDate('2026-03-04T00:00:00.000Z');
     expect(parsed).not.toBeNull();
     expect(dateToIso(parsed!)).toBe('2026-03-04');

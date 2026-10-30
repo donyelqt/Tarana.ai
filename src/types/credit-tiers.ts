@@ -1,7 +1,3 @@
-/**
- * Credit Tier System Type Definitions
- * Enhanced with validation and error handling
- */
 
 export type TierStatus = 'unlocked' | 'next' | 'locked';
 export type TierIcon = 'checkmark' | 'lightning';
@@ -20,7 +16,7 @@ export interface UserTierProgress {
   readonly currentReferrals: number;
   readonly currentTierId: string;
   readonly nextTierId?: string;
-  readonly progressToNext: number; // 0-100 percentage
+  readonly progressToNext: number; 
 }
 
 export interface TierCardProps {
@@ -38,7 +34,6 @@ export interface ProgressIndicatorProps {
   readonly progressPercentage: number;
 }
 
-// Type guards for runtime validation
 export const isTierStatus = (value: unknown): value is TierStatus => {
   return typeof value === 'string' && ['unlocked', 'next', 'locked'].includes(value);
 };
@@ -81,7 +76,6 @@ export const isValidProgressIndicatorProps = (props: unknown): props is Progress
   );
 };
 
-// Error types for better error handling
 export class TierSystemError extends Error {
   constructor(message: string, public readonly code: string) {
     super(message);

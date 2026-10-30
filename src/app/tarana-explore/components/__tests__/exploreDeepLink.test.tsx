@@ -1,14 +1,3 @@
-/**
- * Repro for the reported Visit Spot -> Tarana Explore landing defects.
- *
- *  1. Arriving from Suggested Spots prefills the destination but the map stays
- *     framed on Baguio, so the spot is off-screen (or 500km away for a
- *     Visayas/Manila spot).
- *  2. The "To" field's X (clear) is unclickable on arrival.
- *  3. Nothing carries the card's photo/title/traffic across the link.
- *
- * These assert observable behaviour of the real components, not internals.
- */
 
 import React, { useState } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -60,7 +49,6 @@ const POPULAR: LocationPoint[] = [
 ]
 const DEFAULT_PREFS: RoutePreferences = { routeType: 'fastest', vehicleType: 'car' }
 
-/** A spot outside Baguio — the case where "stays framed on Baguio" is visible. */
 const SM_SEASIDE: LocationPoint = {
   id: 'spot:10.28,123.88',
   name: 'SM Seaside City Cebu',
@@ -69,7 +57,6 @@ const SM_SEASIDE: LocationPoint = {
   lng: 123.880608,
 }
 
-/** Mirrors ExploreMapView's controlled endpoints, seeded by the deep link. */
 const DeepLinkHarness: React.FC<{ onDestinationChange?: (d: LocationPoint | null) => void }> = ({
   onDestinationChange,
 }) => {
@@ -107,15 +94,10 @@ describe('Explore arrival from a Suggested Spots deep link', () => {
   })
 
   it('the To field is reachable and its X actually clears the destination', async () => {
-    // Reported defect: tapping X on arrival does nothing. The clear button is
-    // gated on `!!query`, and the query only syncs from the parent value via an
-    // effect — so if that sync never runs the X is not rendered at all, and if
-    // the click handler re-collapses the island the tap lands on nothing.
     const user = userEvent.setup()
     const onDestinationChange = jest.fn()
     render(<DeepLinkHarness onDestinationChange={onDestinationChange} />)
 
-    // Open the collapsed island the way a user would.
     await user.click(screen.getByRole('button', { name: /open search|edit route/i }))
 
     const toInput = await screen.findByLabelText('To')

@@ -1,13 +1,3 @@
-/**
- * Regression: a curated Baguio venue rendered the logo fallback because the
- * live row carried TomTom's display name, not the catalogue title.
- *
- * "Mines View Park" keys "/images/viewspark.png" in CURATED_IMAGE_MAP, but
- * the TomTom supplement row is titled "Mines View Park, Baguio City". Tier 0
- * looked that exact string up, missed, and the request fell through to the
- * live fetch tiers — which search Wikimedia by the suffixed title and also
- * miss — so the empty string survived to the client fallback.
- */
 import { getAccurateImageForPlace, enrichActivitiesWithImages } from '../imageService'
 
 describe('curated image alias match (TomTom ", City" suffix)', () => {
@@ -37,15 +27,11 @@ describe('curated image alias match (TomTom ", City" suffix)', () => {
   })
 
   it('still prefers the exact title when both forms exist', async () => {
-    // No such collision exists today; this pins the precedence so a future
-    // suffixed-only entry can never shadow an exact one.
     const url = await getAccurateImageForPlace({ title: 'Mines View Park', cityId: 'baguio' })
     expect(url).toBe('/images/viewspark.png')
   })
 
   it('does not strip into a different venue', async () => {
-    // One trailing ", <city>" segment only. A title whose stripped form is
-    // not a catalogue key must fall through to the live tiers untouched.
     const url = await getAccurateImageForPlace({
       title: 'Nonexistent Place XYZ, Baguio City',
       cityId: 'baguio',

@@ -2,7 +2,6 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/ge
 import type { WeatherCondition } from "../types/types";
 import { logger } from "../../../../../lib/observability/logger";
 
-// Global initialization for Gemini model to avoid re-creating the client on every request.
 export const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 export const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
@@ -36,7 +35,6 @@ export const geminiModel = genAI ? genAI.getGenerativeModel({
   ],
 }) : null;
 
-// Pre-computed weather context lookup for faster processing
 export const WEATHER_CONTEXTS = {
   thunderstorm: (temp: number, desc: string) =>
     `WARNING: ${desc} (${temp}°C). ONLY indoor activities: Museums, malls, indoor dining. Select "Indoor-Friendly" tagged activities only.`,
@@ -56,7 +54,6 @@ export const WEATHER_CONTEXTS = {
     `Weather: ${desc} at ${temp}°C. Balance indoor/outdoor activities.`,
 };
 
-// Mapping of weather types to acceptable activity tags – used to pre-filter the sample DB sent to Gemini
 export const WEATHER_TAG_FILTERS = {
   thunderstorm: [],
   rainy: [],
@@ -68,7 +65,6 @@ export const WEATHER_TAG_FILTERS = {
   default: []
 } as const;
 
-// Interest mapping for faster lookup - updated to match activities in itineraryData.ts
 export const INTEREST_DETAILS = {
   "Nature & Scenery": "- Nature & Scenery: Burnham Park, Mines View Park, Botanical Garden, The Mansion, Wright Park, Camp John Hay, Bencab Museum, Baguio Cathedral, Mirador Heritage and Eco Park, Diplomat Hotel, Lions Head, Philippine Military Academy, Great wall of Baguio, Camp John Hay Yellow Trail, Valley of Colors, Mt. Kalugong, Tavern Cafe, Oh My Gulay, Hill Station",
   "Food & Culinary": "- Food & Culinary: Baguio Night Market, SM City Baguio, Baguio Public Market, Good Shepherd Convent, Chimichanga by Jaimes Family Feast, Kapi Kullaaw, Itaewon Cafe, Agara Ramen, KoCo Cafe, Good Shepherd Cafe, Tavern Cafe, Oh My Gulay, Hill Station, Hiraya Cafe, Uji-Matcha Cafe, K-Flavors Buffet, Korean Palace Kung Jeon, Myeong Dong Jjigae Restaurant",

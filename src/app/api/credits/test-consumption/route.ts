@@ -10,10 +10,7 @@ import {
   getUserProfileRow,
 } from '@/lib/services/creditDiagnostics';
 
-/**
- * POST /api/credits/test-consumption
- * Test credit consumption with proper service name
- */
+
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/credits/test-consumption', 'POST', async () => {
     const requestId = getRequestId(req);
@@ -27,7 +24,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       steps: [],
     };
 
-    // STEP 1: Check if profile exists
+    
     const { profile, error: profileError } = await getUserProfileRow(userId);
 
     testResult.steps.push({
@@ -46,7 +43,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
 
     const profileRow = profile as { daily_credits: number; credits_used_today: number };
 
-    // STEP 2: Check current balance
+    
     const balanceBefore = profileRow.daily_credits - profileRow.credits_used_today;
     testResult.steps.push({
       step: 'Check Balance Before',
@@ -58,7 +55,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       }
     });
 
-    // STEP 3: Try to call consume_credits function
+    
     logger.info(
       'Attempting to consume test credit',
       { entryPoint: '/api/credits/test-consumption' },
@@ -87,7 +84,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       });
     }
 
-    // STEP 4: Check balance after
+    
     const { profile: profileAfter, error: afterError } = await getUserProfileRow(userId);
     const afterRow = profileAfter as { daily_credits: number; credits_used_today: number } | null;
 
@@ -106,7 +103,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       error: afterError?.message
     });
 
-    // STEP 5: Check transaction was logged
+    
     const { transactions, error: txError } = await getRecentTransactions(
       userId,
       1,
@@ -120,12 +117,12 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       error: txError?.message
     });
 
-    // FINAL RESULT
+    
     const creditWasConsumed = balanceAfter === balanceBefore - 1;
     const transactionWasLogged = transactions && transactions.length > 0;
 
-    // The probe must not permanently burn a real credit: refund the test
-    // spend once the balance-after check has observed it.
+    
+    
     if (creditWasConsumed) {
       const { CreditService } = await import('@/lib/referral-system');
       await CreditService.refundCredits({

@@ -1,7 +1,3 @@
-/**
- * Environment variable validation and security utilities
- * Ensures all critical environment variables are properly configured
- */
 
 interface EnvironmentConfig {
   required: string[];
@@ -16,9 +12,6 @@ interface ValidationResult {
   errors: string[];
 }
 
-/**
- * Environment variable configurations for different contexts
- */
 export const environmentConfigs = {
   production: {
     required: [
@@ -26,7 +19,7 @@ export const environmentConfigs = {
       'NEXTAUTH_URL',
       'NEXT_PUBLIC_SUPABASE_URL',
       'SUPABASE_SERVICE_ROLE_KEY',
-      'OPENWEATHER_API_KEY', // Changed from NEXT_PUBLIC_
+      'OPENWEATHER_API_KEY', 
       'GOOGLE_GEMINI_API_KEY',
       'SMTP_HOST',
       'SMTP_PORT',
@@ -80,9 +73,6 @@ export const environmentConfigs = {
   },
 } as const;
 
-/**
- * Validate environment variables
- */
 export function validateEnvironment(
   environment: 'production' | 'development' = 'development'
 ): ValidationResult {
@@ -91,7 +81,6 @@ export function validateEnvironment(
   const warnings: string[] = [];
   const errors: string[] = [];
 
-  // Check required variables
   for (const varName of config.required) {
     const value = process.env[varName];
     if (!value || value.trim() === '') {
@@ -100,7 +89,6 @@ export function validateEnvironment(
     }
   }
 
-  // Check optional variables and warn if missing in production
   if (environment === 'production') {
     for (const varName of config.optional) {
       const value = process.env[varName];
@@ -110,7 +98,6 @@ export function validateEnvironment(
     }
   }
 
-  // Validate specific variable formats
   validateSpecificVariables(errors, warnings);
 
   return {
@@ -121,11 +108,7 @@ export function validateEnvironment(
   };
 }
 
-/**
- * Validate specific environment variable formats
- */
 function validateSpecificVariables(errors: string[], warnings: string[]): void {
-  // Validate NEXTAUTH_SECRET strength
   const nextAuthSecret = process.env.NEXTAUTH_SECRET;
   if (nextAuthSecret) {
     if (nextAuthSecret.length < 32) {
@@ -136,7 +119,6 @@ function validateSpecificVariables(errors: string[], warnings: string[]): void {
     }
   }
 
-  // Validate URLs
   const nextAuthUrl = process.env.NEXTAUTH_URL;
   if (nextAuthUrl && !isValidUrl(nextAuthUrl)) {
     errors.push('NEXTAUTH_URL must be a valid URL');
@@ -147,13 +129,11 @@ function validateSpecificVariables(errors: string[], warnings: string[]): void {
     errors.push('NEXT_PUBLIC_SUPABASE_URL must be a valid URL');
   }
 
-  // Validate email format
   const smtpFromEmail = process.env.SMTP_FROM_EMAIL;
   if (smtpFromEmail && !isValidEmail(smtpFromEmail)) {
     errors.push('SMTP_FROM_EMAIL must be a valid email address');
   }
 
-  // Validate SMTP port
   const smtpPort = process.env.SMTP_PORT;
   if (smtpPort) {
     const port = parseInt(smtpPort, 10);
@@ -163,9 +143,6 @@ function validateSpecificVariables(errors: string[], warnings: string[]): void {
   }
 }
 
-/**
- * Check if a string is a valid URL
- */
 function isValidUrl(url: string): boolean {
   try {
     new URL(url);
@@ -175,17 +152,11 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-/**
- * Check if a string is a valid email
- */
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
-/**
- * Mask sensitive environment variables for logging
- */
 export function maskSensitiveEnvVars(
   envVars: Record<string, string | undefined>,
   environment: 'production' | 'development' = 'development'
@@ -206,9 +177,6 @@ export function maskSensitiveEnvVars(
   return masked;
 }
 
-/**
- * Get environment variable with validation
- */
 export function getEnvVar(
   name: string,
   defaultValue?: string,
@@ -226,9 +194,6 @@ export function getEnvVar(
   return value.trim();
 }
 
-/**
- * Initialize and validate environment on startup
- */
 export function initializeEnvironment(): void {
   const environment = process.env.NODE_ENV === 'production' ? 'production' : 'development';
   const validation = validateEnvironment(environment);
@@ -252,9 +217,6 @@ export function initializeEnvironment(): void {
   }
 }
 
-/**
- * Runtime environment check for API routes
- */
 export function checkRequiredEnvVars(requiredVars: string[]): void {
   const missing = requiredVars.filter(varName => {
     const value = process.env[varName];

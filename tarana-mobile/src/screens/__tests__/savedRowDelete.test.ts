@@ -1,34 +1,3 @@
-/**
- * The arm/confirm rules behind both saved lists' per-row delete controls.
- *
- * The web lists (saved-trips, saved-meals) delete with a trash button
- * behind a confirm modal; mobile keeps the two-step arm its detail screens
- * already ship. The invariant worth pinning is that delete never fires on
- * the first tap — after a successful delete the row is unrecoverable, so
- * "the confirm step got skipped" is not a cosmetic bug.
- *
- * These rules live in `../savedRowDelete` rather than inside a screen, so
- * they run headless: no navigation stack, no SQLite, no React Native
- * render — the same seam `../savedMeals` takes for its pure shaping.
- *
- * What is pinned here, and why each is a contract rather than a detail:
- * 1. The first tap arms without deleting. The bug that matters: a delete
- *    on a single tap loses a saved trip from a mis-tap, and a scrolling
- *    list is exactly where mis-taps happen.
- * 2. The second tap on the armed row deletes. The confirm must actually
- *    confirm, or the arm is a fake affordance.
- * 3. A delete that fails leaves the row and surfaces a readable reason.
- *    A silent failure reads as a working control, so the user believes
- *    the row is gone and stops looking for it.
- * 4. After a failure the arm clears, so one further tap cannot finish a
- *    delete the user already watched fail.
- * 5. Every other row still navigates while one row is armed. The delete
- *    control must not hijack the row press.
- * 6. A failed delete leaves the row live — re-navigable, re-deletable —
- *    because the reason is surfaced, not swallowed.
- * 7. The label names the row. Inside a list of identically-shaped rows,
- *    "Delete" alone tells a screen-reader user nothing about which item.
- */
 import { describe, expect, it } from '@jest/globals';
 import {
   afterDelete,
@@ -64,8 +33,6 @@ describe('the first tap arms, it does not delete', () => {
   });
 
   it('a tap on a different row re-arms instead of deleting the armed one', () => {
-    // The confirm never leaks across rows: accepting row 1's confirm with
-    // row 2's tap would delete from a control the user never touched.
     expect(tapDeletes(model(TRIP.id), OTHER.id)).toBe(false);
     expect(nextArmedId(model(TRIP.id), OTHER.id)).toBe(OTHER.id);
   });
@@ -107,7 +74,6 @@ describe('after the seam resolves', () => {
   });
 
   it('a failed row also leaves no armed row behind', () => {
-    // One more tap must not finish a delete the user already saw fail.
     expect(afterDelete(model(TRIP.id, TRIP.id), 'failed')).toEqual(idleRowDelete);
   });
 
@@ -159,11 +125,6 @@ describe('the control is reachable non-visually', () => {
 
 describe('an armed row still navigates', () => {
   it('arming one row leaves every other row idle and pressable', () => {
-    // The row press must stay a navigation target even while a sibling row
-    // is armed: the delete control is a SIBLING of the row (not nested in
-    // it) precisely so its press cannot bubble into the row's onPress. If
-    // arming row 1 disabled or redirected row 2, the list would stop being
-    // navigable the moment a user armed a delete.
     const model = { armedId: TRIP.id, deletingId: null };
     expect(rowDeleteState(model, OTHER.id)).toBe('idle');
     expect(rowDeleteLabel(OTHER, rowDeleteState(model, OTHER.id))).toBe(`Delete ${OTHER.name}`);
@@ -178,8 +139,6 @@ describe('an armed row still navigates', () => {
 
 describe('a failed delete keeps the row', () => {
   it('the model after a failure names no deleting row, so the row renders normally again', () => {
-    // `deletingId` is what disables the control; clearing it means the row
-    // comes back as a live, re-navigable, re-deletable row.
     const model = afterDelete({ armedId: TRIP.id, deletingId: TRIP.id }, 'failed');
     expect(rowDeleteState(model, TRIP.id)).toBe('idle');
   });

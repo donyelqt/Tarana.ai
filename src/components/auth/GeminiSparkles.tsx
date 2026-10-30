@@ -12,7 +12,6 @@ interface GeminiSparklesProps {
   className?: string
 }
 
-/** Deterministic pseudo-random so dots don't re-scatter on every render. */
 function seededRandom(seed: number) {
   let s = seed
   return () => {
@@ -89,25 +88,13 @@ export function GeminiSparkles({
   )
 }
 
-/* ── FadingDotGrid ─────────────────────────────────────────────
- *  Pure-CSS dot-grid background with a radial opacity fade,
- *  inspired by the bryllim.com hero pattern.
- *  Default corner is top-right; pass corner="top-left" to mirror.
- * ───────────────────────────────────────────────────────────── */
 interface FadingDotGridProps {
-  /** Dot colour — use a CSS colour string. Default: light blue-grey. */
   dotColor?: string
-  /** Dot diameter in px. Default: 3 */
   dotSize?: number
-  /** Gap between dot centres in px. Default: 14 */
   gap?: number
-  /** Width of the grid region as a fraction of container width. Default: 0.55 (55%) */
   widthFraction?: number
-  /** Height of the grid region as a fraction of container height. Default: 0.6 (60%) */
   heightFraction?: number
-  /** Which corner the grid anchors to. Default: "top-right" */
   corner?: "top-right" | "top-left"
-  /** Extra class on root */
   className?: string
 }
 
@@ -120,7 +107,6 @@ export function FadingDotGrid({
   corner = "top-right",
   className = "",
 }: FadingDotGridProps) {
-  // radial-gradient: small circle at each grid intersection
   const dotPattern = useMemo(() => {
     const half = dotSize / 2
     return `radial-gradient(circle at ${half}px ${half}px, ${dotColor} ${half}px, transparent ${half}px)`
@@ -139,7 +125,6 @@ export function FadingDotGrid({
     backgroundSize: `${gap}px ${gap}px`,
     backgroundPosition: isLeft ? "top left" : "top right",
     backgroundRepeat: "repeat",
-    /* mask fades the grid to transparent at all edges; origin flips per corner */
     WebkitMaskImage: isLeft
       ? "radial-gradient(ellipse 70% 70% at 30% 20%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 55%, transparent 100%)"
       : "radial-gradient(ellipse 70% 70% at 70% 20%, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 55%, transparent 100%)",

@@ -1,9 +1,3 @@
-// ====================================================================
-// KAPI KULLAAW MENU DATA
-// ====================================================================
-// A cozy café nestled within the Ili-likha Artist Village in Baguio City. 
-// Known for its thoughtfully curated coffee selection and vibrant, creative atmosphere.
-// ====================================================================
 
 import { FullMenu } from "../types";
 
@@ -95,7 +89,6 @@ export const kapiKullaawMenu: FullMenu = {
     },
   ],
   Drinks: [
-    // Coffee Beans
     {
       name: "Kullaaw Special",
       description: "French Pressed Local Coffee Beans",
@@ -120,7 +113,6 @@ export const kapiKullaawMenu: FullMenu = {
       price: 100,
       image: "/images/comingsoon.png",
     },
-    // Frappes
     {
       name: "Mocha Frappe",
       description: "Frappe",
@@ -145,7 +137,6 @@ export const kapiKullaawMenu: FullMenu = {
       price: 200,
       image: "/images/comingsoon.png",
     },
-    // Coffee Drinks
     {
       name: "Caramel Macchiato Iced",
       description: "Coffee Drinks",
@@ -302,7 +293,6 @@ export const kapiKullaawMenu: FullMenu = {
       price: 160,
       image: "/images/comingsoon.png",
     },
-    // Caffeine-Free Drinks
     {
       name: "Iced Fresh Lemonade",
       description: "Caffeine-Free Drinks",
@@ -393,7 +383,6 @@ export const kapiKullaawMenu: FullMenu = {
       price: 165,
       image: "/images/comingsoon.png",
     },
-    // Hot Tea
     {
       name: "Butterfly Tea Single Serving",
       description: "Hot Tea",

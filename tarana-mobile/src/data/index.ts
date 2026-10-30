@@ -1,26 +1,3 @@
-/**
- * Backend-agnostic data seam (§2.1, §8).
- *
- * Contract-first (api-and-interface-design): screens consume THESE
- * functions and never `../db`, `../supabase`, or raw `fetch` to web APIs.
- * Swapping a domain from local to HTTP later means changing one function
- * body here — no screen rewrites.
- *
- * Current bindings:
- * - profiles, trips, meals → local SQLite (`../db`). No network, no login.
- * - trips + meals (sync) → the linked web account over HTTP. The mobile
- *   Bearer token is the credential: the middleware validates it and injects
- *   the session identity, so the token-bearing routes (`/api/saved-*`)
- *   accept a mobile request unchanged. Import pulls web → SQLite; export
- *   pushes local-only rows web-ward. NO operation deletes on either side.
- * - spots, weather → web enrichment proxy over HTTP. Verified session-free
- *   (`GET /api/spots`, `GET /api/weather` carry no auth check), so these
- *   deliberately send NO token. Offline → thrown Error → caller renders
- *   its cached/empty state (never a login wall).
- *
- * Boundary rule: every HTTP response is untrusted input — shape-validated
- * before use. Every write binds `?` parameters (see ../db).
- */
 import { config } from '../config';
 import { exchangeForMobileToken, clearStoredToken, withMobileAuth } from '../auth';
 import { createMobileSupabaseClient } from '../supabase';
@@ -35,27 +12,20 @@ import type { LocalMeal, LocalProfile, LocalTrip } from '../db';
 export type { LocalProfile, LocalTrip, LocalMeal } from '../db';
 export type { LocalProfile as Profile, LocalTrip as Trip, LocalMeal as Meal } from '../db';
 
-// The mobile-tab → web-union mapping lives in its own module so both the
-// save site (a screen) and `buildMealExportBody` below share one definition,
-// and so the mapping can be unit-tested without the seam's native imports.
-// Re-exported here because screens consume the seam, never a data sibling.
 export { toWebMealType } from './mealTypeMapping';
 export type { WebMealType, MobileMealTab } from './mealTypeMapping';
 
-// ── Profiles (local) ─────────────────────────────────────
 
 export const getActiveProfile = Db.getActiveProfile;
 export const getActiveProfileId = Db.getActiveProfileId;
 export const createProfile = Db.createProfile;
 export const clearActiveProfile = Db.clearActiveProfile;
 
-/** Sign-out: drop the local profile pointer and any linked token. */
 export async function signOut(): Promise<void> {
   await Db.clearActiveProfile();
   await clearStoredToken();
 }
 
-// ── Trips (local; import writes land here too) ────────────
 
 export const listTrips = Db.listTripsByProfile;
 export const createTrip = Db.createTrip;
@@ -63,14 +33,12 @@ export const updateTrip = Db.updateTrip;
 export const deleteTrip = Db.deleteTrip;
 export const upsertImportedTrip = Db.upsertImportedTrip;
 
-// ── Meals (local) ────────────────────────────────────────
 
 export const listMeals = Db.listMealsByProfile;
 export const createMeal = Db.createMeal;
 export const deleteMeal = Db.deleteMeal;
 export const upsertImportedMeal = Db.upsertImportedMeal;
 
-// ── Web import (one-way copy; the JWT is single-use here) ───
 
 type WebItineraryRow = {
   id: string;
@@ -100,12 +68,6 @@ function nameFromEmail(email: string): string {
   return local || 'My Trips';
 }
 
-/**
- * One-way web import (§7.4): browser exchange → copy trips into SQLite →
- * forget the session. The typed credentials never leave the UI layer —
- * actual auth happens in the exchange; the email only seeds a profile
- * name when none exists. Re-imports update via (source, source_id).
- */
 export async function importWebTrips(email: string): Promise<{ imported: number; profile: LocalProfile; userId: string }> {
   const payload = await exchangeForMobileToken();
   const userId = payload?.id ?? payload?.sub;
@@ -139,7 +101,6 @@ export async function importWebTrips(email: string): Promise<{ imported: number;
   return { imported, profile, userId };
 }
 
-// ── Web export (two-way copy: local → web) ─────────────────
 
 export type ExportSummary = {
   exported: number;
@@ -147,7 +108,6 @@ export type ExportSummary = {
   failures: string[];
 };
 
-/** The subset of `SaveItinerarySchema` the mobile client is responsible for. */
 type SaveItineraryBody = {
   title: string;
   date: string;
@@ -158,12 +118,6 @@ type SaveItineraryBody = {
   weatherData?: unknown;
 };
 
-/**
- * The idempotency key: derived from the local trip id so a retry always
- * carries the SAME key for the same trip. The web route scopes keys per
- * user+route, so a namespaced key can never collide with — or replay
- * against — an unrelated browser save.
- */
 const EXPORT_KEY_PREFIX = 'tarana-mobile-export';
 const MAX_EXPORT_KEY_LENGTH = 256;
 
@@ -172,12 +126,6 @@ function exportIdempotencyKey(localTripId: string): string | null {
   return key.length <= MAX_EXPORT_KEY_LENGTH ? key : null;
 }
 
-/**
- * Local-shape validation, mirroring the fields `SaveItinerarySchema`
- * requires. A trip that cannot satisfy the web contract is skipped with a
- * reason rather than POSTed and 400'd — the write is never attempted when
- * the failure is already knowable on device.
- */
 function buildExportBody(trip: LocalTrip): SaveItineraryBody | null {
   let payload: unknown;
   try {
@@ -191,10 +139,6 @@ function buildExportBody(trip: LocalTrip): SaveItineraryBody | null {
   const budget = typeof trip.budget === 'string' && trip.budget.trim() ? trip.budget.trim() : null;
   if (!title || !date || !budget) return null;
 
-  // Payload contract (`itinerarySchema.ts:65-69`): `formData` and
-  // `itineraryData` are objects-or-null, `weatherData` is opaque. Checked
-  // property by property rather than with a generic "is an object" guard,
-  // which would pass a `{ formData: "boom" }` payload straight into the POST.
   if (typeof payload !== 'object' || payload === null) return null;
   if (!('formData' in payload) || !('itineraryData' in payload)) return null;
 
@@ -215,65 +159,25 @@ function buildExportBody(trip: LocalTrip): SaveItineraryBody | null {
   };
 }
 
-/** Server-supplied error text is the only useful diagnostic for a 4xx/5xx. */
 function webErrorMessage(status: number, body: unknown): string {
   const error = body && typeof body === 'object' && 'error' in body ? body.error : undefined;
   if (typeof error === 'string' && error.trim()) return `HTTP ${status}: ${error}`;
   return `HTTP ${status}`;
 }
 
-/** Named boundary type for the part of `SavedItineraryDto` this function reads. */
 function savedTripId(body: unknown): string | null {
   const data = body && typeof body === 'object' && 'data' in body ? body.data : undefined;
   const id = data && typeof data === 'object' && 'id' in data ? data.id : undefined;
   return typeof id === 'string' ? id : null;
 }
 
-/**
- * Two-way sync's export direction (§7.4 mirror): local-only trips are
- * POSTed to the web app so a linked account sees them on every device.
- *
- * Conflict rule — web is the source of truth for identity, SQLite for
- * local-only trips:
- * - Export NEVER deletes on either side. Nothing here removes a local row
- *   or a web row, so a partial run can only leave work undone, never data
- *   destroyed, and re-running the same export is always safe.
- * - Idempotency converges on the LOCAL TRIP ID (see `exportIdempotencyKey`).
- *   The web route claims `Idempotency-Key` before its insert and replays
- *   the cached response for an already-completed key, so a retry after a
- *   partial failure returns the SAME web id instead of inserting a second
- *   row. This is the export-side mirror of `upsertImportedTrip`'s
- *   `(source, source_id)` dedupe on the import side.
- * - After a successful POST the exported row is rewritten
- *   `source: 'web-import'` with the returned web id (`linkExportedRow`). The
- *   idempotency key alone does NOT close the round trip: it only makes a
- *   repeat POST harmless, while the import side inserts
- *   `source = 'web-import'` and conflicts on `(source, source_id)`, so a row
- *   still marked 'local' can never match that conflict and a later import
- *   inserts a SECOND copy of the same trip. A second consequence, and the
- *   one this rule accepts: the marked row leaves the `source === 'local'`
- *   candidate set, so it is reported as neither exported nor failed on the
- *   next export — correctly, because it is already on the web.
- * - A trip whose payload cannot produce a valid `SaveItinerarySchema` body
- *   is skipped with a reason, never POSTed.
- *
- * Per-trip isolation: one failure is recorded and the loop continues, so a
- * single malformed trip can neither abort the batch nor lose the report of
- * the trips that did land. Only a missing token or an unusable profile
- * (i.e. "this export cannot run at all") throws, because those cannot be
- * attributed to any trip.
- */
 export async function exportLocalTrips(profileId: string): Promise<ExportSummary> {
   const trips = await Db.listTripsByProfile(profileId);
   const candidates = trips.filter((t) => t.source === 'local' && t.payload !== null);
 
-  // Nothing to send beats an early token prompt: the exchange is a browser
-  // round-trip the user has to authorise.
   if (candidates.length === 0) return { exported: 0, skipped: 0, failures: [] };
 
   const baseUrl = config.webBaseUrl.replace(/\/$/, '');
-  // Resolved once, up front: a missing/invalid token is a whole-export
-  // failure, not a per-trip one, so it must not be retried per row.
   const headers = await withMobileAuth({
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -293,8 +197,6 @@ export async function exportLocalTrips(profileId: string): Promise<ExportSummary
 
     const body = buildExportBody(trip);
     if (body === null) {
-      // A payload the web schema rejects would 400 on POST; catching it here
-      // keeps the reason on the device and skips the round-trip.
       summary.skipped += 1;
       summary.failures.push(`${label}: this trip is missing the details the web requires (title, date, budget, or itinerary).`);
       continue;
@@ -308,14 +210,10 @@ export async function exportLocalTrips(profileId: string): Promise<ExportSummary
         body: JSON.stringify(body),
       });
     } catch {
-      // Transport failure. The web claim (if any) expires on its own TTL, and
-      // the local id stays the key, so the next attempt converges.
       summary.failures.push(`${label}: could not reach the web app.`);
       continue;
     }
 
-    // Every response body is untrusted: parse defensively and validate shape
-    // before use (same boundary rule as every other call in this file).
     let parsed: unknown;
     try {
       parsed = await res.json();
@@ -331,21 +229,12 @@ export async function exportLocalTrips(profileId: string): Promise<ExportSummary
 
     const savedId = savedTripId(parsed);
     if (savedId === null) {
-      // The write may well have landed; without a returned id we cannot claim
-      // success, and the idempotency key makes re-export safe.
       summary.failures.push(`${label}: the web reply did not include the saved trip.`);
       continue;
     }
 
-    // Close the local → web → local round trip on this row: record the web id
-    // AND mark it `web-import`. Without the marking the import's
-    // `ON CONFLICT(source, source_id)` can never match this row, so a later
-    // import of the same web trip inserts a SECOND copy. The local id is
-    // untouched, so the idempotency key stays derived from it and a lost
-    // reply is still recoverable.
     await Db.linkExportedRow('trips', trip.id, savedId);
 
-    // 201 created, or any non-replay 2xx that still carries an id.
     summary.exported += 1;
   }
 
@@ -377,21 +266,6 @@ function mealGoodFor(value: WebMealRow["good_for"]): string[] {
   return [];
 }
 
-/**
- * One-way web meals import (§7.4 twin of importWebTrips): same exchange,
- * same profile, same (source, source_id) idempotency — `saved_meals` rows
- * land in SQLite via upsertImportedMeal.
- *
- * RLS remediation 2026-09-19: this no longer reads saved_meals directly with
- * the anon key (prod had permissive USING(true) policies — any client could
- * read/write all users' rows; strict auth.uid()=user_id policies are being
- * re-applied, and an anon read would then return zero rows). Identity comes
- * from the server-exchanged mobile token: the request hits
- * GET /api/saved-meals with `Authorization: Bearer <mobile-token>`, the
- * middleware validates the token and injects the session identity, and the
- * route queries with the service-role admin client scoped to the session —
- * the same pattern as the web app and importWebTrips.
- */
 export async function importWebMeals(_userId: string, profileId: string): Promise<{ imported: number }> {
   const baseUrl = config.webBaseUrl.replace(/\/$/, '');
   const res = await fetch(`${baseUrl}/api/saved-meals`, {
@@ -429,9 +303,7 @@ export async function importWebMeals(_userId: string, profileId: string): Promis
   return { imported };
 }
 
-// ── Meals export (two-way copy: local → web) ──────────────
 
-/** The subset of `SavedMealSchema` the mobile client is responsible for. */
 type SaveMealBody = {
   cafe_name: string;
   meal_type: WebMealType;
@@ -441,35 +313,9 @@ type SaveMealBody = {
   menu_items: unknown[];
 };
 
-/**
- * Local-shape validation, mirroring the fields `SavedMealSchema` requires.
- * A meal that cannot satisfy the web contract is skipped with a reason
- * rather than POSTed and 400'd, because the failure is already knowable on
- * device.
- *
- * The shape conversion the trips seam never needs: web `good_for` is ONE
- * nullable string while local `good_for` is a string array. The first
- * non-empty entry is the exact inverse of `mealGoodFor`, which maps the web
- * string to a one-element array on import, so a round-trip yields the value
- * that was saved. Joining the array instead would concatenate unrelated
- * labels and routinely blow the 20-character cap.
- *
- * `meal_type` is likewise mapped here, not passed through: the local column
- * is free text written historically as the raw mobile tab label, so rows
- * saved before the save site started normalizing it carry 'Snacks'/'Drinks'
- * — values the web row type accepts but the web filter can never match
- * (see `./mealTypeMapping`). Mapping on export repairs those rows on their
- * next sync without a migration, and keeps the export body in the web union
- * the same way a fresh save already is.
- */
 function buildMealExportBody(meal: LocalMeal): SaveMealBody | null {
   const cafeName = typeof meal.cafe_name === 'string' && meal.cafe_name.trim() ? meal.cafe_name.trim() : null;
   const rawType = typeof meal.meal_type === 'string' && meal.meal_type.trim() ? meal.meal_type.trim() : null;
-  // 'Snacks' → 'Snack', 'Drinks' → 'Snack'. A value already in the web union
-  // passes through unchanged, so a web-imported row round-trips instead of
-  // being dropped here. An unmappable type is null, which the `!mealType`
-  // guard below skips — no invented bucket for a row that does not come from
-  // a known tab.
   const mealType = rawType === null ? null : toWebMealType(rawType);
   if (!cafeName || !mealType) return null;
   if (cafeName.length > 200) return null;
@@ -478,24 +324,13 @@ function buildMealExportBody(meal: LocalMeal): SaveMealBody | null {
     typeof meal.price === 'number' && Number.isFinite(meal.price) && meal.price > 0 ? meal.price : null;
   if (price === null) return null;
 
-  // `meal.good_for` is stored as a JSON STRING in the `meals` TEXT column
-  // (what `createMeal`/`upsertImportedMeal` write), so `[]` is not its empty
-  // form — the string form is. Parsing it here is the same inverse `toMeal`
-  // applies on the read path, so the export body and the on-device list agree
-  // on what a row's labels are instead of one path crashing on the other's
-  // shape. A malformed or blank value is `[]`, never a throw: the export is a
-  // batch over every local meal, and one bad column must not abort the rest.
   const goodForEntry = parseStoredGoodFor(meal.good_for).find((v) => typeof v === 'string' && v.trim());
   const goodFor = goodForEntry ? goodForEntry.trim() : null;
-  // The cap is 20 characters. A first entry over it would 400, so the row is
-  // skipped here rather than sent.
   if (goodFor !== null && goodFor.length > 20) return null;
 
   const location = typeof meal.location === 'string' && meal.location.trim() ? meal.location.trim() : null;
   if (location !== null && location.length > 200) return null;
 
-  // Local `items` is a JSON string of dish objects, written by createMeal.
-  // Null means the row never captured a dish, which the schema allows.
   let menuItems: unknown;
   try {
     menuItems = JSON.parse(meal.items ?? '[]');
@@ -515,50 +350,13 @@ function buildMealExportBody(meal: LocalMeal): SaveMealBody | null {
   };
 }
 
-/**
- * Two-way sync's export direction (§7.4 mirror): local-only saved meals are
- * POSTed to the web app so a linked account sees them on every device.
- *
- * Conflict rule, identical to `exportLocalTrips`:
- * - Export NEVER deletes on either side. Nothing here removes a local row
- *   or a web row, so a partial run can only leave work undone, never data
- *   destroyed, and re-running the same export is always safe.
- * - Idempotency converges on the LOCAL MEAL ID (see `exportIdempotencyKey`).
- *   The route claims `Idempotency-Key` scoped to (user, route, key) before
- *   its insert and replays the cached response for an already-completed
- *   key, so a retry after a partial failure returns the SAME web id instead
- *   of inserting a second row. This is the export-side mirror of
- *   `upsertImportedMeal`'s (source, source_id) dedupe on the import side.
- * - After a successful POST the exported row is rewritten
- *   `source: 'web-import'` with the returned web id (`linkExportedRow`). The
- *   idempotency key alone does NOT close the round trip: it only makes a
- *   repeat POST harmless, while the import side inserts
- *   `source = 'web-import'` and conflicts on `(source, source_id)`, so a row
- *   still marked 'local' can never match that conflict and a later import
- *   inserts a SECOND copy of the same meal. A second consequence, and the
- *   one this rule accepts: the marked row leaves the `source === 'local'`
- *   candidate set, so it is reported as neither exported nor failed on the
- *   next export — correctly, because it is already on the web.
- * - A meal that cannot produce a valid `SavedMealSchema` body is skipped
- *   with a reason, never POSTed.
- *
- * Per-meal isolation: one failure is recorded and the loop continues. Only a
- * missing token or an unusable profile (i.e. "this export cannot run at
- * all") throws, because those cannot be attributed to any meal.
- */
 export async function exportLocalMeals(profileId: string): Promise<ExportSummary> {
   const meals = await Db.listMealsByProfile(profileId);
-  // A web-import row is already on the web; re-pushing it would fight the
-  // import-side dedupe.
   const candidates = meals.filter((m) => m.source === 'local');
 
-  // Nothing to send beats an early token prompt: the exchange is a browser
-  // round-trip the user has to authorise.
   if (candidates.length === 0) return { exported: 0, skipped: 0, failures: [] };
 
   const baseUrl = config.webBaseUrl.replace(/\/$/, '');
-  // Resolved once, up front: a missing/invalid token is a whole-export
-  // failure, not a per-meal one, so it must not be retried per row.
   const headers = await withMobileAuth({
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -578,8 +376,6 @@ export async function exportLocalMeals(profileId: string): Promise<ExportSummary
 
     const body = buildMealExportBody(meal);
     if (body === null) {
-      // A payload the web schema rejects would 400 on POST; catching it here
-      // keeps the reason on the device and skips the round-trip.
       summary.skipped += 1;
       summary.failures.push(`${label}: this meal is missing the details the web requires (cafe name, meal type, or a positive price).`);
       continue;
@@ -593,14 +389,10 @@ export async function exportLocalMeals(profileId: string): Promise<ExportSummary
         body: JSON.stringify(body),
       });
     } catch {
-      // Transport failure. The web claim (if any) expires on its own TTL, and
-      // the local id stays the key, so the next attempt converges.
       summary.failures.push(`${label}: could not reach the web app.`);
       continue;
     }
 
-    // Every response body is untrusted: parse defensively and validate shape
-    // before use (same boundary rule as every other call in this file).
     let parsed: unknown;
     try {
       parsed = await res.json();
@@ -614,34 +406,20 @@ export async function exportLocalMeals(profileId: string): Promise<ExportSummary
       continue;
     }
 
-    // The route replies 200 with `{ success: true, data }` where `data` is
-    // the raw row, and an idempotent replay returns that same body. So the
-    // saved id is read off the payload rather than the status code, and
-    // 200 and 201 are both success here.
     const savedId = savedTripId(parsed);
     if (savedId === null) {
-      // The write may well have landed; without a returned id we cannot claim
-      // success, and the idempotency key makes re-export safe.
       summary.failures.push(`${label}: the web reply did not include the saved meal.`);
       continue;
     }
 
-    // Close the local → web → local round trip on this row: record the web id
-    // AND mark it `web-import`, mirroring `exportLocalTrips`. Without the
-    // marking the import's `ON CONFLICT(source, source_id)` can never match
-    // this row, so a later import of the same web meal inserts a SECOND copy.
-    // The local id is untouched, so the idempotency key stays derived from it
-    // and a lost reply is still recoverable.
     await Db.linkExportedRow('meals', meal.id, savedId);
 
-    // 200 created, or any non-replay 2xx that still carries an id.
     summary.exported += 1;
   }
 
   return summary;
 }
 
-// ── Plan generation (Phase-2 gate — honest stub, not a mock) ─────────────────
 
 export type PlanInput = {
   city: string;
@@ -653,24 +431,6 @@ export type PlanInput = {
   interests: string[];
 };
 
-/**
- * On-device itinerary generation (§6 Q1 kill-gate).
- *
- * The generator is the local llama.rn pipeline (`../llm/generateWithLlama`):
- * no cloud, no login, no 401/402 wall — a paid offline app cannot fall back
- * to a hosted call. Whatever the model returns is validated by the shared
- * Zod schema before it is persisted, and the write goes through `Db.createTrip`
- * with this file's payload shape (`{ formData, itineraryData }`) so the row
- * renders exactly like a web import.
- *
- * The throw contract is the caller's, not ours: Plan.tsx paints `e.message`
- * onto its pending card, so every failure path — missing model, empty engine,
- * validation — surfaces as a human-readable reason instead of a dead button.
- *
- * `onProgress` forwards the generator's per-slot message. One day at a time
- * on a phone runs tens of seconds; without it the CTA looks frozen, so the
- * screen is only honest if it can show the reason for the wait.
- */
 export async function generateItinerary(
   input: PlanInput,
   onProgress?: (message: string) => void
@@ -721,7 +481,6 @@ export async function generateItinerary(
   });
 }
 
-// ── Places + routes (remote, session-free) ───────────────
 
 export type Place = {
   id: string;
@@ -745,7 +504,6 @@ function isPlace(value: unknown): value is Place & { coordinates: { lat: number;
   );
 }
 
-/** Autocomplete via `GET /api/locations/search` (no auth; q ≥ 2 chars). */
 export async function searchPlaces(query: string): Promise<Place[]> {
   const q = query.trim();
   if (q.length < 2) return [];
@@ -784,15 +542,9 @@ export type RouteStep = {
 
 export type RouteTrafficLevel = 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
 
-/** Web parity: RouteType/VehicleType from `src/types/route-optimization.ts:33-34`. */
 export type ExploreRouteType = 'fastest' | 'shortest' | 'eco' | 'thrilling';
 export type ExploreVehicleType = 'car' | 'truck' | 'motorcycle' | 'bicycle' | 'walk';
 
-/**
- * Web parity: FloatingSearchCard preferences (minus departureTime — that
- * needs a native datetime picker dep; the web default is unset, so
- * defaults stay at parity). Scenic sends 'thrilling' (web value).
- */
 export type ExplorePreferences = {
   routeType: ExploreRouteType;
   vehicleType: ExploreVehicleType;
@@ -802,18 +554,12 @@ export type ExplorePreferences = {
   avoidTrafficJams?: boolean;
 };
 
-/** Web parity: ExploreMapView DEFAULT_PREFERENCES (routeType fastest, car, avoid jams). */
 export const DEFAULT_EXPLORE_PREFS: ExplorePreferences = {
   routeType: 'fastest',
   vehicleType: 'car',
   avoidTrafficJams: true,
 };
 
-/**
- * Web parity: ExploreMapView POPULAR_LOCATIONS (pure data, Metro-safe).
- * Shown when the field is not actively typing — same isTyping rule as
- * FloatingSearchCard LocationField. lng → lon at the boundary.
- */
 export const POPULAR_LOCATIONS: Place[] = [
   { id: 'uc_baguio', name: 'University of the Cordilleras', address: 'Gov. Pack Rd, Baguio City', lat: 16.4088, lon: 120.5979 },
   { id: 'newtown_plaza', name: 'New Town Plaza Hotel', address: 'Navy Base Road, Baguio City', lat: 16.4158, lon: 120.6122 },
@@ -831,7 +577,6 @@ export type RouteAlternative = {
   km: number;
   delayMinutes: number;
   steps: RouteStep[];
-  /** Flattened leg geometry for map polylines (TomTom embed bridge). */
   path: Array<{ lat: number; lon: number }>;
 };
 
@@ -842,7 +587,6 @@ export type RouteTraffic = {
   incidents: number;
 };
 
-/** Web parity: BottomRouteSheet traffic labels (Heavy for HIGH, Severe kept). */
 export const TRAFFIC_LABELS: Record<RouteTrafficLevel, string> = {
   VERY_LOW: 'Very low',
   LOW: 'Low',
@@ -851,7 +595,6 @@ export const TRAFFIC_LABELS: Record<RouteTrafficLevel, string> = {
   SEVERE: 'Severe',
 };
 
-/** Web parity: BottomRouteSheet dot colors as hex (no Tailwind on native). */
 export const TRAFFIC_DOTS: Record<RouteTrafficLevel, string> = {
   VERY_LOW: '#10b981',
   LOW: '#22c55e',
@@ -866,16 +609,12 @@ export type RouteSummary = {
   delayMinutes: number;
   arrival: string | null;
   steps: RouteStep[];
-  /** Kept for backward compat (S3 drops usage): prefer `alternatives.length`. */
   alternativeCount: number;
-  /** Kept for backward compat (S3 drops usage): prefer `recommendation`. */
   note: string | null;
   alternatives: RouteAlternative[];
   traffic: RouteTraffic | null;
   recommendation: { message: string; timeSavingsMinutes: number | null } | null;
-  /** ISO timestamp — BottomRouteSheet "Updated … · refreshes every 5 min". */
   updatedAt: string;
-  /** Flattened primary-leg geometry for map polylines (TomTom embed bridge). */
   path: Array<{ lat: number; lon: number }>;
 };
 
@@ -887,7 +626,6 @@ function str(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
 }
 
-/** Route via `POST /api/routes/calculate` (no auth). List-first: no map SDK on device. */
 export async function calculateRoute(
   origin: Place,
   destination: Place,
@@ -946,8 +684,6 @@ export async function calculateRoute(
   };
   const toMinutes = (s: Record<string, unknown>): number => Math.round((num(s.travelTimeInSeconds) ?? 0) / 60);
   const toKm = (s: Record<string, unknown>): number => Math.round(((num(s.lengthInMeters) ?? 0) / 1000) * 10) / 10;
-  // Polyline source (web parity: InteractiveRouteMap flattens
-  // legs[].geometry.coordinates; falls back to route.geometry).
   const toPath = (route: {
     legs?: Array<{ geometry?: { coordinates?: unknown } }>;
     geometry?: { coordinates?: unknown };
@@ -984,8 +720,6 @@ export async function calculateRoute(
           path: toPath(a),
         }))
     : [];
-  // Traffic: web RouteTrafficAnalysis shape (BottomRouteSheet reads
-  // overallTrafficLevel, congestionScore, estimatedDelay, segmentAnalysis).
   let traffic: RouteTraffic | null = null;
   const ta = body.trafficAnalysis;
   if (ta && typeof ta.overallTrafficLevel === 'string') {
@@ -1000,8 +734,6 @@ export async function calculateRoute(
       };
     }
   }
-  // Recommendation: web sends {message, timeSavings} — NOT title/description
-  // (the old reader here looked for title/description, so note was always null).
   const rec = Array.isArray(body.recommendations) ? body.recommendations[0] : undefined;
   const message = rec && typeof rec.message === 'string' ? rec.message : null;
   const savings = rec && typeof rec.timeSavings === 'number' && Number.isFinite(rec.timeSavings) ? rec.timeSavings : null;
@@ -1022,7 +754,6 @@ export async function calculateRoute(
   };
 }
 
-/** Web parity: 5 traffic levels matching web TrafficLevel (route-optimization.ts:109) */
 export type SpotTraffic = 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
 
 export type Spot = {
@@ -1081,21 +812,13 @@ export async function fetchSpots(city: string): Promise<Spot[]> {
   return body.spots.filter(isSpot).map(normalizeSpot);
 }
 
-// ── Weather (remote enrichment, session-free) ─────────────
 
 export type Weather = {
   temperature: number | null;
   condition: string | null;
-  /** OpenWeather CDN icon (public, keyless). Null when unknown. */
   iconUrl: string | null;
 };
 
-/**
- * Shape-verified against the real contract: the route returns OpenWeather
- * native (`lib/core/utils.ts:10-39` WeatherData) — `main.temp`,
- * `weather[0].description/icon`. Anything else degrades to nulls, never
- * a crash or a guessed number.
- */
 export async function fetchWeather(lat: number, lon: number): Promise<Weather> {
   const baseUrl = config.webBaseUrl.replace(/\/$/, '');
   let res: Response;
@@ -1128,10 +851,6 @@ export async function fetchWeather(lat: number, lon: number): Promise<Weather> {
   };
 }
 
-// ── Distance + Maps (web parity: dashboard/utils.ts:178-201) ──
-// Formula and constant copied verbatim. Web measures from the CITY
-// CENTER, not the user ("there is no user geolocation in the app" —
-// utils.ts:128-130), so mobile needs no location permission either.
 
 const AVG_CITY_KMH = 20;
 
@@ -1154,15 +873,6 @@ function estimateMinutes(km: number): string {
   return `~${Math.max(1, Math.round((km / AVG_CITY_KMH) * 60))} min`;
 }
 
-// ── Peak-derived traffic (web parity, vendored — see note) ───
-// `trafficForSpot` + `isCurrentlyPeakHours` copied verbatim from
-// `lib/traffic/peakHours.ts:38-120` and `dashboard/utils.ts:230-236`.
-// Vendored, NOT imported: peakHours.ts's only import is `@/lib/...`, and
-// the `@/` alias has no Metro mapping. Widening the remap for one pure
-// date-math function would open the entire web tree to accidental
-// Metro imports (any future `@/` pull of a web-only module breaks the
-// build far from its cause). Pinned refs above; divergence check =
-// `utils.test.ts` expectations (peak → High, off-peak → Low).
 
 type PeakPeriod = { start: string; end: string };
 
@@ -1221,31 +931,16 @@ function isCurrentlyPeakHours(peakHoursStr: string): boolean {
   return false;
 }
 
-/**
- * Per-place traffic from live peak state (web parity: trafficColors.ts:132-138).
- * Maps peak hours to 5 traffic levels: VERY_LOW, LOW, MODERATE, HIGH, SEVERE.
- * Peak hours → SEVERE during peak, HIGH during near-peak, MODERATE otherwise.
- */
 export function trafficForSpot(peakHours: string | null | undefined): SpotTraffic | null {
   if (!peakHours) return null;
-  // Peak hours (7-9am, 5-7pm Manila time) → SEVERE during peak, HIGH near peak, MODERATE otherwise
   const isPeak = isCurrentlyPeakHours(peakHours);
   if (isPeak) return 'SEVERE';
-  // Near peak hours (within 1 hour of peak) → HIGH
-  // For simplicity: if we have peak hours defined but not currently in peak, use MODERATE
   return 'MODERATE';
 }
 
-// ── Spot cards (web parity: SuggestedSpots.tsx:28-36 + toSpotCard) ──
 
 export type SpotView = Spot & { distance: string; time: string };
 
-/**
- * The exact web client shaping, same order: null-coord entries dropped
- * (toSpotCard returns null), distance/time from the city center,
- * traffic = measured flow ?? peak-derived (else hidden). Callers slice
- * the head (web takes 3); the rest stays available for "show all".
- */
 export async function fetchSpotCards(cityId: string): Promise<SpotView[]> {
   const origin = getCityCenter(cityId);
   const spots = await fetchSpots(cityId);
@@ -1267,27 +962,12 @@ export async function fetchSpotCards(cityId: string): Promise<SpotView[]> {
   return cards;
 }
 
-/**
- * External Maps URL — same template as web `SpotlightCard.tsx:47-49`.
- * Native equivalent of BOTH web buttons: the iframe facade was a perf
- * workaround for web embeds (meaningless on native), so one system
- * "Open in Maps" action loses zero function. Null without coords.
- */
 export function spotMapsUrl(lat: number | null, lon: number | null): string | null {
   if (lat == null || lon == null) return null;
   return `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
 }
 
-// ── Web-asset URLs (progressive enhancement, never gating) ──
 
-/**
- * Resolve a web `public/` path (e.g. "/images/goodsheperd.jpg") against the
- * configured web base. Mirrors the server `isRealPhoto` guard: placeholders
- * (`comingsoon`), map tiles, and non-image paths resolve to null so callers
- * hide the slot instead of rendering filler. Absolute http(s) URLs pass
- * through (spots photos, weather icons). Any failure → null, never throw:
- * images are enhancement, and offline means no images.
- */
 export function resolveWebImage(path: string | null | undefined): string | null {
   if (!path || typeof path !== 'string') return null;
   if (/^https?:\/\//i.test(path)) {

@@ -3,7 +3,6 @@ import { enhanceItinerary } from '../src/app/itinerary-generator/services/itiner
 import { sampleItinerary } from '../src/app/itinerary-generator/data/itineraryData';
 
 async function main() {
-  // Simulate what the server now sends for Manila (accurate per-place images)
   const serverManila = {
     title: "Manila Itinerary",
     subtitle: "Curated recommendations based on your preferences",
@@ -12,7 +11,7 @@ async function main() {
       activities: [
         { title: "Vatel Restaurant Manila", image: "https://images.unsplash.com/photo-vatel", desc: "x", tags: ["french","Food & Culinary","Indoor-Friendly"] },
         { title: "Arirang Hotel & Restaurant Manila", image: "https://api.tomtom.com/map/1/staticimage?x", desc: "x", tags: ["hotel","Food & Culinary"] },
-        { title: "San Agustin Museum", image: "", desc: "x", tags: ["museum","Culture & Arts"] }, // empty → fuzzy fill allowed
+        { title: "San Agustin Museum", image: "", desc: "x", tags: ["museum","Culture & Arts"] }, 
         { title: "Kaya Korean Restaurant Manila", image: "https://upload.wikimedia.org/wikipedia/kaya.jpg", desc: "x", tags: ["korean","Food & Culinary"] },
       ],
     }],
@@ -24,7 +23,7 @@ async function main() {
   for (const a of acts) {
     const img = String(a.image ?? "");
     const isBaguioLocal = img.startsWith("/images/") && !img.includes("comingsoon");
-    const ok = a.title === "San Agustin Museum" ? true : !isBaguioLocal; // only empty-img may fuzzy-fill
+    const ok = a.title === "San Agustin Museum" ? true : !isBaguioLocal; 
     if (!ok) fail++;
     console.log(`${ok ? "✅" : "❌"} ${a.title} → ${img.slice(0, 60)}`);
   }

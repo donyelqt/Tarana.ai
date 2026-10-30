@@ -1,17 +1,9 @@
-// ====================================================================
-// ALI HOUSE OF SHAWARMA HALAL MENU DATA
-// ====================================================================
-// Ali House of Shawarma is a popular spot serving flavorful Middle Eastern-inspired 
-// dishes, specializing in generously filled shawarma wraps, rice plates, and 
-// refreshing beverages in a casual and welcoming setting.
-// ====================================================================
 
 import { FullMenu } from "../types";
 
 export const aliHouseOfShawarmaHalalMenu: FullMenu = {
   Breakfast: [],
   Lunch: [
-    // Biryani Dishes
     {
       name: "Beef Biryani",
       description: "Aromatic basmati rice layered with spiced beef.",
@@ -42,7 +34,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 200,
       image: "/images/comingsoon.png",
     },
-    // Masala & Curry Dishes
     {
       name: "Beef Masala w/ Pita",
       description: "Rich beef masala paired with warm pita bread.",
@@ -67,7 +58,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 190,
       image: "/images/comingsoon.png",
     },
-    // Kebab & Queema Dishes
     {
       name: "Beef Kebab Plain",
       description: "Juicy grilled beef kebabs served plain.",
@@ -80,7 +70,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 270,
       image: "/images/comingsoon.png",
     },
-    // Shawarma Rice Plates
     {
       name: "Small Plate Beef Shawarma Rice",
       description: "Shawarma beef over rice, small portion.",
@@ -105,7 +94,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 170,
       image: "/images/comingsoon.png",
     },
-    // Shawarma Wraps
     {
       name: "Regular Beef Shawarma Wrap",
       description: "Classic shawarma wrap with beef, veggies, and sauce.",
@@ -148,7 +136,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 150,
       image: "/images/comingsoon.png",
     },
-    // Appetizers
     {
       name: "Samosa (Per Piece)",
       description: "Deep-fried pastry filled with spiced vegetables or beef.",
@@ -157,7 +144,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
     },
   ],
   Dinner: [
-    // Biryani Dishes
     {
       name: "Beef Biryani",
       description: "Aromatic basmati rice layered with spiced beef.",
@@ -188,7 +174,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 200,
       image: "/images/comingsoon.png",
     },
-    // Masala & Curry Dishes
     {
       name: "Beef Masala w/ Pita",
       description: "Rich beef masala paired with warm pita bread.",
@@ -213,7 +198,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 190,
       image: "/images/comingsoon.png",
     },
-    // Kebab & Queema Dishes
     {
       name: "Beef Kebab Plain",
       description: "Juicy grilled beef kebabs served plain.",
@@ -226,7 +210,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 270,
       image: "/images/comingsoon.png",
     },
-    // Shawarma Rice Plates
     {
       name: "Small Plate Beef Shawarma Rice",
       description: "Shawarma beef over rice, small portion.",
@@ -251,7 +234,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 170,
       image: "/images/comingsoon.png",
     },
-    // Shawarma Wraps
     {
       name: "Regular Beef Shawarma Wrap",
       description: "Classic shawarma wrap with beef, veggies, and sauce.",
@@ -294,7 +276,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 150,
       image: "/images/comingsoon.png",
     },
-    // Appetizers
     {
       name: "Samosa (Per Piece)",
       description: "Deep-fried pastry filled with spiced vegetables or beef.",
@@ -303,7 +284,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
     },
   ],
   Snacks: [
-    // Chocolate Shakes
     {
       name: "Nutella Shake",
       description: "Creamy chocolate shake with Nutella.",
@@ -334,7 +314,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 130,
       image: "/images/comingsoon.png",
     },
-    // Fruit Smoothies
     {
       name: "Mango Graham Smoothie",
       description: "Creamy mango smoothie with crushed graham.",
@@ -371,7 +350,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 130,
       image: "/images/comingsoon.png",
     },
-    // Refreshing Drinks
     {
       name: "Ice Lemon Cucumber",
       description: "Refreshing cucumber and lemon-infused iced drink.",
@@ -398,7 +376,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
     },
   ],
   Drinks: [
-    // Chocolate Shakes
     {
       name: "Nutella Shake",
       description: "Creamy chocolate shake with Nutella.",
@@ -429,7 +406,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 130,
       image: "/images/comingsoon.png",
     },
-    // Fruit Smoothies
     {
       name: "Mango Graham Smoothie",
       description: "Creamy mango smoothie with crushed graham.",
@@ -466,7 +442,6 @@ export const aliHouseOfShawarmaHalalMenu: FullMenu = {
       price: 130,
       image: "/images/comingsoon.png",
     },
-    // Refreshing Drinks
     {
       name: "Ice Lemon Cucumber",
       description: "Refreshing cucumber and lemon-infused iced drink.",

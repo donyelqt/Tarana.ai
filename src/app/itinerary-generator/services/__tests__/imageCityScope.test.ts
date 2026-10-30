@@ -1,24 +1,3 @@
-/**
- * Regression: a Manila place rendered a Baguio place's curated photo.
- *
- * `enhanceItinerary` falls back to a fuzzy match against `sampleItinerary`
- * when the server sent no image. But `sampleItinerary` is titled
- * "A personalized Baguio Experience" — it is the Baguio catalog, and the
- * matcher had no city gate. So for any non-Baguio city whose photo the
- * tier chain could not resolve, the matcher scored every Baguio place on
- * shared words (+2) and shared tags (+3) and copied the winner's image:
- *
- *   "Poblacion Market"            -> "Baguio Night Market"      (shares "market")
- *   "Robinsons Supermarket Tutuban" -> "Mines View Park"       (shared tags alone)
- *
- * The existing comment acknowledged this exact risk but only guarded the
- * case where the server DID send an image. The no-image path — most of
- * Manila, per the tier logs — was unguarded.
- *
- * The dashboard's SuggestedSpots path is the correct reference: it renders
- * the API image verbatim over a logo base layer (SpotlightCard.tsx:59-79)
- * and never consults a catalog.
- */
 
 import { enhanceItinerary } from '../itineraryService';
 import { sampleItinerary } from '../../data/itineraryData';

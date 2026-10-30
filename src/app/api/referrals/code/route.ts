@@ -4,10 +4,6 @@ import { handleApiError } from '@/lib/errors/handleApiError';
 import { ReferralService } from '@/lib/referral-system';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 
-/**
- * GET /api/referrals/code
- * Get the authenticated user's referral code
- */
 export const GET = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/referrals/code', 'GET', async () => {
     try {

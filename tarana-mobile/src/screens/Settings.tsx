@@ -27,13 +27,11 @@ export default function Settings({ navigation }: { navigation: SettingsNav }) {
   const [inAppNotifications, setInAppNotifications] = useState(true);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
-  // Profile form state
   const [fullName, setFullName] = useState('');
   const [location, setLocation] = useState('');
   const [bio, setBio] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Original profile values for change detection
   const [originalProfile, setOriginalProfile] = useState<LocalProfile | null>(null);
 
   const load = useCallback(async () => {
@@ -58,7 +56,6 @@ export default function Settings({ navigation }: { navigation: SettingsNav }) {
     load();
   }, [load]);
 
-  // Check for changes
   useEffect(() => {
     if (!originalProfile) return;
     const changed = 
@@ -68,7 +65,6 @@ export default function Settings({ navigation }: { navigation: SettingsNav }) {
     setHasChanges(changed);
   }, [fullName, location, bio, originalProfile]);
 
-  // Load weather for Baguio
   useEffect(() => {
     let mounted = true;
     setWeatherLoading(true);
@@ -88,7 +84,6 @@ export default function Settings({ navigation }: { navigation: SettingsNav }) {
   const handleSave = async () => {
     if (!hasChanges) return;
     
-    // Validation
     if (!fullName.trim()) {
       Alert.alert('Validation Error', 'Full name is required');
       return;
@@ -108,15 +103,10 @@ export default function Settings({ navigation }: { navigation: SettingsNav }) {
 
     setSaving(true);
     try {
-      // TODO: Implement profile update API call
-      // For now, just update local state
-      // In a real implementation, you'd call an API to update the profile
       console.log('Saving profile:', { fullName, location, bio });
       
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Update local profile
       const updatedProfile = { ...profile!, display_name: fullName, location, bio };
       setProfile(updatedProfile);
       
@@ -167,8 +157,6 @@ export default function Settings({ navigation }: { navigation: SettingsNav }) {
   }
 
   return (
-    // Top inset only (Home precedent): content clears the notch /
-    // punch-hole camera and status bar. Bottom stays navigator-owned.
     <SafeAreaView style={styles.root} edges={['top']}>
     <ScrollView
       style={styles.scroll}

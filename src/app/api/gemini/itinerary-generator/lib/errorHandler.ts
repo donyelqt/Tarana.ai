@@ -1,7 +1,3 @@
-/**
- * Comprehensive error handler for itinerary generation
- * Provides structured error handling with retry logic and fallback mechanisms
- */
 
 import { withRetry as sharedWithRetry } from '../../../../../lib/upstream/withRetry';
 import { logger } from "../../../../../lib/observability/logger";
@@ -44,16 +40,12 @@ export class ItineraryError extends Error {
 export class ErrorHandler {
   private static errorStats = new Map<ErrorType, number>();
 
-  /**
-   * Handle and classify errors with appropriate response
-   */
   static handleError(error: any, requestId?: string): ErrorDetails {
     const timestamp = Date.now();
     let errorType: ErrorType;
     let message: string;
     let retryable = false;
 
-    // Classify error type
     if (error.message?.includes('API key') || error.status === 401) {
       errorType = ErrorType.API_KEY;
       message = 'Invalid or missing API key';
@@ -84,10 +76,8 @@ export class ErrorHandler {
       retryable = true;
     }
 
-    // Update statistics
     this.errorStats.set(errorType, (this.errorStats.get(errorType) || 0) + 1);
 
-    // Log error details
     logger.error(`[ErrorHandler] ${errorType}:`, { entryPoint: 'errorHandler', message,
       requestId,
       timestamp,
@@ -104,18 +94,6 @@ export class ErrorHandler {
     };
   }
 
-  /**
-   * Retry logic with exponential backoff.
-   *
-   * Delegates the backoff machinery to the shared `withRetry` helper
-   * (src/lib/upstream/withRetry.ts) instead of a hand-rolled loop — §2.1.
-   * Classification, stats, and the ItineraryError throw contract stay here:
-   * the route's catch calls handleError() on whatever we throw and reads
-   * type/message/retryable into the response, and TIMEOUT/VALIDATION do not
-   * round-trip through the message-matching classifier, so the classified
-   * object is re-thrown directly (kept in a closure) rather than re-derived
-   * from the exhaustion wrapper.
-   */
   static async withRetry<T>(
     operation: () => Promise<T>,
     maxRetries: number = 3,
@@ -129,8 +107,6 @@ export class ErrorHandler {
           try {
             return await operation();
           } catch (error) {
-            // Classify once per failure: stats increment, the classified
-            // object is kept for the exhaustion path below.
             const errorDetails = ErrorHandler.handleError(error);
             lastClassified = new ItineraryError(
               errorDetails.type,
@@ -144,40 +120,27 @@ export class ErrorHandler {
           maxAttempts: maxRetries,
           baseDelayMs: baseDelay,
           factor: 2,
-          jitter: 'none', // preserves the previous fixed exponential delay
+          jitter: 'none', 
           upstream: 'gemini-itinerary',
           shouldRetry: (error) => {
-            // Every failure arrives here as a classified ItineraryError
-            // (wrapped by the operation wrapper above).
             return error instanceof ItineraryError ? error.retryable : true;
           },
         }
       );
     } catch {
-      // Exhaustion (or a non-classified throw): re-throw the classified
-      // error so the route's handleError sees the original type.
       if (lastClassified) throw lastClassified;
       throw new ItineraryError(ErrorType.UNKNOWN, 'Unknown error occurred', true);
     }
   }
 
-  /**
-   * Get error statistics
-   */
   static getErrorStats(): Record<string, number> {
     return Object.fromEntries(this.errorStats);
   }
 
-  /**
-   * Reset error statistics
-   */
   static resetStats(): void {
     this.errorStats.clear();
   }
 
-  /**
-   * Create structured error response
-   */
   static createErrorResponse(error: ErrorDetails) {
     return {
       success: false,

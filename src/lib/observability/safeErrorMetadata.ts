@@ -3,10 +3,6 @@ export interface SafeErrorMetadata {
   errorCode?: string;
 }
 
-/**
- * Extract only bounded fields suitable for structured production logs.
- * Error messages, stacks, and objects are intentionally excluded.
- */
 export function getSafeErrorMetadata(error: unknown): SafeErrorMetadata {
   const errorName = error instanceof Error ? error.name : typeof error;
 

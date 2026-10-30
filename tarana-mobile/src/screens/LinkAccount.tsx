@@ -16,14 +16,6 @@ export default function LinkAccount({ navigation, onDone }: { navigation: any; o
   const [loading, setLoading] = useState(false);
   const passwordRef = useRef<TextInput>(null);
 
-  /**
-   * One-way import (§7.4): the typed email/password only gate the button —
-   * actual auth happens in the web-browser exchange inside the data seam
-   * (same as the old sign-in flow). The JWT is single-use: trips AND meals
-   * are copied into SQLite, then the app forgets the web session entirely.
-   * Meals reuse the trips exchange identity (single browser round-trip);
-   * a meals failure degrades to trips-only, never blocks the link.
-   */
   const runImport = async () => {
     const { profile, userId } = await importWebTrips(email);
     try {
@@ -53,8 +45,6 @@ export default function LinkAccount({ navigation, onDone }: { navigation: any; o
   };
 
   const handleGoogle = async () => {
-    // Web OAuth IS the link path: the same web-browser exchange flow backs
-    // both the CTA and the Google button. No native Google SDK.
     setError(null);
     setLoading(true);
     try {

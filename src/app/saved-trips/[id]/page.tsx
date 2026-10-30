@@ -21,8 +21,6 @@ import { useModernToast } from "@/hooks/useModernToast"
 import { getFallbackImage, isValidImagePath } from "@/lib/images/imageUtils"
 import { ItinerarySkeleton } from "@/components/ui/ItinerarySkeleton"
 
-// import usePuter from "../../../hooks/usePuter";
-// import { puterConfig } from "../../../config/puter";
 
 const interestIcons: Record<string, React.ReactElement> = {
   "Nature & Scenery": <Mountain className="w-4 h-4" />,
@@ -38,7 +36,6 @@ const SavedItineraryDetail = () => {
   const queryClient = useQueryClient()
   const { id } = params as { id: string }
   
-  // React Query - Automatic caching & instant navigation
   const { data: itinerary, isLoading, error } = useQuery({
     queryKey: ['itinerary', id],
     queryFn: async () => {
@@ -47,7 +44,7 @@ const SavedItineraryDetail = () => {
       return found;
     },
     enabled: !!id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, 
   })
   
   const [selectedActivity, setSelectedActivity] = useState<ItineraryActivity | null>(null)
@@ -105,10 +102,8 @@ const SavedItineraryDetail = () => {
     return isValidImagePath(normalized) ? normalized : fallback
   }
 
-  // Helper function to refetch fresh itinerary data from database
   const refetchItinerary = async () => {
     try {
-      // Invalidate React Query cache to trigger refetch
       await queryClient.invalidateQueries({ queryKey: ['itinerary', id] });
       await queryClient.invalidateQueries({ queryKey: ['itineraries'] });
       console.log('✅ UI State refreshed with latest database data');
@@ -120,13 +115,9 @@ const SavedItineraryDetail = () => {
   const handleRefreshItinerary = async (force: boolean = false) => {
     if (!itinerary || isRefreshing) return;
     setIsRefreshing(true);
-    // Stable per-evaluation key: retries and double-clicks of one refresh share
-    // the same key so the generator dedupes; each new click mints a new intent
-    // via the evaluation timestamp below.
     const idempotencyKey = `refresh:${id}:${Date.now()}`;
     
     try {
-      // Step 1: Evaluate if refresh is needed (unless forced)
       if (!force) {
         const evalResponse = await fetch(`/api/saved-itineraries/${id}/refresh`, {
           method: 'GET',
@@ -146,7 +137,6 @@ const SavedItineraryDetail = () => {
 
         const evalResult = await evalResponse.json();
         
-        // If changes detected, automatically trigger regeneration
         if (evalResult.evaluation && evalResult.evaluation.needsRefresh) {
           console.log('🔄 Changes detected, automatically regenerating itinerary...');
           modernToast.processing(
@@ -154,10 +144,8 @@ const SavedItineraryDetail = () => {
             "Updating with live data..."
           );
           
-          // Automatically proceed to POST (regeneration)
           force = true;
         } else {
-          // No changes needed
           modernToast.optimized(
             "Already Optimized",
             "No changes needed"
@@ -167,9 +155,8 @@ const SavedItineraryDetail = () => {
         }
       }
       
-      // Step 2: Regenerate itinerary (if forced or changes detected)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s client timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); 
       
       const response = await fetch(`/api/saved-itineraries/${id}/refresh`, {
         method: 'POST',
@@ -197,17 +184,14 @@ const SavedItineraryDetail = () => {
           setIsRefreshing(false);
           return;
         }
-        // ✅ CRITICAL: Always refetch from database to ensure UI reflects latest state
         console.log('🔄 Refetching updated itinerary from database...');
         await refetchItinerary();
         
-        // Show change summary if available
         if (result.changeSummary) {
           setChangeSummary(result.changeSummary);
           setShowChangeSummary(true);
         }
         
-        // Modern success notification
         modernToast.success(
           "Refresh Complete",
           "Optimized with live data"
@@ -215,12 +199,11 @@ const SavedItineraryDetail = () => {
         
         console.log('✅ Refresh completed successfully - UI updated with latest data');
       } else {
-        // Handle API error response
         const errorMessage = result.error || result.message || "Update failed";
         console.error('❌ Refresh failed:', result);
         modernToast.error(
           "Update Failed",
-          errorMessage.substring(0, 50) // Limit error message length
+          errorMessage.substring(0, 50) 
         );
       }
     } catch (error) {
@@ -247,7 +230,6 @@ const SavedItineraryDetail = () => {
     }
   };
 
-  // Loading state - Show skeleton
   if (isLoading) {
     return (
       <>
@@ -257,7 +239,6 @@ const SavedItineraryDetail = () => {
     )
   }
 
-  // Error state
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
@@ -283,7 +264,6 @@ const SavedItineraryDetail = () => {
     )
   }
 
-  // Not found state
   if (!itinerary) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
@@ -302,7 +282,6 @@ const SavedItineraryDetail = () => {
     )
   }
 
-  // Guard: If formData is missing, show an error message
   if (!itinerary.formData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f7f9fb]">
@@ -319,17 +298,15 @@ const SavedItineraryDetail = () => {
   const { formData, itineraryData } = itinerary
   const { selectedInterests, pax, dates, budget } = formData
 
-  // Transform activity data for PlaceDetail component
   const transformActivityToPlace = (activity: ItineraryActivity) => {
-    // Default Baguio coordinates
     const lat = activity.lat ?? 16.4023
     const lon = activity.lon ?? 120.596
 
     return {
       id: activity.title.toLowerCase().replace(/\s+/g, '-'),
       name: activity.title,
-      rating: 4.2, // Default rating
-      totalReviews: 120, // Default review count
+      rating: 4.2, 
+      totalReviews: 120, 
       description: activity.desc,
       address: `Baguio City, Philippines`,
       location: {
@@ -345,11 +322,10 @@ const SavedItineraryDetail = () => {
         { icon: "🚭", name: "Non-smoking sections" },
         { icon: "🌡️", name: "Air-conditioned" },
       ],
-      reviews: [], // Empty array - reviews unavailable for saved itineraries
+      reviews: [], 
     }
   }
 
-  // Group itinerary periods into days. A new day starts with "Morning".
   const days: ItineraryPeriod[][] = []
   if (itineraryData && itineraryData.items) {
     let currentDay: ItineraryPeriod[] = []
@@ -368,13 +344,12 @@ const SavedItineraryDetail = () => {
     }
   }
 
-  // Render Main View
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
       <Sidebar />
       <main className="md:pl-72 flex-1 px-4 sm:px-6 md:px-8 py-6 md:py-8">
         <div className="max-w-6xl mx-auto w-full">
-          {/* Header */}
+          {}
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="bg-white w-full md:w-auto rounded-3xl px-5 sm:px-6 py-3 inline-flex flex-col sm:flex-row sm:items-center gap-1 font-bold text-lg sm:text-xl md:text-2xl text-gray-900 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
               {`Saved Itineraries > ${itinerary.title}`}
@@ -402,7 +377,7 @@ const SavedItineraryDetail = () => {
               )}
             </Button>
           </div>
-          {/* Cards */}
+          {}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div className="flex items-center gap-3 bg-white rounded-3xl p-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 min-h-[92px] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-0.5">
               <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-full">
@@ -432,7 +407,7 @@ const SavedItineraryDetail = () => {
               </div>
             </div>
           </div>
-          {/* Travel Interests */}
+          {}
           <div className="bg-white rounded-3xl p-6 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
             <span className="text-xs text-gray-500 font-medium block mb-3">Travel Interests</span>
             <div className="flex flex-wrap gap-3">
@@ -449,7 +424,7 @@ const SavedItineraryDetail = () => {
               ))}
             </div>
           </div>
-          {/* Day-by-day breakdown */}
+          {}
           {days.map((day, dayIdx) => {
             const dayDate = new Date(dates.start)
             dayDate.setDate(dayDate.getDate() + dayIdx)
@@ -480,13 +455,13 @@ const SavedItineraryDetail = () => {
                           key={idx}
                           className="flex flex-col md:flex-row bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-0.5"
                         >
-                          {/* Time column for desktop */}
+                          {}
                           <div className="hidden md:flex flex-col justify-center items-center w-40 bg-blue-50 border-r border-gray-100">
                             <span className="text-blue-700 text-lg p-8 items-center justify-center font-semibold">
                               {activity.time}
                             </span>
                           </div>
-                          {/* Image */}
+                          {}
                           <div className="relative w-full md:w-60 h-48 sm:h-56 md:h-auto md:mt-8 md:mb-8 md:ml-8 flex-shrink-0">
                             {imageSrcToUse ? (
                               <Image
@@ -503,9 +478,9 @@ const SavedItineraryDetail = () => {
                               </div>
                             )}
                           </div>
-                          {/* Details */}
+                          {}
                           <div className="flex-1 p-6 flex flex-col gap-2">
-                            {/* Time for mobile */}
+                            {}
                             <div className="flex md:hidden mb-1">
                               <span className="text-blue-700 font-semibold text-sm">
                                 {activity.time}
@@ -518,10 +493,9 @@ const SavedItineraryDetail = () => {
                             </div>
                             <p className="text-gray-600 text-sm leading-relaxed">{activity.desc}</p>
                             
-                            {/* Tags - Non-traffic tags only */}
+                            {}
                             <div className="flex flex-wrap gap-2">
                               {activity.tags.slice(0, 4).filter((tag) => {
-                                // Filter out traffic tags from main display
                                 return tag !== 'low-traffic' && tag !== 'moderate-traffic';
                               }).map(
                                 (tag, i) => {
@@ -538,9 +512,9 @@ const SavedItineraryDetail = () => {
                               )}
                             </div>
                             
-                            {/* Bottom row: Traffic tags on left, action buttons on right */}
+                            {}
                             <div className="flex items-center justify-between mt-auto gap-3 flex-wrap">
-                              {/* Traffic Tags - Left Side */}
+                              {}
                               <div className="flex items-center gap-2">
                                 {activity.tags.map((tag, i) => {
                                   const isLowTraffic = tag === 'low-traffic';
@@ -549,7 +523,6 @@ const SavedItineraryDetail = () => {
                                   
                                   if (!isTrafficTag) return null;
                                   
-                                  // Format traffic text (e.g., "low-traffic" -> "Low Traffic")
                                   const trafficText = tag
                                     .split('-')
                                     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -571,9 +544,9 @@ const SavedItineraryDetail = () => {
                                 })}
                               </div>
                               
-                              {/* Action Buttons - Right Side */}
+                              {}
                               <div className="flex items-center gap-2 flex-wrap">
-                                {/* Reviews Button */}
+                                {}
                                 <a
                                   href="#"
                                   className="relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 overflow-hidden group border border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50 hover:from-yellow-100 hover:to-amber-100 text-yellow-700 hover:text-yellow-800 hover:border-yellow-500 shadow-sm hover:shadow-md hover:shadow-yellow-400/30 active:scale-95 sm:hover:-translate-y-0.5 touch-manipulation"
@@ -590,7 +563,7 @@ const SavedItineraryDetail = () => {
                                   </svg>
                                   <span className="relative z-10">Reviews</span>
                                 </a>
-                                {/* Map Button */}
+                                {}
                                 <a
                                   href="#"
                                   className="relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 overflow-hidden group bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/50 active:scale-95 sm:hover:-translate-y-0.5 touch-manipulation"
@@ -632,7 +605,7 @@ const SavedItineraryDetail = () => {
         </div>
       </main>
 
-      {/* Restaurant Detail Modal */}
+      {}
       {showDetailModal && selectedActivity && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-[0_20px_60px_rgb(0,0,0,0.15)] border border-gray-200/60 animate-in zoom-in-95 duration-300">

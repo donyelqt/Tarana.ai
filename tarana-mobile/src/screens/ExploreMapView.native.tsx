@@ -17,21 +17,10 @@ export type ExploreMapProps = {
   mapStyle: 'main' | 'satellite';
   tiltOn: boolean;
   recenterSignal: number;
-  /** Web parity: useRouteCalculation isCalculating → map "Analyzing routes…" overlay. */
   loading: boolean;
   onSelectRoute: (id: string) => void;
 };
 
-/**
- * The web TomTom map (src/app/embed/map, same InteractiveRouteMap,
- * same markers/polylines/glow/traffic/retry) inside a native WebView.
- *
- * Why not inline HTML: the TomTom key is referrer-allowlisted to the web
- * origin (see locations/search forwarding) — a null-origin WebView page
- * gets 403s. Loading our first-party /embed/map keeps the key
- * server-side-approved and ships zero keys in the binary (§7.5).
- * Bridge protocol is documented in src/app/embed/map/EmbedMap.tsx.
- */
 export default function ExploreMapView({
   origin,
   destination,
@@ -62,7 +51,6 @@ export default function ExploreMapView({
     try {
       webRef.current?.injectJavaScript(js);
     } catch {
-      /* webview gone — next remount replays from props */
     }
   };
 
@@ -97,8 +85,6 @@ export default function ExploreMapView({
     }
   };
 
-  // Route state → map (single command keeps markers + polylines in sync,
-  // mirroring the web effect that redraws both together).
   useEffect(() => {
     if (!primary && !origin && !destination) {
       send({ type: 'clear' });
@@ -176,8 +162,6 @@ export default function ExploreMapView({
         ref={webRef}
         style={styles.fill}
         source={{ uri: embedUrl }}
-        // First-party embed URL only; '*' is required because dev serves
-        // plain http (default whitelist allows https only).
         originWhitelist={['*']}
         javaScriptEnabled
         domStorageEnabled

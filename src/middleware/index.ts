@@ -8,19 +8,15 @@ import { logger } from '@/lib/observability/logger';
 import { applySecurityHeaders } from '@/lib/security/securityHeaders';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 
-// Global rate limiters for API endpoints
 const apiRateLimit = createRateLimitMiddleware(rateLimitConfigs.api);
 const heavyApiRateLimit = createRateLimitMiddleware(rateLimitConfigs.heavy);
 
-// Security middleware handler
 const securityMiddleware = async (request: NextRequest): Promise<NextResponse> => {
   const { pathname } = request.nextUrl;
 
-  // Apply rate limiting to API routes
   if (pathname.startsWith('/api/')) {
     let rateLimitResult;
     
-    // Apply stricter rate limiting to heavy operations
     if (pathname.includes('/gemini/') || pathname.includes('/reindex')) {
       rateLimitResult = heavyApiRateLimit(request);
     } else {
@@ -43,22 +39,19 @@ const securityMiddleware = async (request: NextRequest): Promise<NextResponse> =
   return NextResponse.next();
 };
 
-/**
- * Create the main middleware handler that runs all middleware in sequence
- */
 const middlewareHandler: MiddlewareHandler = composeMiddleware({
   middlewares: [
     { 
       handler: requestIdMiddleware, 
       name: 'requestId', 
       enabled: true,
-      priority: 110 // Runs before everything; downstream handlers need the id
+      priority: 110 
     },
     { 
       handler: securityMiddleware, 
       name: 'security', 
       enabled: true,
-      priority: 90 // High priority for security
+      priority: 90 
     },
     { 
       handler: corsMiddleware, 
@@ -69,30 +62,20 @@ const middlewareHandler: MiddlewareHandler = composeMiddleware({
     { 
       handler: authMiddleware, 
       name: 'auth', 
-      enabled: true, // Auth is always enabled
+      enabled: true, 
       priority: 10
     },
   ],
   errorHandler: (error) => {
     logger.error('[Middleware Error]', { error });
-    // Return appropriate error response with security headers
     return applySecurityHeaders(new NextResponse('Internal Server Error', { status: 500 }));
   },
 });
 
-/**
- * Main middleware function for Next.js
- */
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   return middlewareHandler(request);
 }
 
-/**
- * Export the middleware handler for use in the main middleware.ts file
- */
 export const handler = middlewareHandler;
 
-/**
- * Default export for Next.js middleware
- */
 export default middleware; 

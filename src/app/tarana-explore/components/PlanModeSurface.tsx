@@ -14,33 +14,9 @@ import type { LocationPoint, SearchResult } from '@/types/route-optimization'
 import type { FormData } from '@/app/itinerary-generator/types'
 
 
-/**
- * Everything Plan Mode needs, behind one lazy boundary.
- *
- * This file exists as its own module because of what it imports. Plan Mode calls
- * Gala's generator, which imports the 37-activity catalog and its menus; wired
- * into the map's static graph that cost 448KB on /tarana-explore and failed the
- * bundle budget at 1029KB against a 639KB limit. Behind `next/dynamic` the map
- * page never loads it, and it arrives only when the user turns Plan Mode on.
- *
- * One state owner, two mount points. The sheet is a sibling of the island, so
- * the island hands this surface a DOM node to portal the config into. Keeping
- * both in one component is what keeps a single `usePlanMode` instance; two
- * lazy components would mean two generators and two billing paths.
- */
 export interface PlanModeSurfaceProps {
-  /** DOM node provided by the island for the planner config. */
   islandSlot: HTMLElement | null
-  /**
-   * Publishes the selected day's resolved stops so the map can draw pins and
-   * a route. The surface owns the day so the sheet's tabs and the map's route
-   * cannot disagree about which day is on screen.
-   */
   onDayStops?: (points: LocationPoint[]) => void
-  /**
-   * Reports plan generation in flight. The island owns its own open state and
-   * cannot watch this itself; the surface is the only place that knows.
-   */
   onGeneratingChange?: (busy: boolean) => void
 }
 
@@ -51,28 +27,14 @@ const PlanModeSurface: React.FC<PlanModeSurfaceProps> = ({
 }) => {
   const plan = usePlanMode()
   const [activeDay, setActiveDay] = useState(0)
-  // Minimized hides the panel but keeps the itinerary, its pins, and its route.
-  // Close still discards. A new plan resets it, so the result is never stuck
-  // behind a bar the user has forgotten about.
   const [sheetMinimized, setSheetMinimized] = useState(false)
 
-  // The island collapses itself when this goes busy -> idle, the same rule
-  // routing already uses.
   React.useEffect(() => {
     onGeneratingChange?.(plan.isGenerating)
   }, [plan.isGenerating, onGeneratingChange])
 
   const planCityId = (plan.formSnapshot?.cityId ?? 'baguio') as CityId
 
-  /**
-   * Title -> coordinates, cheapest trusted source first.
-   *
-   * The registry holds Baguio only, so it is deliberately not consulted for
-   * another city: a Manila stop must never get a Baguio pin. The provider
-   * lookup is bounded to the generated city and requires an exact name match,
-   * because a wrong pin is worse than a missing one — a miss renders as
-   * "No location" in the sheet rather than pretending it placed the stop.
-   */
   const resolveForPlan = React.useCallback(
     (title: string): Promise<StopCoordinates | null> =>
       resolveStopCoordinates(title, {
@@ -115,14 +77,6 @@ const PlanModeSurface: React.FC<PlanModeSurfaceProps> = ({
     [plan]
   )
 
-  /**
-   * Resolve the selected day's stops and publish them for the map.
-   *
-   * Publishing re-runs on every answer, so the map fills in as lookups settle
-   * rather than waiting on the slowest one. A day with fewer than two resolved
-   * stops publishes nothing: the sheet still lists the stops, marked "No
-   * location", and no route is drawn through a guess.
-   */
   const days = useMemo(() => listPlanDays(plan.itinerary), [plan.itinerary])
   const dayLabel = days[Math.min(activeDay, Math.max(days.length - 1, 0))] ?? ''
   const dayStops = useMemo(

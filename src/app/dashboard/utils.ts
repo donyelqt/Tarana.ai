@@ -20,10 +20,7 @@ import {
 import type { SavedMeal } from '@/app/saved-meals/data';
 import type { StaticImageData } from 'next/image';
 
-/**
- * View model for the dashboard referral widget. `nextTier` is null once the
- * user reaches the top tier (Voyager) — the render layer treats that as maxed.
- */
+
 export interface ReferralStatsView {
   activeReferrals: number;
   currentTier: string;
@@ -36,7 +33,7 @@ export interface ReferralDisplay {
   current: number;
   tier: string;
   isMaxed: boolean;
-  /** e.g. "1/3". Never overflows: maxed users see "10/10", not "10/5". */
+  
   label: string;
   nextTierName: string;
   nextBenefit: string;
@@ -44,11 +41,7 @@ export interface ReferralDisplay {
   invitesNeeded: number;
 }
 
-/**
- * Map a raw /api/referrals/stats payload to the dashboard view model.
- * Returns null for any shape that lacks usable stats — the widget then keeps
- * showing its loading state instead of crashing on undefined fields.
- */
+
 export function mapReferralStatsResponse(input: unknown): ReferralStatsView | null {
   if (!input || typeof input !== 'object') return null;
   const d = input as {
@@ -78,11 +71,7 @@ export function mapReferralStatsResponse(input: unknown): ReferralStatsView | nu
   };
 }
 
-/**
- * Derive widget copy from the server-provided tierProgress. Thresholds and
- * benefits come from TIER_CONFIGS (single source of truth) — no hardcoded
- * 1/3/5 ladder in the render layer.
- */
+
 export function getReferralDisplay(view: ReferralStatsView): ReferralDisplay {
   const isMaxed = view.nextTier == null;
   const nextTarget = view.nextTierRequirement ?? view.activeReferrals;
@@ -112,23 +101,23 @@ export function getReferralDisplay(view: ReferralStatsView): ReferralDisplay {
   };
 }
 
-/** True only when the weather payload is the offline fallback (utils.ts). */
+
 export function isFallbackWeather(
   w: { isFallback?: boolean } | null | undefined
 ): boolean {
   return w?.isFallback === true;
 }
 
-// ---------------------------------------------------------------------------
-// Recommendations engine (Suggested Spots + Recommended Cafes)
-//
-// Every value on the cards is DERIVED, never hardcoded:
-// - pool: real datasets (itinerary activities, restaurant registry)
-// - order: live signals (off-peak state, taste overlap) + deterministic rotation
-// - distance/time: haversine from Baguio center, "~"-prefixed estimates —
-//   there is no user geolocation in the app, so "from you" is unknowable.
-//   Gala principle applied: soft-penalty ranking, never hard filters.
-// ---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
 
 export type TrafficLevel = 'Low' | 'Moderate' | 'High';
 
@@ -137,14 +126,14 @@ export interface RecommendationCard {
   image: string | null;
   distance: string;
   time: string;
-  /** Absent when no live signal exists — the card hides the badge. */
+  
   traffic?: TrafficLevel;
   lat: number;
   lon: number;
   mapLabel?: string;
 }
 
-/** City scopes with curated-or-searchable spot coverage. */
+
 export const SPOT_SCOPES = [
   { id: 'baguio', label: 'Baguio' },
   { id: 'manila', label: 'Manila' },
@@ -157,12 +146,7 @@ export function isSpotScopeId(value: unknown): value is SpotScopeId {
   return SPOT_SCOPES.some((s) => s.id === value);
 }
 
-/**
- * Transport shape for spots (GET /api/spots + curated Baguio pool).
- * peakHours null = no live signal (badge hidden, never guessed).
- * image null = no photo on file (placeholder rendered).
- * traffic = measured flow congestion (non-Baguio enriched path only).
- */
+
 export interface SpotPayload {
   name: string;
   image: string | null;
@@ -172,23 +156,11 @@ export interface SpotPayload {
   traffic?: TrafficLevel;
 }
 
-/**
- * Spots-only curated overlay: venues the provider miscategorizes (malls come
- * back as `shop`/`shopping center`, never a tourist term) but users expect
- * in Suggested Spots. Coordinates are provider-pinned (TomTom Search,
- * 2026-09-30): SM Seaside 10.281732,123.880608 / SM MOA 14.534844,120.98284 /
- * Bonifacio High Street 14.550612,121.050053 (Bo's anchor; BGC is a district,
- * not a POI, so the pin is the district's representative point).
- * Display name ≠ provider name on purpose: the card shows the venue users
- * recognize, not the charging-station row the provider returns.
- * Spots-only: the route prepends these to the member pool (dedupe by title
- * guards the day TomTom fixes its categories). Gala, cache, touristPoi, and
- * the allowlist are untouched — mall traffic in itineraries stays rejected.
- */
+
 export interface SpotOverlay {
-  /** Route scope this overlay joins (`cebu` or `manila`). */
+  
   city: 'cebu' | 'manila';
-  /** Card title — what the user reads. */
+  
   name: string;
   lat: number;
   lon: number;
@@ -200,12 +172,7 @@ export const SPOT_OVERLAYS: readonly SpotOverlay[] = [
   { city: 'manila', name: 'Bonifacio High Street', lat: 14.550612, lon: 121.050053 },
 ];
 
-/**
- * Prepend the city's curated overlays to a member pool. Overlay rows carry
- * null image/peakHours so the head-6 enrichment dresses them like any other
- * head row (photo tier-chain + measured traffic); rows TomTom already
- * returned (same normalized title) win and the overlay yields to them.
- */
+
 export function withSpotOverlays(city: string, pool: SpotPayload[]): SpotPayload[] {
   const overlays = SPOT_OVERLAYS.filter((o) => o.city === city);
   if (overlays.length === 0) return pool;
@@ -216,7 +183,7 @@ export function withSpotOverlays(city: string, pool: SpotPayload[]): SpotPayload
   return [...rows, ...pool];
 }
 
-/** City driving average used for "~N min" estimates. */
+
 export const AVG_CITY_KMH = 20;
 
 export function haversineKm(
@@ -263,11 +230,7 @@ function coordsFor(
   return c ? { lat: c.lat, lon: c.lon } : null;
 }
 
-/**
- * Per-place traffic from live peak state. In-peak → High, off-peak → Low.
- * NO DATA → null (badge hidden). Never guessed — a "Moderate" without a
- * measurement is fiction with a color.
- */
+
 export function trafficForSpot(
   peakHours: string | null | undefined,
   isPeak: (peakHours: string) => boolean = isCurrentlyPeakHours
@@ -284,7 +247,7 @@ function isCafeActivity(title: string): boolean {
   });
 }
 
-/** Attraction pool: real activities with resolvable coords + image. */
+
 export function spotPool(): Activity[] {
   const all = sampleItinerary.items.flatMap((s) => s.activities);
   return all.filter(
@@ -295,19 +258,15 @@ export function spotPool(): Activity[] {
   );
 }
 
-/**
- * Rank spots: off-peak first (soft bonus/penalty à la Gala — never filtered),
- * then deterministic daily rotation for variety. Injectable clock + peak fn
- * for tests.
- */
+
 export function rankSpots(
   pool: Activity[],
   now: Date = new Date(),
   count = 3,
   isPeak: (peakHours: string) => boolean = isCurrentlyPeakHours
 ): Activity[] {
-  // Rotate the POOL first (variety), then stable-sort by score: ranking
-  // integrity wins — off-peak always outranks in-peak, ties break by day.
+  
+  
   const day = Math.floor(now.getTime() / 86400000);
   const rot = pool.length ? day % pool.length : 0;
   const rotated = [...pool.slice(rot), ...pool.slice(0, rot)];
@@ -320,12 +279,7 @@ export function rankSpots(
   return scored.slice(0, count).map((s) => s.a);
 }
 
-/**
- * Honest subtitle for the spots header, derived from the actual top pick:
- * off-peak on top → "Quietest right now"; everything peaking → the ranking
- * still surfaces the least-bad option ("Best available now"); no peak data
- * at all → the generic line. Never claims quiet it can't see.
- */
+
 export function spotsSubtitle(
   top: Activity[],
   isPeak: (peakHours: string) => boolean = isCurrentlyPeakHours
@@ -335,7 +289,7 @@ export function spotsSubtitle(
   return isPeak(first.peakHours) ? 'Best available now' : 'Quietest right now';
 }
 
-/** Bridge curated activities into the transport shape. */
+
 export function activityToPayload(activity: Activity): SpotPayload {
   const coords = coordsFor(activity.title, activity.lat, activity.lon);
   return {
@@ -371,16 +325,9 @@ export function toSpotCard(
     lon: coords.lon,
   };
 }
-/**
- * Region-tab members. Neither list is a SpotScopeId: no route, service,
- * cache, or Gala path may ever read them. The only consumers are the
- * SuggestedSpots region tabs, which fire one ordinary per-city query per
- * member (all four members have route + CITY_CONFIG + TargetCityId rows).
- * Pills are Baguio/Manila/Davao + the two region tabs; boracay/cebu surface
- * only through Visayas, never as standalone pills.
- */
+
 export const REGION_MEMBERS = ['boracay', 'cebu'] as const;
-/** Luzon union: baguio + manila keep standalone pills AND feed the region. */
+
 export const LUZON_MEMBERS = ['baguio', 'manila'] as const;
 
 export interface RegionSpotPool {
@@ -388,33 +335,22 @@ export interface RegionSpotPool {
   spots: SpotPayload[];
 }
 
-/**
- * Union member pools for a region view: round-robin top-1 per pool, then
- * fill, capped at three — so one strong city cannot swallow the tab, and
- * scores never need to be comparable across pools.
- *
- * Rows without finite coordinates are dropped (same rule as `toSpotCard`).
- * Every emitted row carries its source city in `poolCity`, because the route
- * payload has no provider id and the renderer needs an identity stabler than
- * the display name. Same title from two pools stays two rows; same title
- * twice from one pool collapses to one (matching upstream dedupe).
- * An all-empty input returns an empty region, never a fallback.
- */
+
 export interface RegionCard extends SpotPayload {
-  /** Owning pool city — part of the render key, not display content. */
+  
   poolCity: string;
 }
 
 export function mergeRegionPools(pools: readonly RegionSpotPool[]): RegionCard[] {
   const finite = pools.map((pool) => ({
     city: pool.city,
-    // Collapse same-titled rows inside one pool. TomTom genuinely holds several
-    // distinct POIs sharing a name — "Boracay Island" comes back ten times
-    // across the query buckets at two different coordinates ~500m apart, and
-    // "Mountain View Nature's Park" twice at one point. Upstream keeps them
-    // (correctly: they are different places), so the renderer received two
-    // cards that were indistinguishable to the user. A card is identified by
-    // what it shows, and that is the name.
+    
+    
+    
+    
+    
+    
+    
     spots: dedupeByDisplayName(
       (pool.spots ?? []).filter(
         (s) =>
@@ -436,9 +372,9 @@ export function mergeRegionPools(pools: readonly RegionSpotPool[]): RegionCard[]
       if (out.length >= 3) break;
       const next = pool.spots.shift();
       if (!next) continue;
-      // A name already shown from ANOTHER pool stays visible: two cities may
-      // legitimately both have a "SM City", and cross-pool identity is the
-      // render key's job. Only within-pool duplicates collapse above.
+      
+      
+      
       const key = regionCardKey(pool.city, next);
       if (seen.has(key)) continue;
       seen.add(key);
@@ -449,10 +385,7 @@ export function mergeRegionPools(pools: readonly RegionSpotPool[]): RegionCard[]
   return out;
 }
 
-/**
- * Case- and whitespace-insensitive display identity. The first row wins, so
- * the ordering the pool arrived in decides which coordinates are kept.
- */
+
 export function dedupeByDisplayName<T extends { name: string }>(spots: readonly T[]): T[] {
   const seen = new Set<string>();
   const out: T[] = [];
@@ -464,12 +397,7 @@ export function dedupeByDisplayName<T extends { name: string }>(spots: readonly 
   }
   return out;
 }
-/**
- * Render key for one region card: owning city plus normalized title, with a
- * 4-decimal coordinate cell only when the same city contributes the same
- * title twice. In practice the upstream dedupe makes the suffix dead code;
- * it exists so the key can never silently collide.
- */
+
 export function regionCardKey(city: string, spot: Pick<SpotPayload, 'name' | 'lat' | 'lon'>): string {
   const base = `${city}:${spot.name.trim().toLowerCase()}`;
   const coords =
@@ -484,9 +412,9 @@ export function regionCardKey(city: string, spot: Pick<SpotPayload, 'name' | 'la
 
 export const SPOTS_STALE_TIME_MS = 60 * 60 * 1000;
 
-/** Fetch + map GET /api/spots?city=. Throws on HTTP error so retry engages. */
+
 export async function fetchSpots(
-  // string, not SpotScopeId: the route serves boracay (region member) with no pill.
+  
   city: string,
   fetcher: typeof fetch = fetch
 ): Promise<SpotPayload[] | null> {
@@ -507,8 +435,8 @@ export async function fetchSpots(
       lat: typeof s.lat === 'number' ? s.lat : null,
       lon: typeof s.lon === 'number' ? s.lon : null,
       peakHours: typeof s.peakHours === 'string' ? s.peakHours : null,
-      // Sanitize: only real badge levels survive (else the style lookup
-      // renders className "undefined").
+      
+      
       traffic:
         s.traffic === 'Low' || s.traffic === 'Moderate' || s.traffic === 'High'
           ? s.traffic
@@ -516,9 +444,9 @@ export async function fetchSpots(
     }));
 }
 
-/** Shipped spots config: POIs barely move — 1hr stale (matches TomTom cache). */
+
 export function spotsQueryOptions(
-  // string, not SpotScopeId: the region tab queries boracay, which has pills nowhere.
+  
   city: string,
   status: string,
   queryFn: () => Promise<SpotPayload[] | null> = () => fetchSpots(city)
@@ -533,7 +461,7 @@ export function spotsQueryOptions(
 
 export interface RankedCafe {
   restaurant: RestaurantData;
-  /** Number of cuisine/tag terms overlapping the user's taste profile. */
+  
   score: number;
   matchedOn: string[];
 }
@@ -549,7 +477,7 @@ function findRestaurant(name: string): RestaurantData | undefined {
   );
 }
 
-/** Taste profile from the user's saved meals: cuisines + tags of saved spots. */
+
 export function tasteProfile(savedMeals: SavedMeal[]): {
   terms: Set<string>;
   savedNames: Set<string>;
@@ -566,11 +494,7 @@ export function tasteProfile(savedMeals: SavedMeal[]): {
   return { terms, savedNames };
 }
 
-/**
- * Rank cafes by taste overlap (discovery: already-saved spots excluded).
- * No saves, or no overlap → ratings order fallback. Cafes without resolvable
- * coords are skipped (distance must stay real).
- */
+
 export function rankCafes(savedMeals: SavedMeal[], count = 3): RankedCafe[] {
   const { terms, savedNames } = tasteProfile(savedMeals);
   const scored = restaurants
@@ -594,7 +518,7 @@ export function rankCafes(savedMeals: SavedMeal[], count = 3): RankedCafe[] {
   return scored.slice(0, count);
 }
 
-/** City-level traffic is the only live signal for cafes (no per-place hours). */
+
 export function toCafeCard(
   ranked: RankedCafe,
   origin: { lat: number; lon: number } = BAGUIO_COORDINATES,
@@ -620,27 +544,17 @@ export const WEATHER_QUERY_KEY = ['weather', 'baguio'] as const;
 export const WEATHER_STALE_TIME_MS = 10 * 60 * 1000;
 export const WEATHER_GC_TIME_MS = 30 * 60 * 1000;
 export const STATS_STALE_TIME_MS = 5 * 60 * 1000;
-/**
- * While the cache holds fallback data (upstream was down at fetch time),
- * revalidate in the background at this cadence until live data arrives.
- * Cost is bounded: only during outages, and it stops the moment live data
- * lands. Deliberately longer than the OpenWeather free-tier 60 calls/min
- * budget is per-key, not per-client — one client at 1/min is noise.
- */
+
 export const WEATHER_FALLBACK_RETRY_MS = 60 * 1000;
 export const REFERRAL_STALE_TIME_MS = 60 * 1000;
 
-/**
- * Shipped weather query config (single source of truth — page.tsx and tests
- * share this factory, so a regression in staleTime/refetch policy breaks the
- * cache test instead of silently restoring per-mount refetch).
- */
+
 export function weatherQueryOptions(
   enabled: boolean,
-  // NOTE: must stay a zero-arg closure. TanStack invokes queryFn with a
-  // QueryFunctionContext argument — passing the bare fetchWeatherFromAPI
-  // reference made lat=[object Object] (2026-09-03 incident: every dashboard
-  // weather call 400'd from the TanStack migration until this fix).
+  
+  
+  
+  
   queryFn: () => Promise<WeatherData | null> = () => fetchWeatherFromAPI()
 ): UseQueryOptions<WeatherData | null> {
   return {
@@ -649,14 +563,14 @@ export function weatherQueryOptions(
     enabled,
     staleTime: WEATHER_STALE_TIME_MS,
     gcTime: WEATHER_GC_TIME_MS,
-    // Provider default is refetchOnMount: false (would serve stale weather
-    // forever). true = refetch on mount only when stale (>10min).
+    
+    
     refetchOnMount: true as const,
-    // Self-healing outage behavior (2026-09-03 incident: fallback cached as
-    // data sat visible for the full 10-min stale window). While the cached
-    // value is the offline fallback, poll in the background until live data
-    // arrives; live data disables the interval entirely (quota-safe: the
-    // 10-min staleTime still governs the healthy path).
+    
+    
+    
+    
+    
     refetchInterval: (query) =>
       isFallbackWeather(query.state.data ?? null)
         ? WEATHER_FALLBACK_RETRY_MS
@@ -664,7 +578,7 @@ export function weatherQueryOptions(
   };
 }
 
-/** Global aggregates for the Tarana Stats widget (GET /api/stats). */
+
 export interface TaranaStatsView {
   itineraries: number;
   cafes: number;
@@ -672,7 +586,7 @@ export interface TaranaStatsView {
   explorers: number;
 }
 
-/** Fetch + map /api/referrals/stats. Throws on HTTP error so retry engages. */
+
 export async function fetchReferralStats(
   fetcher: typeof fetch = fetch
 ): Promise<ReferralStatsView | null> {
@@ -681,16 +595,12 @@ export async function fetchReferralStats(
   return mapReferralStatsResponse(await r.json());
 }
 
-/**
- * Build the shareable invite link. Format MUST stay
- * `{origin}/auth/signup?ref={code}` — ReferralTracker consumes `?ref=`
- * and no /invite route exists. Pure (testable, no window access here).
- */
+
 export function buildInviteLink(origin: string, code: string): string {
   return `${origin}/auth/signup?ref=${encodeURIComponent(code)}`;
 }
 
-/** Fetch the DB-issued code (GET /api/referrals/code). Null when absent. */
+
 export async function fetchReferralCode(
   fetcher: typeof fetch = fetch
 ): Promise<string | null> {
@@ -702,11 +612,7 @@ export async function fetchReferralCode(
     : null;
 }
 
-/**
- * Shipped invite-code config. The code MUST come from the DB trigger output
- * (8-char, via /api/referrals/code) — the old `${EMAIL}2024` fabrication
- * matched no row and every copied link was dead (2026-09-03).
- */
+
 export function referralCodeQueryOptions(
   status: string,
   userId: string | undefined,
@@ -720,7 +626,7 @@ export function referralCodeQueryOptions(
   };
 }
 
-/** Fetch + map /api/stats. Throws on HTTP error so retry engages. */
+
 export async function fetchTaranaStats(
   fetcher: typeof fetch = fetch
 ): Promise<TaranaStatsView | null> {
@@ -744,7 +650,7 @@ export function mapTaranaStatsResponse(input: unknown): TaranaStatsView | null {
   };
 }
 
-/** Shipped stats config: public aggregates, 5-min stale like the provider default. */
+
 export function taranaStatsQueryOptions(
   status: string,
   queryFn: () => Promise<TaranaStatsView | null> = () => fetchTaranaStats()
@@ -757,10 +663,7 @@ export function taranaStatsQueryOptions(
   };
 }
 
-/**
- * Shipped referral query config. Gate matches the saved-meals convention
- * (saved-meals/page.tsx:36): no fetch+cache of ["referral-stats", undefined].
- */
+
 
 export function referralQueryOptions(
   status: string,

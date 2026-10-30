@@ -1,7 +1,3 @@
-/**
- * Unit tests for RequestWeatherProvider (pure, no I/O).
- * Returns payload.weatherData passthrough; null when absent/non-object.
- */
 import { RequestWeatherProvider } from '../requestWeatherProvider';
 
 describe('RequestWeatherProvider', () => {

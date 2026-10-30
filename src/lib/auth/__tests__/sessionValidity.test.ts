@@ -18,11 +18,6 @@ jest.mock('@/lib/data/supabaseAdmin', () => ({
 const mockLogger = logger as jest.Mocked<typeof logger>;
 const mockedFrom = supabaseAdmin.from as unknown as jest.Mock;
 
-/**
- * Queue one `users.select(...).eq(...).single()` result per call. The session
- * callback reads `users` for the credential-change stamp, once per
- * resolution, so the ordering is call-order.
- */
 function mockUserReads(reads: Array<{ data: unknown; error: unknown }>) {
   const single = jest.fn();
   for (const read of reads) single.mockResolvedValueOnce(read);
@@ -71,9 +66,6 @@ describe('resolveTokenUserId', () => {
   });
 
   test('returns undefined even when a foreign sub is present', () => {
-    // `sub` is next-auth's own subject (e.g. a Google subject), never a
-    // users-row id. Consulting it would manufacture the fail-open bypass this
-    // gate exists to prevent.
     expect(resolveTokenUserId({ sub: 'uuid-2' })).toBeUndefined();
   });
 
@@ -87,12 +79,6 @@ const sessionCallback = authOptions.callbacks?.session as unknown as (
   args: Record<string, unknown>
 ) => Promise<Record<string, unknown>>;
 
-/**
- * Exercise the real `session` callback the way next-auth does on every
- * `getServerSession` / `/api/auth/session` call. This is where the credential
- * gate lives: a null return from `jwt` does NOT discard the session in
- * next-auth 4.24.15, so enforcement has to happen on the session body.
- */
 function resolveSession(token: Record<string, unknown>) {
   const full = {
     user: { name: 'Test User', email: 'u@example.com' },
@@ -102,7 +88,6 @@ function resolveSession(token: Record<string, unknown>) {
   return sessionCallback({ session: full, token: full });
 }
 
-/** A session body with no `user`/`expires` is what next-auth treats as absent. */
 function isDiscarded(body: Record<string, unknown>): boolean {
   return Object.keys(body).length === 0;
 }
@@ -135,8 +120,6 @@ describe('session() credential-change gate', () => {
   });
 
   test('discards a mobile credential whose stamp predates the password change', async () => {
-    // Exchanged mobile tokens carry an `id` (the users-row id written by the
-    // exchange), so they reach the same gate as web sessions.
     mockUserReads([{ data: { password_changed_at: LIVE_CHANGED_AT }, error: null }]);
 
     const body = await resolveSession({
@@ -166,12 +149,6 @@ describe('session() credential-change gate', () => {
   });
 
   test('a foreign-subject mobile-style token skips the gate and stays intact', async () => {
-    // The gate cannot scope a token without the app-written `id`, so it must
-    // not run against the wrong row: no lookup is issued at all. Authorization
-    // still fails downstream — `withAuth` requires `session.user.id`, which a
-    // foreign-subject token cannot populate — so skipping is a passthrough, not
-    // an acceptance: the session callback returns the body untouched and the
-    // 401 falls out of the normal path.
     const body = await resolveSession({
       id: undefined,
       sub: 'subject-without-id-claim',

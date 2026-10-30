@@ -63,17 +63,12 @@ describe('mergeRegionPools', () => {
 
   it('LUZON_MEMBERS pins baguio + manila (luzon is region-only, not a pill)', () => {
     expect([...LUZON_MEMBERS]).toEqual(['baguio', 'manila']);
-    // Single-pill invariant: luzon renders once, from the region loop — never
-    // from SPOT_SCOPES (that double-render was the two-Luzon-tabs bug).
     const pillIds: string[] = SPOT_SCOPES.map((s) => s.id);
     expect(pillIds).toEqual(['baguio', 'manila', 'davao']);
     expect(pillIds).not.toContain('luzon');
   });
 
   it('keys same-title rows from different pools distinctly (Boracay Island dup)', () => {
-    // Regression: two TomTom results named "Boracay Island" in one 0.01° cell
-    // rendered under key={spot.name} and React dropped one. The render key
-    // must carry the owning city, so identical titles stay distinct rows.
     const island = { name: 'Boracay Island', image: null, peakHours: null };
     const a = { ...island, lat: 11.9674, lon: 121.9248 };
     const b = { ...island, lat: 11.9674, lon: 121.9248 };
@@ -82,11 +77,6 @@ describe('mergeRegionPools', () => {
   });
 
   it('collapses same-titled rows inside ONE pool to a single card', () => {
-    // Reported: the Visayas tab rendered "Boracay Island" twice. TomTom really
-    // does return that name ten times across the query buckets, at two
-    // coordinates ~500m apart (11.941303 and 11.936777). Upstream keeps them
-    // because they are different places, but as cards they are
-    // indistinguishable — two identical titles and two identical photos.
     const dup = (name: string, lat: number, lon: number): SpotPayload => ({
       name,
       image: null,
@@ -109,7 +99,6 @@ describe('mergeRegionPools', () => {
 
     expect(out.filter((s) => s.name === 'Boracay Island')).toHaveLength(1);
     expect(out.filter((s) => s.name === "Mountain View Nature's Park")).toHaveLength(1);
-    // 5 rows in, 3 distinct names, cap 3 -> three distinct cards.
     expect(out.map((s) => s.name)).toEqual([
       'Boracay Island',
       'Cebu Spot',
@@ -118,8 +107,6 @@ describe('mergeRegionPools', () => {
   });
 
   it('still keeps a same-named row from a DIFFERENT pool', () => {
-    // Two cities may legitimately both have an "SM City"; cross-pool identity
-    // is the render key's job and must not be collapsed here.
     const dup = (name: string, lat: number, lon: number): SpotPayload => ({
       name,
       image: null,

@@ -1,7 +1,3 @@
-/**
- * TomTom Routing Service
- * Comprehensive routing API integration for traffic-aware navigation
- */
 
 import {
   RouteRequest,
@@ -20,7 +16,6 @@ import {
   TrafficLevel
 } from '@/types/route-optimization';
 
-// Route Error class for handling routing errors
 export class RouteError extends Error {
   public type: string;
   public details?: any;
@@ -171,7 +166,7 @@ interface TomTomSearchResult {
 class TomTomRoutingService {
   private config: TomTomRoutingConfig;
   private cache: Map<string, { data: any; expiry: number }> = new Map();
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private readonly CACHE_DURATION = 5 * 60 * 1000; 
 
   constructor() {
     const primaryApiKey = process.env.TOMTOM_API_KEY;
@@ -198,9 +193,6 @@ class TomTomRoutingService {
     }
   }
 
-  /**
-   * Calculate optimal route with traffic analysis
-   */
   async calculateRoute(request: RouteRequest, referer?: string): Promise<RouteData> {
     console.log('🗺️ TomTom: Calculating route from', request.origin.name, 'to', request.destination.name);
 
@@ -243,7 +235,6 @@ class TomTomRoutingService {
 
       const primaryRoute = this.transformRoute(routeData.routes[0], request);
       
-      // Cache the result
       this.cache.set(cacheKey, {
         data: primaryRoute,
         expiry: Date.now() + this.CACHE_DURATION
@@ -272,9 +263,6 @@ class TomTomRoutingService {
     }
   }
 
-  /**
-   * Get alternative routes for comparison
-   */
   async getAlternativeRoutes(request: RouteRequest, referer?: string): Promise<RouteData[]> {
     console.log('🛣️ TomTom: Getting alternative routes');
 
@@ -297,7 +285,7 @@ class TomTomRoutingService {
 
       const alternatives = routeData.routes.slice(1).map((route, index) => {
         const transformed = this.transformRoute(route, request);
-        transformed.alternativeRank = index + 2; // Primary is rank 1
+        transformed.alternativeRank = index + 2; 
         return transformed;
       });
 
@@ -310,9 +298,6 @@ class TomTomRoutingService {
     }
   }
 
-  /**
-   * Search locations with autocomplete
-   */
   async searchLocations(query: string, bounds?: BoundingBox, referer?: string, options?: { countrySet?: string; language?: string }): Promise<SearchResult[]> {
     console.log('🔍 TomTom: Searching for locations:', query);
 
@@ -335,25 +320,17 @@ class TomTomRoutingService {
         query: query.trim(),
         limit: '10',
         language,
-        // Pin the geopolitical view explicitly. Without it, TomTom derives
-        // the view from countrySet (PH here) and rejects with
-        // "400 BadRequest: 'PH' is not a valid view" — PH is a valid
-        // countrySet but not a valid view. 'Unified' is the documented
-        // default for non-listed regions and matches our static-map URLs.
-        // https://developer.tomtom.com/search-api/documentation/search-service/fuzzy-search
         view: 'Unified',
       });
       if (countrySet) params.set('countrySet', countrySet);
 
-      // Add bounds if provided
       if (bounds) {
         params.append('topLeft', `${bounds.topLeft.lat},${bounds.topLeft.lng}`);
         params.append('btmRight', `${bounds.bottomRight.lat},${bounds.bottomRight.lng}`);
       } else {
-        // Default to Baguio area
         params.append('lat', '16.4023');
         params.append('lon', '120.5960');
-        params.append('radius', '50000'); // 50km radius
+        params.append('radius', '50000'); 
       }
 
       const url = `${this.config.baseUrl}/search/2/search/${encodeURIComponent(query)}.json`;
@@ -363,7 +340,6 @@ class TomTomRoutingService {
 
       const results = searchData.results.map(this.transformSearchResult);
       
-      // Cache results for 1 hour
       this.cache.set(cacheKey, {
         data: results,
         expiry: Date.now() + 60 * 60 * 1000
@@ -378,15 +354,6 @@ class TomTomRoutingService {
     }
   }
 
-  /**
-   * POI-only search for the tourist-coverage path.
-   *
-   * Uses TomTom's poiSearch endpoint so callers cannot receive address or
-   * street results. The fuzzy searchLocations default stays untouched: other
-   * consumers (autocomplete, geocoding) must not silently grow from 10 to 100.
-   *
-   * Source: https://docs.tomtom.com/search-api/documentation/search-service/points-of-interest-search
-   */
   async searchPois(
     query: string,
     bounds: BoundingBox,
@@ -435,9 +402,6 @@ class TomTomRoutingService {
     }
   }
 
-  /**
-   * Reverse geocoding - coordinates to address
-   */
   async reverseGeocode(coordinates: Coordinates, referer?: string): Promise<AddressResult | null> {
     console.log('🏠 TomTom: Reverse geocoding:', coordinates);
 
@@ -469,7 +433,6 @@ class TomTomRoutingService {
 
       const result = this.transformAddressResult(data.results[0]);
       
-      // Cache for 24 hours (addresses don't change often)
       this.cache.set(cacheKey, {
         data: result,
         expiry: Date.now() + 24 * 60 * 60 * 1000
@@ -483,9 +446,6 @@ class TomTomRoutingService {
     }
   }
 
-  /**
-   * Batch geocoding for multiple addresses
-   */
   async batchGeocode(addresses: string[], referer?: string): Promise<GeocodeResult[]> {
     console.log('📍 TomTom: Batch geocoding', addresses.length, 'addresses');
 
@@ -511,9 +471,6 @@ class TomTomRoutingService {
     return results;
   }
 
-  // ============================================================================
-  // PRIVATE HELPER METHODS
-  // ============================================================================
 
   private createCacheKey(request: RouteRequest): string {
     const key = JSON.stringify({
@@ -522,7 +479,7 @@ class TomTomRoutingService {
       waypoints: request.waypoints?.map(w => `${w.lat},${w.lng}`),
       preferences: request.preferences
     });
-    return btoa(key).slice(0, 32); // Use base64 hash for cache key
+    return btoa(key).slice(0, 32); 
   }
 
   private buildLocationString(request: RouteRequest): string {
@@ -547,12 +504,10 @@ class TomTomRoutingService {
       sectionType: 'traffic'
     };
 
-    // Add departure time if specified
     if (request.preferences.departureTime) {
       params.departAt = request.preferences.departureTime.toISOString();
     }
 
-    // Add avoidance parameters
     const avoid: string[] = [];
     if (request.preferences.avoidTolls) avoid.push('tollRoads');
     if (request.preferences.avoidHighways) avoid.push('motorways');
@@ -589,15 +544,12 @@ class TomTomRoutingService {
       'Accept': 'application/json',
       'User-Agent': 'Tarana.ai/1.0'
     };
-    // TomTom keys with referer restrictions reject requests without a matching Referer.
-    // Internal server-side calls (activitySearch strict-city) pass none — fall back to registered origin.
     const effectiveReferer = referer || process.env.TOMTOM_REFERER || process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://tarana-ai.vercel.app';
     headers['Referer'] = effectiveReferer;
     try {
       const origin = new URL(effectiveReferer).origin;
       if (origin) headers['Origin'] = origin;
     } catch {
-      // referer is not a parseable URL; forward it as Referer anyway
     }
     return headers;
   }
@@ -636,7 +588,6 @@ class TomTomRoutingService {
             detail = ` (${body.errorText})`;
           }
         } catch {
-          // Body is not JSON; fall back to status text below.
         }
         throw new Error(`TomTom API error: ${response.status} ${response.statusText}${detail}`);
       }
@@ -651,7 +602,6 @@ class TomTomRoutingService {
   private transformRoute(tomtomRoute: TomTomRoute, request: RouteRequest): RouteData {
     const routeId = `route_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Transform summary
     const summary: RouteSummary = {
       lengthInMeters: tomtomRoute.summary.lengthInMeters,
       travelTimeInSeconds: tomtomRoute.summary.travelTimeInSeconds,
@@ -661,7 +611,6 @@ class TomTomRoutingService {
       routeType: request.preferences.routeType
     };
 
-    // Transform instructions
     const instructions: RouteInstruction[] = (tomtomRoute.guidance?.instructions || []).map((instr, index) => ({
       id: `instruction_${index}`,
       instruction: instr.message,
@@ -679,7 +628,6 @@ class TomTomRoutingService {
       exitNumber: instr.roundaboutExitNumber
     }));
 
-    // Transform geometry
     const allPoints: Coordinates[] = [];
     tomtomRoute.legs.forEach(leg => {
       leg.points.forEach(point => {
@@ -695,7 +643,6 @@ class TomTomRoutingService {
       type: 'LineString'
     };
 
-    // Transform legs
     const legs: RouteLeg[] = tomtomRoute.legs.map((leg, index) => ({
       startLocation: index === 0 ? request.origin : request.waypoints![index - 1],
       endLocation: index === tomtomRoute.legs.length - 1 ? request.destination : request.waypoints![index],
@@ -708,8 +655,7 @@ class TomTomRoutingService {
         routeType: request.preferences.routeType
       },
       instructions: instructions.filter(instr => {
-        // Filter instructions for this leg (simplified logic)
-        return true; // In a real implementation, you'd filter by leg boundaries
+        return true; 
       }),
       geometry: {
         coordinates: leg.points.map(p => ({ lat: p.latitude, lng: p.longitude })),
@@ -723,7 +669,7 @@ class TomTomRoutingService {
       legs,
       geometry,
       instructions,
-      confidence: 0.9 // Default confidence score
+      confidence: 0.9 
     };
   }
 
@@ -768,9 +714,6 @@ class TomTomRoutingService {
     return directions[index];
   }
 
-  /**
-   * Clear expired cache entries
-   */
   clearExpiredCache(): void {
     const now = Date.now();
     let cleared = 0;
@@ -788,5 +731,4 @@ class TomTomRoutingService {
   }
 }
 
-// Export singleton instance
 export const tomtomRoutingService = new TomTomRoutingService();

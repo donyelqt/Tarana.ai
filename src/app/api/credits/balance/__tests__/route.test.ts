@@ -1,7 +1,3 @@
-/**
- * Tests for GET /api/credits/balance (money path).
- * 401 unauthenticated; 200 {success,balance} shape; 500 mapping on throw.
- */
 import { GET } from '../route';
 import { getServerSession } from 'next-auth';
 import { CreditService } from '@/lib/referral-system';
@@ -14,8 +10,6 @@ jest.mock('@/lib/referral-system', () => ({
   CreditService: { getCurrentBalance: jest.fn() },
 }));
 
-// jest.setup.js replaces global Response with a minimal mock lacking the
-// static json() NextResponse.json() delegates to. Restore just that static.
 const MockedResponse = globalThis.Response as unknown as {
   new (body?: unknown, init?: { status?: number; headers?: Record<string, string> }): InstanceType<typeof globalThis.Response>;
   json(body: unknown, init?: { status?: number }): unknown;

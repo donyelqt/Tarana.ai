@@ -1,17 +1,3 @@
-/**
- * Building the per-day route request from a plan.
- *
- * Three constraints come from contracts this must not break:
- *
- * - `/api/routes/calculate` rejects more than 10 waypoints (zod). A 3-day
- *   itinerary exceeds that, which is why routes are drawn per day.
- * - The route needs an origin and a destination. A day's route starts and ends
- *   at its own first and last resolved stop, so the user's own route endpoints
- *   are never overwritten.
- * - A day with fewer than two resolved stops has no drawable route. Returning
- *   null lets the caller skip the call instead of sending a request that would
- *   come back as an error.
- */
 import {
   buildDayRouteRequest,
   collectPlanStops,
@@ -58,9 +44,6 @@ describe('buildDayRouteRequest', () => {
     })
 
     expect(request).not.toBeNull()
-    // First and last resolved stop anchor the route; the middle becomes a
-    // waypoint. The id carries the title so two stops at one position stay
-    // distinguishable on the map.
     expect(request!.origin).toEqual({
       id: 'plan:0:A',
       name: 'A',
@@ -80,8 +63,6 @@ describe('buildDayRouteRequest', () => {
       preferences: { routeType: 'fastest', vehicleType: 'car' },
     })
 
-    // Two stops can share a position (a venue inside one building); the title
-    // keeps their ids distinct so the map can label them separately.
     expect(request!.origin!.id).toBe('plan:0:A')
     expect(request!.destination!.id).toBe('plan:1:B')
   })
@@ -116,7 +97,6 @@ describe('buildDayRouteRequest', () => {
   })
 
   it('caps the waypoints at the route API limit', () => {
-    // 14 resolved stops: origin + destination + capped waypoints.
     const stops = Array.from({ length: 14 }, (_, i) => stop(`S${i}`, 16.4 + i * 0.001, 120.5 + i * 0.001))
     const request = buildDayRouteRequest({
       stops,
@@ -124,9 +104,7 @@ describe('buildDayRouteRequest', () => {
     })
 
     expect(request).not.toBeNull()
-    // The API caps waypoints at 10 (api/routes/calculate/route.ts:25).
     expect(request!.waypoints!.length).toBeLessThanOrEqual(10)
-    // Plus origin and destination that is at most 12 points on the request.
     expect(request!.waypoints!.length + 2).toBeLessThanOrEqual(12)
   })
 

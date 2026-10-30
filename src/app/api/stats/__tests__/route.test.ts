@@ -1,15 +1,9 @@
-/**
- * Tests for GET /api/stats (dashboard Tarana Stats widget).
- * Public aggregates: exact-count head queries + static cafes length.
- */
 import { NextRequest } from 'next/server';
 import { GET } from '../route';
 import { getStats } from '@/lib/services/statsService';
 import { logger } from '@/lib/observability/logger';
 import { restaurants } from '@/app/tarana-eats/data/taranaEatsData';
 
-// jest.setup.js replaces global Response with a minimal mock lacking the
-// static json() NextResponse.json() delegates to. Restore just that static.
 const MockedResponse = globalThis.Response as unknown as {
   new (body?: unknown, init?: { status?: number; headers?: Record<string, string> }): InstanceType<typeof globalThis.Response>;
   json(body: unknown, init?: { status?: number }): unknown;

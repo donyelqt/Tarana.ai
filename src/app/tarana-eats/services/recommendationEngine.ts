@@ -1,9 +1,3 @@
-// ====================================================================
-// RECOMMENDATION ENGINE
-// ====================================================================
-// Advanced recommendation system with multi-factor scoring
-// Combines menu data, user preferences, and AI insights
-// ====================================================================
 
 import { RestaurantData } from "../data/types";
 import { TaranaEatsFormValues } from "@/types/tarana-eats";
@@ -31,7 +25,6 @@ interface ScoreFactors {
 export class RecommendationEngine {
   private static instance: RecommendationEngine;
   
-  // Weight configuration for scoring (totals to 100)
   private readonly WEIGHTS = {
     budgetMatch: 25,
     cuisineMatch: 20,
@@ -51,9 +44,6 @@ export class RecommendationEngine {
     return RecommendationEngine.instance;
   }
 
-  /**
-   * Generate recommendations based on user preferences
-   */
   public generateRecommendations(
     restaurants: RestaurantData[],
     preferences: TaranaEatsFormValues,
@@ -61,12 +51,10 @@ export class RecommendationEngine {
   ): RecommendationScore[] {
     console.log('🎯 Generating intelligent recommendations...');
     
-    // Score all restaurants
     const scored = restaurants.map(restaurant => 
       this.scoreRestaurant(restaurant, preferences)
     );
 
-    // Sort by total score and return top matches
     const topRecommendations = scored
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
@@ -75,9 +63,6 @@ export class RecommendationEngine {
     return topRecommendations;
   }
 
-  /**
-   * Score a single restaurant based on all factors
-   */
   private scoreRestaurant(
     restaurant: RestaurantData,
     preferences: TaranaEatsFormValues
@@ -92,13 +77,11 @@ export class RecommendationEngine {
       valueScore: this.scoreValue(restaurant, preferences)
     };
 
-    // Calculate weighted total score
     const score = Object.entries(factors).reduce((total, [key, value]) => {
       const weight = this.WEIGHTS[key as keyof typeof this.WEIGHTS];
       return total + (value * weight / 100);
     }, 0);
 
-    // Get recommended menu items
     const recommendedItems = this.getRecommendedMenuItems(restaurant, preferences);
     const estimatedTotal = this.calculateEstimatedTotal(recommendedItems, preferences);
     const matchReasons = this.generateMatchReasons(factors, restaurant, preferences);
@@ -113,14 +96,11 @@ export class RecommendationEngine {
     };
   }
 
-  /**
-   * Score budget compatibility (0-100)
-   */
   private scoreBudgetMatch(
     restaurant: RestaurantData,
     preferences: TaranaEatsFormValues
   ): number {
-    if (!preferences.budget) return 50; // Neutral score if no budget specified
+    if (!preferences.budget) return 50; 
 
     const userBudget = parseInt(preferences.budget.replace(/[^\d]/g, ''));
     if (!userBudget || userBudget <= 0) return 50;
@@ -129,23 +109,19 @@ export class RecommendationEngine {
     const perPersonBudget = userBudget / groupSize;
     const restaurantAvg = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
 
-    // Calculate match percentage
     const diff = Math.abs(perPersonBudget - restaurantAvg);
-    const maxDiff = perPersonBudget; // Maximum acceptable difference
+    const maxDiff = perPersonBudget; 
     const matchPercentage = Math.max(0, 100 - (diff / maxDiff * 100));
 
     return Math.min(100, matchPercentage);
   }
 
-  /**
-   * Score cuisine preference match (0-100)
-   */
   private scoreCuisineMatch(
     restaurant: RestaurantData,
     preferences: TaranaEatsFormValues
   ): number {
     if (!preferences.cuisine || preferences.cuisine === "Show All") {
-      return 50; // Neutral score
+      return 50; 
     }
 
     const cuisineMatch = restaurant.cuisine.some(c =>
@@ -156,18 +132,14 @@ export class RecommendationEngine {
     return cuisineMatch ? 100 : 0;
   }
 
-  /**
-   * Score meal type compatibility (0-100)
-   */
   private scoreMealTypeMatch(
     restaurant: RestaurantData,
     preferences: TaranaEatsFormValues
   ): number {
     if (!preferences.mealType || preferences.mealType.length === 0) {
-      return 50; // Neutral score
+      return 50; 
     }
 
-    // Check if restaurant is popular for requested meal types
     const matchCount = preferences.mealType.filter(mt =>
       restaurant.popularFor.includes(mt)
     ).length;
@@ -175,15 +147,12 @@ export class RecommendationEngine {
     return (matchCount / preferences.mealType.length) * 100;
   }
 
-  /**
-   * Score dietary requirements match (0-100)
-   */
   private scoreDietaryMatch(
     restaurant: RestaurantData,
     preferences: TaranaEatsFormValues
   ): number {
     if (!preferences.restrictions || preferences.restrictions.length === 0) {
-      return 100; // Perfect score if no restrictions
+      return 100; 
     }
 
     const matchCount = preferences.restrictions.filter(restriction =>
@@ -193,19 +162,13 @@ export class RecommendationEngine {
     return (matchCount / preferences.restrictions.length) * 100;
   }
 
-  /**
-   * Score restaurant popularity (0-100)
-   */
   private scorePopularity(restaurant: RestaurantData): number {
     if (restaurant.ratings) {
       return (restaurant.ratings / 5) * 100;
     }
-    return 50; // Neutral score if no ratings
+    return 50; 
   }
 
-  /**
-   * Score menu diversity (0-100)
-   */
   private scoreMenuDiversity(restaurant: RestaurantData): number {
     const fullMenu = restaurant.fullMenu;
     const categories = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'] as const;
@@ -221,16 +184,12 @@ export class RecommendationEngine {
       }
     });
 
-    // Score based on both category coverage and total items
     const categoryScore = (categoriesWithItems / categories.length) * 50;
-    const itemScore = Math.min(50, totalItems / 2); // 1 point per 2 items, max 50
+    const itemScore = Math.min(50, totalItems / 2); 
 
     return categoryScore + itemScore;
   }
 
-  /**
-   * Score value for money (0-100)
-   */
   private scoreValue(
     restaurant: RestaurantData,
     preferences: TaranaEatsFormValues
@@ -238,17 +197,12 @@ export class RecommendationEngine {
     const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
     const rating = restaurant.ratings || 3;
 
-    // Calculate value score: high rating + reasonable price = high value
-    const priceScore = Math.max(0, 100 - (avgPrice / 10)); // Lower price = higher score
+    const priceScore = Math.max(0, 100 - (avgPrice / 10)); 
     const ratingScore = (rating / 5) * 100;
 
     return (priceScore + ratingScore) / 2;
   }
 
-  /**
-   * Get recommended menu items for a restaurant
-   * FIXED: Proper filtering that doesn't return empty arrays
-   */
   private getRecommendedMenuItems(
     restaurant: RestaurantData,
     preferences: TaranaEatsFormValues
@@ -260,52 +214,42 @@ export class RecommendationEngine {
       return [];
     }
 
-    // Filter by meal type if specified
     let filteredItems = restaurantItems;
     if (preferences.mealType && preferences.mealType.length > 0) {
       const mealFiltered = restaurantItems.filter(item =>
         preferences.mealType!.includes(item.category)
       );
-      // Only apply if we get results
       if (mealFiltered.length > 0) {
         filteredItems = mealFiltered;
       }
     }
 
-    // Filter by dietary requirements - USE LENIENT MATCHING
     if (preferences.restrictions && preferences.restrictions.length > 0) {
       const dietaryFiltered = filteredItems.filter(item => {
-        // Skip items without dietary labels
         if (!item.dietaryLabels || item.dietaryLabels.length === 0) {
           return false;
         }
-        // Match ANY restriction (lenient) instead of ALL
         return preferences.restrictions!.some(r =>
           item.dietaryLabels?.includes(r)
         );
       });
       
-      // Only apply if we get results, otherwise keep all items
       if (dietaryFiltered.length > 0) {
         filteredItems = dietaryFiltered;
       } else {
         console.log(`⚠️ No vegan items at "${restaurant.name}", returning all items`);
-        filteredItems = restaurantItems; // Keep all items as fallback
+        filteredItems = restaurantItems; 
       }
     }
 
-    // Sort by popularity and return top items
     const sorted = filteredItems
       .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
-      .slice(0, 10); // Top 10 items per restaurant
+      .slice(0, 10); 
     
     console.log(`✅ Selected ${sorted.length} items for "${restaurant.name}"`);
     return sorted;
   }
 
-  /**
-   * Calculate estimated total cost
-   */
   private calculateEstimatedTotal(
     items: IndexedMenuItem[],
     preferences: TaranaEatsFormValues
@@ -314,16 +258,11 @@ export class RecommendationEngine {
 
     const groupSize = preferences.pax || 2;
     
-    // Estimate based on average price of top items
     const avgItemPrice = items.slice(0, 5).reduce((sum, item) => sum + item.price, 0) / Math.min(5, items.length);
     
-    // Estimate 2 items per person as baseline
     return Math.round(avgItemPrice * 2 * groupSize);
   }
 
-  /**
-   * Generate human-readable match reasons
-   */
   private generateMatchReasons(
     factors: ScoreFactors,
     restaurant: RestaurantData,
@@ -331,39 +270,32 @@ export class RecommendationEngine {
   ): string[] {
     const reasons: string[] = [];
 
-    // Budget match
     if (factors.budgetMatch >= 80) {
       reasons.push(`Perfect fit for your ₱${preferences.budget} budget`);
     } else if (factors.budgetMatch >= 60) {
       reasons.push(`Good value within your budget range`);
     }
 
-    // Cuisine match
     if (factors.cuisineMatch === 100) {
       reasons.push(`Specializes in ${preferences.cuisine} cuisine`);
     }
 
-    // Meal type match
     if (factors.mealTypeMatch >= 80 && preferences.mealType && preferences.mealType.length > 0) {
       reasons.push(`Popular for ${preferences.mealType.join(' and ')}`);
     }
 
-    // Dietary match
     if (factors.dietaryMatch === 100 && preferences.restrictions && preferences.restrictions.length > 0) {
       reasons.push(`Offers ${preferences.restrictions.join(', ')} options`);
     }
 
-    // Popularity
     if (factors.popularityScore >= 80) {
       reasons.push(`Highly rated (${restaurant.ratings}★)`);
     }
 
-    // Diversity
     if (factors.diversityScore >= 80) {
       reasons.push(`Extensive menu with many options`);
     }
 
-    // Fallback reason
     if (reasons.length === 0) {
       reasons.push(`Quality ${restaurant.cuisine.join(', ')} restaurant`);
     }
@@ -371,9 +303,6 @@ export class RecommendationEngine {
     return reasons;
   }
 
-  /**
-   * Get personalized menu suggestions based on budget allocation
-   */
   public getMenuSuggestions(
     restaurant: RestaurantData,
     preferences: TaranaEatsFormValues,
@@ -386,7 +315,6 @@ export class RecommendationEngine {
     const restaurantItems = menuIndexingService.getRestaurantMenu(restaurant.name);
     const groupSize = preferences.pax || 2;
 
-    // Filter by meal type
     let availableItems = restaurantItems;
     if (preferences.mealType && preferences.mealType.length > 0) {
       availableItems = restaurantItems.filter(item =>
@@ -394,14 +322,12 @@ export class RecommendationEngine {
       );
     }
 
-    // Sort by value (price/popularity ratio)
     const sortedItems = availableItems.sort((a, b) => {
       const valueA = (a.popularity || 50) / Math.max(1, a.price / 100);
       const valueB = (b.popularity || 50) / Math.max(1, b.price / 100);
       return valueB - valueA;
     });
 
-    // Greedy algorithm to select items within budget
     const selected: IndexedMenuItem[] = [];
     let total = 0;
 
@@ -410,7 +336,6 @@ export class RecommendationEngine {
         selected.push(item);
         total += item.price;
         
-        // Stop if we have enough items (2-3 per person)
         if (selected.length >= groupSize * 3) break;
       }
     }
@@ -423,5 +348,4 @@ export class RecommendationEngine {
   }
 }
 
-// Export singleton instance
 export const recommendationEngine = RecommendationEngine.getInstance();

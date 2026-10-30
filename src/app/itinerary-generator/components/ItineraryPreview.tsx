@@ -10,7 +10,6 @@ import { TrafficCone } from "lucide-react";
 import { isCurrentlyPeakHours } from "@/lib/traffic";
 import React, { useState, useEffect } from "react";
 
-// Loading messages
 const loadingMessages = [
   "Finding the best spots for you...",
   "Checking real-time traffic conditions...",
@@ -19,16 +18,13 @@ const loadingMessages = [
   "Almost there, just a few more seconds...",
 ];
 
-// Traffic styles matching dashboard implementation
 const trafficStyles: { [key: string]: string } = {
   Low: "border-green-300 bg-green-50 text-green-600",
   Moderate: "border-yellow-300 bg-yellow-50 text-yellow-600",
   High: "border-red-300 bg-red-50 text-red-600",
 };
 
-// Function to determine traffic level based on real-time traffic data and peak hours
 const getTrafficLevel = (activity: any): "Low" | "Moderate" | "High" => {
-  // Priority 1: Use real-time traffic analysis data if available
   if (activity.trafficAnalysis?.realTimeTraffic?.trafficLevel) {
     const realTimeLevel = activity.trafficAnalysis.realTimeTraffic.trafficLevel;
     switch (realTimeLevel) {
@@ -40,7 +36,6 @@ const getTrafficLevel = (activity: any): "Low" | "Moderate" | "High" => {
     }
   }
   
-  // Priority 2: Use traffic recommendation as indicator
   if (activity.trafficRecommendation) {
     switch (activity.trafficRecommendation) {
       case 'VISIT_NOW': return "Low";
@@ -51,17 +46,14 @@ const getTrafficLevel = (activity: any): "Low" | "Moderate" | "High" => {
     }
   }
   
-  // Priority 3: Use isCurrentlyPeak flag if available
   if (activity.isCurrentlyPeak !== undefined) {
     return activity.isCurrentlyPeak ? "High" : "Low";
   }
   
-  // Priority 4: Check peak hours string as fallback
   if (activity.peakHours) {
     return isCurrentlyPeakHours(activity.peakHours) ? "High" : "Low";
   }
   
-  // Default to Low traffic for activities without traffic data
   return "Low";
 };
 
@@ -153,13 +145,13 @@ export default function ItineraryPreview({
       setCurrentMessageIndex((prevIndex: number) =>
         prevIndex === loadingMessages.length - 1 ? 0 : prevIndex + 1
       );
-    }, 2500); // Change message every 2.5 seconds
+    }, 2500); 
     if (isLoadingItinerary) {
       const interval = setInterval(() => {
         setCurrentMessageIndex((prevIndex) =>
           (prevIndex + 1) % loadingMessages.length
         );
-      }, 2500); // Change message every 2.5 seconds to sync with fade-in-out animation
+      }, 2500); 
 
       return () => clearInterval(interval);
     }
@@ -209,13 +201,8 @@ export default function ItineraryPreview({
     );
   }
 
-  // `generatedItinerary` is guaranteed non-null here (the branch above returns
-  // early otherwise). Kept explicit: the old `generatedItinerary || sampleItinerary`
-  // made the Baguio-only catalog a fallback for every city, and the unreachable
-  // `||` was one early-return edit away from reintroducing that leak.
   const displayItinerary = generatedItinerary;
 
-  // Handle the case where the itinerary is valid but has no items (e.g., no activities found)
   if (displayItinerary && (!displayItinerary.items || displayItinerary.items.length === 0)) {
     return (
       <aside className={cn("w-full h-full", showPreview ? "block" : "hidden")}>
@@ -237,7 +224,7 @@ export default function ItineraryPreview({
         <div className="mb-2 text-sm text-gray-900 font-bold">{displayItinerary.title}</div>
         <div className="mb-4 text-xs text-gray-700">{displayItinerary.subtitle}</div>
 
-        {/* Weather information */}
+        {}
         {weatherData && (
           <div className="mb-4 p-3 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center">
             <div className="flex-shrink-0 mr-2">

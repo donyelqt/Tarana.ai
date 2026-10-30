@@ -13,25 +13,12 @@ import { deleteMealById, getMealById, getMealNotes, updateMealNotes, type MealNo
 import { z } from 'zod';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 
-/**
- * PATCH body for saved-meal notes. Both fields are optional and nullable:
- * null clears the field, absent keys are left untouched on the row.
- */
 const UpdateMealNotesSchema = z.object({
   title: z.string().max(200).nullable().optional(),
   notes: z.string().max(5000).nullable().optional(),
 }).strict()
 
 const IDEMPOTENCY_ROUTE = '/api/saved-meals/[id]';
-/**
- * Single saved-meal access — session-scoped.
- *
- * RLS remediation 2026-09-19: the old client path (supabaseMeals.ts via the
- * anon key) filtered by id ONLY with no user_id, an authorization hole. The
- * server derives identity from the NextAuth session cookie and scopes every
- * query to session.user.id with the service-role admin client. A client can
- * never read or delete another user's meal by guessing an id.
- */
 
 export const GET = withAuth(async (
   request: NextRequest,
@@ -46,12 +33,9 @@ export const GET = withAuth(async (
       const data = await getMealById(id, userId);
 
       if (!data) {
-        // Not found OR belongs to another user — indistinguishable on purpose.
         return NextResponse.json({ error: 'Meal not found' }, { status: 404 });
       }
 
-      // Fetch the caller's notes row separately — it may be null (not written
-      // yet), which is a valid state, not a 404.
       const notes = await getMealNotes(id, userId);
 
       return NextResponse.json({ success: true, data, notes });
@@ -71,10 +55,6 @@ export const DELETE = withAuth(async (
       const { params } = (args[0] ?? {}) as { params: Promise<{ id: string }> };
       const { id } = await params;
 
-      // A retried DELETE must not delete twice. Claim the key before the
-      // mutation so a client retry gets the cached response instead of a
-      // second deleteMealById call — which would return 404 after the
-      // first one already succeeded.
       const key = getIdempotencyKey(request);
       const claim = key
         ? await claimIdempotency(userId, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload({ id }))
@@ -100,7 +80,6 @@ export const DELETE = withAuth(async (
         );
       }
 
-      // Scope by user_id so a client cannot delete another user's meal.
       const deleted = await deleteMealById(id, userId);
 
       if (claim?.kind === 'owner') {
@@ -149,13 +128,10 @@ export const PATCH = withAuth(async (
         );
       }
 
-      // Reject an empty PATCH (no fields to update) — mirrors the saved-itineraries
-      // route contract.
       if (Object.keys(validation.data).length === 0) {
         return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
       }
 
-      // Idempotency: a retried PATCH must not double-write.
       const key = getIdempotencyKey(request);
       const claim = key
         ? await claimIdempotency(userId, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload(validation.data))

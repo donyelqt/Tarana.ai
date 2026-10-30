@@ -1,10 +1,3 @@
-/**
- * Plan Mode control contract.
- *
- * The switch is a display-mode toggle, not a route control: it must report its
- * state to assistive tech, be reachable by keyboard, and fire exactly once per
- * press. Tapping it must never be mistaken for a recenter/tilt/style action.
- */
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -62,9 +55,6 @@ describe('MapControls plan mode switch', () => {
     const props = setup()
     const planButton = screen.getByRole('button', { name: /plan mode/i })
 
-    // Order-independent: the switch must be tabbable and activate from the
-    // keyboard. Asserting a tab count would pin its position in the stack,
-    // which is incidental to the contract.
     planButton.focus()
     expect(planButton).toHaveFocus()
 
@@ -89,17 +79,12 @@ describe('MapControls plan mode switch', () => {
 
 describe('MapControls stacking', () => {
   it('sits above the island so the plan switch stays reachable', () => {
-    // The island root paints at z-30. A rail below it would be covered by an
-    // expanded planner card on a narrow viewport, and the switch that opened
-    // the card would be unreachable — Plan Mode could not be turned off.
     setup()
     expect(screen.getByRole('button', { name: /plan mode/i }).parentElement).toHaveClass('z-40')
   })
 
   it('keeps every control on the rail\'s 40px target', () => {
     setup()
-    // Pre-existing rail language, deliberately unchanged: restyling all four
-    // map controls is a separate decision from Plan Mode.
     for (const control of screen.getAllByRole('button')) {
       expect(control).toHaveClass('w-10', 'h-10')
     }
@@ -141,7 +126,6 @@ describe('MapControls zoom', () => {
   it('keeps every other control intact', () => {
     setup()
 
-    // Regression guard: an earlier edit of this rail dropped four controls.
     for (const name of [
       /plan mode/i,
       'Recenter to my route',

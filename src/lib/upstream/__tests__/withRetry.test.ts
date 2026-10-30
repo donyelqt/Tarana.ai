@@ -23,8 +23,6 @@ describe('withRetry - success cases', () => {
   });
 
   it('retries with exponential backoff (jitter none)', async () => {
-    // Verify backoff timing with jitter:'none' — delays are deterministic.
-    // Uses 50ms/100ms to avoid CI runner scheduler flakiness at sub-ms scale.
     const timestamps: number[] = [];
     const fn = jest
       .fn()
@@ -45,7 +43,6 @@ describe('withRetry - success cases', () => {
     expect(fn).toHaveBeenCalledTimes(3);
     const gap1 = timestamps[1] - timestamps[0];
     const gap2 = timestamps[2] - timestamps[1];
-    // gap1 should be ~50ms (baseDelayMs * 2^0), gap2 should be ~100ms (baseDelayMs * 2^1)
     expect(gap1).toBeGreaterThanOrEqual(40);
     expect(gap2).toBeGreaterThanOrEqual(80);
   });
@@ -56,15 +53,11 @@ describe('withRetry - success cases', () => {
       .mockRejectedValueOnce(new Error('fail'))
       .mockResolvedValueOnce('ok');
 
-    // With full jitter, delay ∈ [0, baseDelayMs). We use a large baseDelayMs
-    // with a small maxDelayMs cap, and a generous timeout to prove the
-    // jittered delay is bounded.
     const start = performance.now();
     await withRetry(fn, { maxAttempts: 2, baseDelayMs: 500, factor: 2, maxDelayMs: 20, jitter: 'full' });
     const elapsed = performance.now() - start;
 
     expect(fn).toHaveBeenCalledTimes(2);
-    // Should complete fast because the actual delay is jittered to ~0-20ms
     expect(elapsed).toBeLessThan(100);
   });
 });
@@ -114,7 +107,6 @@ describe('withRetry - exhaustion', () => {
     const fn = jest.fn().mockRejectedValue(new Error('always fails'));
 
     const result = await withRetry(fn, { maxAttempts: 3, baseDelayMs: 1, maxDelayMs: 5, jitter: 'none' }).catch((e) => e);
-    // Raw errors are wrapped in AppError for consistent downstream handling
     expect(result).toBeInstanceOf(AppError);
     expect((result as AppError).code).toBe(AppErrorCodes.UPSTREAM);
     expect(fn).toHaveBeenCalledTimes(3);
@@ -154,7 +146,7 @@ describe('withRetry - timeout integration', () => {
   it('retries when the timeout fires (recovers after one timeout)', async () => {
     const fn = jest
       .fn()
-      .mockImplementationOnce(() => new Promise<string>(() => {})) // hangs → times out
+      .mockImplementationOnce(() => new Promise<string>(() => {})) 
       .mockResolvedValueOnce('ok');
 
     const result = await withRetry(fn, {

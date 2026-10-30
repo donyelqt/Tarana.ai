@@ -1,7 +1,3 @@
-/**
- * Robust JSON Parser for Food Recommendations
- * Handles malformed AI responses with multiple recovery strategies
- */
 
 import { ResultMatch } from "@/types/tarana-eats";
 import { logger } from "@/lib/observability/logger";
@@ -30,9 +26,6 @@ export class RobustFoodJsonParser {
     'structural_reconstruction'
   ];
 
-  /**
-   * Parse JSON with multiple fallback strategies
-   */
   static parseResponse(response: string): ParseResult {
     logger.info('RobustFoodJsonParser: Starting parse', { entryPoint: PARSER_ENTRY_POINT, responseLength: response.length });
     
@@ -49,7 +42,6 @@ export class RobustFoodJsonParser {
       }
     }
 
-    // Ultimate fallback - return empty structure
     logger.warn('RobustFoodJsonParser: All strategies failed; returning empty structure', { entryPoint: PARSER_ENTRY_POINT });
     return {
       success: true,
@@ -77,9 +69,6 @@ export class RobustFoodJsonParser {
     }
   }
 
-  /**
-   * Strategy 1: Direct JSON parsing
-   */
   private static directParse(response: string): ParseResult {
     const cleaned = response.trim();
     const parsed = JSON.parse(cleaned);
@@ -92,9 +81,6 @@ export class RobustFoodJsonParser {
     };
   }
 
-  /**
-   * Strategy 2: Extract from markdown code blocks
-   */
   private static extractFromCodeBlocks(response: string): ParseResult {
     const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)```/g;
     const matches = [...response.matchAll(codeBlockRegex)];
@@ -118,9 +104,6 @@ export class RobustFoodJsonParser {
     throw new Error('No valid JSON found in code blocks');
   }
 
-  /**
-   * Strategy 3: Extract between first { and last }
-   */
   private static extractBetweenBraces(response: string): ParseResult {
     const firstBrace = response.indexOf('{');
     const lastBrace = response.lastIndexOf('}');
@@ -140,25 +123,17 @@ export class RobustFoodJsonParser {
     };
   }
 
-  /**
-   * Strategy 4: Fix common JSON errors
-   */
   private static fixCommonErrors(response: string): ParseResult {
     let jsonStr = this.extractJsonCandidate(response);
     
-    // Fix trailing commas
     jsonStr = jsonStr.replace(/,(\s*[}\]])/g, '$1');
     
-    // Fix unquoted property names
     jsonStr = jsonStr.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
     
-    // Fix single quotes to double quotes
     jsonStr = jsonStr.replace(/'/g, '"');
     
-    // Fix unescaped quotes in strings
     jsonStr = this.fixUnescapedQuotes(jsonStr);
     
-    // Handle truncated strings
     jsonStr = this.fixTruncatedStrings(jsonStr);
     
     const parsed = JSON.parse(jsonStr);
@@ -171,20 +146,14 @@ export class RobustFoodJsonParser {
     };
   }
 
-  /**
-   * Strategy 5: Aggressive cleaning and reconstruction
-   */
   private static aggressiveCleaning(response: string): ParseResult {
     let jsonStr = this.extractJsonCandidate(response);
     
-    // Remove control characters and normalize whitespace
     jsonStr = jsonStr.replace(/[\x00-\x1F\x7F]/g, '');
     jsonStr = jsonStr.replace(/\s+/g, ' ');
     
-    // Fix malformed arrays and objects
     jsonStr = this.fixMalformedStructures(jsonStr);
     
-    // Ensure proper closing
     jsonStr = this.ensureProperClosing(jsonStr);
     
     const parsed = JSON.parse(jsonStr);
@@ -197,32 +166,24 @@ export class RobustFoodJsonParser {
     };
   }
 
-  /**
-   * Strategy 6: Structural reconstruction from partial data
-   */
   private static structuralReconstruction(response: string): ParseResult {
     const matches: EnhancedResultMatch[] = [];
     
-    // Extract restaurant names
     const nameMatches = response.match(/"name":\s*"([^"]+)"/g) || [];
     const names = nameMatches.map(match => match.match(/"([^"]+)"$/)?.[1]).filter(Boolean);
     
-    // Extract prices
     const priceMatches = response.match(/"price":\s*(\d+)/g) || [];
     const prices = priceMatches.map(match => parseInt(match.match(/(\d+)/)?.[1] || '0'));
     
-    // Extract meals
     const mealMatches = response.match(/"meals":\s*(\d+)/g) || [];
     const meals = mealMatches.map(match => parseInt(match.match(/(\d+)/)?.[1] || '2'));
     
-    // Extract reasons (partial)
     const reasonMatches = response.match(/"reason":\s*"([^"]*)/g) || [];
     const reasons = reasonMatches.map(match => {
       const reason = match.match(/"([^"]*)/)?.[1] || '';
       return reason + (reason.endsWith('.') ? '' : '...');
     });
     
-    // Reconstruct matches
     const maxLength = Math.max(names.length, prices.length, meals.length);
     for (let i = 0; i < maxLength; i++) {
       matches.push({
@@ -241,11 +202,7 @@ export class RobustFoodJsonParser {
     };
   }
 
-  /**
-   * Extract JSON candidate from response
-   */
   private static extractJsonCandidate(response: string): string {
-    // Try to find JSON between braces
     const firstBrace = response.indexOf('{');
     const lastBrace = response.lastIndexOf('}');
     
@@ -253,13 +210,9 @@ export class RobustFoodJsonParser {
       return response.substring(firstBrace, lastBrace + 1);
     }
     
-    // Fallback to entire response
     return response.trim();
   }
 
-  /**
-   * Fix unescaped quotes in string values
-   */
   private static fixUnescapedQuotes(jsonStr: string): string {
     return jsonStr.replace(/"([^"]*)"([^"]*)"([^"]*?)"/g, (match, p1, p2, p3) => {
       if (p2.includes('"')) {
@@ -270,15 +223,10 @@ export class RobustFoodJsonParser {
     });
   }
 
-  /**
-   * Fix truncated strings by closing them properly
-   */
   private static fixTruncatedStrings(jsonStr: string): string {
-    // Find unclosed strings at the end
     const lines = jsonStr.split('\n');
     const lastLine = lines[lines.length - 1];
     
-    // If last line has an unclosed string, close it
     if (lastLine.includes('"') && !lastLine.match(/"[^"]*"$/)) {
       const openQuoteIndex = lastLine.lastIndexOf('"');
       if (openQuoteIndex !== -1) {
@@ -289,11 +237,7 @@ export class RobustFoodJsonParser {
     return lines.join('\n');
   }
 
-  /**
-   * Fix malformed array and object structures
-   */
   private static fixMalformedStructures(jsonStr: string): string {
-    // Ensure arrays are properly closed
     const openBrackets = (jsonStr.match(/\[/g) || []).length;
     const closeBrackets = (jsonStr.match(/\]/g) || []).length;
     
@@ -301,7 +245,6 @@ export class RobustFoodJsonParser {
       jsonStr += ']'.repeat(openBrackets - closeBrackets);
     }
     
-    // Ensure objects are properly closed
     const openBraces = (jsonStr.match(/\{/g) || []).length;
     const closeBraces = (jsonStr.match(/\}/g) || []).length;
     
@@ -312,13 +255,9 @@ export class RobustFoodJsonParser {
     return jsonStr;
   }
 
-  /**
-   * Ensure proper JSON closing
-   */
   private static ensureProperClosing(jsonStr: string): string {
     jsonStr = jsonStr.trim();
     
-    // Remove any trailing text after the last }
     const lastBraceIndex = jsonStr.lastIndexOf('}');
     if (lastBraceIndex !== -1) {
       jsonStr = jsonStr.substring(0, lastBraceIndex + 1);
@@ -327,15 +266,11 @@ export class RobustFoodJsonParser {
     return jsonStr;
   }
 
-  /**
-   * Validate and normalize the parsed data
-   */
   private static validateAndNormalize(data: any): { matches: EnhancedResultMatch[] } {
     if (!data || typeof data !== 'object') {
       return { matches: [] };
     }
     
-    // Handle different response structures
     let matches: any[] = [];
     
     if (data.matches && Array.isArray(data.matches)) {
@@ -346,7 +281,6 @@ export class RobustFoodJsonParser {
       matches = data.recommendations;
     }
     
-    // Normalize each match
     const normalizedMatches: EnhancedResultMatch[] = matches.map((match, index) => ({
       name: match.name || `Restaurant ${index + 1}`,
       meals: parseInt(match.meals) || parseInt(match.pax) || 2,

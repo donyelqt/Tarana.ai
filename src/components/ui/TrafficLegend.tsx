@@ -1,7 +1,3 @@
-/**
- * Traffic Legend Component
- * Displays traffic color coding and information for user awareness
- */
 
 import React from 'react';
 import { TRAFFIC_LEVEL_INFO, LEGEND_TRAFFIC_LEVELS, formatTrafficDelay, getTrafficRecommendation } from '@/lib/utils/trafficColors';

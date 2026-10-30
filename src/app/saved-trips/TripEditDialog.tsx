@@ -27,17 +27,9 @@ import {
 
 const FIELD_MAX = {
   title: 200,
-  // Tags are capped by count, not length, so this is not a per-tag character
-  // limit. It is the raw string the count needs room for: N tags plus the
-  // N-1 ", " separators between them, with a tag running one character at
-  // least, is 3N - 2 long. Sizing it for 50 tags fits any legitimate list
-  // while a 51st cannot be typed — the comma it would need never fits.
-  // `tripEditError` remains the enforcement; this only keeps the field from
-  // accepting what it would refuse.
   tags: 3 * 50 - 2,
 };
 
-/** The budget icons by position, matching Gala's ItineraryForm switch. */
 const BUDGET_ICON: typeof PiggyBank[] = BUDGET_ICONS;
 
 export function TripEditDialog({
@@ -63,8 +55,6 @@ export function TripEditDialog({
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
-  // Seed the draft + date-pair only when the dialog opens, not on every render:
-  // a keystroke re-render must not overwrite what the user is typing.
   useEffect(() => {
     if (open && itinerary) {
       const seeded = draftFromTrip(itinerary);
@@ -76,16 +66,12 @@ export function TripEditDialog({
     }
   }, [open, itinerary]);
 
-  /** The budget selected for the row, kept in sync with the pair on seed. */
   const [budgetValue, setBudgetValue] = useState('');
 
   function setBudgetFromRange(range: TripDateRange) {
-    // Budget is independent from dates; this is a no-op placeholder that
-    // seeds budget from the draft. See `seedBudgetFromRow`.
     setBudgetValue('');
   }
 
-  // The draft's budget must mirror the row so the Popover trigger shows it.
   useEffect(() => {
     if (open && itinerary) {
       setBudgetValue(itinerary.budget ?? '');
@@ -101,9 +87,6 @@ export function TripEditDialog({
     const isoDate = value ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}` : '';
     let next: TripDateRange;
     if (field === 'start') {
-      // End date auto-derives from start + duration, matching Gala and Plan
-      // Mode. A hand-edited end date is overridden when start moves, because
-      // the duration is fixed by the trip and a new start needs a new end.
       const duration = itinerary?.formData?.duration ?? '';
       if (value && duration) {
         const derived = endDateForDuration(value, duration);
@@ -115,7 +98,6 @@ export function TripEditDialog({
       next = { ...dateRange, end: isoDate };
     }
     setDateRange(next);
-    // One-sided → null (empty) so we never write a half-filled pair.
     const written = rowDateFromDateRange(next);
     setDraft((d) => ({ ...d, date: written ?? '' }));
   };
@@ -128,8 +110,6 @@ export function TripEditDialog({
       setError(reason);
       return;
     }
-    // An untouched draft is a no-op save; the write is a wasted round trip
-    // and the row would be re-written with identical values.
     if (!tripEditChanged(itinerary, draft)) {
       setError('Nothing has changed yet.');
       return;
@@ -142,8 +122,6 @@ export function TripEditDialog({
         itinerary.id,
         tripEditPayload(draft, { dates: dateRange, formData: itinerary.formData })
       );
-      // A null return means the row is gone or belongs to someone else; leave
-      // the open form rather than silently claiming success.
       if (!updated) {
         setError('This trip could not be saved. It may have been deleted.');
         return;
@@ -255,7 +233,7 @@ export function TripEditDialog({
                       </Button>
                     );
                   })}
-                  {/* Clear */}
+                  {}
                   <Button
                     variant="ghost"
                     className={cn(

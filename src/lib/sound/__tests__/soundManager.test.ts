@@ -179,7 +179,6 @@ describe('soundManager', () => {
     playHover();
     playClick();
     playClick();
-    // 1 hover osc + 2 click oscs (second of each throttled)
     expect(ctx.createOscillator).toHaveBeenCalledTimes(3);
   });
 });

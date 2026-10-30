@@ -1,7 +1,3 @@
-/**
- * Traffic Color Utilities
- * Provides color coding for traffic levels and congestion visualization
- */
 
 import { TrafficLevel } from '@/types/route-optimization';
 
@@ -22,40 +18,37 @@ export interface TrafficLevelInfo {
   icon: string;
 }
 
-/**
- * Traffic color mapping based on industry standards
- */
 export const TRAFFIC_COLORS: Record<TrafficLevel, TrafficColorScheme> = {
   VERY_LOW: {
-    color: '#10b981', // Emerald
+    color: '#10b981', 
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
     borderColor: '#10b981',
     textColor: '#047857',
     opacity: 0.8
   },
   LOW: {
-    color: '#22c55e', // Green
+    color: '#22c55e', 
     backgroundColor: 'rgba(34, 197, 94, 0.1)',
     borderColor: '#22c55e',
     textColor: '#15803d',
     opacity: 0.8
   },
   MODERATE: {
-    color: '#eab308', // Yellow
+    color: '#eab308', 
     backgroundColor: 'rgba(234, 179, 8, 0.1)',
     borderColor: '#eab308',
     textColor: '#a16207',
     opacity: 0.8
   },
   HIGH: {
-    color: '#f97316', // Orange
+    color: '#f97316', 
     backgroundColor: 'rgba(249, 115, 22, 0.1)',
     borderColor: '#f97316',
     textColor: '#c2410c',
     opacity: 0.8
   },
   SEVERE: {
-    color: '#ef4444', // Red
+    color: '#ef4444', 
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderColor: '#ef4444',
     textColor: '#dc2626',
@@ -63,9 +56,6 @@ export const TRAFFIC_COLORS: Record<TrafficLevel, TrafficColorScheme> = {
   }
 };
 
-/**
- * Detailed traffic level information for user awareness
- */
 export const TRAFFIC_LEVEL_INFO: Record<TrafficLevel, TrafficLevelInfo> = {
   VERY_LOW: {
     level: 'VERY_LOW',
@@ -109,10 +99,6 @@ export const TRAFFIC_LEVEL_INFO: Record<TrafficLevel, TrafficLevelInfo> = {
   }
 };
 
-/**
- * Get traffic color based on congestion score (0-100)
- * Aligned with industry standard thresholds
- */
 export function getTrafficColorFromScore(congestionScore: number): TrafficColorScheme {
   if (congestionScore >= 75) return TRAFFIC_COLORS.SEVERE;
   if (congestionScore >= 50) return TRAFFIC_COLORS.HIGH;
@@ -121,14 +107,6 @@ export function getTrafficColorFromScore(congestionScore: number): TrafficColorS
   return TRAFFIC_COLORS.VERY_LOW;
 }
 
-/**
- * Get traffic level from congestion score (0-100 scale)
- * Industry standard thresholds:
- * - 0-24: VERY_LOW/LOW (Free flow)
- * - 25-49: MODERATE (Light congestion)
- * - 50-74: HIGH (Heavy congestion)
- * - 75-100: SEVERE (Stop-and-go traffic)
- */
 export function getTrafficLevelFromScore(congestionScore: number): TrafficLevel {
   if (congestionScore >= 75) return 'SEVERE';
   if (congestionScore >= 50) return 'HIGH';
@@ -137,9 +115,6 @@ export function getTrafficLevelFromScore(congestionScore: number): TrafficLevel 
   return 'VERY_LOW';
 }
 
-/**
- * Get map polyline style for traffic visualization
- */
 export function getTrafficPolylineStyle(trafficLevel: TrafficLevel, weight: number = 6): {
   color: string;
   weight: number;
@@ -152,14 +127,10 @@ export function getTrafficPolylineStyle(trafficLevel: TrafficLevel, weight: numb
     color: colors.color,
     weight,
     opacity: colors.opacity,
-    // Add dashed lines for severe traffic
     ...(trafficLevel === 'SEVERE' && { dashArray: '10, 5' })
   };
 }
 
-/**
- * Get CSS classes for traffic level styling
- */
 export function getTrafficLevelClasses(trafficLevel: TrafficLevel): string {
   const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
   
@@ -179,9 +150,6 @@ export function getTrafficLevelClasses(trafficLevel: TrafficLevel): string {
   }
 }
 
-/**
- * Get traffic recommendation message based on level
- */
 export function getTrafficRecommendation(trafficLevel: TrafficLevel): {
   message: string;
   action: string;
@@ -227,9 +195,6 @@ export function getTrafficRecommendation(trafficLevel: TrafficLevel): {
   }
 }
 
-/**
- * Format traffic delay for display
- */
 export function formatTrafficDelay(delaySeconds: number): string {
   if (delaySeconds < 60) {
     return `${Math.round(delaySeconds)}s delay`;
@@ -245,9 +210,6 @@ export function formatTrafficDelay(delaySeconds: number): string {
   return `${hours}h ${remainingMinutes}min delay`;
 }
 
-/**
- * Get traffic intensity percentage for visual indicators
- */
 export function getTrafficIntensity(trafficLevel: TrafficLevel): number {
   switch (trafficLevel) {
     case 'VERY_LOW': return 5;
@@ -259,9 +221,6 @@ export function getTrafficIntensity(trafficLevel: TrafficLevel): number {
   }
 }
 
-/**
- * Filtered traffic levels for legend display (combines VERY_LOW and LOW into just LOW)
- */
 export const LEGEND_TRAFFIC_LEVELS = [
   TRAFFIC_LEVEL_INFO.LOW,
   TRAFFIC_LEVEL_INFO.MODERATE,

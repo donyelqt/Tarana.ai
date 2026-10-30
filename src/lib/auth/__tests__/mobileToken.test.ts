@@ -114,11 +114,6 @@ describe('mobileToken utilities', () => {
   });
 
   it('rejects a pre-deploy payload whose stamp key is absent', async () => {
-    // The validator must distinguish "stamped null" (account never changed)
-    // from "missing" (pre-deploy token, uncheckable). Deleting the
-    // `pwdChangedAt` clause from `isMobileTokenPayload` must fail this test;
-    // otherwise the session gate would later compare `null` to a live ISO
-    // value only by luck of the jose round-trip.
     mockedDecode.mockResolvedValue({
       sub: 'user-1',
       id: 'user-1',

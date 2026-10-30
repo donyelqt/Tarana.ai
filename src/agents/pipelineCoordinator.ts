@@ -32,13 +32,8 @@ export class PipelineCoordinator {
     const init = await this.deps.concierge.initialize(request);
     let session = init.requestSession;
 
-    // H2: charge-before - consume before any generation work (AGENTS.md) - skip for bench k6 user.
-    // The exemption is gated on the bypass being active, not just id
-    // equality: a bare UUID match with the bypass disabled must still pay.
     const isBenchUser = benchBypassEnabled() && session.userId === configuredBenchUserId();
     if (isBenchUser) {
-      // Blast-radius control: a leaked BENCH_HMAC_SECRET converts directly to
-      // free generations, so every skip is a warn-level audit event.
       logger.warn("[security] bench identity skipped charge", { entryPoint: "pipelineCoordinator", service: "tarana_gala" });
     }
     const creditService = this.deps.creditService ?? CreditService;
@@ -62,16 +57,12 @@ export class PipelineCoordinator {
 
       return session;
     } catch (error) {
-      // Bookkeeping must never mask the refund below: isolate it so a
-      // store failure still attempts the refund and preserves the error.
       try {
         this.deps.concierge.failSession(session.id, (error as Error).message, error);
       } catch (bookkeepingError) {
         logger.error(`Bookkeeping failed for session ${session.id} (refund still attempted)`, { entryPoint: "pipelineCoordinator", error: bookkeepingError, sessionId: session.id });
       }
       if (charged && !isBenchUser) {
-        // Prefer the injected seam (tests observe it); fall back to the
-        // concrete service so older dep objects keep working.
         const refund =
           creditService.refundCredits?.bind(creditService) ?? CreditService.refundCredits;
         const attemptRefund = async (): Promise<boolean> => {
@@ -93,8 +84,6 @@ export class PipelineCoordinator {
           }
         };
 
-        // Retry the same idempotency key. A distinct key could double-refund
-        // when the first call was a replay/no-op; the RPC key makes retry safe.
         const refunded = (await attemptRefund()) || (await attemptRefund());
         if (refunded) {
           (error as Error & { __galaRefunded?: boolean }).__galaRefunded = true;

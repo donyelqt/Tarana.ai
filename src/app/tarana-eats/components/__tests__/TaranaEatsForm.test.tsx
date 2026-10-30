@@ -5,7 +5,6 @@ import { ToastProvider } from "@/components/ui/use-toast";
 import TaranaEatsForm from "../TaranaEatsForm";
 import { cuisineOptions } from "../../data/formOptions";
 
-// Radix Select needs these DOM APIs that jsdom lacks.
 window.HTMLElement.prototype.scrollIntoView = jest.fn();
 window.HTMLElement.prototype.hasPointerCapture = jest.fn();
 window.HTMLElement.prototype.setPointerCapture = jest.fn();

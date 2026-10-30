@@ -1,8 +1,3 @@
-/**
- * Modern Toast Hook
- * Sleek, minimalist toast notifications with enterprise-grade design
- * Built on shadcn/ui with clean string-based content
- */
 
 import { useToast } from "@/components/ui/use-toast"
 
@@ -10,7 +5,6 @@ export const useModernToast = () => {
   const { toast } = useToast()
 
   return {
-    // Processing state - Minimalist loading
     processing: (title: string, description?: string) => {
       toast({
         title: `🔄 ${title}`,
@@ -19,7 +13,6 @@ export const useModernToast = () => {
       })
     },
 
-    // Success state - Clean success
     success: (title: string, description?: string, features?: string[]) => {
       toast({
         title: `✅ ${title}`,
@@ -29,7 +22,6 @@ export const useModernToast = () => {
       })
     },
 
-    // Optimized state - Already good
     optimized: (title: string, description?: string) => {
       toast({
         title: `⚡ ${title}`,
@@ -39,7 +31,6 @@ export const useModernToast = () => {
       })
     },
 
-    // Error state - Simple error
     error: (title: string, description?: string) => {
       toast({
         title: `❌ ${title}`,
@@ -49,7 +40,6 @@ export const useModernToast = () => {
       })
     },
 
-    // Connection error - Network issue
     connectionError: (title: string, description?: string) => {
       toast({
         title: `📡 ${title}`,

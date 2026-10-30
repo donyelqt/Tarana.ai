@@ -1,13 +1,3 @@
-/**
- * Inline SVG icons shared by the mobile auth screens.
- *
- * The web app pulls these from `lucide-react` (`src/app/auth/signin:14`,
- * `src/app/auth/signup:13`), which is Metro-blocked. These are the exact
- * stroke shapes lucide ships, kept as react-native-svg so the mobile screens
- * render identically to the web mobile view. Raw `<svg>` does not exist in
- * React Native — it red-screens at runtime — so every icon is an `Svg`
- * component with identical path data / strokes / colors.
- */
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Path, Polyline, Circle, Line, Polygon } from 'react-native-svg';
@@ -36,7 +26,6 @@ export function HomeIcon({ size = 16, color = '#ffffff', strokeWidth = 2.5 }: Ic
   );
 }
 
-/** Eye icon — web signin/signup show/hide password toggle. */
 export function EyeIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -55,7 +44,6 @@ export function EyeIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: IconP
   );
 }
 
-/** Eye-slash icon — hide password. */
 export function EyeSlashIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -73,7 +61,6 @@ export function EyeSlashIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: 
   );
 }
 
-/** Checkmark — web signup "Strong password" success indicator. */
 export function CheckIcon({ size = 14, color = '#00cc00' }: IconProps) {
   return (
     <Svg
@@ -91,7 +78,6 @@ export function CheckIcon({ size = 14, color = '#00cc00' }: IconProps) {
   );
 }
 
-/** Bullet — web signup password feedback list. */
 export function BulletIcon({ size = 12, color = '#6b7280' }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
@@ -100,7 +86,6 @@ export function BulletIcon({ size = 12, color = '#6b7280' }: IconProps) {
   );
 }
 
-/** Google "G" mark — exact path data from web `src/app/auth/signin/page.tsx` (viewBox 0 0 48 48). */
 export function GoogleIcon({ size = 16 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48">
@@ -124,7 +109,6 @@ export function GoogleIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-/** Map pin — Trips tab. Same stroke language as the set (2.0 at tab size). */
 export function MapPinIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -143,7 +127,6 @@ export function MapPinIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: Ic
   );
 }
 
-/** Compass — Spots tab. */
 export function CompassIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -162,7 +145,6 @@ export function CompassIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: I
   );
 }
 
-/** Utensils — Eats tab. */
 export function UtensilsIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -182,7 +164,6 @@ export function UtensilsIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: 
   );
 }
 
-/** Gear — Settings tab. */
 export function GearIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -201,7 +182,6 @@ export function GearIcon({ size = 24, color = '#9ca3af', strokeWidth = 2 }: Icon
   );
 }
 
-/** Plus — center action button. Same stroke language (2.5 at large size). */
 export function PlusIcon({ size = 28, color = '#ffffff', strokeWidth = 2.5 }: IconProps) {
   return (
     <Svg
@@ -220,7 +200,6 @@ export function PlusIcon({ size = 28, color = '#ffffff', strokeWidth = 2.5 }: Ic
   );
 }
 
-/** Tilt cube — Explore 3D toggle. Simple geometric mark, same stroke language. */
 export function TiltIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -240,7 +219,7 @@ export function TiltIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: Icon
   );
 }
 
-/** Layers — Explore map-style toggle. Simple geometric mark, same stroke language. */export function LayersIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
+export function LayersIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
       width={size}
@@ -259,12 +238,6 @@ export function TiltIcon({ size = 20, color = '#9ca3af', strokeWidth = 2 }: Icon
   );
 }
 
-/**
- * Explore transport glyphs — primitive-composed (circle/line/rect), NOT
- * traced Lucide paths. lucide-react is Metro-blocked, and the skill bans
- * hand-drawn paths; composing from primitives is the allowed path.
- * Same 24-viewBox stroke language as the set.
- */
 export function CarIcon({ size = 16, color = '#6b7280', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -346,7 +319,6 @@ export function TruckIcon({ size = 16, color = '#6b7280', strokeWidth = 2 }: Ico
   );
 }
 
-/** Sliders — Explore options toggle. Primitive-composed, same stroke language. */
 export function SlidersIcon({ size = 16, color = '#6b7280', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -369,8 +341,6 @@ export function SlidersIcon({ size = 16, color = '#6b7280', strokeWidth = 2 }: I
   );
 }
 
-/** Search — lucide `search`: circle + diagonal handle. Home search entry
- *  uses this instead of the font-dependent ⌕ glyph (same stroke language). */
 export function SearchIcon({ size = 20, color = '#6b7280', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -389,8 +359,6 @@ export function SearchIcon({ size = 20, color = '#6b7280', strokeWidth = 2 }: Ic
   );
 }
 
-/** Chevron-right — lucide `chevron-right`: disclosure cue for navigation
- *  rows and tappable cards (same stroke language, never emoji/glyph). */
 export function ChevronRightIcon({ size = 20, color = '#6b7280', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -408,8 +376,6 @@ export function ChevronRightIcon({ size = 20, color = '#6b7280', strokeWidth = 2
   );
 }
 
-/** Chevron-left — lucide `chevron-left`: visible back affordance for
- *  chromeless pushed screens (same stroke language). */
 export function ChevronLeftIcon({ size = 22, color = '#ffffff', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -427,9 +393,6 @@ export function ChevronLeftIcon({ size = 22, color = '#ffffff', strokeWidth = 2 
   );
 }
 
-/** Traffic cone — web `lucide-react` TrafficCone (SpotlightCard:76, saved-trips:608).
- *  Exact path data from node_modules/lucide-react/dist/esm/icons/traffic-cone.js;
- *  stroke-only, viewBox 0 0 24 24, stroke language 2.0. */
 export function TrafficConeIcon({ size = 14, color = '#16a34a', strokeWidth = 2 }: IconProps) {
   return (
     <Svg
@@ -450,14 +413,6 @@ export function TrafficConeIcon({ size = 14, color = '#16a34a', strokeWidth = 2 
   );
 }
 
-// Re-exported as a RN-friendly wrapper so consumers can render via JSX without
-// touching the SVG namespace.
-/**
- * Trash icon — lucide `Trash2`, the same one the web saved-trips row uses
- * (`src/app/saved-trips/page.tsx`). Mobile list rows use it for the delete
- * control; the stroke alone (no fill) reads as a smaller target than a
- * filled X, which matters because it sits beside a navigation target.
- */
 export function TrashIcon({ size = 18, color = '#dc2626', strokeWidth = 2 }: IconProps) {
   return (
     <Svg

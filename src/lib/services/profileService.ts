@@ -17,14 +17,6 @@ export interface ProfileUpdate {
 
 const PROFILE_COLUMNS = 'id, email, full_name, image, location, bio';
 
-/**
- * Fetch a profile by email. Email is lowercased here so every caller gets
- * the same lookup. Throws on DB error — the route maps that to 500.
- *
- * The route owns auth (withAuthEmail) and the HTTP shape; this service owns
- * the DB read so the route can be unit-tested by mocking one function
- * instead of the whole Supabase client chain.
- */
 export async function getProfileByEmail(email: string): Promise<UserProfile> {
   const { data, error } = await supabaseAdmin
     .from('users')
@@ -46,11 +38,6 @@ export async function getProfileByEmail(email: string): Promise<UserProfile> {
   };
 }
 
-/**
- * Update a profile by email. Fields arrive sanitized and validated by the
- * route; the timestamp is a DB-write concern, so it lives here. Throws on
- * DB error — the route maps that to 500.
- */
 export async function updateProfileByEmail(
   email: string,
   update: ProfileUpdate

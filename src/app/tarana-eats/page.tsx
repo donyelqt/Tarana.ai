@@ -46,9 +46,7 @@ export default function TaranaEatsPage() {
       setLoading(true);
       setIsGenerated(true);
       
-      // Check if we have AI-generated results already
       if (data.matches) {
-        // Ensure all matches have valid images
         const validatedMatches = data.matches.map((match: any) => ({
           ...match,
           image: match.image && match.image !== "" ? match.image : "/images/placeholders/hero-placeholder.svg"
@@ -60,21 +58,17 @@ export default function TaranaEatsPage() {
         return;
       }
       
-      // If we received form values, use them to filter restaurants
       const formValues = data as TaranaEatsFormValues;
       setFormInputs(formValues);
       
-      // Filter restaurants based on form values
       const filteredRestaurants = combinedFoodData.restaurants
         .filter(restaurant => {
-          // Filter by cuisine if specified
           if (formValues.cuisine && formValues.cuisine !== "Show All") {
             if (!restaurant.cuisine.includes(formValues.cuisine)) {
               return false;
             }
           }
           
-          // Filter by dietary restrictions
           if (formValues.restrictions && formValues.restrictions.length > 0) {
             const hasAllRestrictions = formValues.restrictions.every(restriction => 
               restaurant.dietaryOptions.includes(restriction)
@@ -84,7 +78,6 @@ export default function TaranaEatsPage() {
             }
           }
           
-          // Filter by meal type
           if (formValues.mealType && formValues.mealType.length > 0) {
             const hasMatchingMealType = formValues.mealType.some(mealType => 
               restaurant.popularFor.includes(mealType)

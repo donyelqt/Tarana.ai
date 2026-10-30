@@ -1,8 +1,6 @@
 import type { NextRequest } from "next/server";
 import { withAuth } from "../withAuth";
 
-// House convention (see register route tests): jsdom lacks Response.json,
-// which NextResponse.json calls internally. Polyfill it when missing.
 const MockedResponse = globalThis.Response as unknown as {
   new (body?: unknown, init?: any): any;
   json(body: unknown, init?: any): any;

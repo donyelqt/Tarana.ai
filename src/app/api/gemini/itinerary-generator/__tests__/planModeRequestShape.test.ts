@@ -1,22 +1,5 @@
-/**
- * Plan Mode must not send `weatherData: null`.
- *
- * `itineraryRequestSchema` types `weatherData` as an object with
- * `.passthrough().optional()`. Zod's `.optional()` accepts `undefined` and
- * rejects `null`, so a body carrying the key with a null value fails
- * validation and the route answers 400 "Invalid request payload" before any
- * generation, charge, or refund happens. Every Tarana Eats generation failed
- * this way while route calculation kept working.
- *
- * The fix is not to omit the key. Weather is load-bearing: the route derives
- * `weatherType` from it and `weatherMatch` filters the activity pool, so a
- * plan built without it would not be the plan Gala builds for the same input.
- * Plan Mode therefore fetches real weather for the generated city, exactly as
- * the Gala page does.
- */
 import { z } from 'zod'
 
-// Mirror of itineraryRequestSchema (api/gemini/itinerary-generator/route.ts:32-57).
 const itineraryRequestSchema = z.object({
   prompt: z.string().min(1).max(5000),
   weatherData: z.object({
@@ -68,8 +51,6 @@ const weather = {
 
 describe('itinerary generator request shape', () => {
   it('rejects weatherData: null, the shape Plan Mode used to send', () => {
-    // JSON.stringify keeps a null value as a present key, so this is what the
-    // route actually received, not a theoretical shape.
     const body = JSON.parse(JSON.stringify({ ...base, weatherData: null }))
 
     const parsed = itineraryRequestSchema.safeParse(body)

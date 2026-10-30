@@ -1,9 +1,3 @@
-// ====================================================================
-// HIRAYA CAFE MENU DATA
-// ====================================================================
-// Hiraya Café in Baguio offers a cozy, inviting space where guests can enjoy 
-// freshly brewed coffee, Filipino-inspired comfort food, and indulgent desserts.
-// ====================================================================
 
 import { FullMenu } from "../types";
 
@@ -106,7 +100,6 @@ export const hirayaCafeMenu: FullMenu = {
   ],
   Snacks: [],
   Drinks: [
-    // Coffee Drinks
     {
       name: "Long Black",
       description: "Bold espresso over hot water for a strong flavor.",
@@ -179,7 +172,6 @@ export const hirayaCafeMenu: FullMenu = {
       price: 195,
       image: "/images/comingsoon.png",
     },
-    // Non-Coffee Drinks
     {
       name: "Choco Latte",
       description: "Smooth and creamy hot chocolate.",
@@ -216,7 +208,6 @@ export const hirayaCafeMenu: FullMenu = {
       price: 195,
       image: "/images/comingsoon.png",
     },
-    // Refreshers (Iced)
     {
       name: "Coco Mint",
       description: "Coconut-infused drink with a minty finish.",

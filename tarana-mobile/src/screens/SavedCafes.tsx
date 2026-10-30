@@ -30,19 +30,9 @@ import {
   type RowDeleteModel,
 } from './savedRowDelete';
 
-/**
- * SavedCafes — the active profile's saved meals from SQLite (§8).
- *
- * Web list skeleton recomposed native: header + search + rows
- * (name, price, location, View). No credits, no tiers, no invites.
- * Empty state points at Eats (built §8 order).
- */
 export default function SavedCafes({ navigation }: { navigation: any }) {
   const [meals, setMeals] = useState<LocalMeal[] | null>(null);
   const [query, setQuery] = useState('');
-  // Meal type, budget, cuisine — the web list's three other selects
-  // (src/app/saved-meals/page.tsx:132-165). Held as plain strings so the
-  // predicates in ./savedMeals own the vocabulary, not the screen.
   const [mealType, setMealType] = useState<string>(ALL_FILTER);
   const [budget, setBudget] = useState<string>(ALL_FILTER);
   const [cuisine, setCuisine] = useState<string>(ALL_FILTER);
@@ -66,16 +56,6 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
     }
   }, []);
 
-  /**
-   * Two-way sync's export direction. The screen never touches `fetch` — it
-   * calls the seam, which owns the idempotency key, the per-meal failure
-   * collection, and the no-delete conflict rule.
-   *
-   * Only a failure the seam attributes to the whole run (an unusable profile,
-   * no linked token) reaches the error line; per-meal reasons arrive inside
-   * `exportSummary` and are rendered as the failure list, so one bad meal
-   * never masquerades as a broken export.
-   */
   const runExport = useCallback(async () => {
     setExporting(true);
     setError(null);
@@ -99,21 +79,6 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
     load();
   }, [load]);
 
-  /**
-   * Per-row delete: first tap arms, second tap deletes. Same two-step
-   * contract as SavedTrips' delete (SavedTrips.tsx:116-160) — the rules
-   * themselves live in savedRowDelete.ts so both saved lists share ONE
-   * definition and the "never deletes on the first tap" part is covered
-   * by headless tests.
-   *
-   * LOCAL ONLY, same as the trips side: this removes the SQLite row and
-   * nothing else, so a row already exported to web comes back on the next
-   * import. Web-side delete propagation is a separate change with its own
-   * auth and idempotency questions.
-   *
-   * On failure the row stays put and the reason reaches the error line,
-   * because a silent no-op reads as a broken control.
-   */
   const onDeleteMeal = useCallback(
     async (meal: LocalMeal) => {
       if (!tapDeletes(deleteModel, meal.id)) {
@@ -127,9 +92,6 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
         if (!profileId) throw new Error('No active profile; the row was not removed.');
         await deleteMeal(meal.id, profileId);
         deleted = true;
-        // Refresh from the seam rather than splicing state: the list is
-        // already re-read on focus, and a local filter would drift from
-        // what SQLite actually holds.
         await load();
       } catch (e) {
         setError(rowDeleteErrorMessage(e, ROW_DELETE_FALLBACK_REASON));
@@ -147,11 +109,6 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
   );
 
   const visible = filterSavedMeals(meals ?? [], { query, mealType, budget, cuisine });
-  // "No meals match your filters" ≠ "you have no saved meals". With filters
-  // active and rows failing them, the rows are still on the device — the copy
-  // must say the filter is the reason, or the user reads it as data loss and
-  // goes looking for the meals. Only with everything off does an empty list
-  // mean an empty list.
   const filtersActive = query.trim() !== '' || mealType !== ALL_FILTER || budget !== ALL_FILTER || cuisine !== ALL_FILTER;
   const emptyTitle = filtersActive && visible.length === 0 ? 'No meals match' : 'No saved cafes yet';
   const emptyBody =
@@ -172,8 +129,6 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
   const countText = meals.length === 1 ? '1 cafe saved' : `${meals.length} cafes saved`;
 
   return (
-    // Top inset only (Home precedent): content clears the notch /
-    // punch-hole camera and status bar.
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F2F7' }} edges={['top']}>
     <View style={{ flex: 1, backgroundColor: '#F2F2F7' }} className="px-4 pt-4">
       <View style={styles.band}>
@@ -207,11 +162,7 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
             placeholderTextColor="#9ca3af"
             accessibilityLabel="Search saved cafes"
           />
-          {/* Meal type, budget, cuisine — the web list's three selects,
-              recomposed as pill rows so they sit under the search inside the
-              gradient band without redesigning the screen. Same vocabulary
-              and band edges as web (src/app/saved-meals/page.tsx:132-165);
-              the options come from ./savedMeals, not from this screen. */}
+          {}
           <View style={styles.filters}>
             <FilterRow label="Meal type" options={MEAL_TYPE_OPTIONS} selected={mealType} onSelect={setMealType} />
             <FilterRow label="Budget" options={BUDGET_OPTIONS} selected={budget} onSelect={setBudget} />
@@ -246,10 +197,6 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
       <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
-        // Saved rows are RECORDS (what the user keeps), while CafeDetail is
-        // catalog browsing — a saved row must show what was saved, its total
-        // and its actions, which is SavedMealDetail's job. Re-picking dishes
-        // stays CafeDetail's, reachable from Eats.
         renderItem={({ item }) => {
           const del = rowDeleteState(deleteModel, item.id);
           return (
@@ -269,8 +216,7 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
               <Text className="mt-1 text-xs text-muted-foreground">{item.location}</Text>
             ) : null}
           </TouchableOpacity>
-          {/* Sibling of the row, not a child: nesting two pressables is what
-              makes a delete arm the row (or open the row) by accident. */}
+          {}
           <TouchableOpacity
             activeOpacity={0.7}
             disabled={del === 'deleting'}
@@ -286,11 +232,6 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
           </View>
           );
         }}
-        // Progress + summary live below the list, matching the card/row
-        // language above rather than introducing a modal. Nothing is hidden
-        // behind a tap: the counts the seam returns are the whole report.
-        // (A `//` comment, not `{/* */}`: this sits inside FlatList's
-        // attribute list, where only line comments are legal.)
         ListFooterComponent={
           <View style={styles.exportFooter}>
             <TouchableOpacity
@@ -300,15 +241,14 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
               accessibilityLabel="Export cafes to the web"
               onPress={() => void runExport()}
             >
-              {/* Gradient while idle, web `disabled:bg-gray-300` while running. */}
+              {}
               <LinearGradient
                 colors={exporting ? [GRADIENT.disabled.from, GRADIENT.disabled.to] : [GRADIENT.app.from, GRADIENT.app.to]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.exportGradient}
               >
-                {/* The label never disappears: a spinner with no text reads as
-                    a frozen UI, and the action must stay readable mid-run. */}
+                {}
                 <Text style={styles.exportButtonText}>{exporting ? 'Exporting…' : 'Export to web'}</Text>
                 {exporting ? <ActivityIndicator size="small" color="#ffffff" style={styles.exportSpinner} /> : null}
               </LinearGradient>
@@ -340,21 +280,6 @@ export default function SavedCafes({ navigation }: { navigation: any }) {
   );
 }
 
-/**
- * One compact filter row: label + horizontally scrolling pills.
- *
- * Pure StyleSheet (no className) and the active pill takes the app gradient,
- * matching SpotCityPills' language — same pill, same state treatment, so this
- * reads as the screen's existing control rather than a new one. `all` is the
- * first pill of every row and is a normal reset, not a special case.
- *
- * The lane is a horizontal ScrollView inside the gradient band. It carves its
- * own height (`flexGrow: 0`) rather than borrowing the band's: a vertical
- * flex parent that is not bounded would otherwise let the pills inherit the
- * leftover space — the giant-pills bug SpotCityPills calls out. Pills never
- * shrink to fit; the lane scrolls, which is how the cuisine row (16 options
- * from the catalog) stays readable on a narrow phone.
- */
 function FilterRow({
   label,
   options,

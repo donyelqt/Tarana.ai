@@ -1,11 +1,5 @@
 import { WeatherData, fetchWeatherFromAPI } from "@/lib/core";
 
-/**
- * Fetch and process weather data for a location
- * @param lat Latitude (defaults to Baguio for backward compat)
- * @param lon Longitude (defaults to Baguio for backward compat)
- * @returns Promise with weather data or null
- */
 export const fetchWeatherData = async (
   lat?: number,
   lon?: number
@@ -20,23 +14,13 @@ export const fetchWeatherData = async (
   }
 };
 
-/**
- * Get appropriate weather icon URL from weather data
- * @param weatherData The weather data object
- * @returns Weather icon URL
- */
 export const getWeatherIconUrl = (weatherData: WeatherData | null): string => {
   if (!weatherData || !weatherData.weather || !weatherData.weather[0] || !weatherData.weather[0].icon) {
-    return "https://openweathermap.org/img/wn/01d@2x.png"; // Default sunny icon
+    return "https://openweathermap.org/img/wn/01d@2x.png"; 
   }
   return `https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png`;
 };
 
-/**
- * Get a user-friendly description of the current weather
- * @param weatherData The weather data object
- * @returns Formatted weather description
- */
 export const getWeatherDescription = (weatherData: WeatherData | null): string => {
   if (!weatherData) {
     return "Weather data unavailable";

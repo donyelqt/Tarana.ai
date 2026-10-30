@@ -1,29 +1,3 @@
-/**
- * Dish selection shaping — the observable contract of what a picked set of
- * dishes becomes when it is written to the opaque `items` column and the
- * web-visible `price` / `meal_type` columns.
- *
- * This is the mobile half of the web save: `useTaranaEatsService.saveToMeals`
- * sets price to the sum of the selected items and stores the full selection
- * in menu_items, so a meal saved on one surface and viewed on the other shows
- * every dish. Before this, mobile wrote only the first dish of the active
- * tab, so a phone-saved meal showed one dish on web.
- *
- * The functions are pure and exported from `../savedMeals`, so these tests
- * need no navigation stack, no SQLite, and no React Native render.
- *
- * What is pinned here, and why each is a contract rather than a detail:
- * 1. The total is the sum of the picked prices. The row price is the cost of
- *    what the user chose, not the first dish they happened to see.
- * 2. A null price contributes nothing and cannot make the total NaN, which
- *    would fail the web schema's positive-number guard.
- * 3. `meal_type` is a web-valid value, not a mobile tab label, because the
- *    web filter matches it by exact equality.
- * 4. A multi-tab selection files the row under its dominant tab, because the
- *    row must name where the meal actually sits.
- * 5. The snapshot holds every picked dish plus quantity, matching MenuItem
- *    and the web popup's "price x quantity" rendering.
- */
 import { describe, expect, it } from '@jest/globals';
 import {
   selectedDishMealType,
@@ -36,7 +10,6 @@ function dish(name: string, price: number | null, tab = 'Lunch'): DishSelection 
   return { name, price, tab };
 }
 
-/** The web meal-type mapper, matched to `toWebMealType` in the data seam. */
 const toWebMealType = (tab: string | null | undefined): string | null => {
   if (!tab) return null;
   if (tab === 'Snacks') return 'Snack';
@@ -95,8 +68,6 @@ describe('snapshotSelection — the whole selection survives', () => {
   });
 
   it('round-trips through the parser the detail screen reads with', () => {
-    // parseSavedItems lives in the same module; a snapshot the reader cannot
-    // parse back would make "Your saved dishes" silently empty.
     const { parseSavedItems } = require('../savedMeals') as typeof import('../savedMeals');
     const picked = [dish('Shawarma', 180), dish('Rice', 40)];
     const parsed = parseSavedItems(snapshotSelection(picked));

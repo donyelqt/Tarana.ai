@@ -1,11 +1,6 @@
 import { normalizeImagePath, getFallbackImage } from '@/lib/images/imageUtils';
 import { mapRowToSavedItinerary } from '@/lib/data/itineraryMapper';
 
-/**
- * The collection/[id] routes must serve the exact shape the saved-trips UI
- * destructures (camelCase + normalized image). These tests pin that contract
- * against raw DB rows, including legacy JSON-text columns.
- */
 describe('saved-itineraries mapper', () => {
   const row = {
     id: 'itin-1',

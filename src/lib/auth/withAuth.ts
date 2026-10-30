@@ -1,13 +1,3 @@
-/**
- * Auth helpers for API route handlers.
- *
- * `withAuth` enforces an authenticated session and injects the resolved
- * `userId` into the handler. Use it to wrap mutating / billable routes so an
- * unauthenticated request can never reach generation or credit logic.
- *
- * `getUserId` is the non-throwing variant for endpoints that only need an
- * optional identity (e.g. gating a destructive action).
- */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -31,7 +21,6 @@ export type AuthedHandler = (
 
 export function withAuth(handler: AuthedHandler) {
   return async function (req: NextRequest, ctx?: unknown): Promise<NextResponse> {
-    // Bench bypass for k6 (non-prod only): same HMAC proof as concierge.
     const benchUserId = resolveBenchUserId(req.headers.get(BENCH_TOKEN_HEADER));
     if (benchUserId !== null) {
       return handler(req, benchUserId, ctx);
@@ -43,17 +32,6 @@ export function withAuth(handler: AuthedHandler) {
 }
 
 
-/**
- * Variant for routes that key on the user's EMAIL, not id.
- *
- * Only 2 routes need email (profile; saved-itineraries/[id]/refresh logs it):
- * `withAuth` resolves id-only, so they would each re-call `getServerSession`
- * inline — the exact duplication this boundary exists to remove.
- *
- * Bench requests get a synthetic identity: the bench user id plus a
- * non-email sentinel, so a bench request can never accidentally match a real
- * user's email row.
- */
 export type AuthedEmailHandler = (
   req: NextRequest,
   identity: { userId: string; email: string }

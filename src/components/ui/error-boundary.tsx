@@ -39,7 +39,6 @@ class ErrorBoundary extends Component<Props, State> {
       errorInfo
     });
 
-    // Call optional error callback
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
@@ -59,12 +58,10 @@ class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      // Default error UI
       return (
         <div className="min-h-[400px] flex items-center justify-center p-8">
           <div className="max-w-md w-full text-center">

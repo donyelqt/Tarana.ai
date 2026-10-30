@@ -25,10 +25,6 @@ const calculateSchema = z.object({
   waypoints: z.array(coordinateSchema).max(10).optional(),
 }).passthrough();
 
-/**
- * POST /api/routes/calculate
- * Calculate optimal route with traffic analysis
- */
 export async function POST(request: NextRequest) {
   return timedHttp(LOG_ENTRY_POINT, 'POST', async () => {
   const correlationId = getRequestId(request);
@@ -60,11 +56,8 @@ export async function POST(request: NextRequest) {
       correlationId
     );
 
-    // Forward the browser's Referer so TomTom's Referer allowlist accepts the
-    // server-side call (the browser already sends an allowed Referer for the map).
     const forwardedReferer = request.headers.get('referer') || request.headers.get('origin') || undefined;
 
-    // Calculate primary route
     const primaryRoute = await tomtomRoutingService.calculateRoute(routeRequest, forwardedReferer);
     logger.info(
       'Primary route calculated',
@@ -72,7 +65,6 @@ export async function POST(request: NextRequest) {
       correlationId
     );
 
-    // Calculate alternative routes (parallel to traffic analysis)
     const [alternativeRoutes, trafficAnalysis] = await Promise.all([
       tomtomRoutingService.getAlternativeRoutes(routeRequest, forwardedReferer).catch(() => {
         logger.warn('Alternative routes unavailable', { entryPoint: LOG_ENTRY_POINT }, correlationId);
@@ -94,7 +86,6 @@ export async function POST(request: NextRequest) {
       correlationId
     );
 
-    // Analyze alternative routes traffic if available
     let alternativeAnalyses: RouteTrafficAnalysis[] = [];
     if (alternativeRoutes.length > 0) {
       alternativeAnalyses = await Promise.all(
@@ -111,7 +102,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate route comparison and recommendations
     let routeComparison = null;
     let recommendations: RouteRecommendation[] = [];
 
@@ -133,12 +123,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
-    // Generate general recommendations based on traffic analysis
     if (recommendations.length === 0) {
       recommendations = generateTrafficRecommendations(trafficAnalysis, primaryRoute);
     }
 
-    // Build response
     const response: RouteCalculationResponse = {
       primaryRoute,
       alternativeRoutes,
@@ -153,12 +141,10 @@ export async function POST(request: NextRequest) {
       timestamp: new Date()
     };
 
-    // Add alternative analyses to response if available
     if (alternativeAnalyses.length > 0) {
       (response as any).alternativeAnalyses = alternativeAnalyses;
     }
 
-    // Add comparison metrics if available
     if (routeComparison) {
       (response as any).comparisonMetrics = routeComparison.comparisonMetrics;
     }
@@ -182,14 +168,11 @@ export async function POST(request: NextRequest) {
   }, (res) => res.status);
 }
 
-/**
- * Create fallback traffic analysis when primary analysis fails
- */
 function createFallbackTrafficAnalysis(route: RouteData): RouteTrafficAnalysis {
   return {
     overallTrafficLevel: 'MODERATE',
     segmentAnalysis: [],
-    estimatedDelay: 300, // 5 minutes default delay
+    estimatedDelay: 300, 
     alternativeRecommendation: false,
     peakHourImpact: {
       isCurrentlyPeakHour: false,
@@ -202,11 +185,10 @@ function createFallbackTrafficAnalysis(route: RouteData): RouteTrafficAnalysis {
       currentVsTypical: 1.1,
       weekdayPattern: [1.0, 0.8, 0.9, 1.2, 1.4, 1.3, 0.7],
       hourlyPattern: Array.from({ length: 24 }, (_, i) => {
-        // Generate realistic hourly pattern
-        if (i >= 7 && i <= 9) return 1.5; // Morning rush
-        if (i >= 17 && i <= 19) return 1.6; // Evening rush
-        if (i >= 12 && i <= 14) return 1.2; // Lunch
-        if (i >= 22 || i <= 5) return 0.6; // Night
+        if (i >= 7 && i <= 9) return 1.5; 
+        if (i >= 17 && i <= 19) return 1.6; 
+        if (i >= 12 && i <= 14) return 1.2; 
+        if (i >= 22 || i <= 5) return 0.6; 
         return 1.0;
       })
     },
@@ -216,9 +198,6 @@ function createFallbackTrafficAnalysis(route: RouteData): RouteTrafficAnalysis {
   };
 }
 
-/**
- * Generate traffic-based recommendations
- */
 function generateTrafficRecommendations(trafficAnalysis: RouteTrafficAnalysis, route: RouteData) {
   const recommendations = [];
   
@@ -252,7 +231,6 @@ function generateTrafficRecommendations(trafficAnalysis: RouteTrafficAnalysis, r
     });
   }
   
-  // Add peak hour warnings
   if (trafficAnalysis.peakHourImpact.isCurrentlyPeakHour) {
     recommendations.push({
       type: 'alternative' as const,
@@ -262,7 +240,6 @@ function generateTrafficRecommendations(trafficAnalysis: RouteTrafficAnalysis, r
     });
   }
   
-  // Add incident warnings
   const totalIncidents = trafficAnalysis.segmentAnalysis.reduce(
     (sum, segment) => sum + segment.incidents.length, 
     0

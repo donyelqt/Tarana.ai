@@ -1,24 +1,3 @@
-/**
- * Mobile auth background decorations — formula-level replication of the web
- * formulas in `src/components/auth/GeminiSparkles.tsx` (implement, don't
- * reinterpret).
- *
- * - `DotsGrid` mirrors web `FadingDotGrid` defaults: dot #93c5fd, 3px
- *   diameter, 14px pitch, region 55% × 60% anchored top-right. The web mask
- *   `radial-gradient(ellipse 70% 70% at 70% 20%, black 0%, 40% at 55%,
- *   transparent 100%)` is replicated as a product-of-two-edge-fades anchored at
- *   the top-right corner (see `maskAlpha`), since RN has no CSS mask to clip
- *   the region with. The wedge dissolves before the form, so it never reads
- *   as a square block.
- * - `Sparkles` mirrors web `GeminiSparkles` (blue variant): seeded LCG,
- *   count 35, size 2+r()*5, opacity 0.18+r()*0.45, color rgba(96,165,250,·).
- *   The web twinkle is ported to RN `Animated` (reanimated is not a dep):
- *   `gemini-pulse` (scale 1→1.6, opacity bump) and `gemini-drift` (translate
- *   path) run per-dot with the web `delay`/`animationDuration` stagger, and a
- *   double halo glow approximates the web `boxShadow`.
- *
- * Render-behind only: pointerEvents="none", non-accessible, no zIndex/elevation.
- */
 import React, { memo, useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -28,41 +7,18 @@ const DOT_SIZE = 3;
 const DOT_RADIUS = DOT_SIZE / 2;
 const GRID_PITCH = 14;
 
-/**
- * Corner fade — bright at the top-right corner, fading to transparent toward
- * the left edge, the bottom edge, and the bottom-left corner.
- *
- * The web `FadingDotGrid` mask is
- *   radial-gradient(ellipse 70% 70% at 70% 20%, black 0%, 40% at 55%, transparent 100%)
- * i.e. an oval glow concentrated in the upper-right. RN can't paint a CSS mask,
- * so the fade is evaluated per-dot. A radial fade is the wrong tool here: it
- * leaves the grid's rectangular bounding box fully populated (dots at the far
- * corners merely turn dim), which reads as an "awkward square" behind the
- * form — the bottom-right corner stays bright and the right edge is a solid
- * vertical band all the way down to the input fields.
- *
- * A product-of-two-edge-fades is the right shape: `alpha = (1 - tx^P) *
- * (1 - ty^Q)` anchored at the top-right corner. At the left edge (tx=1) it is
- * zero, at the bottom edge (ty=1) it is zero, and at the bottom-right corner
- * (tx=0, ty=1) it is ALSO zero — so every rectangular outline dissolves and
- * only a diagonal wedge in the upper-right remains. The horizontal exponent
- * is slightly lower than the vertical so the wedge spreads leftward more than
- * it descends, i.e. the visible band slants left.
- */
-const FADE_X = 0.85; // horizontal (leftward) fade exponent — lower = wider band
-const FADE_Y = 1.5; // vertical (downward) fade exponent — higher = dies faster
+const FADE_X = 0.85; 
+const FADE_Y = 1.5; 
 
 function maskAlpha(nx: number, ny: number): number {
-  // nx, ny are normalized 0..1 within the grid region (0,0 = top-left).
-  const tx = 1 - nx; // 0 at right edge, 1 at left edge
-  const ty = ny; // 0 at top edge, 1 at bottom edge
+  const tx = 1 - nx; 
+  const ty = ny; 
   const fx = 1 - Math.pow(tx, FADE_X);
   const fy = 1 - Math.pow(ty, FADE_Y);
   const alpha = fx * fy;
   return alpha < 0 ? 0 : alpha;
 }
 
-/** Deterministic pseudo-random — exact LCG copy from web `GeminiSparkles`. */
 function seededRandom(seed: number) {
   let s = seed;
   return () => {
@@ -74,10 +30,6 @@ function seededRandom(seed: number) {
 export const DotsGrid = memo(function DotsGrid() {
   const { width: winW, height: winH } = useWindowDimensions();
 
-  // Anchored top-right (matches the web `FadingDotGrid` corner="top-right",
-  // widthFraction 0.55, heightFraction 0.6). The fade is a product-of-two-
-  // edge-fades anchored at the top-right corner, so the visible dots form a
-  // diagonal wedge — never a square block — and dissolve before the form.
   const regionW = winW * 0.55;
   const regionH = winH * 0.6;
 
@@ -131,9 +83,7 @@ type SparkleDot = {
   duration: number;
 };
 
-/** Web `gemini-pulse`: scale 1→1.6 with opacity bump, ease-in-out infinite. */
 const PULSE_MAX_SCALE = 1.6;
-/** Web `gemini-drift`: translate path that returns to origin, ease-in-out infinite. */
 const DRIFT_PATH = [
   { x: 0, y: 0, s: 1 },
   { x: 3, y: -4, s: 1.1 },
@@ -146,8 +96,6 @@ export const Sparkles = memo(function Sparkles() {
   const { width: winW, height: winH } = useWindowDimensions();
 
   const dots = useMemo<SparkleDot[]>(() => {
-    // RNG consumes x, y, size, opacity, delay in the same order as the web
-    // `GeminiSparkles` so the dot layout matches the web frame exactly.
     const rng = seededRandom(42);
     const arr: SparkleDot[] = [];
     for (let i = 0; i < SPARKLE_COUNT; i++) {
@@ -169,9 +117,6 @@ export const Sparkles = memo(function Sparkles() {
     return arr;
   }, [winW, winH]);
 
-  // Per-dot animated values. RN `Animated.timing` has no startDelay, so the
-  // web `animationDelay` is reproduced by initializing each dot's phase from
-  // its delay and looping a 1-duration cycle — the stagger is preserved.
   const pulseScale = useRef(dots.map(() => new Animated.Value(1)));
   const pulseOpacity = useRef(dots.map(() => new Animated.Value(1)));
   const driftX = useRef(dots.map(() => new Animated.Value(0)));
@@ -184,8 +129,6 @@ export const Sparkles = memo(function Sparkles() {
     dots.forEach((dot, i) => {
       const startAt = dot.delay * 1000;
       const loop = () => {
-        // `gemini-drift` path: 5 keyframes (incl. return to origin), X, Y and
-        // scale move in parallel per frame, one full cycle per `duration`.
         const driftSeg = (dot.duration * 1000) / (DRIFT_PATH.length - 1);
         const driftSeq = Animated.sequence(
           DRIFT_PATH.slice(1).map((p) =>
@@ -211,7 +154,6 @@ export const Sparkles = memo(function Sparkles() {
             ])
           )
         );
-        // `gemini-pulse`: scale 1→1.6→1 over the same `duration` period.
         const pulseSeg = (dot.duration * 1000) / 2;
         const pulseSeq = Animated.sequence([
           Animated.timing(pulseScale.current[i], {
@@ -227,7 +169,6 @@ export const Sparkles = memo(function Sparkles() {
             useNativeDriver: true,
           }),
         ]);
-        // Opacity bumps in lockstep with the scale pulse.
         const pulseOSeq = Animated.sequence([
           Animated.timing(pulseOpacity.current[i], {
             toValue: PULSE_MAX_SCALE,
@@ -243,8 +184,6 @@ export const Sparkles = memo(function Sparkles() {
           }),
         ]);
 
-        // Restart each sequence when it completes so the staggered phase is
-        // preserved indefinitely (RN has no native startDelay).
         const driftLoop = () => driftSeq.start(driftLoop);
         const pulseLoop = () => pulseSeq.start(pulseLoop);
         const pulseOLoop = () => pulseOSeq.start(pulseOLoop);
@@ -339,10 +278,7 @@ const styles = StyleSheet.create({
   },
   sparkleDot: {
     position: 'absolute',
-    // Pivot the scale/translate at the dot centre so the pulse and drift
-    // stay centred on the halo stack.
     transformOrigin: 'center',
-    // Halos are stacked centred inside the dot's bounding box.
   },
   halo: {
     position: 'absolute',

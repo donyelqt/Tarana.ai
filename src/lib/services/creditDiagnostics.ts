@@ -1,31 +1,11 @@
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
 
-/**
- * Read-only diagnostics probes for the credit system.
- *
- * These back the dev-only `diagnostics` and `test-consumption` routes (both
- * 404 in production). They are deliberately separate from
- * `referral-system/CreditService`: that class owns money-path domain
- * operations (balance, consume, refund with unlimited-bypass and
- * throw-on-failure semantics), while these probes return raw outcomes
- * ({ data, error } pairs, existence flags) so the routes can assemble
- * step-by-step diagnostic traces — including failure branches like a
- * missing `consume_credits` function that the domain layer would throw on.
- *
- * Probes never throw for query results; they surface `{ error }` and let the
- * route decide. The routes stay thin orchestrators: auth (withAuth),
- * response assembly, and HTTP shape.
- */
 
 export interface ProbeError {
   message: string;
   code?: string;
 }
 
-// Postgres `details`/`hint` name constraints, columns, and sometimes values.
-// They are not needed to act on the failure (callers branch on `code`, e.g.
-// 42883 for a missing function), and these probes render their errors into
-// dev/preview responses, so the schema hints are dropped at the source.
 function toProbeError(error: { message: string; code?: string }): ProbeError {
   return {
     message: error.message,
@@ -33,7 +13,6 @@ function toProbeError(error: { message: string; code?: string }): ProbeError {
   };
 }
 
-/** CHECK 1/3 shape: does `table` exist and answer a probe select? */
 export async function checkTableExists(
   table: 'user_profiles' | 'credit_transactions'
 ): Promise<{ exists: boolean; error?: ProbeError }> {
@@ -46,8 +25,6 @@ export async function checkTableExists(
   return { exists: true };
 }
 
-/** Fetch one user profile row. Null profile with a PGRST116 code means
- *  "no rows" — callers treat that as absent, not broken. */
 export async function getUserProfileRow(
   userId: string
 ): Promise<{ profile: Record<string, unknown> | null; error?: ProbeError }> {
@@ -67,11 +44,6 @@ export async function getUserProfileRow(
   return { profile: data as Record<string, unknown> };
 }
 
-/** CHECK 4 shape: does the `consume_credits` RPC function exist?
- *  An RPC-level error (e.g. no `sql` endpoint) falls back to
- *  schema-structure inference, mirroring the route's original fallback.
- *  Unexpected throws (e.g. unconfigured client) propagate so the route's
- *  catch can derive existence from the table checks, as before. */
 export async function checkConsumeCreditsFunction(): Promise<{
   exists: boolean;
   note?: string;
@@ -98,7 +70,6 @@ export async function checkConsumeCreditsFunction(): Promise<{
   return { exists: rows?.[0]?.exists || false };
 }
 
-/** Recent credit transactions for a user, newest first. */
 export async function getRecentTransactions(
   userId: string,
   limit: number,
@@ -124,9 +95,6 @@ export async function getRecentTransactions(
   return { transactions: (data as unknown[]) ?? [] };
 }
 
-/** Raw `consume_credits` RPC call for the consumption test step. Returns the
- *  raw outcome (no throws, no unlimited-bypass, no balance re-reads) so the
- *  route can record step success/failure exactly as before. */
 export async function consumeTestCredit(
   userId: string
 ): Promise<{ data: unknown; error?: ProbeError }> {

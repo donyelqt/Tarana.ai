@@ -10,17 +10,14 @@ import { getRequestId } from '@/middleware/requestId';
 import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 import crypto from 'crypto';
 
-// Strict rate limiter for password reset attempts
 const passwordResetRateLimit = createRateLimitMiddleware(rateLimitConfigs.passwordReset);
 
 export async function POST(request: NextRequest) {
   return timedHttp('/api/auth/forgot-password', 'POST', async () => {
     const requestId = getRequestId(request);
     try {
-      // Check required environment variables
       checkRequiredEnvVars(['NEXTAUTH_SECRET', 'SUPABASE_SERVICE_ROLE_KEY', 'SMTP_HOST']);
 
-      // Apply strict rate limiting for password reset
       const rateLimitResult = passwordResetRateLimit(request);
       if (!rateLimitResult.allowed) {
         const response = NextResponse.json(
@@ -43,7 +40,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Sanitize email input
       const sanitizedEmail = sanitizeEmail(email);
       if (!sanitizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
         return NextResponse.json(
@@ -52,29 +48,23 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Check if user exists
       const user = await findUserByEmailFromSupabase(sanitizedEmail);
 
-      // Always return success to prevent email enumeration attacks
       if (!user) {
         return NextResponse.json({
           message: 'If an account with that email exists, we have sent a password reset link.',
         });
       }
 
-      // Generate secure reset token
       const resetToken = crypto.randomBytes(32).toString('hex');
-      const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
+      const resetTokenExpiry = new Date(Date.now() + 3600000); 
 
-      // Retention: clear stale tokens (requested-never-used) so they cannot
-      // outlive their window. Best-effort; the request must still proceed.
       try {
         await clearExpiredResetTokens();
       } catch (sweepError) {
         logger.warn('Expired reset-token sweep failed', { entryPoint: '/api/auth/forgot-password', ...getSafeErrorMetadata(sweepError) }, requestId);
       }
 
-      // Store reset token in database
       try {
         await storeResetToken(user.id, resetToken, resetTokenExpiry);
       } catch (updateError) {
@@ -92,10 +82,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Send password reset email
       const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`;
 
-      // Import email service dynamically to avoid issues
       const { sendPasswordResetEmail } = await import('@/lib/email');
       const emailSent = await sendPasswordResetEmail(sanitizedEmail, resetUrl);
 

@@ -1,37 +1,13 @@
-/**
- * Zero-dep RED metrics for HTTP routes.
- *
- * Mirrors the zero-dep convention in `logger.ts` / `refundMetrics.ts`:
- * no `prom-client`, no lockfile churn, no cold-start state beyond a
- * module-level accumulator (same serverless caveat as refundMetrics —
- * per-instance counts, meaningful within an invocation burst; the
- * exposition endpoint scrapes whatever this instance has seen).
- *
- * On-call questions this answers (per the observability skill):
- * 1. What fraction of requests fail? → `http_requests_total` by
- *    `status_class` (SLO numerator/denominator in `docs/slo.md`).
- * 2. Is an endpoint slower than usual? → `http_request_duration_seconds`
- *    bucket counts (p50/p95/p99 computable from buckets, never averages).
- *
- * Cardinality rule: labels come from small fixed sets only —
- * `route` is a static template string chosen by the caller (never a raw
- * URL, user id, or error message), `method` is the HTTP verb,
- * `status_class` is `2xx`/`4xx`/`5xx`. Anything unbounded belongs in
- * logs/traces, never here.
- */
 
 export type StatusClass = '2xx' | '4xx' | '5xx';
 
 export interface HttpObservation {
-  /** Static route template, e.g. `/api/credits/balance` or `/api/saved-itineraries/[id]`. */
   route: string;
   method: string;
   statusClass: StatusClass;
-  /** Seconds, wall-clock. */
   durationSeconds: number;
 }
 
-/** Fixed histogram buckets (seconds) — shared by every route. */
 export const DURATION_BUCKETS = [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5];
 
 export function toStatusClass(status: number): StatusClass {
@@ -49,7 +25,6 @@ interface SeriesKey {
 interface Series {
   count: number;
   errorCount: number;
-  /** Cumulative bucket counts: bucketCounts[i] = observations with d <= DURATION_BUCKETS[i]. */
   bucketCounts: number[];
   bucketSum: number;
 }
@@ -80,12 +55,6 @@ export function observeHttp(obs: HttpObservation): void {
   }
 }
 
-/**
- * Time one handler invocation and record the observation.
- * Returns the handler's response unchanged so call sites stay one line.
- * Default status read narrows with `in` (no inline cast): a response
- * without a numeric `status` field counts as 200.
- */
 function defaultStatusOf(res: unknown): number {
   if (res && typeof res === 'object' && 'status' in res && typeof res.status === 'number') {
     return res.status;
@@ -113,7 +82,6 @@ export async function timedHttp<T>(
   }
 }
 
-/** Test seam: clear all accumulated series. */
 export function resetHttpMetrics(): void {
   series.clear();
 }
@@ -128,7 +96,6 @@ export interface SeriesSnapshot {
   bucketSum: number;
 }
 
-/** Snapshot for exposition and tests (defensive copies). */
 export function snapshotHttpMetrics(): SeriesSnapshot[] {
   return [...series.values()].map(({ key, data }) => ({
     route: key.route,
@@ -141,15 +108,10 @@ export function snapshotHttpMetrics(): SeriesSnapshot[] {
   }));
 }
 
-/** Escape label values for Prometheus exposition format. */
 function esc(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
 }
 
-/**
- * Render Prometheus text exposition (subset: counter + histogram).
- * Route/method/status_class are the only labels — all bounded by the caller.
- */
 export function renderPrometheusExposition(): string {
   const lines: string[] = [
     '# HELP http_requests_total Total HTTP requests.',

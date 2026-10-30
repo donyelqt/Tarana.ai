@@ -1,7 +1,3 @@
-/**
- * TomTom Maps SDK Utility Service
- * Provides centralized SDK management, initialization, and error handling
- */
 
 export type MapStyle = 'main' | 'satellite';
 
@@ -20,10 +16,8 @@ export interface TomTomMapConfig {
   maxZoom?: number;
 }
 
-// Precise Baguio City coordinates (City Hall area)
 export const BAGUIO_CITY_COORDINATES: [number, number] = [120.5937, 16.4023];
 
-// Optimal zoom levels for different views
 export const ZOOM_LEVELS = {
   WORLD: 2,
   COUNTRY: 6,
@@ -33,7 +27,6 @@ export const ZOOM_LEVELS = {
   BUILDING: 18
 } as const;
 
-// Default camera tilt (degrees) for the pseudo-3D "tilted city" perspective.
 export const DEFAULT_MAP_PITCH = 55;
 
 export const MAP_STYLES: Record<MapStyle, { name: string; description: string; tomtomStyle: string; requiresApiKey: boolean }> = {
@@ -78,9 +71,6 @@ class TomTomMapService {
     return TomTomMapService.instance;
   }
 
-  /**
-   * Get current SDK status
-   */
   public getStatus(): TomTomSDKStatus {
     return {
       isLoaded: this.isSDKLoaded,
@@ -90,16 +80,11 @@ class TomTomMapService {
     };
   }
 
-  /**
-   * Load TomTom SDK with proper error handling and retries
-   */
   public async loadSDK(): Promise<void> {
-    // Return existing promise if already loading
     if (this.sdkLoadPromise) {
       return this.sdkLoadPromise;
     }
 
-    // Return immediately if already loaded
     if (this.isSDKLoaded && this.isSDKAvailable()) {
       return Promise.resolve();
     }
@@ -113,9 +98,6 @@ class TomTomMapService {
     }
   }
 
-  /**
-   * Internal SDK loading implementation
-   */
   private async loadSDKInternal(): Promise<void> {
     let lastError: Error | null = null;
 
@@ -141,31 +123,20 @@ class TomTomMapService {
     throw new Error(this.loadingError);
   }
 
-  /**
-   * Single attempt to load the SDK
-   */
   private async attemptSDKLoad(): Promise<void> {
-    // Check if SDK is already available
     if (this.isSDKAvailable()) {
       return;
     }
 
-    // Remove existing resources
     this.removeExistingResources();
 
-    // Load CSS first
     await this.loadCSS();
 
-    // Load JavaScript SDK
     await this.loadJavaScript();
 
-    // Wait for SDK to be fully available
     await this.waitForSDKReady();
   }
 
-  /**
-   * Check if TomTom SDK is available and functional
-   */
   private isSDKAvailable(): boolean {
     return !!(
       typeof window !== 'undefined' &&
@@ -177,26 +148,18 @@ class TomTomMapService {
     );
   }
 
-  /**
-   * Remove existing TomTom resources
-   */
   private removeExistingResources(): void {
-    // Remove existing script
     const existingScript = document.querySelector('script[src*="maps-web.min.js"]');
     if (existingScript) {
       existingScript.remove();
     }
 
-    // Remove existing CSS
     const existingCSS = document.querySelector('link[href*="maps.css"]');
     if (existingCSS) {
       existingCSS.remove();
     }
   }
 
-  /**
-   * Load TomTom CSS
-   */
   private async loadCSS(): Promise<void> {
     return new Promise((resolve, reject) => {
       const link = document.createElement('link');
@@ -211,9 +174,6 @@ class TomTomMapService {
     });
   }
 
-  /**
-   * Load TomTom JavaScript SDK
-   */
   private async loadJavaScript(): Promise<void> {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -228,9 +188,6 @@ class TomTomMapService {
     });
   }
 
-  /**
-   * Wait for SDK to be fully ready
-   */
   private async waitForSDKReady(timeout: number = 10000): Promise<void> {
     const startTime = Date.now();
     
@@ -249,11 +206,7 @@ class TomTomMapService {
     });
   }
 
-  /**
-   * Create a TomTom map instance with proper error handling
-   */
   public async createMap(config: TomTomMapConfig): Promise<any> {
-    // Ensure SDK is loaded
     await this.loadSDK();
 
     if (!this.isSDKAvailable()) {
@@ -269,7 +222,6 @@ class TomTomMapService {
     }
 
     try {
-      // Get the TomTom style configuration
       const styleConfig = MAP_STYLES[config.style || 'main'];
       if (!styleConfig) {
         throw new Error(`Invalid map style: ${config.style}`);
@@ -277,7 +229,6 @@ class TomTomMapService {
       
       let tomtomStyle = styleConfig.tomtomStyle;
       
-      // Append API key to URL-based styles
       if (styleConfig.requiresApiKey && tomtomStyle.startsWith('https://')) {
         tomtomStyle = `${tomtomStyle}&key=${config.apiKey}`;
       }
@@ -288,7 +239,6 @@ class TomTomMapService {
       console.log('API Key available:', !!config.apiKey);
       console.log('Container element:', config.container);
 
-      // Create map with verified working configuration
       const mapOptions = {
         key: config.apiKey,
         container: config.container,
@@ -306,7 +256,6 @@ class TomTomMapService {
       
       console.log('Map options:', mapOptions);
 
-      // Verify TomTom SDK is available
       if (!window.tt || !window.tt.map) {
         throw new Error('TomTom SDK not loaded');
       }
@@ -324,18 +273,14 @@ class TomTomMapService {
       await this.waitForMapReady(map);
       console.log('✅ Map is ready for use');
 
-      // 3D terrain features disabled (not supported in simplified style set)
 
-      // Traffic layer configuration
       if (config.enableTraffic) {
         console.log('🚦 Traffic layer will be enabled');
       } else {
         console.log('🚫 Traffic layer disabled - clean map display');
       }
 
-      // Add navigation controls if enabled (with delay)
       if (config.enableControls) {
-        // Don't await - add asynchronously to avoid blocking
         this.addNavigationControls(map).catch(error => {
           console.warn('Navigation controls initialization failed:', error);
         });
@@ -348,14 +293,9 @@ class TomTomMapService {
     }
   }
 
-  /**
-   * Wait for map to be ready (simplified)
-   */
   private async waitForMapReady(map: any): Promise<void> {
-    // Simple delay approach that works reliably
     await this.delay(1000);
     
-    // Basic validation
     if (!map || typeof map.getContainer !== 'function') {
       throw new Error('Map instance is not functional');
     }
@@ -364,15 +304,10 @@ class TomTomMapService {
     return Promise.resolve();
   }
 
-  /**
-   * Add traffic layer to map with delay
-   */
   private async addTrafficLayer(map: any, apiKey: string): Promise<void> {
     try {
-      // Add a small delay before adding traffic layer
       await this.delay(200);
       
-      // Check if map is still valid
       if (!map || typeof map.addSource !== 'function') {
         console.warn('Map is not ready for traffic layer');
         return;
@@ -395,19 +330,13 @@ class TomTomMapService {
       });
     } catch (error) {
       console.warn('Failed to add traffic layer:', error);
-      // Don't throw - traffic layer is optional
     }
   }
 
-  /**
-   * Add navigation controls to map with delay
-   */
   private async addNavigationControls(map: any): Promise<void> {
     try {
-      // Add a small delay before adding controls
       await this.delay(100);
       
-      // Check if map is still valid
       if (!map || typeof map.addControl !== 'function') {
         console.warn('Map is not ready for navigation controls');
         return;
@@ -420,7 +349,6 @@ class TomTomMapService {
         map.addControl(new window.tt.FullscreenControl(), 'top-right');
       }
       
-      // Add pitch control for 3D viewing
       if (window.tt && window.tt.PitchControl) {
         map.addControl(new window.tt.PitchControl(), 'top-right');
       }
@@ -429,9 +357,6 @@ class TomTomMapService {
     }
   }
 
-  /**
-   * Enable 3D terrain visualization
-   */
   private async enable3DTerrain(map: any): Promise<void> {
     try {
       await this.delay(300);
@@ -441,7 +366,6 @@ class TomTomMapService {
         return;
       }
 
-      // Add terrain source
       map.addSource('terrain-source', {
         type: 'raster-dem',
         url: 'mapbox://mapbox.terrain-rgb',
@@ -449,13 +373,11 @@ class TomTomMapService {
         maxzoom: 14
       });
 
-      // Set terrain
       map.setTerrain({
         source: 'terrain-source',
         exaggeration: 1.2
       });
 
-      // Add sky layer for better 3D effect
       map.addLayer({
         id: 'sky',
         type: 'sky',
@@ -469,9 +391,6 @@ class TomTomMapService {
     }
   }
 
-  /**
-   * Test if a TomTom style URL is valid by making a test request
-   */
   private async testStyleUrl(styleUrl: string): Promise<boolean> {
     try {
       const response = await fetch(styleUrl, { method: 'HEAD' });
@@ -482,10 +401,6 @@ class TomTomMapService {
     }
   }
 
-  /**
-   * Change map style dynamically with proper TomTom API handling
-   * TomTom doesn't support runtime style changes like Mapbox, so we recreate the map
-   */
   public async changeMapStyle(map: any, newStyle: MapStyle, apiKey?: string, container?: HTMLElement): Promise<any> {
     try {
       if (!map) {
@@ -498,7 +413,6 @@ class TomTomMapService {
 
       console.log(`🎨 Attempting to change map style to: ${newStyle}`);
       
-      // Get current map state
       const currentCenter = map.getCenter ? map.getCenter() : { lng: BAGUIO_CITY_COORDINATES[0], lat: BAGUIO_CITY_COORDINATES[1] };
       const currentZoom = map.getZoom ? map.getZoom() : ZOOM_LEVELS.CITY;
       const mapContainer = container || map.getContainer();
@@ -507,7 +421,6 @@ class TomTomMapService {
         throw new Error('Map container not found');
       }
 
-      // Store current map state for restoration
       const mapState = {
         center: [currentCenter.lng || currentCenter.lon || BAGUIO_CITY_COORDINATES[0], 
                 currentCenter.lat || BAGUIO_CITY_COORDINATES[1]],
@@ -518,7 +431,6 @@ class TomTomMapService {
 
       console.log('📍 Current map state:', mapState);
 
-      // Use TomTom's actual available styles with distinct visual differences
       let tomtomStyle: string;
       
       switch (newStyle) {
@@ -534,13 +446,11 @@ class TomTomMapService {
 
       console.log('🔗 Style URL:', tomtomStyle);
 
-      // Test the style URL first
       const isValidStyle = await this.testStyleUrl(tomtomStyle);
       if (!isValidStyle) {
         console.warn(`⚠️ Style URL may be invalid, proceeding anyway: ${tomtomStyle}`);
       }
 
-      // Remove the old map instance
       try {
         if (map.remove) {
           map.remove();
@@ -549,17 +459,15 @@ class TomTomMapService {
         console.warn('Error removing old map:', error);
       }
 
-      // Clear the container
       mapContainer.innerHTML = '';
 
-      // Create new map with the new style
       const newMapConfig: TomTomMapConfig = {
         apiKey: apiKey,
         container: mapContainer,
         center: mapState.center as [number, number],
         zoom: mapState.zoom,
         style: newStyle,
-        enableTraffic: false, // Disable traffic for cleaner styles
+        enableTraffic: false, 
         enableControls: true,
         enable3D: false,
         enableTerrain: false,
@@ -568,18 +476,16 @@ class TomTomMapService {
         maxZoom: ZOOM_LEVELS.BUILDING
       };
 
-      // Override the style URL in the config
       const originalCreateMap = this.createMap.bind(this);
       const self = this;
       
-      // Temporarily override createMap to use our custom style URL
       this.createMap = async function(config: TomTomMapConfig) {
         const mapOptions = {
           key: config.apiKey,
           container: config.container,
           center: config.center,
           zoom: config.zoom,
-          style: tomtomStyle, // Use our custom style URL
+          style: tomtomStyle, 
           dragPan: true,
           scrollZoom: true,
           boxZoom: true,
@@ -615,10 +521,8 @@ class TomTomMapService {
       try {
         const newMap = await this.createMap(newMapConfig);
         
-        // Restore original createMap method
         this.createMap = originalCreateMap;
         
-        // Restore map state
         if (newMap.setBearing && mapState.bearing !== 0) {
           newMap.setBearing(mapState.bearing);
         }
@@ -629,7 +533,6 @@ class TomTomMapService {
         console.log(`✅ Successfully changed map style to: ${newStyle}`);
         return newMap;
       } catch (error) {
-        // Restore original createMap method on error
         this.createMap = originalCreateMap;
         throw error;
       }
@@ -637,7 +540,6 @@ class TomTomMapService {
     } catch (error) {
       console.error(`❌ Failed to change map style to ${newStyle}:`, error);
       
-      // Provide detailed error information
       if (error instanceof Error) {
         console.error('Error details:', {
           message: error.message,
@@ -652,9 +554,6 @@ class TomTomMapService {
     }
   }
 
-  /**
-   * Reset the service state (useful for testing or recovery)
-   */
   public reset(): void {
     this.sdkLoadPromise = null;
     this.isSDKLoaded = false;
@@ -662,9 +561,6 @@ class TomTomMapService {
     this.retryCount = 0;
   }
 
-  /**
-   * Wait for map style change to complete
-   */
   private async waitForStyleChange(map: any, timeout: number = 5000): Promise<void> {
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
@@ -680,14 +576,12 @@ class TomTomMapService {
         }
       };
 
-      // Set up timeout
       timeoutId = setTimeout(() => {
         cleanup();
         console.warn('Style change timeout - proceeding anyway');
-        resolve(); // Don't reject, just proceed
+        resolve(); 
       }, timeout);
 
-      // Try to listen for style change event if available
       if (map.on && typeof map.on === 'function') {
         styleChangeHandler = () => {
           cleanup();
@@ -695,7 +589,6 @@ class TomTomMapService {
         };
         map.on('styledata', styleChangeHandler);
       } else {
-        // Fallback to simple delay if event system not available
         setTimeout(() => {
           cleanup();
           resolve();
@@ -704,20 +597,13 @@ class TomTomMapService {
     });
   }
 
-  /**
-   * Utility method to create a delay
-   */
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
-// Export singleton instance
 export const tomtomMapService = TomTomMapService.getInstance();
 
-/**
- * Calculate optimal map bounds and center for given locations
- */
 export function calculateOptimalMapView(locations: Array<{ lat: number; lng: number }>) {
   if (locations.length === 0) {
     return {
@@ -733,7 +619,6 @@ export function calculateOptimalMapView(locations: Array<{ lat: number; lng: num
     };
   }
 
-  // Calculate bounds
   const lats = locations.map(loc => loc.lat);
   const lngs = locations.map(loc => loc.lng);
   
@@ -742,11 +627,9 @@ export function calculateOptimalMapView(locations: Array<{ lat: number; lng: num
   const minLng = Math.min(...lngs);
   const maxLng = Math.max(...lngs);
 
-  // Calculate center
   const centerLat = (minLat + maxLat) / 2;
   const centerLng = (minLng + maxLng) / 2;
 
-  // Calculate distance to determine zoom level
   const latDiff = maxLat - minLat;
   const lngDiff = maxLng - minLng;
   const maxDiff = Math.max(latDiff, lngDiff);
@@ -763,9 +646,6 @@ export function calculateOptimalMapView(locations: Array<{ lat: number; lng: num
   };
 }
 
-/**
- * Get optimized map configuration for world map display
- */
 export function getWorldMapConfig(apiKey: string, container: HTMLElement, style: MapStyle = 'main'): TomTomMapConfig {
   return {
     apiKey,
@@ -783,7 +663,6 @@ export function getWorldMapConfig(apiKey: string, container: HTMLElement, style:
   };
 }
 
-// Export utility functions
 export const createTomTomMap = (config: TomTomMapConfig) => tomtomMapService.createMap(config);
 export const loadTomTomSDK = () => tomtomMapService.loadSDK();
 export const getTomTomSDKStatus = () => tomtomMapService.getStatus();

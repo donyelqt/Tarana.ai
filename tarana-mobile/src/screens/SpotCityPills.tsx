@@ -3,18 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CITY_CONFIGS, type CityId } from 'tarana-web/data/cityConfig';
 import { GRADIENT } from './ui';
 
-/**
- * City pills row — pure StyleSheet, zero className (matches Home's pills).
- *
- * Layout rule this module depends on: a horizontal lane must sit under
- * UNBOUNDED height (a vertical ScrollView root, like Home's hub). As a
- * direct child of a bounded flex:1 View the lane adopts the remaining
- * space and the pills stretch — that was the giant-pills bug. Spots root
- * is a ScrollView for exactly this reason (which also un-cuts the
- * show-all rows below the fold). Visual tokens follow Home's pills
- * (white + hairline border inactive, 13px blue text, app-gradient
- * vertical active).
- */
 export default function SpotCityPills({
   cities,
   city,
@@ -33,7 +21,6 @@ export default function SpotCityPills({
     >
       {cities.map((c) => {
         const active = c === city;
-        // Short names like Home ("Baguio", not "Baguio City").
         const shortName = CITY_CONFIGS[c].name.replace(/ City$/, '');
         const label = (
           <Text style={[styles.pillText, active && styles.pillTextActive]}>{shortName}</Text>

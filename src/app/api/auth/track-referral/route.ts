@@ -8,15 +8,12 @@ import { withRetry } from '@/lib/upstream/withRetry';
 import { ReferralService } from '@/lib/referral-system/ReferralService';
 import type { CreateReferralResult } from '@/lib/referral-system/types';
 
-/**
- * API endpoint to track referrals after user signup
- * Called from frontend after successful authentication
- */
+
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/auth/track-referral', 'POST', async () => {
   const requestId = getRequestId(req);
   try {
-    // Get referral code from request body
+    
     const body = await req.json();
     const { referralCode } = body;
 
@@ -30,11 +27,11 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     const code = referralCode.trim().toUpperCase();
     logger.info('Tracking referral', { userIdLength: userId.length }, requestId);
 
-    // The caller's profile may not exist immediately after signup, so
-    // transient DB failures retry through the shared helper (3 attempts, 1s
-    // fixed delay — same budget as the old hand-rolled loop). Business
-    // outcomes (invalid/self/duplicate) return { success: false } and are
-    // NOT retried: the old loop re-ran them 3x to the same answer.
+    
+    
+    
+    
+    
     let result: CreateReferralResult;
     try {
       result = await withRetry(
@@ -61,7 +58,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    // Handle known error types
+    
     if (message.includes('Invalid referral code')) {
       return NextResponse.json(
         { error: 'Invalid referral code' },

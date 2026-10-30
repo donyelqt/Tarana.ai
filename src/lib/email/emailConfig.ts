@@ -1,4 +1,3 @@
-// Email configuration validation and setup utilities
 export interface EmailConfig {
   host: string;
   port: number;
@@ -12,7 +11,6 @@ export interface EmailConfig {
 export function validateEmailConfig(): EmailConfig | null {
   const requiredVars = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
   
-  // Check if all required environment variables are present
   for (const varName of requiredVars) {
     if (!process.env[varName]) {
       console.warn(`Missing required environment variable: ${varName}`);
@@ -38,7 +36,6 @@ export function getEmailTransportConfig() {
     return null;
   }
 
-  // SendGrid-specific optimizations
   const isSendGrid = config.host === 'smtp.sendgrid.net';
 
   return {
@@ -49,18 +46,14 @@ export function getEmailTransportConfig() {
       user: config.user,
       pass: config.pass,
     },
-    // Security and reliability options
     tls: {
       rejectUnauthorized: process.env.NODE_ENV === 'production',
     },
-    // SendGrid-optimized timeouts
-    connectionTimeout: isSendGrid ? 60000 : 30000, // 60s for SendGrid
-    socketTimeout: isSendGrid ? 60000 : 30000, // 60s for SendGrid
-    greetingTimeout: isSendGrid ? 30000 : 10000, // 30s for SendGrid
-    // Enable debug logging in development
+    connectionTimeout: isSendGrid ? 60000 : 30000, 
+    socketTimeout: isSendGrid ? 60000 : 30000, 
+    greetingTimeout: isSendGrid ? 30000 : 10000, 
     debug: process.env.NODE_ENV === 'development',
     logger: process.env.NODE_ENV === 'development',
-    // SendGrid-specific headers
     ...(isSendGrid && {
       headers: {
         'X-Priority': '1',

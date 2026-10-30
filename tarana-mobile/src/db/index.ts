@@ -1,20 +1,3 @@
-/**
- * Local-first store — SQLite source of truth for the mobile app (§2.1).
- *
- * Two tables, one contract:
- * - `profiles` — a single active local profile in v1 (`profile_id` is
- *   nullable on trips so multi-profile later is additive, not a migration).
- * - `trips` — local CRUD + one-way web imports. Imports dedupe on
- *   `(source, source_id)` so re-importing never duplicates.
- *
- * Security: every value crosses via bound `?` parameters (prepared
- * statements under the hood). `execAsync` runs the static schema string
- * only — never interpolated input.
- * API verified against expo-sqlite SDK 57 docs
- * (https://docs.expo.dev/versions/latest/sdk/sqlite/):
- * `openDatabaseAsync` / `execAsync` / `runAsync` / `getFirstAsync` /
- * `getAllAsync`, WAL via PRAGMA, versioning via `PRAGMA user_version`.
- */
 import * as SQLite from 'expo-sqlite';
 import * as TokenStorage from '../tokenStorage';
 import { parseStoredGoodFor } from './goodFor';
@@ -42,7 +25,6 @@ export type LocalTrip = {
   date: string | null;
   budget: string | null;
   tags: string[];
-  /** Full itinerary JSON, opaque to queries. Null for hand-made/imported-light rows. */
   payload: string | null;
   source: 'local' | 'web-import';
   source_id: string | null;
@@ -125,9 +107,6 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   const current = row?.user_version ?? 0;
   if (current >= SCHEMA_VERSION) return;
-  // v1: fresh tables only.
-  // v2: added trips/meals tables.
-  // v3: added email, avatar_url, location, bio to profiles table.
   if (current === 0) {
     await db.execAsync(SCHEMA);
   } else if (current === 1) {
@@ -156,7 +135,6 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
 
 function newId(): string {
   try {
-    // Hermes (modern) implements crypto.randomUUID.
     return crypto.randomUUID();
   } catch {
     return `p-${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffffff).toString(36)}`;
@@ -197,7 +175,6 @@ function toTrip(row: TripRow): LocalTrip {
   };
 }
 
-// ── Profiles ─────────────────────────────────────────────
 
 export async function createProfile(displayName: string, extras?: { email?: string | null; avatar_url?: string | null; location?: string | null; bio?: string | null }): Promise<LocalProfile> {
   const name = cleanDisplayName(displayName);
@@ -228,7 +205,6 @@ export async function clearActiveProfile(): Promise<void> {
   await TokenStorage.deleteItemAsync(ACTIVE_PROFILE_KEY);
 }
 
-// ── Trips ────────────────────────────────────────────────
 
 export async function createTrip(input: {
   profileId: string;
@@ -265,10 +241,6 @@ export async function listTripsByProfile(profileId: string): Promise<LocalTrip[]
   return rows.map(toTrip);
 }
 
-/**
- * One-way web import. Idempotent on (source, source_id): re-importing the
- * same web itinerary updates the local copy instead of duplicating it.
- */
 export async function upsertImportedTrip(input: {
   profileId: string;
   sourceId: string;
@@ -309,18 +281,6 @@ export async function upsertImportedTrip(input: {
   return toTrip(row);
 }
 
-/**
- * Edit a local trip's own fields.
- *
- * `payload` (the itinerary JSON) is updated only when tripEditPayload supplies it,
- * which only happens for end-date re-derivation on a start-date edit, so an
- * edit here still cannot silently rewrite a generated itinerary body.
- * All other edits leave the payload untouched, matching the prior contract.
- *
- * A missing id is a no-op rather than an error, matching deleteTrip: both
- * are scoped by (id, profile) so a row belonging to another profile is
- * simply not found.
- */
 export async function updateTrip(
   id: string,
   profileId: string,
@@ -357,7 +317,6 @@ export async function deleteTrip(id: string, profileId: string): Promise<void> {
   await db.runAsync('DELETE FROM trips WHERE id = ? AND profile_id = ?', id, profileId);
 }
 
-// ── Meals ────────────────────────────────────────────────
 
 function toMeal(row: MealRow): LocalMeal {
   const goodFor = parseStoredGoodFor(row.good_for);
@@ -421,11 +380,6 @@ export async function deleteMeal(id: string, profileId: string): Promise<void> {
   await db.runAsync('DELETE FROM meals WHERE id = ? AND profile_id = ?', id, profileId);
 }
 
-/**
- * One-way web import. Idempotent on (source, source_id): re-importing the
- * same web meal updates the local copy instead of duplicating it.
- * Mirrors upsertImportedTrip (same source/source_id UNIQUE contract).
- */
 export async function upsertImportedMeal(input: {
   profileId: string;
   sourceId: string;
@@ -471,58 +425,15 @@ export async function upsertImportedMeal(input: {
   return toMeal(row);
 }
 
-// ── Export → web id link ──────────────────────────────────
 
-/** The two tables that carry the import idempotency key `(source, source_id)`. */
 export type ExportedTable = 'trips' | 'meals';
 
-/**
- * Record the web id of an exported LOCAL row on that row (`source_id`).
- *
- * Why this exists: `upsertImportedTrip`/`upsertImportedMeal` dedupe on
- * `(source, source_id)` with `ON CONFLICT(source, source_id)`, and SQLite
- * treats NULLs as DISTINCT in a UNIQUE index, so a local row that was
- * pushed to the web but kept `source_id IS NULL` can never match a later
- * import of that same web row — the import inserts a SECOND row and the user
- * sees the trip or meal twice. Writing the returned web id here is what
- * closes that round trip.
- *
- * Scope:
- * - BOTH `source` and `source_id` are written. `source_id` alone was NOT
- *   enough: the import inserts `source = 'web-import'` and conflicts on
- *   `(source, source_id)`, so a linked row left as 'local' never matches the
- *   conflict and the import inserts a second copy anyway. Marking the row is
- *   what actually converges the round trip.
- * - Exactly one row is written, and ONLY that row: the `WHERE id = ?` is the
- *   scoping, matching `deleteTrip`/`deleteMeal`'s shape. A row that no longer
- *   exists is a no-op (0 changes), never a throw — the caller may be a
- *   background sync whose row the user deleted meanwhile.
- * - Because `source` becomes 'web-import', the export candidate filter
- *   (`source === 'local'`) drops the row. That is correct, not a
- *   regression: it IS on the web now, so a re-export is work that would
- *   produce nothing. The idempotency key still covers the failure path (a
- *   POST that landed but whose reply was lost) because the local id stays
- *   the row's id and the key stays derived from it.
- *
- * Idempotent: re-linking the same (id, sourceId) writes the same value, so a
- * retried export cannot produce a different row or a constraint failure.
- *
- * The table name is a closed union selected by the caller, NOT an arbitrary
- * identifier: SQL identifiers cannot be bound as `?` parameters, so the name
- * picks one of two STATIC statement strings written here. No caller input is
- * ever interpolated into SQL, which is the file's security contract.
- */
 export async function linkExportedRow(
   table: ExportedTable,
   id: string,
   sourceId: string
 ): Promise<void> {
   const db = await getDb();
-  // `source_id` AND `source`: the import inserts `source = 'web-import'` and
-  // conflicts on `(source, source_id)`, so a row left as 'local' can never
-  // match that conflict no matter what its `source_id` is — the import would
-  // insert a second copy. Marking the row is what makes the round trip
-  // converge to one row.
   if (table === 'trips') {
     await db.runAsync('UPDATE trips SET source = ?, source_id = ? WHERE id = ?', 'web-import', sourceId, id);
     return;

@@ -1,20 +1,5 @@
-/**
- * Regression tests for GET /api/weather.
- *
- * Guards the 2026-09-03 incident: OpenWeather returned 400, the route wrapped
- * it in an opaque 500, and the client logged two console errors per failure
- * with no actionable detail. Contract now:
- * - garbage coordinates → 400, never proxied upstream
- * - missing key → 500 (our config bug)
- * - upstream failure → 502 with upstreamStatus + sanitized upstreamMessage
- *   class (raw OpenWeather bytes stay server-side in the structured log —
- *   safe-error boundary; sentinel tests below pin this)
- */
 import { GET } from '../route';
 
-// jest.setup.js replaces global Response with a minimal mock that lacks the
-// static json() NextResponse.json() delegates to. Restore just that static,
-// test-locally (do NOT touch the shared setup).
 const MockedResponse = globalThis.Response as unknown as {
   new (body?: unknown, init?: { status?: number; headers?: Record<string, string> }): InstanceType<typeof globalThis.Response> & {
     status: number;

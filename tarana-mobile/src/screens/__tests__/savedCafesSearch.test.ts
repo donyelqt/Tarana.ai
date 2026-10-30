@@ -1,34 +1,7 @@
-/**
- * SavedCafes search predicate — the observable contract of one row either
- * surviving the list filter or not.
- *
- * The list is the mobile half of the web saved-meals page, whose search
- * matches cafe name, meal type, and every dish name in the row
- * (`src/app/saved-meals/page.tsx:72-74`). This predicate was the gap: it
- * matched cafe name and meal type only, so a user searching "shawarma"
- * lost a row whose dish names were sitting on the device in `items`.
- *
- * The predicate is pure and exported from `../savedMeals`, so these tests
- * need no navigation stack, no SQLite, and no React Native render.
- *
- * What is pinned here, and why each is a contract rather than a detail:
- * 1. A dish-name query finds the row. The bug itself: without it the
- *    search silently cannot reach data the screen already holds.
- * 2. A row with unparseable `items` still appears under an empty query.
- *    Degrading to no DISHES must never degrade to no ROW, or a corrupt
- *    column would make the list lose saved meals entirely.
- * 3. A malformed `items` string never throws. It is a column of arbitrary
- *    text (null, `"{}"`, truncated JSON, a bare array of non-objects) and
- *    the list filter runs per keystroke.
- * 4. Cafe name and meal type keep matching exactly as before, same
- *    case-insensitivity, so no existing search regresses while dish
- *    matching is added.
- */
 import { describe, expect, it } from '@jest/globals';
 import { savedMealMatchesQuery } from '../savedMeals';
 import type { LocalMeal } from '../../data';
 
-/** A fully-shaped local row; each test overrides only the fields it varies. */
 function meal(overrides: Partial<LocalMeal> = {}): LocalMeal {
   return {
     id: 'meal-1',
@@ -100,8 +73,6 @@ describe('SavedCafes search — cafe name and meal type are unchanged', () => {
 
   it('matches a row with no meal type and no items on cafe name alone', () => {
     const row = meal({ meal_type: null, items: null });
-    // Both optional-match fields are absent, so cafe name is the only
-    // remaining route to this row — and it must still work.
     expect(savedMealMatchesQuery(row, 'house of shawarma')).toBe(true);
     expect(savedMealMatchesQuery(row, 'kebab')).toBe(false);
   });
@@ -131,8 +102,8 @@ describe('SavedCafes search — malformed items degrades, never crashes', () => 
 
   it('matches no dish for null items, but keeps name and type matches', () => {
     const row = meal({ items: null });
-    expect(savedMealMatchesQuery(row, 'shawarma')).toBe(true); // cafe name
-    expect(savedMealMatchesQuery(row, 'beef')).toBe(false); // no dish
+    expect(savedMealMatchesQuery(row, 'shawarma')).toBe(true); 
+    expect(savedMealMatchesQuery(row, 'beef')).toBe(false); 
   });
 
   it('treats empty-string items as no dishes', () => {
@@ -141,12 +112,10 @@ describe('SavedCafes search — malformed items degrades, never crashes', () => 
     expect(savedMealMatchesQuery(row, 'ali')).toBe(true);
   });
 
-  // Truncated JSON is the realistic corruption of a text column written
-  // by an import the user's device was killed mid-way through.
   it('does not throw on truncated JSON', () => {
     const row = meal({ items: '[{"name":"Beef Shawarma' });
     expect(() => savedMealMatchesQuery(row, 'shawarma')).not.toThrow();
-    expect(savedMealMatchesQuery(row, 'shawarma')).toBe(true); // cafe name still
+    expect(savedMealMatchesQuery(row, 'shawarma')).toBe(true); 
   });
 
   it('does not throw on non-JSON text and treats it as no dishes', () => {
@@ -168,8 +137,6 @@ describe('SavedCafes search — malformed items degrades, never crashes', () => 
     expect(savedMealMatchesQuery(row, '')).toBe(true);
   });
 
-  // Entries whose name is missing or non-string cannot be searched, but
-  // they must not mask the valid dishes beside them.
   it('skips entries without a usable name and keeps the rest searchable', () => {
     const row = meal({
       items: JSON.stringify([

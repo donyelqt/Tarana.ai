@@ -1,19 +1,3 @@
-/**
- * Mobile landing page — mirrors the WEB app's mobile-view design.
- *
- * Composition of the web landing sections, recomposed single-column for a
- * phone (per the Phase 3b design contract: shared brand language, not a
- * verbatim port of the desktop markup):
- *   - HeroSection: headline + subcopy + gradient CTA
- *   - HowItWorksSection: the 3-step strip
- *   - Footer: the "Ready to Plan Less and Enjoy More?" CTA
- *
- * Metro-safe: no `next/image`, no `lucide-react`, no `GeminiSparkles`
- * (web-only). Logo ships from `assets/icon.png`; step icons are
- * react-native-svg (raw `<svg>` red-screens on native — bundling green
- * proves nothing here). City names come from the shared `cityConfig` so the
- * copy stays in sync with the web app.
- */
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -55,12 +39,10 @@ function ChevronRight({ size = 20, color = '#111827' }: IconProps) {
 }
 
 function StepIcon({ step }: { step: 1 | 2 | 3 }) {
-  // Inline SVG stand-ins for the web step images (set / letai / explore),
-  // which live in `public/` and are unreachable from Metro.
   const paths: Record<1 | 2 | 3, string> = {
-    1: 'M4 6h16M4 12h16M4 18h10', // checklist / "set your trip details"
-    2: 'M12 3v4m0 10v4m-4-7h8a3 3 0 010 6h-2', // spark / "let AI handle"
-    3: 'M3 12a9 9 0 0118 0 9 9 0 01-18 0z M9 12l2 2 4-4', // compass / "explore"
+    1: 'M4 6h16M4 12h16M4 18h10', 
+    2: 'M12 3v4m0 10v4m-4-7h8a3 3 0 010 6h-2', 
+    3: 'M3 12a9 9 0 0118 0 9 9 0 01-18 0z M9 12l2 2 4-4', 
   };
   return (
     <Svg
@@ -89,7 +71,7 @@ export default function Landing() {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Hero ─────────────────────────────────────────────── */}
+        {}
         <View style={styles.hero}>
           <View style={styles.logoPill}>
             <Image
@@ -127,7 +109,7 @@ export default function Landing() {
           </TouchableOpacity>
         </View>
 
-        {/* ── How It Works ─────────────────────────────────────── */}
+        {}
         <View style={styles.howSection}>
           <Text style={styles.sectionTitle}>How it Works</Text>
 
@@ -164,7 +146,7 @@ export default function Landing() {
           </View>
         </View>
 
-        {/* ── Footer CTA ───────────────────────────────────────── */}
+        {}
         <View style={styles.footer}>
           <Text style={styles.footerTitle}>Ready to Plan Less and Enjoy More?</Text>
           <Text style={styles.footerSub}>Get your personalized {city.name} itinerary in under a minute.</Text>

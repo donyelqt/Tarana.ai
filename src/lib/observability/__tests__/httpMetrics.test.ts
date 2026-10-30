@@ -1,15 +1,3 @@
-/**
- * Unit tests for the zero-dep RED core (`httpMetrics.ts`).
- *
- * Contract under test:
- * - `toStatusClass` maps 2xx/4xx/5xx (boundary: 399→2xx, 400→4xx, 499→4xx, 500→5xx).
- * - `observeHttp` accumulates count + errorCount + cumulative buckets per
- *   (method, route, status_class) series; series are isolated by label set.
- * - `timedHttp` records duration and class from the response status, and
- *   records 5xx + rethrows on throw.
- * - `renderPrometheusExposition` emits counter + histogram lines with only
- *   the bounded label set (method, route, status_class, le).
- */
 import {
   DURATION_BUCKETS,
   observeHttp,

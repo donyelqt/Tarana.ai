@@ -110,8 +110,6 @@ describe('Diagnostics API Route Tests', () => {
     expect(response.status).toBe(200);
 
     const body = await response.json();
-    // A GET must not write: prefetch/crawler traffic would silently
-    // provision profiles. The caller runs init-profile explicitly.
     expect(mockedCreateUserProfile).not.toHaveBeenCalled();
     expect(body.checks.profileCreated).toBe(false);
     expect(body.summary.userSetup).toBe(false);

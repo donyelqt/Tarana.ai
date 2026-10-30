@@ -1,7 +1,3 @@
-/**
- * Comprehensive Error Handler for Food Recommendations
- * Enterprise-grade error handling with typed errors and retry logic
- */
 import { logger } from '@/lib/observability/logger';
 
 export enum FoodErrorType {
@@ -43,9 +39,6 @@ export class FoodRecommendationErrorHandler {
     }
   };
 
-  /**
-   * Handle errors with automatic retry logic
-   */
   static async handleWithRetry<T>(
     operation: () => Promise<T>,
     context: string,
@@ -62,12 +55,10 @@ export class FoodRecommendationErrorHandler {
         
         this.logError(foodError);
         
-        // Don't retry non-retryable errors
         if (!foodError.retryable || attempt === maxRetries) {
           break;
         }
         
-        // Exponential backoff
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
         logger.info(`🔄 Retrying ${context} in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`, {
           entryPoint: 'food-recommendations',
@@ -83,16 +74,12 @@ export class FoodRecommendationErrorHandler {
     throw lastError;
   }
 
-  /**
-   * Create structured error from any error type
-   */
   static createError(error: any, context: string): FoodError {
     const requestId = this.generateRequestId();
     let errorType: FoodErrorType;
     let message: string;
     let retryable = false;
 
-    // Classify error type
     if (error?.message?.includes('API key')) {
       errorType = FoodErrorType.API_KEY;
       message = 'Invalid or missing Google Gemini API key';
@@ -137,15 +124,11 @@ export class FoodRecommendationErrorHandler {
       retryable
     };
 
-    // Update statistics
     this.updateStats(foodError);
 
     return foodError;
   }
 
-  /**
-   * Log error with appropriate level
-   */
   static logError(error: FoodError): void {
     const logLevel = this.getLogLevel(error.type);
     const logMessage = `🚨 [${error.type}] Food recommendation error (ID: ${error.requestId})`;
@@ -168,9 +151,6 @@ export class FoodRecommendationErrorHandler {
     }
   }
 
-  /**
-   * Create user-friendly error response
-   */
   static createErrorResponse(error: FoodError) {
     const userMessage = this.getUserFriendlyMessage(error.type);
     
@@ -183,16 +163,10 @@ export class FoodRecommendationErrorHandler {
     };
   }
 
-  /**
-   * Get error statistics
-   */
   static getStats(): ErrorStats {
     return { ...this.errorStats };
   }
 
-  /**
-   * Reset error statistics
-   */
   static resetStats(): void {
     this.errorStats = {
       totalErrors: 0,
@@ -208,7 +182,6 @@ export class FoodRecommendationErrorHandler {
     };
   }
 
-  // Private helper methods
 
   private static updateStats(error: FoodError): void {
     this.errorStats.totalErrors++;
@@ -263,9 +236,6 @@ export class FoodRecommendationErrorHandler {
   }
 }
 
-/**
- * Decorator for automatic error handling
- */
 export function withErrorHandling(context: string, maxRetries: number = 2) {
   return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
     const method = descriptor.value;

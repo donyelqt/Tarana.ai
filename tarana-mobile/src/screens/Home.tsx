@@ -34,28 +34,11 @@ import Thumb from './Thumb';
 
 const CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao', 'boracay', 'el_nido'];
 
-/**
- * City pills share one vector signifier (MapPin, system stroke 2.0) instead
- * of per-city emoji: emoji renders inconsistently across Android/iOS OEM
- * fonts and can't follow tint tokens. City identity comes from the label.
- */
 
 type HomeNav = {
   navigate: (route: string, params?: Record<string, unknown>) => void;
 };
 
-/**
- * Home — reference-composed hub (travel-app pattern, our voice).
- *
- * Pattern borrowed (never pixels): brand-blue header band (greeting +
- * search on gradient, wave divider into the grouped canvas) → counts →
- * weather → city pills → horizontal photo cards → see-all. Nothing
- * removed: greeting, subcopy (also in Settings), counts, weather, pills,
- * preview rows all survive recomposed. Heart toggles stay out — they need
- * a favorites system that does not exist yet (explicit follow-up, not a
- * silent gap). The blue logo stays on the canvas above the band: blue on
- * blue would be illegible, so it is not forced inside.
- */
 export default function Home({ navigation }: { navigation: HomeNav }) {
   const [profile, setProfile] = useState<LocalProfile | null>(null);
   const [tripCount, setTripCount] = useState<number | null>(null);
@@ -67,8 +50,6 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
   const [error, setError] = useState<string | null>(null);
   const { width: viewportWidth } = useWindowDimensions();
 
-  // 1.15 cards peek so the next card advertises the swipe.
-  // 20px page padding (40) + 72px peek reserve; gap 12 matches list.
   const cardWidth = Math.round(viewportWidth - 40 - 72);
   const snapInterval = cardWidth + 12;
 
@@ -126,9 +107,6 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
   const countsReady = tripCount !== null && cafeCount !== null;
 
   return (
-    // Top inset only (AuthEntry precedent): the logo clears the notch /
-    // punch-hole camera and status bar on every device. Bottom is owned
-    // by the navigator's tab bar, so it is deliberately not inset here.
     <SafeAreaView style={styles.root} edges={['top']}>
     <ScrollView
       style={styles.scroll}
@@ -268,8 +246,6 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
         >
           {CITIES.map((c) => {
             const active = c === city;
-            // Pills read cleaner without the redundant suffix
-            // ("Baguio", not "Baguio City"); config data stays canonical.
             const shortName = CITY_CONFIGS[c].name.replace(/ City$/, '');
             const pillLabel = (
               <Text style={[styles.pillText, active && styles.pillTextActive]}>
@@ -335,12 +311,6 @@ export default function Home({ navigation }: { navigation: HomeNav }) {
   );
 }
 
-/**
- * Home preview card — Spots card composition, preview role: shared
- * SpotPhoto (logo fallback), name, pin meta, badge. Tap goes to the full
- * Spots screen; the "Open in Maps" action lives there only (preview never
- * duplicates actions). Meta matches Spots (distance · time · peak).
- */
 function HomeSpotCard({
   card: item,
   width,

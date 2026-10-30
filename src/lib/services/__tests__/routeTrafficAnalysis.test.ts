@@ -55,19 +55,7 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-// ============================================================================
-// RC1 + RC3: overallTrafficLevel matches congestionScore, not incident data
-// ============================================================================
 describe('overallTrafficLevel matches congestionScore (RC1, RC3)', () => {
-  // NOTE: estimateSegmentSpeed uses trafficData.congestionScore to compute
-  // speedKmh = 50 * (1 - congestionScore/100), and the final overall
-  // congestionScore is recomputed from speed ratios. So we mock the TomTom
-  // congestionScore such that the resulting overall score lands in the
-  // desired traffic-level bucket.
-  //
-  //   trafficData.congestionScore 5   -> speedKmh 47.5 -> segmentCongestion 21 -> LOW
-  //   trafficData.congestionScore 45  -> speedKmh 27.5 -> segmentCongestion 54 -> HIGH
-  //   trafficData.congestionScore 75  -> speedKmh 12.5 -> segmentCongestion 79 -> SEVERE
 
   it('overall score ~21 -> LOW (not SEVERE, even with incident)', async () => {
     (tomtomTrafficService.getLocationTrafficData as jest.Mock).mockResolvedValue(
@@ -121,9 +109,6 @@ describe('overallTrafficLevel matches congestionScore (RC1, RC3)', () => {
   });
 });
 
-// ============================================================================
-// RC4: getTrafficLevelValue -> VERY_LOW = 0, not 2
-// ============================================================================
 describe('Traffic level value mapping (RC4)', () => {
   it('VERY_LOW segments do not inflate the worst-level comparison', async () => {
     let callCount = 0;

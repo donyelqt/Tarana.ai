@@ -1,18 +1,3 @@
-/**
- * The collapsed pill must be a real hit target.
- *
- * The island root is `pointer-events-none` so the transparent card margins do
- * not swallow map pans and gestures. That value is inherited, and the pill is a
- * sibling of the content wrapper — not a child of it — so nothing re-enabled it.
- * The expanded wrapper sets `pointer-events: auto` when open, which is why the
- * card felt alive once open and dead when closed.
- *
- * This bites both modes: route mode's "Where to?" and Plan Mode's
- * "Plan a trip" are the same button. Verified in a browser — the topmost
- * element at the pill's centre was not a button at all, the tap landed on the
- * map, and a programmatic `.click()` still opened the card. That is why the
- * unit tests passed and users could not tap it.
- */
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -82,11 +67,6 @@ beforeAll(() => {
   } as never
 })
 
-/**
- * jsdom has no layout, so the test reproduces the inheritance rule directly:
- * the wrapper is pointer-events-none, exactly as FloatingSearchCard renders
- * it, and the pill must opt back in the way a real hit test requires.
- */
 function Harness({
   onCompactClick,
 }: {
@@ -113,8 +93,6 @@ describe('DynamicIsland collapsed pill hit area', () => {
 
     const pill = screen.getByRole('button', { name: 'Plan a trip' })
 
-    // Computed style, not the class list: the bug is inheritance, so only the
-    // resolved value on the element proves anything.
     expect(getComputedStyle(pill).pointerEvents).not.toBe('none')
   })
 
@@ -141,9 +119,6 @@ describe('DynamicIsland collapsed pill hit area', () => {
     const onCompactClick = jest.fn()
     render(<Harness onCompactClick={onCompactClick} />)
 
-    // The root stays transparent to the map; only the interactive surfaces
-    // opt in. Guarding this stops a future "fix" that re-enables everything
-    // and blocks map panning under the card.
     expect(screen.getByText('island content').className).toContain('pointer-events-auto')
   })
 })

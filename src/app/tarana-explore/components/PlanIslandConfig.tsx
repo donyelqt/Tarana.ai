@@ -15,20 +15,7 @@ import type { CityId, FormData } from '@/app/itinerary-generator/types'
 import { DatePicker } from '@/components/ui/date-picker'
 import { endDateForDuration, datesMatchDuration } from '@/app/itinerary-generator/utils/travelDates'
 import { useToast } from '@/components/ui/use-toast'
-/**
- * Plan Mode's configuration surface, rendered inside the Explore island.
- *
- * Two rules it exists to enforce:
- *
- * 1. **Same vocabulary as Gala.** Option lists are imported, never re-typed in
- *    Explore. A plan composed on the map must be the plan Gala would have
- *    built, or the two surfaces quietly disagree about what "3 Days" costs.
- * 2. **Aliases resolve before the request leaves the browser.** Visayas and
- *    Luzon are UI keys pointing at a real member city (`CITY_PILLS` carries the
- *    mapping). Sending a region id would ask the API for a scope it cannot
- *    serve, and the strict-city path answers honest-empty — a blank itinerary
- *    with no error to explain it.
- */
+
 
 export interface PlanIslandConfigProps {
   onSubmit: (formData: FormData) => void
@@ -36,16 +23,7 @@ export interface PlanIslandConfigProps {
   disabled?: boolean
 }
 
-/**
- * Date pattern for the island's date triggers.
- *
- * The triggers are 150px wide, which leaves ~92px for the label. `PPP`
- * ("September 30th, 2026") needs ~198px of button at this font and truncates
- * to "September 30...". This pattern needs ~80px and fits with headroom.
- *
- * Exported so the tests assert on the same pattern the component renders
- * rather than a copy that can drift.
- */
+
 export const PLAN_DATE_FORMAT = 'MMM d, yyyy'
 
 const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
@@ -63,10 +41,10 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
   const [pillKey, setPillKey] = useState(CITY_PILLS[0].key)
   const [openBudget, setOpenBudget] = useState(false)
 
-  // End date follows from start + duration, exactly as it does in Gala. Without
-  // this the two DatePickers were independent and a plan picked for "3 Days"
-  // saved with no end date at all. The arithmetic lives in one shared helper so
-  // the two surfaces cannot drift apart again.
+  
+  
+  
+  
   useEffect(() => {
     if (!startDate || !duration) return
     const derived = endDateForDuration(startDate, duration)
@@ -86,8 +64,8 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
 
   const submit = () => {
     if (!canSubmit) return
-    // A hand-edited end date must still agree with the duration, or the saved
-    // trip contradicts the plan on screen. Same rule as Gala.
+    
+    
     if (!datesMatchDuration(startDate, endDate, duration)) {
       toast({
         title: 'Invalid Travel Dates',
@@ -100,14 +78,14 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
       budget,
       pax,
       duration,
-      // Dates do not reach the generation prompt — the itinerary pipeline never
-      // reads them. They are the saved trip's date range, so omitting them here
-      // made every Plan Mode save land as "Date not specified".
+      
+      
+      
       dates: { start: startDate, end: endDate },
       selectedInterests,
       trafficAware: true,
-      // Resolve the alias here, at the boundary. `activePill.cityId` is a real
-      // member id, never the pill's own key.
+      
+      
       cityId: activePill.cityId as CityId,
     }
     onSubmit(formData)
@@ -115,7 +93,7 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
 
   return (
     <div className="pointer-events-auto">
-      {/* Destination — same alias tiles Gala uses, compressed for island width */}
+      {}
       <div className="px-3 pt-2 pb-1">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
           Destination
@@ -151,7 +129,7 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
 
       <div className="border-t border-gray-100" />
 
-      {/* Budget */}
+      {}
       <div className="px-3 py-2">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
           Budget Range
@@ -171,13 +149,7 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
               <ChevronDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
             </button>
           </PopoverTrigger>
-          {/*
-            Radix renders this panel in a portal, so the trigger owns no listbox
-            child to point `aria-controls` at. Real buttons with an accessible
-            name, plus `aria-expanded` on the trigger, is the honest markup;
-            wrapping these in `role="listbox"`/`role="option"` would
-            misdescribe a set of buttons.
-          */}
+          {}
           <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
             {budgetOptions.map((option) => (
               <button
@@ -200,7 +172,7 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
         </Popover>
       </div>
 
-      {/* Pax */}
+      {}
       <div className="px-3 pb-2">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
           Number of Pax
@@ -225,7 +197,7 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
         </div>
       </div>
 
-      {/* Duration */}
+      {}
       <div className="px-3 pb-2">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
           Duration
@@ -251,19 +223,13 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
       </div>
 
 
-      {/* Travel dates, in Gala's position between duration and interests. */}
+      {}
       <div className="px-3 pb-2">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
           Travel Dates
         </div>
         <div className="flex gap-1.5">
-          {/* 150px rather than the component's fixed 220px, which spilled 11px
-              past the panel's content edge, and rather than filling the row,
-              which stretched the buttons far wider than their labels. The row
-              is deliberately left short of the panel width. min-w-0 lets a
-              trigger shrink below its content width so the label truncates
-              rather than pushing out. The compact date pattern is what makes
-              150px viable: `PPP` needs ~198px of button and would truncate. */}
+          {}
           <DatePicker
             date={startDate}
             setDate={setStartDate}
@@ -282,7 +248,7 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
       </div>
       <div className="border-t border-gray-100" />
 
-      {/* Interests */}
+      {}
       <div className="px-3 py-2">
         <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
           Travel Interests
@@ -307,7 +273,7 @@ const PlanIslandConfig: React.FC<PlanIslandConfigProps> = ({
         </div>
       </div>
 
-      {/* Submit */}
+      {}
       <div className="border-t border-gray-100 p-2.5">
         <button
           type="button"

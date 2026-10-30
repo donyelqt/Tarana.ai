@@ -42,8 +42,6 @@ const StickyDots = () => {
         }
 
         const handleScroll = () => {
-            // Top-right grid is fixed at top-0 right-0, height = 96px on md+
-            // Sample y-coordinates within the top grid's area
             const topGridHeight = window.innerWidth >= 768 ? 96 : 48
             const newTopRight: SectionBackground[] = []
             for (let i = 0; i < NUM_BANDS; i++) {
@@ -56,12 +54,10 @@ const StickyDots = () => {
                 return newTopRight
             })
 
-            // Bottom-left grid is fixed at bottom-0 left-0, height = 64px on md+
             const bottomGridHeight = window.innerWidth >= 768 ? 64 : 32
             const viewportHeight = window.innerHeight
             const newBottomLeft: SectionBackground[] = []
             for (let i = 0; i < NUM_BANDS; i++) {
-                // Bottom band is closest to the bottom of the viewport
                 const y = viewportHeight - bottomGridHeight + (bottomGridHeight / NUM_BANDS) * i + 1
                 const bg = getSectionAtY(y)
                 newBottomLeft.push(bg ?? "white")
@@ -90,7 +86,7 @@ const StickyDots = () => {
 
     return (
         <>
-            {/* Top-right fading dot grid - rendered as horizontal bands for real-time color transition */}
+            {}
             <div
                 className="fixed top-0 right-0 w-48 h-48 md:w-96 md:h-96 pointer-events-none z-50"
                 style={{
@@ -116,7 +112,7 @@ const StickyDots = () => {
                 })}
             </div>
 
-            {/* Bottom-left fading dot grid - rendered as horizontal bands for real-time color transition */}
+            {}
             <div
                 className="fixed bottom-0 left-0 w-32 h-32 md:w-64 md:h-64 pointer-events-none z-50"
                 style={{

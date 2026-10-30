@@ -65,11 +65,7 @@ describe('useTaranaEatsAI', () => {
     });
 
     const body = fetchMock.mock.calls[0][1].body as string;
-    // The route rejects anything over 32KB with a 413 before parsing, so a
-    // body this size can never generate. Cap mirrors
-    // src/app/api/gemini/food-recommendations/route.ts.
     expect(Buffer.byteLength(body, 'utf8')).toBeLessThan(32 * 1024);
-    // The catalog is the server's to hold; re-shipping it is what broke.
     expect(JSON.parse(body)).not.toHaveProperty('foodData');
   });
 });

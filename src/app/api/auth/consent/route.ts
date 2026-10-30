@@ -6,10 +6,6 @@ import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
 import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
 
-/**
- * Records ToS/Privacy acceptance for the signed-in user.
- * Used by the post-login consent gate (/auth/consent).
- */
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/auth/consent', 'POST', async () => {
     try {

@@ -2,21 +2,13 @@ import { WeatherData } from "@/lib/core";
 import { ItineraryData, FormData, CityId } from "../types";
 import { sampleItinerary } from "../data/itineraryData";
 
-/**
- * Generates an itinerary by calling the Gemini API with enhanced RAG capabilities
- * @param formData The form data for generating the itinerary
- * @param weatherData Current weather data for Baguio
- * @returns The generated itinerary or error
- */
 export const generateItinerary = async (
   formData: FormData,
   weatherData: WeatherData | null
 ): Promise<{ itinerary: ItineraryData | null; error: string | null }> => {
   try {
-    // Create a more detailed prompt that will help with semantic search
     const promptDetails = [];
     
-    // Add basic request — strict city scope (cityId determines bounds, TomTom, timezone)
     const cityLabelMap: Record<string, string> = {
       baguio: "Baguio City, Philippines",
       cebu: "Cebu City, Philippines",
@@ -30,46 +22,33 @@ export const generateItinerary = async (
     const cityLabel = cityLabelMap[formData.cityId || "baguio"] || "Baguio City, Philippines"
     promptDetails.push(`Create a personalized ${formData.duration}-day itinerary for ${cityLabel}`);
     
-    // Add interests for better semantic matching
     if (formData.selectedInterests.length > 0) {
       promptDetails.push(`focusing on ${formData.selectedInterests.join(", ")}`);
     }
     
-    // Add budget information
     if (formData.budget) {
       promptDetails.push(`with a ${formData.budget} budget`);
     }
     
-    // Add group size
     if (formData.pax) {
       promptDetails.push(`for a ${formData.pax}`);
     }
     
-    // Add weather context if available
     if (weatherData?.weather?.[0]?.main) {
       promptDetails.push(`considering the current ${weatherData.weather[0].main} weather`);
     }
 
-    // Add peak hours preference
     if (formData.peakHours) {
       promptDetails.push(`and avoiding peak hours`);
     }
     
-    // Combine all details into a rich semantic query
     const prompt = promptDetails.join(" ");
 
-    // Call main charge-first endpoint (NOT legacy /route — that one ignores cityId)
     const response = await fetch("/api/gemini/itinerary-generator", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt,
-        // Omit the key when there is no weather. `itineraryRequestSchema`
-        // types weatherData as `.optional()`, which accepts an absent key but
-        // rejects a present one holding null, and JSON.stringify preserves a
-        // null as a real key. Sending null therefore failed validation with a
-        // 400 before any charge or model call — which hit Plan Mode on every
-        // request, and Gala whenever its weather fetch failed.
         ...(weatherData ? { weatherData } : {}),
         interests: formData.selectedInterests.length > 0 ? formData.selectedInterests : ["Random"],
         duration: formData.duration,
@@ -118,20 +97,9 @@ export const generateItinerary = async (
   }
 };
 
-/**
- * Enhances the itinerary with images, weather-appropriate tags, and preserves relevance scores
- * @param itinerary The raw itinerary data from RAG-enhanced generation
- * @param weatherData Current weather data for appropriate tagging
- * @returns Enhanced itinerary with matching images, weather tags, and relevance information
- */
 export const enhanceItinerary = (
   itinerary: ItineraryData,
   weatherData: WeatherData | null,
-  // No `= "baguio"` default: a defaulted scope silently re-enabled the
-  // Baguio-only catalog match for any caller that forgot the argument, which
-  // is the exact bug this gate closes. Omitting it now fails CLOSED (no
-  // curated match) instead of open, so the worst case is a fallback image
-  // rather than another city's photo.
   cityId?: CityId
 ): ItineraryData => {
   return {
@@ -139,17 +107,8 @@ export const enhanceItinerary = (
     items: itinerary.items.map((section: any) => ({
       ...section,
       activities: section.activities.map((activity: any) => {
-        // Preserve relevance score if it exists
         const relevanceScore = activity.relevanceScore !== undefined ? activity.relevanceScore : null;
         
-        // Preserve the server-provided accurate image (curated Baguio / Unsplash / Wikimedia /
-        // TomTom map). Fuzzy-match against the local catalog ONLY when the server sent no image
-        // AND the itinerary is Baguio: `sampleItinerary` is titled "A personalized Baguio
-        // Experience", so matching a Manila/Cebu activity against it hands the user another
-        // city's photo ("Poblacion Market" was rendered with Baguio Night Market's image
-        // because both contain "market"; "Robinsons Supermarket Tutuban" matched Mines View
-        // Park on shared tags alone). The dashboard's SuggestedSpots path is the correct
-        // reference — it renders the API image verbatim and never consults a catalog.
         let matchingImage: any = activity.image || null;
         if (!matchingImage && cityId === "baguio") {
           let bestMatchScore = 0;
@@ -182,7 +141,6 @@ export const enhanceItinerary = (
           }
         }
         
-        // Add weather-appropriate tags
         const tags = [...(activity.tags || [])];
         const weatherCondition = weatherData?.weather?.[0]?.main?.toLowerCase() || "";
         if (weatherCondition.includes("rain") && !tags.includes("Indoor-Friendly")) {
@@ -193,9 +151,6 @@ export const enhanceItinerary = (
           tags.push("Weather-Flexible");
         }
         
-        // Include relevance score in the enhanced activity if it exists.
-        // Never render a falsy src — the Gala logo is the last-resort
-        // fallback (matches the server re-attach contract).
         const finalImage = matchingImage || "/images/taranaai.png";
         return relevanceScore !== null
           ? { ...activity, image: finalImage, tags, relevanceScore }

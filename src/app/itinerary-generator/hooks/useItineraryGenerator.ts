@@ -10,9 +10,6 @@ import { generateItinerary, enhanceItinerary } from '../services/itineraryServic
 import { sampleItinerary } from '../data/itineraryData';
 import { burnham } from '../../../../public';
 
-// Shown when generation fails for a non-Baguio scope. It carries no
-// activities, so ItineraryPreview renders its empty state instead of another
-// city's itinerary.
 const EMPTY_ITINERARY: ItineraryData = {
   title: '',
   subtitle: '',
@@ -29,9 +26,6 @@ export const useItineraryGenerator = () => {
     refetchIntervalMs: 60_000,
   });
 
-  /**
-   * Generate an itinerary based on form data and weather information
-   */
   const handleGenerateItinerary = useCallback(async (
     formData: FormData, 
     weatherData: WeatherData | null, 
@@ -64,25 +58,17 @@ export const useItineraryGenerator = () => {
       return;
     }
 
-    // Save a snapshot of the form data
     setFormSnapshot(formData);
     
-    // Trigger start callback
     if (onStart) onStart();
 
     try {
-      // Call the API service to generate the itinerary
       const { itinerary, error } = await generateItinerary(formData, weatherData);
 
-      // Handle API error
       if (error || !itinerary) {
         console.error("Error from generateItinerary:", error);
         if (onError) onError(error || "Unknown error generating itinerary");
         
-        // `sampleItinerary` is the Baguio catalog ("A personalized Baguio
-        // Experience"). Substituting it for a failed Manila/Cebu generation
-        // would render a whole Baguio itinerary under the user's chosen
-        // destination, so non-Baguio scopes get the empty shell instead.
         setGeneratedItinerary(
           formData.cityId === 'baguio' || !formData.cityId
             ? enhanceItinerary(sampleItinerary, weatherData, formData.cityId)
@@ -97,7 +83,6 @@ export const useItineraryGenerator = () => {
         return;
       }
 
-      // Enhance the generated itinerary with images and weather-appropriate tags
       const enhancedItinerary = enhanceItinerary(itinerary, weatherData, formData.cityId);
       setGeneratedItinerary(enhancedItinerary);
       refetchCredits();
@@ -106,7 +91,6 @@ export const useItineraryGenerator = () => {
       console.error("Unhandled error in handleGenerateItinerary:", error);
       if (onError) onError(error.message || "An unexpected error occurred");
 
-      // Same city gate as the API-error path above.
       setGeneratedItinerary(
         formData.cityId === 'baguio' || !formData.cityId
           ? enhanceItinerary(sampleItinerary, weatherData, formData.cityId)
@@ -119,14 +103,10 @@ export const useItineraryGenerator = () => {
         variant: "destructive",
       });
     } finally {
-      // Always trigger complete callback
       if (onComplete) onComplete();
     }
   }, [balance?.nextRefresh, hasCredits, refetchCredits, toast]);
 
-  /**
-   * Save the generated itinerary to the database
-   */
   const handleSaveItinerary = useCallback(async (weatherData: WeatherData | null) => {
     if (!formSnapshot || !generatedItinerary) {
       toast({

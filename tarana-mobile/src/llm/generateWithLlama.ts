@@ -1,22 +1,3 @@
-/**
- * Local itinerary generator — llama.rn behind the shared Gala contract.
- *
- * One day at a time. A 1.7B model degrades sharply on one long JSON document;
- * N short calls each producing a `Morning/Afternoon/Evening` section keep
- * every prompt small and every output parseable. Failure is bounded to one
- * day, and a failed day degrades to an honest placeholder section rather than
- * losing the trip.
- *
- * Grammar-constrained sampling (llama.rn `json_schema` response format) makes
- * the output syntactically valid by construction. The shared Zod schema
- * (`tarana-web/data/itinerarySchema`) still validates semantics at the
- * boundary; the retry ladder covers the cases grammar cannot.
- *
- * Retrieval honesty: the model invents stop titles. It has no curated
- * catalog, so generated stops carry no images and no coordinates beyond what
- * the caller resolves. This matches the web behavior of writing
- * `activity_coordinates` separately at save time.
- */
 import { itineraryDataSchema, type ItinerarySection } from 'tarana-web/data/itinerarySchema';
 import { getModelStatus, getModelPath, isLlamaAvailable } from './modelManager';
 import { buildDayPrompt, SLOTS } from './prompt';
@@ -24,7 +5,6 @@ import type { PlanInput } from '../data';
 
 const MODEL_CONTEXT = 4096;
 
-/** Minimal JSON-schema subset llama.rn accepts for grammar-constrained sampling. */
 const sectionJsonSchema = {
   type: 'object',
   properties: {
@@ -56,13 +36,11 @@ function fallbackSection(dayIndex: number, slot: string, reason: string): Itiner
   };
 }
 
-/** Parse a model response that may be wrapped in markdown fences or prose. */
 function extractJson(raw: string): unknown {
   const trimmed = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
   try {
     return JSON.parse(trimmed);
   } catch {
-    // Model prose around the JSON: take the outermost braces.
     const start = trimmed.indexOf('{');
     const end = trimmed.lastIndexOf('}');
     if (start !== -1 && end > start) {
@@ -79,9 +57,6 @@ function extractJson(raw: string): unknown {
 function validateSection(value: unknown, dayIndex: number, slot: string): ItinerarySection | null {
   if (typeof value !== 'object' || value === null) return null;
   const withDay = value as Record<string, unknown>;
-  // Force the period label to carry the day marker so TripDetail's day
-  // grouping (which keys on "morning") stays correct regardless of what the
-  // model wrote.
   const result = itineraryDataSchema.shape.items.element.safeParse(withDay);
   if (!result.success) return null;
   const section = result.data;
@@ -105,8 +80,6 @@ export async function generateWithLlama(
     throw new Error('Download the local model before generating a plan.');
   }
 
-  // Lazy require: keeps llama.rn out of the module graph until this file runs,
-  // and keeps the Jest environment (no native module) import-safe.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Llama: unknown = require('llama.rn');
   if (typeof Llama !== 'object' || Llama === null || !('initLlama' in Llama)) {
@@ -131,10 +104,6 @@ export async function generateWithLlama(
         const prompt = buildDayPrompt(input, day, priorTitles);
         let section: ItinerarySection | null = null;
 
-        // Ladder: grammar-constrained first pass, one low-temperature retry
-        // with the grammar dropped, then an honest placeholder. Grammar makes
-        // the first pass almost always succeed; the retry covers context
-        // truncation, and the placeholder means a bad day never loses a trip.
         for (let attempt = 0; attempt < 2 && !section; attempt++) {
           try {
             const completion = await context.completion(

@@ -128,11 +128,6 @@ describe("PipelineCoordinator", () => {
   });
 
   it("still refunds and preserves the original error when session bookkeeping misses", async () => {
-    // The session below is fabricated, never stored: resetStore() ran and
-    // createSession was never called. failSession delegates to the real
-    // appendError (sessionStore imports nothing heavy), so a throwing
-    // bookkeeping call must not mask the refund or replace the original
-    // downstream error.
     const fabricated = {
       id: "00000000-0000-0000-0000-000000000099",
       userId: "user-9",

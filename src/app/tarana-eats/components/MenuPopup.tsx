@@ -25,26 +25,17 @@ export default function MenuPopup({
   const [selectedItems, setSelectedItems] = useState<MenuItemWithQuantity[]>([]);
   const { toast } = useToast();
   
-  // Get menu items from fullMenu if available, otherwise from MENU_DATA
   const getMenuItems = (): MenuItem[] => {
     if (match.fullMenu) {
-      // Flatten all menu categories into a single array
       return Object.values(match.fullMenu)
         .flat()
         .filter(Boolean);
     }
-    // Try to get from MENU_DATA
-   // const menuItems = MENU_DATA[match.name];
-    //if (menuItems && menuItems.length > 0) {
-      //return menuItems;
-    //}
     
-    // Fallback: get menu by restaurant name
     const fullMenu = getMenuByRestaurantName(match.name, restaurants);
     return Object.values(fullMenu).flat().filter(Boolean);
   };
 
-  // Helper to ensure valid image URL for next/image
   const getValidImageUrl = (imageUrl: string): string => {
     if (!imageUrl) return '/images/placeholders/hero-placeholder.svg';
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('/')) {
@@ -58,7 +49,6 @@ export default function MenuPopup({
     const existingItem = selectedItems.find(i => i.name === item.name);
     
     if (existingItem) {
-      // Increase quantity
       setSelectedItems(prev => prev.map(i => 
         i.name === item.name ? { ...i, quantity: i.quantity + 1 } : i
       ));
@@ -68,7 +58,6 @@ export default function MenuPopup({
         variant: "success",
       });
     } else {
-      // Add new item with quantity 1
       setSelectedItems(prev => [...prev, { ...item, quantity: 1 }]);
       toast({
         title: "Item Added",
@@ -84,7 +73,6 @@ export default function MenuPopup({
     if (!existingItem) return;
     
     if (existingItem.quantity > 1) {
-      // Decrease quantity
       setSelectedItems(prev => prev.map(i => 
         i.name === item.name ? { ...i, quantity: i.quantity - 1 } : i
       ));
@@ -94,7 +82,6 @@ export default function MenuPopup({
         variant: "default",
       });
     } else {
-      // Remove item completely
       setSelectedItems(prev => prev.filter(i => i.name !== item.name));
       toast({
         title: "Item Removed",
@@ -109,12 +96,10 @@ export default function MenuPopup({
   };
   
   const total = getTotalPrice();
-  // match.price is already the total budget for the entire group, not per person
   const totalBudget = match.price;
   const remaining = totalBudget - total;
   const isOverBudget = remaining < 0;
 
-  // DEBUG LOGGING - Remove after fixing
   console.log("🔍 MENUPOPP DEBUG:", {
     restaurantName: match.name,
     matchPrice: match.price,
@@ -155,9 +140,9 @@ export default function MenuPopup({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="relative mx-auto flex w-full max-w-xl flex-col max-h-[90vh] rounded-2xl bg-white">
-        {/* Scrollable Content */}
+        {}
         <div className="overflow-y-auto p-6">
-          {/* Header */}
+          {}
           <div className="mb-6 flex items-start gap-4">
             <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-full">
               <Image
@@ -176,7 +161,7 @@ export default function MenuPopup({
             </div>
           </div>
 
-          {/* Menu List */}
+          {}
           <div className="space-y-3">
             {menuItems.map((item, index) => {
               const selectedItem = selectedItems.find(i => i.name === item.name);
@@ -203,7 +188,7 @@ export default function MenuPopup({
                     <div className="mt-1 text-sm font-medium">₱{item.price} {quantity > 0 && <span className="text-blue-600">× {quantity}</span>}</div>
                   </div>
                   
-                  {/* Quantity Controls */}
+                  {}
                   <div className="flex items-center gap-2">
                     {isSelected && (
                       <Button
@@ -241,7 +226,7 @@ export default function MenuPopup({
           </div>
         </div>
 
-        {/* Sticky Footer */}
+        {}
         <div className="mt-auto border-t bg-[#f7f9fb] rounded-b-2xl border-gray-200 p-4">
           <div className="mb-4 flex items-start justify-between">
             <div>

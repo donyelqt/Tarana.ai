@@ -22,10 +22,8 @@ import { getCityCenter, CITY_CONFIGS } from "@/lib/data/cityConfig";
 
 export default function ItineraryGenerator() {
   const { contentClass } = useSidebarCollapsed();
-  // Get weather data
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   
-  // Initialize form state hook
   const {
     budget,
     setBudget,
@@ -48,12 +46,9 @@ export default function ItineraryGenerator() {
     initialBudget: budgetOptions[0],
   });
   
-  // Traffic-aware mode toggle state
   const [trafficAware, setTrafficAware] = useState<boolean>(true);
-  // Geographic scope — strict city selection (default Baguio, preserves existing behavior)
   const [selectedCity, setSelectedCity] = useState<"baguio"|"cebu"|"manila"|"davao"|"boracay"|"el_nido"|"ph-wide"|"world">("baguio");
   
-  // Initialize itinerary generator hook
   const {
     generatedItinerary,
     handleGenerateItinerary,
@@ -64,7 +59,6 @@ export default function ItineraryGenerator() {
     isOutOfCredits,
   } = useItineraryGenerator();
   
-  // Fetch weather for the SELECTED destination — refetches when city changes
   useEffect(() => {
     const { lat, lon } = getCityCenter(selectedCity);
     const getWeather = async () => {
@@ -75,7 +69,6 @@ export default function ItineraryGenerator() {
     getWeather();
   }, [selectedCity]);
   
-  // Handler for form submission
   const onSubmitItinerary = async (formData: FormData) => {
     if (isOutOfCredits) {
       return;
@@ -101,7 +94,6 @@ export default function ItineraryGenerator() {
     );
   };
   
-  // Handler for saving the itinerary
   const onSaveItinerary = () => {
     if (isOutOfCredits) {
       return;

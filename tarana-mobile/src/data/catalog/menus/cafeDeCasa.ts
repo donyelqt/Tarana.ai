@@ -1,9 +1,3 @@
-// ====================================================================
-// CAFÉ DE CASA MENU DATA
-// ====================================================================
-// As home-based bakers and baristas, our goal is to establish Café de Casa 
-// as a beloved neighborhood destination for artisanal bread and specialty coffee.
-// ====================================================================
 
 import { FullMenu } from "../types";
 
@@ -243,7 +237,6 @@ export const cafeDeCasaMenu: FullMenu = {
     },
   ],
   Drinks: [
-    // Espresso-Based Drinks
     {
       name: "Hot Americano Small",
       description: "Espresso-Based",
@@ -268,7 +261,6 @@ export const cafeDeCasaMenu: FullMenu = {
       price: 70,
       image: "/images/comingsoon.png",
     },
-    // Flavored Lattes - Small
     {
       name: "Spanish (Small)",
       description: "Flavored Latte",
@@ -305,7 +297,6 @@ export const cafeDeCasaMenu: FullMenu = {
       price: 70,
       image: "/images/comingsoon.png",
     },
-    // Flavored Lattes - Medium
     {
       name: "Spanish (Medium)",
       description: "Flavored Latte",
@@ -342,7 +333,6 @@ export const cafeDeCasaMenu: FullMenu = {
       price: 90,
       image: "/images/comingsoon.png",
     },
-    // Iced Flavored Lattes
     {
       name: "Iced Spanish Latte",
       description: "Flavored Latte",
@@ -379,7 +369,6 @@ export const cafeDeCasaMenu: FullMenu = {
       price: 90,
       image: "/images/comingsoon.png",
     },
-    // Non-Coffee Drinks
     {
       name: "Iced Bellagio Chocolate",
       description: "Non-Coffee",

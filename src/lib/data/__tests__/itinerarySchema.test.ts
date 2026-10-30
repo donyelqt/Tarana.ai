@@ -6,12 +6,6 @@ import {
   validateItineraryData,
 } from '../itinerarySchema';
 
-/**
- * The schema is the single contract between the web generator, the mobile
- * local generator, and the SQLite payload. These tests pin the two shapes the
- * renderer actually consumes (TripDetail's Payload and the web row) so drift
- * between the three surfaces becomes a test failure, not a runtime surprise.
- */
 describe('itinerarySchema', () => {
   describe('itineraryDataSchema', () => {
     it('accepts the web generator output shape', () => {

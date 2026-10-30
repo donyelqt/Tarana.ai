@@ -17,12 +17,12 @@ import MapControls from './MapControls'
 import SpotPreviewCard, { type SpotTraffic } from './SpotPreviewCard'
 import { useRouteCalculation } from '../hooks/useRouteCalculation'
 import { buildDayRouteRequest } from '../lib/planRoute'
-// Plan Mode's generator, catalog, and menus are deliberately NOT imported here.
-// A static import pulled the 37-activity catalog into the map's graph and cost
-// 448KB on /tarana-explore (1029KB against a 639KB budget). It loads on demand.
+
+
+
 const PlanModeSurface = dynamic(() => import('./PlanModeSurface'), { ssr: false })
 
-// Map must be client-only and skip SSR (TomTom uses window)
+
 const InteractiveRouteMap = dynamic(
   () => import('./route/InteractiveRouteMap'),
   { ssr: false },
@@ -45,33 +45,20 @@ const DEFAULT_PREFERENCES: RoutePreferences = {
   avoidTrafficJams: true,
 }
 
-/**
- * Accepts the two image shapes that legitimately cross the Visit Spot link —
- * a remote `https://` photo from a provider, or a site-relative path under
- * the public image root — and rejects everything else.
- *
- * Rejected on purpose: `javascript:`/`data:` URIs, protocol-relative `//host`
- * (which resolves to an attacker host), plain `http://` and any `..` segment.
- * The value comes from a hand-editable query parameter and is passed to
- * next/image, so it is untrusted input.
- */
+
 export function isSafeImageSrc(src: string): boolean {
   if (/^https:\/\/[^\s]+$/i.test(src)) return true
-  // Segment-by-segment: a two-dot segment is inside the character class, so a
-  // single shape test would let a traversal sequence escape the image root
-  // (the shipped-image guard treats any absolute image path written in code
-  // as a file that must resolve on disk, so the example cannot be spelled out).
+  
+  
+  
+  
   const segments = src.split('/')
   if (segments[0] !== '' || segments[1] !== 'images' || segments.length < 3) return false
   return segments
     .slice(2)
     .every((seg) => seg.length > 0 && seg !== '.' && seg !== '..' && /^[A-Za-z0-9._-]+$/.test(seg))
 }
-/**
- * Parses a Visit Spot deep link. Pure so the arrival behaviour is testable
- * without mounting a map, and so the caller can use it during render to seed
- * the map's first camera position.
- */
+
 export function parseDeepLink(params: URLSearchParams): {
   destination: LocationPoint | null
   preview: { traffic: SpotTraffic | null; image: string | null } | null
@@ -79,14 +66,14 @@ export function parseDeepLink(params: URLSearchParams): {
   const name = params.get('to')
   const lat = Number(params.get('toLat'))
   const lon = Number(params.get('toLon'))
-  // Number(null) is 0, which is finite — require the raw values to be present
-  // so a name-only link cannot silently land the map on Null Island.
+  
+  
   if (!name || params.get('toLat') === null || params.get('toLon') === null) {
     return { destination: null, preview: null }
   }
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return { destination: null, preview: null }
 
-  // Only measured traffic is honoured; an unrecognised value hides the tag.
+  
   const rawTraffic = params.get('traffic')
   const traffic =
     rawTraffic === 'Low' || rawTraffic === 'Moderate' || rawTraffic === 'High' ? rawTraffic : null
@@ -101,61 +88,61 @@ export function parseDeepLink(params: URLSearchParams): {
 
 const ExploreMapView: React.FC = () => {
   const searchParams = useSearchParams()
-  // Parsed during render, NOT in an effect. `useSearchParams` is available
-  // synchronously inside this Suspense boundary, so the destination exists on
-  // the FIRST render and can seed the map's initial camera. Parsing it in an
-  // effect meant the map initialised on Baguio and could only jump to the spot
-  // after the SDK finished loading — the visible "wrong place first, then
-  // slide over" delay.
+  
+  
+  
+  
+  
+  
   const deepLink = useMemo(() => parseDeepLink(searchParams), [searchParams])
   const [origin, setOrigin] = useState<LocationPoint | null>(null)
   const [destination, setDestination] = useState<LocationPoint | null>(deepLink.destination)
   const [recenterSignal, setRecenterSignal] = useState(0)
-  // Deep-link from Suggested Spots / Recommended Cafes Visit buttons:
-  // ?to=<name>&toLat=<lat>&toLon=<lon> prefills the destination once, with the
-  // optional &traffic= and &img= params that feed the arrival card.
+  
+  
+  
   const [spotPreview, setSpotPreview] = useState(deepLink.preview)
   const [preferences, setPreferences] = useState<RoutePreferences>(DEFAULT_PREFERENCES)
   const [mapStyle, setMapStyle] = useState<MapStyle>('main')
   const [isChangingStyle, setIsChangingStyle] = useState(false)
 
   const [tiltOn, setTiltOn] = useState(true)
-  // Plan Mode is display state: toggling it must not touch origin/destination,
-  // which are the user's route work, not mode state.
+  
+  
   const [planMode, setPlanMode] = useState(false)
-  // Mirrors recenterSignal: a counter the island watches to collapse itself on
-  // a mode change. A callback would need the island's setter, which it owns.
+  
+  
   const [collapseIslandSignal, setCollapseIslandSignal] = useState(0)
   const styleControlRef = useRef<{ changeStyle: (style: MapStyle) => void } | null>(null);
-  // Signed zoom steps, mirroring recenterSignal: the map owns the camera, so
-  // the rail sends a step and the map applies it.
+  
+  
   const [zoomSignal, setZoomSignal] = useState(0)
 
   const handleZoom = useCallback((steps: number) => {
     setZoomSignal((n) => n + steps)
   }, [])
 
-  // Plan generation state, reported by the lazy surface. The island needs it
-  // to auto-collapse once a plan finishes, the same way routing already does.
+  
+  
   const [planGenerating, setPlanGenerating] = useState(false)
 
   const { state, calculate, selectAlternative, refreshTraffic, clear } = useRouteCalculation()
 
-  // The island hands this node to the lazily-loaded plan surface, which
-  // portals the planner config into it. Held here so the island's own chunk
-  // never imports Gala's generator or the activity catalog.
+  
+  
+  
   const [planSlot, setPlanSlot] = useState<HTMLElement | null>(null)
-  // The route currently drawn by the plan, held separately from the planner's
-  // own route so switching modes swaps the map cleanly instead of leaving a
-  // plan route underneath the route planner's markers.
+  
+  
+  
   const [planRoute, setPlanRoute] = useState<RouteRequest | null>(null)
 
-  // Plan Mode draws the selected day through the same route pipeline the
-  // planner uses. The day's route anchors on its own first and last stop, so
-  // the user's route endpoints are never overwritten — they live in this same
-  // parent state and return untouched when the mode is left. The request keeps
-  // the origin/destination/waypoints split the routing API expects; the map
-  // props below flatten it into numbered pins.
+  
+  
+  
+  
+  
+  
   const handlePlanDayStops = useCallback(
     (points: LocationPoint[]) => {
       const request =
@@ -171,9 +158,9 @@ const ExploreMapView: React.FC = () => {
             })
 
       setPlanRoute(request)
-      // Fewer than two resolved stops is an honest empty, not a broken request:
-      // the sheet still lists those stops marked "No location", and the map
-      // draws nothing rather than routing to a guess.
+      
+      
+      
       if (request) calculate(request)
     },
     [preferences, calculate]
@@ -201,10 +188,10 @@ const ExploreMapView: React.FC = () => {
     calculate(request)
   }, [origin, destination, preferences, calculate])
 
-  // Route-chrome close. In plan mode BottomRouteSheet/TrafficBadge never show
-  // plan-pipeline output as the user's route, so closing there only clears the
-  // pipeline — the user's own origin/destination (and the deep-link
-  // destination seed) must survive untouched.
+  
+  
+  
+  
   const handleClose = useCallback(() => {
     clear()
     setPlanRoute(null)
@@ -214,8 +201,8 @@ const ExploreMapView: React.FC = () => {
     setSpotPreview(null)
   }, [clear, planMode])
 
-  // Dismissing the card keeps the destination (it is a routing seed the user
-  // can still plan from) and only hides the photo/title chrome.
+  
+  
   const handleDismissPreview = useCallback(() => setSpotPreview(null), [])
 
   const handleRecenter = useCallback(() => {
@@ -228,30 +215,30 @@ const ExploreMapView: React.FC = () => {
 
   const handleTogglePlan = useCallback(() => {
     if (!planMode) {
-      // Entering plan mode: plan mode owns the map visually, so dismiss any
-      // visible deep-link preview through the existing dismiss path (the
-      // deep-link destination seed stays in state for the return trip).
+      
+      
+      
       handleDismissPreview()
     } else {
-      // Leaving plan mode: clear any plan-pipeline output (the hook exposes
-      // clear() only — its abortRef is an unused Timeout, so an in-flight
-      // calculate cannot be cancelled, only its completed currentRoute/traffic
-      // cleared) so the route chrome and the 5-minute refresh stop showing
-      // plan data. The user's own origin/destination stay untouched; a pre-plan
-      // route, if any, is not reconstructed here — this only guarantees nothing
-      // destroys it.
+      
+      
+      
+      
+      
+      
+      
       clear()
       setPlanRoute(null)
     }
     setPlanMode((v) => !v)
-    // Collapse on the way in and on the way out: the island is about to swap
-    // its whole contents, and a half-open card mid-swap reads as a glitch.
+    
+    
     setCollapseIslandSignal((n) => n + 1)
   }, [planMode, clear, handleDismissPreview])
 
-  // Silent 5-minute traffic refresh — no UI button (matches Google Maps' silent updates).
-  // Route-mode only: plan-pipeline output must never feed the route chrome's
-  // refresh, and leaving plan mode clears currentRoute so this stops too.
+  
+  
+  
   useEffect(() => {
     if (!state.currentRoute || planMode) return
     const id = setInterval(() => {
@@ -263,18 +250,18 @@ const ExploreMapView: React.FC = () => {
   return (
     <div className="relative h-full w-full overflow-hidden">
       <InteractiveRouteMap
-        // Arriving from a deep link: the map's very first paint is already on
-        // the spot, so there is no Baguio flash and no post-load slide.
+        
+        
         initialCenter={destination ? [destination.lng, destination.lat] : null}
         currentRoute={state.currentRoute}
         alternativeRoutes={state.alternativeRoutes}
         trafficConditions={state.trafficConditions}
-        // In plan mode the selected day reads as an itinerary, not a route:
-        // every resolved stop becomes a numbered blue waypoint pin (first stop
-        // is Waypoint 1, last stop is Waypoint N), so no green start or red
-        // end pin ever renders. The routing request still carries its own
-        // origin/destination split — only the map props are flattened. Route
-        // mode keeps the user's endpoints untouched.
+        
+        
+        
+        
+        
+        
         origin={planMode ? null : origin}
         destination={planMode ? null : destination}
         waypoints={
@@ -286,9 +273,9 @@ const ExploreMapView: React.FC = () => {
               ]
             : []
         }
-        // Empty plan state ("No plan yet", or a day whose stops all resolved
-        // to "No location" so planRoute is null) holds the current view —
-        // Cebu deep-link, user pan, or previous day's frame — never Baguio.
+        
+        
+        
         planMode={planMode}
         isLoading={state.isCalculating}
         onRouteSelect={selectAlternative}
@@ -318,9 +305,7 @@ const ExploreMapView: React.FC = () => {
         disabled={false}
       />
 
-      {/* Route chrome is route-mode only: plan-mode calculate() output must
-      never render as the user's route, so both are gated here at the render
-      site — never inside the shared child components. */}
+      {}
       {!planMode && <TrafficBadge trafficConditions={state.trafficConditions} />}
 
       <MapControls
@@ -347,13 +332,7 @@ const ExploreMapView: React.FC = () => {
         />
       )}
 
-      {/*
-        One bottom sheet at a time. The route sheet returns null without a
-        route, so rendering the plan surface only in plan mode is what stops
-        the two stacking. The surface is lazily loaded: it carries Gala's
-        generator and the activity catalog, which have no business in the map's
-        initial bundle.
-      */}
+      {}
       {planMode && (
         <PlanModeSurface
           islandSlot={planSlot}
@@ -361,12 +340,7 @@ const ExploreMapView: React.FC = () => {
           onGeneratingChange={setPlanGenerating}
         />
       )}
-      {/*
-        The plan's route is drawn in the same slot the route planner uses, but
-        never on top of it: plan mode owns the endpoints while it is on, so the
-        user's own route stays in parent state and comes back untouched when
-        they leave the mode.
-      */}
+      {}
 
       {spotPreview && (
         <SpotPreviewCard
@@ -377,7 +351,7 @@ const ExploreMapView: React.FC = () => {
         />
       )}
 
-      {/* Subtle map error toast (non-blocking) */}
+      {}
       {state.error && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 bg-red-600 text-white px-4 py-2 rounded-full shadow-lg text-sm font-medium">
           {state.error}

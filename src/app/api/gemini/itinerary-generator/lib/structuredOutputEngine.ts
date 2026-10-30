@@ -1,8 +1,3 @@
-/**
- * Enterprise-Grade Structured Output Engine
- * Guarantees 100% valid JSON output using Google Gemini's function calling
- * Eliminates all JSON parsing errors through schema-enforced generation
- */
 
 import { Buffer } from 'buffer';
 import { jsonrepair } from 'jsonrepair';
@@ -12,7 +7,6 @@ import { JsonSyntaxValidator } from './enhancedPromptEngine';
 import { withRetry } from '../../../../../lib/upstream/withRetry';
 import { logger } from '../../../../../lib/observability/logger';
 
-// Strict Zod schemas for guaranteed structure
 export const ActivitySchema = z.object({
   image: z.string().min(1, "Image URL required"),
   title: z.string().min(1, "Title required"),
@@ -35,24 +29,11 @@ export const ItinerarySchema = z.object({
 
 export type StructuredItinerary = z.infer<typeof ItinerarySchema>;
 
-/**
- * Simplified structured output approach using JSON mode
- * More reliable than function calling for complex schemas
- */
 
-/**
- * Structured Output Engine - Guarantees valid JSON
- */
 export class StructuredOutputEngine {
   private static readonly MAX_RETRIES = 2;
-  // Bounded under the 60s Vercel Hobby kill: 2 retries × 25s timeout = 50s,
-  // leaving headroom for route-level retry delays. Previously 3 × 45s = 135s,
-  // which a Vercel kill truncated mid-flight (refund-after-death impossible).
   private static readonly TIMEOUT_MS = 25000;
 
-  /**
-   * Generate itinerary with guaranteed structure using enhanced JSON mode
-   */
   static async generateStructuredItinerary(
     prompt: string,
     requestId: string = 'unknown',
@@ -63,10 +44,8 @@ export class StructuredOutputEngine {
     const startTime = Date.now();
 
     try {
-      // Enhanced prompt for structured JSON
       const structuredPrompt = this.buildStructuredPrompt(prompt);
 
-      // Generation config optimized for JSON output
       const generationConfig = {
         responseMimeType: "application/json",
         temperature: 0.15,
@@ -86,39 +65,30 @@ export class StructuredOutputEngine {
             maxAttempts: this.MAX_RETRIES,
             baseDelayMs: 1000,
             factor: 2,
-            maxDelayMs: 5000, // preserves the previous min(1000 * 2^(n-1), 5000) cap
-            jitter: 'none',   // preserves the previous fixed exponential delay
+            maxDelayMs: 5000, 
+            jitter: 'none',   
             timeoutMs: this.TIMEOUT_MS,
             upstream: 'gemini-structured',
             shouldRetry: () => {
-              // Preserves the previous catch-all retry: every failure is
-              // retried unless the request signal has aborted (the old
-              // `finally { if (signal?.aborted) break; }`).
               return !signal?.aborted;
             },
           }
         );
 
-        // Extract JSON response
         const text = extractResponseText(result);
 
         if (!text) {
           throw new Error('No valid response text');
         }
 
-        // Parse JSON response with recovery strategies
         const rawData = this.parseStructuredJson(text, requestId);
         logger.info(`✅ STRUCTURED ENGINE: Raw JSON received in ${Date.now() - startTime}ms`, { entryPoint: 'structuredOutputEngine' });
 
-        // Validate and clean the structured data
         const validatedItinerary = this.validateAndCleanStructure(rawData, requestId);
 
         logger.info(`🎯 STRUCTURED ENGINE: Successfully generated valid itinerary in ${Date.now() - startTime}ms`, { entryPoint: 'structuredOutputEngine' });
         return validatedItinerary;
       } catch (error: any) {
-        // All attempts failed - return fallback structure. The shared helper
-        // wraps raw errors into AppError(UPSTREAM) on exhaustion; the
-        // original message survives in logMessage, so log that when present.
         logger.error(`❌ STRUCTURED ENGINE: All attempts failed for request ${requestId}:`, { entryPoint: 'structuredOutputEngine', requestId, error: error?.logMessage ?? error });
         return this.createFallbackItinerary(requestId);
       }
@@ -183,9 +153,6 @@ export class StructuredOutputEngine {
     return value;
   }
 
-  /**
-   * Build enhanced prompt for structured generation
-   */
   private static buildStructuredPrompt(originalPrompt: string): string {
     return `${originalPrompt}
 
@@ -213,15 +180,11 @@ CRITICAL: You MUST return ONLY valid JSON that matches this exact schema:
 DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
   }
 
-  /**
-   * Validate and clean structured data with Zod
-   */
   private static validateAndCleanStructure(
     rawData: any, 
     requestId: string
   ): StructuredItinerary {
     try {
-      // First pass validation
       const validated = ItinerarySchema.parse(rawData);
       logger.info(`✅ STRUCTURED ENGINE: Schema validation passed for ${requestId}`, { entryPoint: 'structuredOutputEngine', requestId });
       return validated;
@@ -229,7 +192,6 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
     } catch (zodError: any) {
       logger.warn(`🔧 STRUCTURED ENGINE: Schema validation failed, attempting fixes for ${requestId}:`, { entryPoint: 'structuredOutputEngine', requestId, error: zodError.message });
       
-      // Attempt to fix common issues
       const fixed = this.fixStructuralIssues(rawData);
       
       try {
@@ -243,9 +205,6 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
     }
   }
 
-  /**
-   * Fix common structural issues in AI responses
-   */
   private static fixStructuralIssues(data: any): any {
     if (!data || typeof data !== 'object') {
       return this.createEmptyStructure();
@@ -263,7 +222,6 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
           desc: this.ensureString(activity?.desc, "Enjoy this activity with optimal timing."),
           tags: this.ensureTags(activity?.tags, activity?.title, item?.period, activity?.desc)
         })),
-        // Preserve the reason field if it exists
         reason: typeof item?.reason === 'string' ? item.reason : undefined
       }))
     };
@@ -271,9 +229,6 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
     return fixed;
   }
 
-  /**
-   * Utility functions for data cleaning
-   */
   private static ensureString(value: any, fallback: string): string {
     return (typeof value === 'string' && value.trim()) ? value.trim() : fallback;
   }
@@ -344,9 +299,6 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
     return null;
   }
 
-  /**
-   * Create fallback itinerary structure
-   */
   private static createFallbackItinerary(requestId: string): StructuredItinerary {
     logger.info(`🆘 STRUCTURED ENGINE: Creating fallback itinerary for ${requestId}`, { entryPoint: 'structuredOutputEngine', requestId });
     
@@ -377,9 +329,6 @@ DO NOT return explanatory text, markdown, or anything other than pure JSON.`;
     };
   }
 
-  /**
-   * Health check for the structured engine
-   */
   static async healthCheck(): Promise<{ status: string; timestamp: number }> {
     try {
       const testPrompt = "Generate a simple test itinerary for Baguio with one activity.";
@@ -452,7 +401,6 @@ function extractResponseText(result: any): string | null {
             return decoded;
           }
         } catch {
-          // ignore decode errors
         }
       }
     }
@@ -465,15 +413,11 @@ function extractResponseText(result: any): string | null {
       return extracted;
     }
   } catch {
-    // ignore
   }
 
   return null;
 }
 
-/**
- * Performance monitoring for structured output
- */
 export class StructuredOutputMonitor {
   private static metrics = {
     totalRequests: 0,

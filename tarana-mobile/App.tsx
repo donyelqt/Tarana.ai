@@ -49,12 +49,6 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
-/**
- * Center action disc — pure visual inside a Pressable that forwards the
- * tab press. The `tabPress` listener below intercepts it (preventDefault +
- * open sheet). Dropping `onPress` here means the event never fires and the
- * sheet never opens — that was the bug.
- */
 function ActionDisc() {
   return (
     <View
@@ -84,15 +78,6 @@ function NullScreen() {
   return null;
 }
 
-/**
- * MainTabs — sticky bottom tab bar (§9 + Appllama navigation law 5).
- *
- * Five peers: Home, Trips, center Action, Spots, Settings. One icon
- * family, single accent, native headers owned by the navigator.
- * Flows (Plan, Explore, Eats) and details live in the root stack ABOVE
- * the tabs: push from anywhere, back returns. Landing/AuthEntry stay
- * chromeless; auth seals with replace one-way doors.
- */
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -102,10 +87,6 @@ function MainTabs() {
         tabBarInactiveTintColor: INACTIVE,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerTitleStyle: { fontSize: 17, fontWeight: '600' },
-        // Subtle press feedback: default Android ripple flashes aggressive
-        // gray. Same default button component, only the ripple color
-        // overridden — zero layout delta by construction. The center
-        // Action tab owns its own button below — untouched.
         tabBarButton: (props) => (
           <PlatformPressable {...props} pressColor="rgba(0,102,255,0.16)" />
         ),
@@ -115,9 +96,6 @@ function MainTabs() {
         name="Home"
         component={Home}
         options={{
-          // Chromeless: the screen owns its blue header band, so the
-          // navigator's sticky "Home" title bar is removed (was dead
-          // chrome eating 50px+ and duplicating the tab label).
           headerShown: false,
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => <HomeIcon size={size} color={color} strokeWidth={2} />,
@@ -128,8 +106,6 @@ function MainTabs() {
         name="SavedTrips"
         component={SavedTrips}
         options={{
-          // Chromeless like Home/Spots: the screen owns its blue title
-          // band, so the navigator's sticky bar is removed.
           headerShown: false,
           tabBarLabel: 'Trips',
           tabBarIcon: ({ color, size }) => <MapPinIcon size={size} color={color} />,
@@ -164,8 +140,6 @@ function MainTabs() {
         name="Spots"
         component={Spots}
         options={{
-          // Chromeless like Home: the screen owns its blue title band,
-          // so the navigator's sticky "Spots" bar is removed.
           headerShown: false,
           tabBarLabel: 'Spots',
           tabBarIcon: ({ color, size }) => <CompassIcon size={size} color={color} />,
@@ -176,8 +150,6 @@ function MainTabs() {
         name="Settings"
         component={Settings}
         options={{
-          // Chromeless like Home/Spots: the screen owns its blue title
-          // band, so the navigator's sticky "Settings" bar is removed.
           headerShown: false,
           tabBarLabel: 'Settings',
           tabBarIcon: ({ color, size }) => <GearIcon size={size} color={color} />,
@@ -188,20 +160,6 @@ function MainTabs() {
   );
 }
 
-/**
- * App — navigation shell only. Screens own their logic;
- * no business logic lives here.
- *
- * SafeAreaProvider at the root makes every SafeAreaView/useSafeAreaInsets
- * consumer report real device insets (notch, punch-hole camera, status
- * bar) instead of zero fallbacks. It renders no UI of its own.
- *
- * Local-first (§2.1, §7.4): `Landing` is the initial route. First run
- * goes Landing → AuthEntry (fresh → ProfileCreate, import → LinkAccount)
- * → MainTabs (one-way door: replace, back can never re-enter auth).
- * `AuthGate` is gone (tagged at mobile-auth-ui-v1 for rollback);
- * its post-exchange role moved into LinkAccount's one-way import.
- */
 export default function App() {
   return (
     <SafeAreaProvider>
@@ -227,8 +185,6 @@ export default function App() {
           name="SavedCafes"
           component={SavedCafes}
           options={{
-            // Chromeless: the screen owns a custom back row in its blue
-            // title band (edge-swipe and system back keep working).
             headerShown: false,
           }}
         />

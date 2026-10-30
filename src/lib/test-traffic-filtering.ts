@@ -1,10 +1,3 @@
-/**
- * Comprehensive Traffic Filtering Test Suite
- * Validates that HIGH traffic activities are excluded from itinerary generation
- * 
- * @author Doniele Arys Antonio
- * @version 1.0.0
- */
 
 import { parallelTrafficProcessor } from '@/lib/performance/parallelTrafficProcessor';
 import { trafficAwareActivitySearch } from '@/lib/traffic/trafficAwareActivitySearch';
@@ -24,26 +17,19 @@ interface TestResults {
   };
 }
 
-/**
- * Test the parallel traffic processor filtering
- */
 async function testParallelTrafficProcessorFiltering(): Promise<TestResults> {
   console.log('\n🧪 TESTING PARALLEL TRAFFIC PROCESSOR FILTERING');
   console.log('=================================================');
 
-  // Get sample activities
   const activities = sampleItineraryCombined.items[0].activities.slice(0, 10);
   console.log(`📊 Testing with ${activities.length} sample activities`);
 
-  // Process activities with traffic enhancement and filtering
   const { enhancedActivities, metrics } = await parallelTrafficProcessor.processActivitiesUltraFast(activities);
 
-  // Analyze results
   const highTrafficActivities: string[] = [];
   const approvedActivities: string[] = [];
   const excludedActivities: string[] = [];
 
-  // Check for any HIGH traffic activities that might have slipped through
   enhancedActivities.forEach(activity => {
     const trafficLevel = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
     const recommendation = activity.trafficRecommendation;
@@ -57,7 +43,6 @@ async function testParallelTrafficProcessorFiltering(): Promise<TestResults> {
     }
   });
 
-  // Find activities that were filtered out
   const originalTitles = new Set(activities.map(a => a.title));
   const enhancedTitles = new Set(enhancedActivities.map(a => a.title));
   
@@ -111,18 +96,13 @@ async function testParallelTrafficProcessorFiltering(): Promise<TestResults> {
   return results;
 }
 
-/**
- * Test the traffic-aware activity search filtering
- */
 async function testTrafficAwareActivitySearchFiltering(): Promise<TestResults> {
   console.log('\n🧪 TESTING TRAFFIC-AWARE ACTIVITY SEARCH FILTERING');
   console.log('===================================================');
 
-  // Get sample activities
   const activities = sampleItineraryCombined.items[0].activities.slice(0, 10);
   console.log(`📊 Testing with ${activities.length} sample activities`);
 
-  // Process activities with traffic-aware search
   const enhancedActivities = await trafficAwareActivitySearch.enhanceActivitiesWithTraffic(activities);
   const filteredActivities = trafficAwareActivitySearch.filterAndSortByTraffic(enhancedActivities, {
     prioritizeTraffic: true,
@@ -131,12 +111,10 @@ async function testTrafficAwareActivitySearchFiltering(): Promise<TestResults> {
     maxTrafficLevel: 'MODERATE'
   });
 
-  // Analyze results
   const highTrafficActivities: string[] = [];
   const approvedActivities: string[] = [];
   const excludedActivities: string[] = [];
 
-  // Check for any HIGH traffic activities that might have slipped through
   filteredActivities.forEach(activity => {
     const trafficLevel = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
     const recommendation = activity.trafficRecommendation;
@@ -150,7 +128,6 @@ async function testTrafficAwareActivitySearchFiltering(): Promise<TestResults> {
     }
   });
 
-  // Find activities that were filtered out
   const originalTitles = new Set(activities.map(a => a.title));
   const filteredTitles = new Set(filteredActivities.map(a => a.title));
   
@@ -204,14 +181,10 @@ async function testTrafficAwareActivitySearchFiltering(): Promise<TestResults> {
   return results;
 }
 
-/**
- * Test traffic tag mapping for frontend display
- */
 function testTrafficTagMapping(): boolean {
   console.log('\n🧪 TESTING TRAFFIC TAG MAPPING');
   console.log('===============================');
 
-  // Mock activities with different traffic levels
   const mockActivities = [
     {
       title: 'Test Activity 1',
@@ -237,7 +210,6 @@ function testTrafficTagMapping(): boolean {
     const trafficLevel = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
     const tags = [...activity.tags];
 
-    // Apply tag mapping logic
     if (trafficLevel === 'VERY_LOW' || trafficLevel === 'LOW') {
       if (!tags.includes('low-traffic')) {
         tags.push('low-traffic');
@@ -248,7 +220,6 @@ function testTrafficTagMapping(): boolean {
       }
     }
 
-    // Validate tags
     const hasCorrectTag = 
       (trafficLevel === 'VERY_LOW' || trafficLevel === 'LOW') && tags.includes('low-traffic') ||
       trafficLevel === 'MODERATE' && tags.includes('moderate-traffic');
@@ -268,9 +239,6 @@ function testTrafficTagMapping(): boolean {
   return testPassed;
 }
 
-/**
- * Run comprehensive traffic filtering tests
- */
 export async function runTrafficFilteringTests(): Promise<void> {
   console.log('\n🚀 STARTING COMPREHENSIVE TRAFFIC FILTERING TESTS');
   console.log('==================================================');
@@ -280,19 +248,15 @@ export async function runTrafficFilteringTests(): Promise<void> {
   const testResults: { name: string; passed: boolean }[] = [];
 
   try {
-    // Test 1: Parallel Traffic Processor
     const parallelResults = await testParallelTrafficProcessorFiltering();
     testResults.push({ name: 'Parallel Traffic Processor', passed: parallelResults.testPassed });
 
-    // Test 2: Traffic-Aware Activity Search
     const searchResults = await testTrafficAwareActivitySearchFiltering();
     testResults.push({ name: 'Traffic-Aware Activity Search', passed: searchResults.testPassed });
 
-    // Test 3: Traffic Tag Mapping
     const tagResults = testTrafficTagMapping();
     testResults.push({ name: 'Traffic Tag Mapping', passed: tagResults });
 
-    // Final Results
     console.log('\n🎯 FINAL TEST RESULTS');
     console.log('=====================');
     
@@ -323,5 +287,4 @@ export async function runTrafficFilteringTests(): Promise<void> {
   console.log('🏁 TRAFFIC FILTERING TESTS COMPLETED');
 }
 
-// Export for manual testing
 export { testParallelTrafficProcessorFiltering, testTrafficAwareActivitySearchFiltering, testTrafficTagMapping };

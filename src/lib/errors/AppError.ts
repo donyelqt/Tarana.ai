@@ -1,19 +1,3 @@
-/**
- * Repo-wide typed error.
- *
- * Carries the fields a route handler needs to log safely and respond safely:
- * - `code`     — stable machine-readable identifier (e.g. "DB_CONNECTION")
- * - `status`   — HTTP status to return
- * - `safeMessage` — client-safe message, never a stack trace or raw error
- * - `retryable` — whether the caller should retry
- * - `logMessage` — what to write to the structured logger
- *
- * The response body stays `{ error: string }`. The typed metadata lives on
- * the thrown object and is consumed by handleApiError for logging — it is
- * never serialized into the response. This keeps the wire shape stable for
- * every existing client (savedItineraries.ts:91-92 and supabaseMeals.ts:26
- * both read `body.error` as a string).
- */
 
 export const AppErrorCodes = {
   VALIDATION: 'VALIDATION',

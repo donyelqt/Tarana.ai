@@ -18,7 +18,6 @@ const Navbar = () => {
     const pathname = usePathname();
     const { enabled: soundOn, setEnabled: setSoundOn } = useInterfaceSound()
 
-    // Close menu when resizing to desktop view
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth >= 768 && isMenuOpen) {
@@ -30,7 +29,6 @@ const Navbar = () => {
         return () => window.removeEventListener('resize', handleResize)
     }, [isMenuOpen])
 
-    // Navbar changes color based on section behind it, not scroll position
     useEffect(() => {
         const sectionIds = [
             "hero",
@@ -47,7 +45,6 @@ const Navbar = () => {
         }
 
         const getSectionAtNavbar = (): SectionBackground => {
-            // Check the top of the viewport (where navbar sits)
             const y = NAVBAR_HEIGHT / 2
             for (const id of sectionIds) {
                 const el = document.getElementById(id)
@@ -92,7 +89,7 @@ const Navbar = () => {
                     </Link>
                 </div>
 
-                {/* Desktop Navigation */}
+                {}
                 <div className="hidden md:flex items-center justify-center space-x-10 ml-16">
                     <Link href="/" className={`${isBlue ? "text-white hover:text-blue-200" : "text-gray-900 hover:text-blue-500"} ${pathname === "/" && !isBlue ? "font-bold !text-blue-600" : pathname === "/" ? "font-bold" : ""}`}>Home</Link>
                     <Link href="/about" className={`${isBlue ? "text-white hover:text-blue-200" : "text-gray-900 hover:text-blue-500"} ${pathname === "/about" && !isBlue ? "font-bold !text-blue-600" : pathname === "/about" ? "font-bold" : ""}`}>About</Link>
@@ -128,7 +125,7 @@ const Navbar = () => {
                     </div>
                 </div>
 
-                {/* Mobile menu button */}
+                {}
                 <button
                     className="md:hidden flex flex-col justify-center items-center w-10 h-10 rounded-lg transition-all duration-200 focus:outline-none"
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -140,7 +137,7 @@ const Navbar = () => {
                     <span className={`block w-5 h-0.5 transition-all duration-300 ease-in-out ${isMenuOpen ? 'transform -rotate-45 -translate-y-1' : ''} ${isBlue ? 'bg-white' : 'bg-gray-900'}`}></span>
                 </button>
 
-                {/* Mobile Navigation */}
+                {}
                 <div
                     className={`absolute top-16 left-0 right-0 bg-white shadow-md p-6 md:hidden z-50 transition-all duration-300 ease-in-out ${isMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
                 >

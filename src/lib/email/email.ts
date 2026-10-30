@@ -1,18 +1,14 @@
 import { getEmailTransportConfig, validateEmailConfig } from './emailConfig';
 
-// Email service for password reset functionality
 export async function sendPasswordResetEmail(email: string, resetUrl: string): Promise<boolean> {
-  // Get validated email configuration
   const transportConfig = getEmailTransportConfig();
   const emailConfig = validateEmailConfig();
   
   if (!transportConfig || !emailConfig) {
-    // Never log the reset URL: it embeds a live takeover-capable token.
-    return true; // Return true for development
+    return true; 
   }
 
   try {
-    // Dynamic import to avoid build issues if nodemailer isn't installed
     const nodemailer = await import('nodemailer');
     
     const transporter = nodemailer.default.createTransport(transportConfig);
@@ -91,6 +87,6 @@ The Tarana.ai Team`,
     return true;
   } catch (error) {
     console.error('Error sending password reset email:', error);
-    return true; // Return true to prevent revealing email existence
+    return true; 
   }
 }

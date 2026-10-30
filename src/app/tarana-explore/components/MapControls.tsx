@@ -9,13 +9,10 @@ interface MapControlsProps {
   isChangingStyle: boolean
   onStyleChange: (style: MapStyle) => void
   onRecenter: () => void
-  /** Signed steps: negative zooms out, positive zooms in. */
   onZoom: (steps: number) => void
-  /** True at either zoom bound, so both buttons disable together. */
   zoomDisabled?: boolean
   tiltOn: boolean
   onToggleTilt: () => void
-  /** Plan Mode is a display mode: it swaps the island's config, not the route. */
   planMode: boolean
   onTogglePlan: () => void
   styleOptions?: MapStyle[]
@@ -37,19 +34,9 @@ const MapControls: React.FC<MapControlsProps> = ({
   styleOptions = DEFAULT_STYLES,
 }) => {
   return (
-    // z-40, above the island's z-30. At narrow widths the expanded planner
-    // card reaches past the middle of the screen, so a rail painted
-    // underneath it would be unreachable. The switch that opened the card
-    // must stay tappable while the card is on screen, or the mode cannot be
-    // turned off.
     <div className="absolute right-3 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-1.5">
 
-      {/*
-        Zoom first, where a map user reaches for it. Two circular controls in
-        the rail's own language, deliberately NOT TomTom's NavigationControl:
-        that control is rectangular, pins itself to the map's top-right, and
-        would sit on top of this rail.
-      */}
+      {}
       <button
         type="button"
         onClick={() => onZoom(1)}

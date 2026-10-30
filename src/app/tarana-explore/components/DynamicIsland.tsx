@@ -3,44 +3,19 @@
 import React, { useState, useRef, useLayoutEffect, ReactNode } from "react"
 import { motion } from "framer-motion"
 
-/**
- * DynamicIsland — a faithful web port of the Apple Dynamic Island morph physics.
- *
- * Verified model (see di_verify.js loop-engineering harness, 12/12 checks pass):
- *  - Spring: m=1, stiffness=210, damping=23  -> damping ratio ζ≈0.794 (slightly
- *    underdamped). Measured overshoot ≈1.2%, settle ≈0.26s. Transfers 1:1 because
- *    framer-motion's spring uses the same m·x'' + c·x' + k·(x-target)=0 ODE.
- *  - Silhouette: compact uses border-radius:9999px (=> perfect pill, radius = h/2).
- *    Expanded uses a fixed 28px radius so the grown card reads as a clean DI panel
- *    (not a lozenge). borderRadius is animated alongside width/height for the morph.
- *  - Content is clipped to the pill ONLY while morphing (overflow:hidden), then released
- *    to `visible` so child dropdowns (search results) can escape the rounded clip.
- */
 
-// Verified DI spring preset — DO NOT retune without re-running the harness.
 const DI_SPRING = { type: "spring" as const, stiffness: 210, damping: 23, mass: 1 }
 
 const COMPACT_HEIGHT = 52
-/** Narrowest the collapsed pill is ever allowed to be. */
 const COMPACT_MIN_WIDTH = 240
 
 export interface DynamicIslandProps {
   expanded: boolean
-  /** Rendered (and measured) full content shown when expanded. */
   children: ReactNode
-  /** Compact pill summary shown when collapsed (e.g. a search affordance). */
   compact: ReactNode
-  /**
-   * Collapsed pill width in px. Defaults to the minimum; pass a larger value when
-   * the compact slot carries a summary that needs the room. Always clamped to the
-   * available (viewport) width so the pill can never overflow on small screens.
-   */
   compactWidth?: number
-  /** Accessible name for the collapsed pill button. */
   compactLabel?: string
-  /** Max expanded width in px (clamped to viewport). */
   maxWidth?: number
-  /** Called when the collapsed pill is tapped (e.g. focus the first field). */
   onCompactClick?: () => void
 }
 
@@ -58,7 +33,6 @@ const DynamicIsland: React.FC<DynamicIslandProps> = ({
   const [contentH, setContentH] = useState(COMPACT_HEIGHT)
   const [clip, setClip] = useState(true)
 
-  // Available width = min(maxWidth, viewport - margins). Keeps the island on-screen.
   useLayoutEffect(() => {
     const recompute = () => {
       const vw = typeof window !== "undefined" ? window.innerWidth : maxWidth
@@ -69,7 +43,6 @@ const DynamicIsland: React.FC<DynamicIslandProps> = ({
     return () => window.removeEventListener("resize", recompute)
   }, [maxWidth])
 
-  // Measure the natural content height so the island grows exactly to fit it.
   useLayoutEffect(() => {
     const el = contentRef.current
     if (!el) return
@@ -89,7 +62,6 @@ const DynamicIsland: React.FC<DynamicIslandProps> = ({
       animate={{
         width: target.width,
         height: target.height,
-        // Compact = full pill; expanded = clean DI rounded card (not a lozenge).
         borderRadius: expanded ? 28 : 9999,
       }}
       transition={DI_SPRING}
@@ -98,15 +70,6 @@ const DynamicIsland: React.FC<DynamicIslandProps> = ({
       className="relative mx-auto"
       style={{
         borderRadius: 9999,
-        // Clip ONLY while collapsed. Expanded content must never be clipped:
-        // during the width/height morph the container is still narrower than
-        // the card, so `overflow:hidden` pushed the "To" field's clear button
-        // outside the hit area and made it untappable. Clip was previously
-        // driven purely by animation start/complete, so any interrupted or
-        // not-yet-run animation left the card clipped indefinitely.
-        // Collapsed content is opacity:0 + pointer-events:none, so clipping it
-        // costs nothing; expanded content is visible and interactive, and the
-        // suggestion dropdown needs `visible` to escape the rounded clip.
         overflow: expanded ? "visible" : clip ? "hidden" : "visible",
         background: "rgba(255,255,255,0.92)",
         backdropFilter: "blur(12px)",
@@ -115,7 +78,7 @@ const DynamicIsland: React.FC<DynamicIslandProps> = ({
         border: "1px solid rgba(229,231,235,1)",
       }}
     >
-      {/* Full content: always laid out (so it can be measured) but inert when collapsed. */}
+      {}
       <div
         ref={contentRef}
         style={{
@@ -131,18 +94,7 @@ const DynamicIsland: React.FC<DynamicIslandProps> = ({
         {children}
       </div>
 
-      {/*
-        Compact summary overlay, centered, only while collapsed.
-
-        `pointer-events-auto` is load-bearing. The island root is
-        `pointer-events-none` so the card's transparent margins do not
-        swallow map pans, and that value is inherited. This button is a
-        sibling of the content wrapper — not a child of it — so nothing
-        re-enabled it and the pill inherited `none`: taps landed on the map
-        and the card could not be opened by touch. It bit both modes, since
-        route mode's "Where to?" and Plan Mode's "Plan a trip" are this
-        same button.
-      */}
+      {}
       {!expanded && (
         <button
           type="button"

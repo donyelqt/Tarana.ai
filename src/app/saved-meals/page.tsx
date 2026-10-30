@@ -22,9 +22,6 @@ import { restaurants } from "@/app/tarana-eats/data/restaurants";
 import MealCard from "./components/MealCard";
 import { useRouter } from 'next/navigation';
 
-// Cuisine comes from the Tarana Eats restaurant catalog, not the saved_meals
-// row (which carries no cuisine field). Match on exact cafe name; unknown
-// cafes resolve to [] so the filter degrades to no-match only when active.
 function getCuisinesForCafe(cafeName: string): string[] {
   const match = restaurants.find((r) => r.name.toLowerCase() === cafeName.trim().toLowerCase());
   return match?.cuisine ?? [];
@@ -53,7 +50,6 @@ const SavedMealsPage = () => {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
 
-  // React Query - Cached meals list
   const { data: savedMeals = [], isLoading } = useQuery({
     queryKey: ['saved-meals', session?.user?.id],
     queryFn: async () => {
@@ -61,10 +57,9 @@ const SavedMealsPage = () => {
       return await getSavedMeals();
     },
     enabled: !!session?.user?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, 
   });
 
-  // Filtered meals based on search + selects (memoized for performance)
   const filteredMeals = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return savedMeals.filter((meal) => {
@@ -100,7 +95,7 @@ const SavedMealsPage = () => {
       <Sidebar />
       <main className={`${contentClass('md:pl-64')} flex-1`}>
         <div className="p-8">
-          {/* Header */}
+          {}
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Saved Meals</h1>
@@ -117,7 +112,7 @@ const SavedMealsPage = () => {
             </Button>
           </div>
 
-          {/* Filters */}
+          {}
           <div className="mb-8 p-6 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="relative">
@@ -169,7 +164,7 @@ const SavedMealsPage = () => {
             </div>
           </div>
 
-          {/* Loading State */}
+          {}
           {isLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -189,7 +184,7 @@ const SavedMealsPage = () => {
             </div>
           )}
 
-          {/* Meals Grid */}
+          {}
           {!isLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredMeals.map((meal) => (
@@ -198,7 +193,7 @@ const SavedMealsPage = () => {
             </div>
           )}
 
-          {/* Empty State */}
+          {}
           {!isLoading && filteredMeals.length === 0 && (
             <div className="text-center py-16">
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">

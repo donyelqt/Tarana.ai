@@ -36,12 +36,12 @@ interface EnhancedResultMatch extends ResultMatch {
   matchScore?: number;
 }
 
-// Global initialization for Gemini model (matching itinerary-generator pattern)
+
 const API_KEY = process.env.GOOGLE_GEMINI_API_KEY || "";
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
-// Use environment variable or fall back to valid Gemini model
-const DEFAULT_MODEL_ID = "gemini-2.5-flash"; // Valid Gemini model
+
+const DEFAULT_MODEL_ID = "gemini-2.5-flash"; 
 const configuredModelId = process.env.GOOGLE_GEMINI_MODEL?.trim();
 const MODEL_ID = configuredModelId && configuredModelId.length > 0 ? configuredModelId : DEFAULT_MODEL_ID;
 
@@ -80,10 +80,10 @@ const geminiModel = genAI ? genAI.getGenerativeModel({
   ],
 }) : null;
 
-// Optimized caching system. Keys are user-scoped: without the userId a
-// second user with the same prompt would be served the first user phrasing.
-// Both maps are LRU-capped so 30-minute TTL entries cannot accumulate per
-// instance without bound.
+
+
+
+
 const CACHE_MAX_ENTRIES = 200;
 const responseCache = new Map<string, { response: any; timestamp: number }>();
 const preprocessingCache = new Map<string, any>();
@@ -96,22 +96,22 @@ function cacheSet<K, V>(map: Map<K, V>, key: K, value: V): void {
     map.delete(oldest.value);
   }
 }
-// Test isolation: these caches persist across POSTs in the same process, so
-// suites must reset them in beforeEach. Without this, an early test's cached
-// response serves later tests with the same key and their queued parser mocks
-// leak into neighboring tests (order-dependent suite).
+
+
+
+
 export function __resetFoodRecommendationCachesForTests(): void {
   responseCache.clear();
   preprocessingCache.clear();
 }
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes for better cache utilization
+const CACHE_DURATION = 30 * 60 * 1000; 
 const DEFAULT_PLACEHOLDER_IMAGE = "/images/placeholders/hero-placeholder.svg";
 const MIN_RECOMMENDATIONS = 3;
 const MAX_RECOMMENDATIONS = 5;
 
-// Bounded input contract (Gala parity): prompt length, typed client
-// preferences, and a bounded foodData envelope. Raw regex parsing below
-// must never see unbounded text.
+
+
+
 const eatsRequestSchema = z.object({
   prompt: z.string().min(1).max(5000),
   foodData: z.object({
@@ -126,8 +126,8 @@ const eatsRequestSchema = z.object({
   }).passthrough().optional(),
 }).passthrough();
 
-// Model reason strings render as UI text. Strip URLs, @-handles, and
-// instruction-shaped lines so smuggled directives never reach the card.
+
+
 function sanitizeReasonText(reason: string): string {
   if (typeof reason !== "string") return "";
   return reason
@@ -142,10 +142,10 @@ function sanitizeReasonText(reason: string): string {
     .slice(0, 500);
 }
 
-// Trust boundary: the client ships a foodData catalog, but grounding must
-// never certify names against that same client list. Cross-check every
-// client restaurant name against the server registry; unknown names are
-// dropped before indexing, relevance, and grounding ever see them.
+
+
+
+
 function serverKnownRestaurants(clientRestaurants: unknown): RestaurantData[] {
   if (!Array.isArray(clientRestaurants)) return [...serverRestaurants];
   const known = new Set(serverRestaurants.map((r) => normalizeRestaurantName(r.name)));
@@ -174,10 +174,10 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
   };
   try {
-    // Hard 32KB body cap (Gala parity): the route interpolates the whole
-    // foodData catalog into the model prompt, so an unbounded req.json()
-    // lets any client push multi-MB payloads through parsing + indexing
-    // compute before any charge decision. Reject loud with 413.
+    
+    
+    
+    
     const contentLength = Number(req.headers.get('content-length') ?? 0);
     if (contentLength > 32 * 1024) {
       return NextResponse.json(
@@ -190,7 +190,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     const { prompt, foodData: clientFoodData, preferences: clientPreferences } = requestBody;
     const foodData = { ...((clientFoodData as Record<string, unknown> | undefined) ?? {}), restaurants: serverKnownRestaurants((clientFoodData as { restaurants?: unknown } | undefined)?.restaurants) };
 
-    // Input validation
+    
     if (!prompt) {
       return NextResponse.json(
         { error: "Prompt is required" },
@@ -228,17 +228,17 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         { status: 422 }
       );
     }
-    // ✅ CREDIT SYSTEM: Charge first, atomically (H1-Eats). consumeCredits
-    // throws InsufficientCreditsError when the balance cannot cover the
-    // request, so no separate balance pre-check is needed — the pre-check
-    // raced the charge (check-then-act) and the charge must not be skipped.
-    // Fail-closed: a charge failure refuses service; the route never serves
-    // output it could not bill for. Validation runs before the charge so a
-    // malformed request never bills.
-    //
-    // Per-attempt refund identity: stable within this invocation (so
-    // overlapping refund calls dedupe) but unique across retries (so a
-    // retried request's legitimate second refund is never swallowed).
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const attemptId = randomUUID();
     let charged = false;
     try {
@@ -262,10 +262,10 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     }
     charged = true;
 
-    // Parse preferences from prompt first
+    
     const preferences = parseUserPreferences(prompt, requestId);
     
-    // CRITICAL: Override with client preferences if provided (handles form data directly)
+    
     if (clientPreferences) {
       if (clientPreferences.pax !== null && clientPreferences.pax !== undefined) {
         preferences.pax = clientPreferences.pax;
@@ -281,8 +281,8 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       }
     }
     
-    // Redacted counters only: raw prompt-derived values can carry PII
-    // (names, hotels, dates) and must not sit at info level.
+    
+    
     logger.info("Parsed user preferences", {
       entryPoint: LOG_ENTRY_POINT,
       hasPax: preferences.pax != null,
@@ -291,7 +291,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       restrictionCount: Array.isArray(preferences.restrictions) ? preferences.restrictions.length : 0
     }, requestId);
 
-    // Initialize menu indexing service with restaurant data
+    
     if (foodData?.restaurants && foodData.restaurants.length > 0) {
       try {
         menuIndexingService.indexRestaurants(foodData.restaurants);
@@ -304,12 +304,12 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       }
     }
 
-    // Check and log API key presence
+    
     const apiKey = process.env.GOOGLE_GEMINI_API_KEY || "";
     if (!apiKey) {
       logger.warn("⚠️ GOOGLE_GEMINI_API_KEY is missing! Using intelligent fallback with recommendation engine.", { entryPoint: LOG_ENTRY_POINT }, requestId);
       
-      // Use intelligent recommendation engine instead of basic fallback
+      
       const intelligentRecommendations = createIntelligentRecommendations(foodData, prompt, preferences, requestId);
       await completeClaim(200, intelligentRecommendations);
       return NextResponse.json(intelligentRecommendations);
@@ -317,10 +317,10 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     
     logger.info("✓ Gemini AI enabled - generating personalized recommendations...", { entryPoint: LOG_ENTRY_POINT }, requestId);
     
-    // Generate optimized cache key
-    // Catalog fingerprint: the response depends on WHICH restaurants were
-    // searchable, so same-prompt requests over different name sets must not
-    // share a cache entry. Sorted names keep the key stable under reorder.
+    
+    
+    
+    
     const catalogFingerprint = Array.isArray((foodData as { restaurants?: unknown } | undefined)?.restaurants)
       ? ((foodData as { restaurants: Array<{ name?: unknown }> }).restaurants
         .map((r) => (typeof r?.name === "string" ? r.name : ""))
@@ -328,14 +328,14 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         .join("|")) : "";
     const cacheKey = JSON.stringify({
       user: userId,
-      prompt: prompt?.substring(0, 30), // Further reduced for better hit rates
+      prompt: prompt?.substring(0, 30), 
       catalog: catalogFingerprint,
-      budget: preferences.budget ? Math.floor(parseInt(preferences.budget) / 100) * 100 : null, // Round to nearest 100
+      budget: preferences.budget ? Math.floor(parseInt(preferences.budget) / 100) * 100 : null, 
       cuisine: preferences.cuisine,
       pax: preferences.pax || 2
     });
     
-    // Check cache for recent similar requests
+    
     const cached = responseCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
       await completeClaim(200, cached.response);
@@ -348,17 +348,17 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       cacheSet(preprocessingCache, preprocessingKey, relevantRestaurants);
     }
 
-    // Re-use the globally initialised model
+    
     const model = geminiModel;
     if (!model) {
       logger.error("Gemini model is not initialized – missing API key?", { entryPoint: LOG_ENTRY_POINT }, requestId);
-      // Create a fallback response
+      
       const fallbackRecommendations = createFallbackRecommendations(foodData, prompt, requestId);
       await completeClaim(200, fallbackRecommendations);
       return NextResponse.json(fallbackRecommendations);
     }
 
-    // Get menu statistics for context
+    
     const menuStats = menuIndexingService.getIndexStats();
     
     const enhancedPrompt = `
@@ -429,10 +429,10 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
     `;
 
     try {
-      // Retry Gemini API calls with exponential backoff + timeout per attempt.
-      // maxAttempts=2: one initial call + one retry (matching the previous
-      // maxRetries=2 behavior). 30s timeout per attempt. 1s fixed delay
-      // between retries via jitter:'none'.
+      
+      
+      
+      
       const result = await withRetry(() => model.generateContent(enhancedPrompt), {
         maxAttempts: 2,
         baseDelayMs: 1000,
@@ -445,7 +445,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
 
       const response = await result.response;
       
-      // Debug: Check prompt feedback and safety ratings
+      
       if (response.promptFeedback) {
         logger.warn(`⚠️ Prompt Feedback:`, {
           entryPoint: LOG_ENTRY_POINT,
@@ -460,7 +460,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         }
       }
       
-      // Check if candidates exist
+      
       if (!response.candidates || response.candidates.length === 0) {
         logger.error(`❌ No candidates in Gemini response`, { entryPoint: LOG_ENTRY_POINT }, requestId);
         logger.info(`Gemini response candidates omitted`, { entryPoint: LOG_ENTRY_POINT, candidateCount: 0 }, requestId);
@@ -474,7 +474,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         responseLength: textResponse?.length || 0
       }, requestId);
       
-      // Check if response is empty or invalid
+      
       if (!textResponse || textResponse.trim().length < 10) {
         logger.error(`❌ Gemini returned empty/invalid response (length: ${textResponse?.length || 0})`, {
           entryPoint: LOG_ENTRY_POINT,
@@ -487,7 +487,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       
       logger.info(`✅ Gemini returned valid response`, { entryPoint: LOG_ENTRY_POINT, responseLength: textResponse.length }, requestId);
 
-      // Use robust JSON parser with multiple recovery strategies
+      
       const parseResult = RobustFoodJsonParser.parseResponse(textResponse);
       let recommendations: { matches: EnhancedResultMatch[] };
 
@@ -498,7 +498,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
           recommendationCount: recommendations.matches.length
         }, requestId);
         
-        // Validate and enhance the response
+        
         if (recommendations.matches && Array.isArray(recommendations.matches)) {
           recommendations.matches = validateAndEnhanceRecommendations(
             recommendations.matches,
@@ -509,9 +509,9 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
           );
         }
         if (!recommendations.matches || recommendations.matches.length === 0) {
-          // Fail-closed: a billed generation that yields zero servable matches
-          // is refunded, never cached, and answered as a safe 500. The 500
-          // path below refunds via charged=true and skips the cache write.
+          
+          
+          
           throw new Error('No servable recommendations after grounding');
         }
       } else {
@@ -519,8 +519,8 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         throw new Error('Invalid parse result');
       }
       
-      // Enhance each match with comprehensive menu data and smart suggestions
-      // Cache the response
+      
+      
       cacheSet(responseCache, cacheKey, {
         response: recommendations,
         timestamp: Date.now()
@@ -530,10 +530,10 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       return NextResponse.json(recommendations);
 
     } catch (apiError) {
-      // Charged up front (H1-Eats): a generation we cannot deliver must be
-      // refunded. The free-fallback path is gone — serving unbilled output
-      // is exactly the leak this refactor closes. refundCredits never throws
-      // (returns false on no-op), so the original failure still surfaces.
+      
+      
+      
+      
       if (charged) {
         await CreditService.refundCredits({
           userId,
@@ -569,7 +569,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
   }, (res) => res.status);
 });
 
-// Validation and enhancement helper
+
 function validateAndEnhanceRecommendations(
   matches: EnhancedResultMatch[],
   foodData: any,
@@ -695,9 +695,9 @@ function hydrateMatchFromRestaurant(
     enhancedReason += ` Be sure to try ${itemsList}.`;
   }
 
-  // Server-registry image or placeholder only. The model-controlled
-  // match.image is never trusted: a tracker or phishing URL served here
-  // renders in FoodMatchCard without any allowlist check.
+  
+  
+  
   const restaurantImage = restaurant.image && restaurant.image.trim().length > 0
     ? restaurant.image
     : DEFAULT_PLACEHOLDER_IMAGE;
@@ -749,16 +749,16 @@ function normalizeRestaurantName(name: string): string {
     .trim();
 }
 
-// Intelligent recommendations using recommendation engine
+
 function createIntelligentRecommendations(foodData: any, prompt: string, preferences: any, requestId: string): { matches: EnhancedResultMatch[] } {
   logger.info('🧠 Using intelligent recommendation engine...', { entryPoint: LOG_ENTRY_POINT }, requestId);
   logger.info('🎯 Generating intelligent recommendations...', { entryPoint: LOG_ENTRY_POINT }, requestId);
   
-  // Use recommendation engine for advanced scoring
+  
   const recommendations = recommendationEngine.generateRecommendations(
     foodData.restaurants,
     preferences,
-    5 // Top 5 recommendations
+    5 
   );
   
   logger.info(`✅ Generated ${recommendations.length} recommendations`, {
@@ -770,7 +770,7 @@ function createIntelligentRecommendations(foodData: any, prompt: string, prefere
     const userBudget = preferences.budget ? parseInt(preferences.budget.replace(/[^\d]/g, '')) : null;
     const finalPrice = userBudget || rec.estimatedTotal;
 
-    // Get smart budget allocation for recommended items
+    
     const allocation = budgetAllocator.allocateBudget(
       rec.recommendedItems,
       finalPrice,
@@ -778,21 +778,21 @@ function createIntelligentRecommendations(foodData: any, prompt: string, prefere
       preferences
     );
 
-    // Build conversational, human-friendly reasoning with VARIETY
+    
     const topItems = allocation.selectedItems.slice(0, 3);
     const itemsList = topItems.length > 0 
       ? topItems.map(item => `${item.name} (PHP ${item.price})`).join(' and ')
       : 'delicious options';
     const utilizationPercent = Math.round(allocation.utilizationRate);
     
-    // Get restaurant type/atmosphere
+    
     const cuisineType = rec.restaurant.cuisine?.[0] || 'dining spot';
     const atmosphere = rec.restaurant.popularFor?.includes('cozy') ? 'cozy' 
       : rec.restaurant.popularFor?.includes('modern') ? 'modern'
       : rec.restaurant.popularFor?.includes('family') ? 'family-friendly'
       : 'welcoming';
     
-    // Generate varied opening sentences (rotate through patterns)
+    
     const restaurantIndex = recommendations.indexOf(rec);
     const openingTemplates = [
       `Perfect for ${rec.matchReasons[0]?.toLowerCase() || 'your group'}, this ${atmosphere} ${cuisineType} spot delivers authentic flavors.`,
@@ -817,7 +817,7 @@ function createIntelligentRecommendations(foodData: any, prompt: string, prefere
       `Enjoy ${allocation.selectedItems.length} delicious choices for PHP ${finalPrice.toLocaleString()} (${utilizationPercent}% budget optimization).`
     ];
     
-    // Select templates based on index to ensure variety
+    
     const sentence1 = openingTemplates[restaurantIndex % openingTemplates.length];
     const sentence2 = dishTemplates[restaurantIndex % dishTemplates.length];
     const sentence3 = budgetTemplates[restaurantIndex % budgetTemplates.length];
@@ -831,7 +831,7 @@ function createIntelligentRecommendations(foodData: any, prompt: string, prefere
       image: rec.restaurant.image,
       reason: detailedReason,
       fullMenu: rec.restaurant.fullMenu,
-      recommendedMenuItems: allocation.selectedItems.slice(0, 8), // Top 8 suggested items
+      recommendedMenuItems: allocation.selectedItems.slice(0, 8), 
       budgetAllocation: {
         totalCost: allocation.totalCost,
         remainingBudget: allocation.remainingBudget,
@@ -849,23 +849,23 @@ function createIntelligentRecommendations(foodData: any, prompt: string, prefere
   return { matches };
 }
 
-// Legacy fallback for compatibility
+
 function createFallbackRecommendations(foodData: any, prompt: string, requestId: string): { matches: EnhancedResultMatch[] } {
   const preferences = parseUserPreferences(prompt, requestId);
   return createIntelligentRecommendations(foodData, prompt, preferences, requestId);
 }
 
-// Parse user preferences from prompt
+
 function parseUserPreferences(prompt: string, requestId: string): any {
   const preferences: any = {};
   
-  // Extract budget
+  
   const budgetMatch = prompt.match(/₱(\d+)/) || prompt.match(/budget.*?(\d+)/i);
   if (budgetMatch) {
     preferences.budget = budgetMatch[1];
   }
   
-  // Extract cuisine
+  
   const cuisineOptions = ['Filipino', 'Korean', 'Japanese', 'Cafe', 'Coffee', 'Vegetarian', 'Buffet'];
   for (const cuisine of cuisineOptions) {
     if (prompt.toLowerCase().includes(cuisine.toLowerCase())) {
@@ -874,33 +874,33 @@ function parseUserPreferences(prompt: string, requestId: string): any {
     }
   }
   
-  // Extract pax/group size (handles "6 people", "6+ people", "6 pax", etc.)
+  
   const paxMatch = prompt.match(/(\d+)\+?\s*(?:people?|pax)/i);
   if (paxMatch) {
     preferences.pax = parseInt(paxMatch[1]);
   }
   
-  // DEBUG: Log parsed pax value
+  
   if (preferences.pax) {
     logger.debug(`Parsed group size from prompt`, {
       entryPoint: LOG_ENTRY_POINT
     }, requestId);
   }
   
-  // Extract dietary restrictions
+  
   preferences.restrictions = [];
   if (prompt.toLowerCase().includes('vegetarian')) preferences.restrictions.push('Vegetarian');
   if (prompt.toLowerCase().includes('vegan')) preferences.restrictions.push('Vegan');
   if (prompt.toLowerCase().includes('halal')) preferences.restrictions.push('Halal');
   
-  // Extract meal type
+  
   preferences.mealType = [];
   if (prompt.toLowerCase().includes('breakfast')) preferences.mealType.push('Breakfast');
   if (prompt.toLowerCase().includes('lunch')) preferences.mealType.push('Lunch');
   if (prompt.toLowerCase().includes('dinner')) preferences.mealType.push('Dinner');
   if (prompt.toLowerCase().includes('snack')) preferences.mealType.push('Snack');
   
-  // Extract location
+  
   const locationMatch = prompt.match(/at\s+(.+?)(?:\s+for|$)/i);
   if (locationMatch) {
     preferences.location = locationMatch[1];
@@ -909,7 +909,7 @@ function parseUserPreferences(prompt: string, requestId: string): any {
   return preferences;
 }
 
-// Parse budget range
+
 function parseBudgetRange(budgetStr: string): { min: number; max: number } {
   const budget = parseInt(budgetStr);
   if (budget <= 200) return { min: 0, max: 200 };
@@ -918,13 +918,13 @@ function parseBudgetRange(budgetStr: string): { min: number; max: number } {
   return { min: 601, max: 1000 };
 }
 
-// Calculate recommended price based on user's budget input, fallback to restaurant pricing
+
 function calculateRecommendedPrice(restaurant: any, groupSize: number, userBudget?: string, requestId?: string): number {
-  // If user provided a budget, use that as the total budget for the group
+  
   if (userBudget) {
     const budgetNum = parseInt(userBudget.replace(/[^\d]/g, ''));
     if (budgetNum && budgetNum > 0) {
-      // DEBUG LOGGING - Remove after fixing
+      
       logger.info("🔍 API ROUTE DEBUG - Using User Budget:", {
         entryPoint: LOG_ENTRY_POINT,
         restaurantName: restaurant.name,
@@ -933,15 +933,15 @@ function calculateRecommendedPrice(restaurant: any, groupSize: number, userBudge
         groupSize: groupSize,
         finalPrice: budgetNum
       }, requestId);
-      return budgetNum; // Return user's budget as total budget for entire group
+      return budgetNum; 
     }
   }
   
-  // Fallback: use restaurant's average price × group size
+  
   const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
   const fallbackPrice = Math.round(avgPrice * groupSize);
   
-  // DEBUG LOGGING - Remove after fixing
+  
   logger.info("🔍 API ROUTE DEBUG - Using Restaurant Pricing:", {
     entryPoint: LOG_ENTRY_POINT,
     restaurantName: restaurant.name,
@@ -956,24 +956,24 @@ function calculateRecommendedPrice(restaurant: any, groupSize: number, userBudge
   return fallbackPrice;
 }
 
-// Pre-filter restaurants based on preferences
+
 function getRelevantRestaurants(restaurants: RestaurantData[], preferences: any): RestaurantData[] {
   return restaurants.filter(restaurant => {
-    // Budget filter
+    
     if (preferences.budget) {
       const budgetRange = parseBudgetRange(preferences.budget);
       const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
-      if (avgPrice > budgetRange.max + 100) return false; // Allow slight buffer
+      if (avgPrice > budgetRange.max + 100) return false; 
     }
     
-    // Cuisine filter
+    
     if (preferences.cuisine && preferences.cuisine !== 'Show All') {
       if (!restaurant.cuisine.some(c => c.toLowerCase().includes(preferences.cuisine.toLowerCase()))) {
         return false;
       }
     }
     
-    // Dietary restrictions filter
+    
     if (preferences.restrictions && preferences.restrictions.length > 0) {
       const hasRequiredRestrictions = preferences.restrictions.every((restriction: string) => 
         restaurant.dietaryOptions.includes(restriction)
@@ -982,30 +982,30 @@ function getRelevantRestaurants(restaurants: RestaurantData[], preferences: any)
     }
     
     return true;
-  }).slice(0, 5); // Limit to top 5 most relevant
+  }).slice(0, 5); 
 }
 
-// Quick scoring algorithm for fallback
+
 function calculateQuickScore(restaurant: any, preferences: any): number {
   let score = 0;
   
-  // Cuisine match
+  
   if (preferences.cuisine && restaurant.cuisine.includes(preferences.cuisine)) {
     score += 50;
   }
   
-  // Budget match
+  
   if (preferences.budget) {
     const budgetRange = parseBudgetRange(preferences.budget);
     const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
     if (avgPrice <= budgetRange.max) {
       score += 30;
     } else if (avgPrice <= budgetRange.max + 100) {
-      score += 15; // Partial match
+      score += 15; 
     }
   }
   
-  // Group size match
+  
   const groupSize = preferences.pax || 2;
   const avgPrice = (restaurant.priceRange.min + restaurant.priceRange.max) / 2;
   const totalPrice = avgPrice * groupSize;
@@ -1014,13 +1014,13 @@ function calculateQuickScore(restaurant: any, preferences: any): number {
   else if (groupSize <= 5 && totalPrice <= 1000) score += 20;
   else if (groupSize > 5 && restaurant.cuisine.includes('Buffet')) score += 25;
   
-  // Rating bonus
+  
   if (restaurant.ratings >= 4.0) score += 10;
   
   return score;
 }
 
-// Generate concise reason
+
 function generateQuickReason(restaurant: any, preferences: any): string {
   const reasons: string[] = [];
   
@@ -1048,8 +1048,8 @@ function generateQuickReason(restaurant: any, preferences: any): string {
 }
 
 
-// Health check endpoint for monitoring. Stats exposes error-type counts and
-// last-error metadata, so it sits behind auth; bare health stays open.
+
+
 export const GET = withAuth(async (req: NextRequest) => {
   const requestId = getRequestId(req);
   return timedHttp('/api/gemini/food-recommendations', 'GET', async () => {

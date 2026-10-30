@@ -17,7 +17,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { MealDetailSkeleton } from '@/components/ui/MealDetailSkeleton';
 
-// Static data for fallback
 const mealDetailsData = {};
 
 const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'];
@@ -47,7 +46,6 @@ const SavedMealPage = () => {
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const { toast } = useToast();
   const { data: session } = useSession();
-  // React Query - Cached meal details
   const { data: mealDetails, isLoading, error } = useQuery({
     queryKey: ['saved-meal', mealId],
     queryFn: async () => {
@@ -62,10 +60,9 @@ const SavedMealPage = () => {
       return meal;
     },
     enabled: !!mealId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, 
   });
 
-  // Fetch saved notes for this meal
   const { data: notesData } = useQuery({
     queryKey: ['saved-meal-notes', mealId],
     queryFn: async () => {
@@ -76,14 +73,12 @@ const SavedMealPage = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Sync notesData into local state for editing
   useEffect(() => {
     if (notesData) {
       setNotes(notesData);
     }
   }, [notesData]);
 
-  // Handle URL query parameter
   if (typeof window !== 'undefined' && !selectedMealId) {
     const searchParams = new URLSearchParams(window.location.search);
     const mealParam = searchParams.get('meal');
@@ -116,7 +111,6 @@ const SavedMealPage = () => {
     try {
       const success = await deleteMeal(mealId);
       if (success) {
-        // Invalidate cache
         await queryClient.invalidateQueries({ queryKey: ['saved-meals'] });
         await queryClient.invalidateQueries({ queryKey: ['saved-meal', mealId] });
         
@@ -146,7 +140,6 @@ const SavedMealPage = () => {
     try {
       const success = await deleteMeal(individualMealId);
       if (success) {
-        // Invalidate cache to trigger refetch
         await queryClient.invalidateQueries({ queryKey: ['saved-meal', mealId] });
         
         toast({
@@ -178,15 +171,10 @@ const SavedMealPage = () => {
     }
 
     try {
-      // Get existing saved meals to determine the next custom meal number
       const existingMeals = await getSavedMeals();
       
-      // Filter meals from this specific restaurant to get accurate count
       const restaurantMeals = existingMeals.filter(meal => meal.cafeName === mealDetails.cafeName);
       
-      // Calculate next custom meal number for this restaurant
-      // Custom meal 1 is reserved for combined tarana-eats meals
-      // Individual items start from custom meal 2
       const nextCustomNumber = restaurantMeals.length + 2;
 
       const newMeal = {
@@ -206,7 +194,6 @@ const SavedMealPage = () => {
       }]);
 
       if (savedId) {
-        // Invalidate cache to trigger refetch and show the newly saved meal
         await queryClient.invalidateQueries({ queryKey: ['saved-meal', mealId] });
         await queryClient.invalidateQueries({ queryKey: ['saved-meals'] });
         
@@ -257,7 +244,6 @@ const SavedMealPage = () => {
     }
   };
 
-  // Loading state - Show skeleton
   if (isLoading) {
     return (
       <>
@@ -267,7 +253,6 @@ const SavedMealPage = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-[#f7f9fb] flex">
@@ -293,7 +278,6 @@ const SavedMealPage = () => {
     );
   }
 
-  // Not found state
   if (!mealDetails) {
     return (
       <div className="min-h-screen bg-[#f7f9fb] flex">
@@ -312,7 +296,6 @@ const SavedMealPage = () => {
     );
   }
 
-  // Get menu items for display - can use either menuItems or fullMenu if available
   const getFilteredMenuItems = () => {
     if (mealDetails.fullMenu && mealDetails.fullMenu[activeMenu] && mealDetails.fullMenu[activeMenu].length > 0) {
       return mealDetails.fullMenu[activeMenu];
@@ -353,7 +336,7 @@ const SavedMealPage = () => {
               <h2 className="text-xl font-bold text-gray-800 mb-2">About</h2>
               <p className="text-gray-600 text-base leading-relaxed">{mealDetails.about}</p>
               
-              {/* Display AI recommendation reason if available */}
+              {}
               {mealDetails.reason && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
                   <h3 className="text-md font-semibold text-blue-700 mb-1">AI Recommendation</h3>
@@ -361,7 +344,7 @@ const SavedMealPage = () => {
                 </div>
               )}
               
-              {/* Action Buttons with Glowing Effect */}
+              {}
               <div className="flex flex-col sm:flex-row gap-3 mt-6">
                 <Button 
                   className="flex-1 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/50 active:scale-95 sm:hover:-translate-y-0.5 rounded-xl py-2.5 sm:py-2 text-sm font-medium touch-manipulation relative overflow-hidden group"
@@ -382,7 +365,7 @@ const SavedMealPage = () => {
                 </Button>
               </div>
 
-              {/* Personal Notes Section */}
+              {}
               <div className="mt-6 pt-4 border-t border-gray-200/60">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-bold text-gray-800">Your Notes</h3>
@@ -450,7 +433,7 @@ const SavedMealPage = () => {
         <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 mb-8 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Saved Meals</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Custom Meal 1 - Combined tarana-eats meals */}
+            {}
             {mealDetails.savedMeals && mealDetails.savedMeals.length > 0 && (
               <div 
                 className={`bg-white rounded-2xl p-6 border w-full shadow-md transition-all duration-300 hover:shadow-lg ${
@@ -516,14 +499,14 @@ const SavedMealPage = () => {
               </div>
             )}
             
-            {/* Individual menu items saved from full menu - Custom Meal 2, 3, etc. */}
-            {/* These will be populated when users save individual items from the full menu */}
-            {/* For now, this section is handled by the handleSaveIndividualMeal function */}
+            {}
+            {}
+            {}
             
-            {/* Individual saved meals from this restaurant */}
+            {}
             {mealDetails.individualSavedMeals && mealDetails.individualSavedMeals.length > 0 && (
               mealDetails.individualSavedMeals.map((individualMeal: any, index: number) => {
-                const customMealNumber = index + 2; // Start from 2 since 1 is reserved for combined meals
+                const customMealNumber = index + 2; 
                 const isSelected = selectedMealId === individualMeal.id;
                 return (
                   <div 
@@ -581,7 +564,7 @@ const SavedMealPage = () => {
           </div>
         </div>
 
-        {/* Full Menu Section - Always displayed */}
+        {}
         <div className="bg-white rounded-3xl py-4 px-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
           <div className="flex justify-between items-center flex-wrap gap-4">
             <h2 className="text-2xl font-bold text-gray-900">Full Menu</h2>

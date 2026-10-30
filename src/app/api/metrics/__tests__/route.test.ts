@@ -1,15 +1,3 @@
-/**
- * Route test for GET /api/metrics.
- *
- * Pins the exposition contract: content type, HELP/TYPE headers,
- * series count header, and that an observed series renders with only
- * the bounded label set. Uses the real core (no mocks) with the
- * `resetHttpMetrics` test seam for isolation.
- *
- * NOTE: jest.setup.js replaces global Response with a minimal mock whose
- * `headers` is a Map (no `.get`). Read via `.headers.get()` on the real
- * NextResponse when available, else fall back to Map access.
- */
 function header(res: { headers: unknown }, name: string): string | null {
   const headers = res.headers as { get?: (k: string) => string | null } & Map<string, string>;
   if (typeof headers.get === 'function') {

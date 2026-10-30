@@ -1,10 +1,4 @@
-/**
- * Type definitions for the Referral Credit System
- */
 
-// =====================================================
-// USER TIER SYSTEM
-// =====================================================
 export type UserTier = 'Default' | 'Explorer' | 'Smart Traveler' | 'Voyager';
 
 export interface TierConfig {
@@ -51,9 +45,6 @@ export const TIER_CONFIGS: Record<UserTier, TierConfig> = {
   }
 };
 
-// =====================================================
-// USER PROFILE
-// =====================================================
 export interface UserProfile {
   id: string;
   referralCode: string;
@@ -67,9 +58,6 @@ export interface UserProfile {
   updatedAt: Date;
 }
 
-// =====================================================
-// REFERRAL SYSTEM
-// =====================================================
 export type ReferralStatus = 'pending' | 'active' | 'inactive';
 
 export interface Referral {
@@ -102,9 +90,6 @@ export interface CreateReferralResult {
   error?: string;
 }
 
-// =====================================================
-// CREDIT SYSTEM
-// =====================================================
 export type TransactionType = 'earn' | 'spend' | 'refresh' | 'bonus';
 export type ServiceType = 'tarana_gala' | 'tarana_eats';
 
@@ -147,9 +132,6 @@ export interface RefreshCreditsResult {
   error?: string;
 }
 
-// =====================================================
-// DAILY ALLOCATION
-// =====================================================
 export interface DailyCreditAllocation {
   id: string;
   userId: string;
@@ -161,9 +143,6 @@ export interface DailyCreditAllocation {
   createdAt: Date;
 }
 
-// =====================================================
-// ERROR TYPES
-// =====================================================
 export class ReferralSystemError extends Error {
   constructor(
     message: string,

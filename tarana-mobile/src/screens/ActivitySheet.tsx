@@ -3,29 +3,6 @@ import { spotMapsUrl } from '../data';
 import { TrafficBadge } from './ui';
 import { activityTrafficLevel, isTrafficTag } from './tripTraffic';
 
-/**
- * ActivitySheet — native recomposition of web PlaceDetail
- * (src/components/PlaceDetail.tsx) for one saved-trip activity.
- *
- * Web grammar kept, mobile carriers swapped:
- * - Tabs Description/Map/Reviews → one scrolling sheet: About (= web
- *   Description tab), Location (= web Map tab), Reviews (= web Reviews tab).
- * - TomTom iframe facade → single "Open in Maps" system action. The facade
- *   was a web perf workaround (meaningless on native); SpotCard precedent
- *   uses the same Google-Maps URL, so the action loses zero function and
- *   ships zero map keys in the binary.
- * - Reviews tab on web always renders the "Reviews Unavailable" empty state
- *   for saved itineraries (transformActivityToPlace hardcodes reviews: []),
- *   never real review rows — so the sheet renders that same honest empty
- *   state directly, not a tab that can only ever be empty.
- * - Web traffic pill (green Low / yellow Moderate, TrafficCone icon) →
- *   canonical TrafficBadge (same colors, same icon, same "{label} Traffic"
- *   copy). Web filters low/moderate-traffic out of the tag row; the sheet
- *   does the same and renders the badge separately.
- * - Web Share/Save buttons in the PlaceDetail header have no backing
- *   behavior (no share target, and the trip is already saved) — dropped as
- *   dead buttons, not ported.
- */
 export type SheetActivity = {
   title: string;
   time?: string | null;
