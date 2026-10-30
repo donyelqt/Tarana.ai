@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Clock, Trash2, Coffee, MapPin, User, Utensils, Croissant, Wine, Map, Star } from 'lucide-react';
+import { Clock, Trash2, Coffee, MapPin, User, Utensils, Croissant, Wine, Map, Star, Pencil, X } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { useParams, useRouter } from 'next/navigation';
 import { savedMeals } from '../data';
@@ -11,10 +11,10 @@ import Link from 'next/link';
 import { FullMenu } from '@/app/tarana-eats/data/taranaEatsData';
 import { useToast } from '@/components/ui/use-toast';
 import MealCardPopup from '../components/MealCardPopup';
-import { useSession } from 'next-auth/react'
 import { deleteMeal, saveMeal, getSavedMeals } from '@/lib/data/supabaseMeals';
-import { getSavedMealById } from '@/lib/data/supabaseMeals';
+import { getSavedMealById, getMealNotes, updateMealNotes } from '@/lib/data/supabaseMeals';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import { MealDetailSkeleton } from '@/components/ui/MealDetailSkeleton';
 
 // Static data for fallback
@@ -40,9 +40,13 @@ const SavedMealPage = () => {
   const [selectedMealId, setSelectedMealId] = useState<string | null>(null);
   const [isPopupVisible, setIsPopupVisible] = useState(false);
   const [selectedMealForPopup, setSelectedMealForPopup] = useState<any>(null);
+  const [notes, setNotes] = useState<{ title: string | null; notes: string | null } | null>(null);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editNotesText, setEditNotesText] = useState('');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
   const { toast } = useToast();
   const { data: session } = useSession();
-  
   // React Query - Cached meal details
   const { data: mealDetails, isLoading, error } = useQuery({
     queryKey: ['saved-meal', mealId],
@@ -60,6 +64,24 @@ const SavedMealPage = () => {
     enabled: !!mealId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // Fetch saved notes for this meal
+  const { data: notesData } = useQuery({
+    queryKey: ['saved-meal-notes', mealId],
+    queryFn: async () => {
+      if (!mealId) return null;
+      return await getMealNotes(mealId);
+    },
+    enabled: !!mealId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Sync notesData into local state for editing
+  useEffect(() => {
+    if (notesData) {
+      setNotes(notesData);
+    }
+  }, [notesData]);
 
   // Handle URL query parameter
   if (typeof window !== 'undefined' && !selectedMealId) {
@@ -206,6 +228,35 @@ const SavedMealPage = () => {
     }
   };
 
+  const handleEditNotesClick = () => {
+    setEditTitle(notes?.title ?? mealDetails.cafeName ?? '');
+    setEditNotesText(notes?.notes ?? '');
+    setEditingNotes(true);
+  };
+
+  const handleSaveNotes = async () => {
+    if (!session?.user?.id) return;
+    setIsSavingNotes(true);
+    try {
+      const success = await updateMealNotes(mealId, {
+        title: editTitle.trim() || null,
+        notes: editNotesText.trim() || null,
+      });
+      if (success) {
+        setNotes({ title: editTitle.trim() || null, notes: editNotesText.trim() || null });
+        queryClient.invalidateQueries({ queryKey: ['saved-meal-notes', mealId] });
+        toast({ title: 'Success', description: 'Notes saved successfully', variant: 'success' });
+        setEditingNotes(false);
+      } else {
+        toast({ title: 'Error', description: 'Failed to save notes', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to save notes', variant: 'destructive' });
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
   // Loading state - Show skeleton
   if (isLoading) {
     return (
@@ -329,6 +380,65 @@ const SavedMealPage = () => {
                   <Star className="w-4 h-4 mr-2" />
                   Reviews
                 </Button>
+              </div>
+
+              {/* Personal Notes Section */}
+              <div className="mt-6 pt-4 border-t border-gray-200/60">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-bold text-gray-800">Your Notes</h3>
+                  {notesData !== undefined && (
+                    <Button
+                      variant="ghost"
+                      className="h-8 px-2 text-gray-500 hover:text-blue-600"
+                      onClick={handleEditNotesClick}
+                    >
+                      <Pencil size={14} className="mr-1" />
+                      Edit
+                    </Button>
+                  )}
+                </div>
+
+                {editingNotes ? (
+                  <div className="space-y-3 mt-3">
+                    <input
+                      type="text"
+                      maxLength={200}
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Nickname for this meal"
+                    />
+                    <textarea
+                      maxLength={5000}
+                      value={editNotesText}
+                      onChange={(e) => setEditNotesText(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[120px]"
+                      placeholder="Any notes about this meal?"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        className="h-9 px-4 bg-gray-200 hover:bg-gray-300 text-black rounded-xl"
+                        onClick={() => setEditingNotes(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        className="h-9 px-4 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white rounded-xl"
+                        onClick={handleSaveNotes}
+                        disabled={isSavingNotes}
+                      >
+                        {isSavingNotes ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  notes?.title && (
+                    <div className="mt-3">
+                      <p className="text-sm font-semibold text-gray-900">{notes.title}</p>
+                      {notes.notes && <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{notes.notes}</p>}
+                    </div>
+                  )
+                )}
               </div>
             </div>
           </div>
