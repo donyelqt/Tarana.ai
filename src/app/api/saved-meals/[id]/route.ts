@@ -9,7 +9,7 @@ import {
   getIdempotencyKey,
   hashIdempotencyPayload,
 } from '@/lib/services/idempotencyService';
-import { deleteMealById, getMealById, updateMealNotes, type MealNotesInput } from '@/lib/services/mealService';
+import { deleteMealById, getMealById, getMealNotes, updateMealNotes, type MealNotesInput } from '@/lib/services/mealService';
 import { z } from 'zod';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 
@@ -50,7 +50,11 @@ export const GET = withAuth(async (
         return NextResponse.json({ error: 'Meal not found' }, { status: 404 });
       }
 
-      return NextResponse.json({ success: true, data });
+      // Fetch the caller's notes row separately — it may be null (not written
+      // yet), which is a valid state, not a 404.
+      const notes = await getMealNotes(id, userId);
+
+      return NextResponse.json({ success: true, data, notes });
     } catch (error) {
       return handleApiError(error, request);
     }
