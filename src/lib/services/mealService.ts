@@ -162,3 +162,23 @@ export async function updateMealNotes(
 
   return data;
 }
+
+/**
+ * Fetch the caller's notes row for one meal. Returns null when no notes
+ * row exists — the route treats that as "no notes" rather than 404, because
+ * the meal itself may exist and the user simply hasn't written notes yet.
+ */
+export async function getMealNotes(mealId: string, userId: string) {
+  const { data, error } = await supabaseAdmin
+    .from('saved_meal_notes')
+    .select('id, user_id, meal_id, title, notes, created_at, updated_at')
+    .eq('meal_id', mealId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
