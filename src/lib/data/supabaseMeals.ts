@@ -168,3 +168,41 @@ export async function deleteMeal(mealId: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Fetch the caller's personal notes (title + notes) for one saved meal.
+ * Returns null when no notes row exists — the user simply hasn't written
+ * notes yet, which is a valid state, not an error.
+ */
+export async function getMealNotes(mealId: string): Promise<{ title: string | null; notes: string | null } | null> {
+  try {
+    const { data } = await authedFetch<{ data: any; notes: any }>('/api/saved-meals/' + mealId, {
+      method: 'GET',
+    });
+    if (!data || !data.notes) return null;
+    return { title: data.notes.title ?? null, notes: data.notes.notes ?? null };
+  } catch (error) {
+    console.error('Error fetching meal notes:', error);
+    return null;
+  }
+}
+
+/**
+ * Upsert the caller's personal notes for one saved meal. Sends a PATCH to
+ * the same [id] endpoint that handles note updates. Returns true on success.
+ */
+export async function updateMealNotes(
+  mealId: string,
+  fields: { title: string | null; notes: string | null }
+): Promise<boolean> {
+  try {
+    const { success } = await authedFetch<{ success: boolean }>('/api/saved-meals/' + mealId, {
+      method: 'PATCH',
+      body: JSON.stringify(fields),
+    });
+    return !!success;
+  } catch (error) {
+    console.error('Error updating meal notes:', error);
+    return false;
+  }
+}
