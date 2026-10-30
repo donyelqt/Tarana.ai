@@ -5,9 +5,9 @@ if (typeof MockedResponseMealId.json !== 'function') {
 }
 
 import { NextRequest } from 'next/server';
-import { GET, DELETE } from '../route';
+import { GET, DELETE, PATCH } from '../route';
 import { getServerSession } from 'next-auth';
-import { deleteMealById, getMealById } from '@/lib/services/mealService';
+import { deleteMealById, getMealById, getMealNotes, updateMealNotes } from '@/lib/services/mealService';
 import { claimIdempotency, completeIdempotency, hashIdempotencyPayload } from '@/lib/services/idempotencyService';
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
@@ -20,6 +20,8 @@ jest.mock('@/lib/auth/auth', () => ({
 jest.mock('@/lib/services/mealService', () => ({
   deleteMealById: jest.fn(),
   getMealById: jest.fn(),
+  getMealNotes: jest.fn(),
+  updateMealNotes: jest.fn(),
 }));
 jest.mock('@/lib/services/idempotencyService', () => ({
   claimIdempotency: jest.fn(),
@@ -38,7 +40,9 @@ const mockedHashIdempotencyPayload = hashIdempotencyPayload as unknown as jest.M
 
 const mockedGetServerSession = getServerSession as unknown as jest.Mock;
 const mockedGetMealById = getMealById as unknown as jest.Mock;
+const mockedGetMealNotes = getMealNotes as unknown as jest.Mock;
 const mockedDeleteMealById = deleteMealById as unknown as jest.Mock;
+const mockedUpdateMealNotes = updateMealNotes as unknown as jest.Mock;
 
 function authedRequest(id: string): NextRequest {
   return {
@@ -66,7 +70,9 @@ describe('Saved Meal [id] API Route Tests', () => {
 
   test('GET returns the meal scoped to the caller', async () => {
     const meal = { id: 'm1', cafe_name: 'Cafe Baguio' };
+    const notes = { id: 'n1', title: 'My Favorite', notes: 'Great for dates' };
     mockedGetMealById.mockResolvedValue(meal);
+    mockedGetMealNotes.mockResolvedValue(notes);
 
     const response = await GET(authedRequest('m1'), ctx('m1') as unknown as NextRequest);
     expect(response.status).toBe(200);
@@ -74,7 +80,22 @@ describe('Saved Meal [id] API Route Tests', () => {
     const body = await response.json();
     expect(body.success).toBe(true);
     expect(body.data).toEqual(meal);
+    expect(body.notes).toEqual(notes);
     expect(mockedGetMealById).toHaveBeenCalledWith('m1', 'user-1');
+  });
+
+  test('GET returns null notes when no notes row exists', async () => {
+    const meal = { id: 'm1', cafe_name: 'Cafe Baguio' };
+    mockedGetMealById.mockResolvedValue(meal);
+    mockedGetMealNotes.mockResolvedValue(null);
+
+    const response = await GET(authedRequest('m1'), ctx('m1') as unknown as NextRequest);
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual(meal);
+    expect(body.notes).toBeNull();
   });
 
   test('GET returns 404 when the meal is absent or belongs to another user', async () => {
@@ -204,4 +225,55 @@ describe('saved-meals [id] DELETE idempotency (2.3-R5)', () => {
     const body = await response.json();
     expect(body.error).toBe('Meal not found');
   });
+});
+
+describe('saved-meals [id] PATCH', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedGetServerSession.mockResolvedValue({ user: { id: 'user-1' } });
+  });
+  const patchReq = (body?: unknown) =>
+    ({ headers: { get: () => null }, json: async () => body }) as unknown as NextRequest;
+
+  test('PATCH returns 400 on empty body', async () => {
+    const res = await PATCH(patchReq({}), ctx('m1') as unknown as NextRequest);
+    expect(res.status).toBe(400);
+    expect(mockedUpdateMealNotes).not.toHaveBeenCalled();
+  });
+
+  test('PATCH returns 400 on invalid input', async () => {
+    const res = await PATCH(patchReq({ title: 123 }), ctx('m1') as unknown as NextRequest);
+    expect(res.status).toBe(400);
+    expect(mockedUpdateMealNotes).not.toHaveBeenCalled();
+  });
+
+  test('PATCH returns 200 on valid update', async () => {
+    const notesRow = { id: 'n1', title: 'My Lunch', notes: 'Try the soup' };
+    mockedUpdateMealNotes.mockResolvedValue(notesRow);
+
+    const res = await PATCH(patchReq({ title: 'My Lunch', notes: 'Try the soup' }), ctx('m1') as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual(notesRow);
+    expect(mockedUpdateMealNotes).toHaveBeenCalledWith('m1', 'user-1', { title: 'My Lunch', notes: 'Try the soup' });
+  });
+
+  test('PATCH allows null to clear fields', async () => {
+    const notesRow = { id: 'n1', title: null, notes: null };
+    mockedUpdateMealNotes.mockResolvedValue(notesRow);
+
+    const res = await PATCH(patchReq({ title: null, notes: null }), ctx('m1') as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    expect(mockedUpdateMealNotes).toHaveBeenCalledWith('m1', 'user-1', { title: null, notes: null });
+  });
+
+  test('PATCH returns 404 when meal is missing or not owned', async () => {
+    mockedUpdateMealNotes.mockResolvedValue(null);
+
+    const res = await PATCH(patchReq({ title: 'updated' }), ctx('m1') as unknown as NextRequest);
+    expect(res.status).toBe(404);
+    expect(await res.json()).toMatchObject({ error: 'Meal not found' });
+  });
+
 });
