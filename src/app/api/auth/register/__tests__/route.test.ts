@@ -257,10 +257,6 @@ describe('Register API Route Tests', () => {
 
     const response = await POST(mockRequest);
 
-    // Both sides of the referral flow must see the same normalized value:
-    // validate and track-referral uppercase, so register has to as well or a
-    // lowercase ?ref passes validation and then fails (or stores a
-    // differently-cased code) at creation.
     expect(response.status).toBe(201);
     expect(ReferralService.validateReferralCode).toHaveBeenCalledWith('ABC123');
     expect(ReferralService.createReferral).toHaveBeenCalledWith({

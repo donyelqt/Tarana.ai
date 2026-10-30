@@ -1,16 +1,3 @@
-/**
- * The body `generateItinerary` puts on the wire.
- *
- * `itineraryRequestSchema` types `weatherData` as an object with
- * `.optional()`. Zod's `.optional()` accepts an ABSENT key and rejects a
- * present one holding `null`, and `JSON.stringify` preserves a null as a real
- * key. So `weatherData: null` is a 400 "Invalid request payload" before any
- * charge or model call.
- *
- * That is what Plan Mode sent on every generation, and what Gala sends any
- * time its weather fetch fails. This test pins the serialization boundary,
- * where the shape is actually decided.
- */
 import { generateItinerary } from '../itineraryService'
 import { itineraryRequestSchemaForTest } from './schemaForTest'
 import type { WeatherData } from '@/lib/core'
@@ -32,7 +19,6 @@ const clearWeather: WeatherData = {
   sys: { country: 'PH' },
   dt: 0,
 }
-/** Runs the real service and returns the body it would POST. */
 async function postBodyFor(weatherData: WeatherData | null): Promise<Record<string, unknown>> {
   let captured = ''
   const fetchMock = global.fetch as jest.Mock

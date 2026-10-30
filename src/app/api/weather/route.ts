@@ -6,16 +6,6 @@ import { getRequestId } from '@/middleware/requestId';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
 
-/**
- * Map an upstream status to a fixed client-safe class message.
- *
- * Raw OpenWeather bytes must never reach the response body (safe-error
- * boundary): the detail stays server-side in the structured log. The field
- * name `upstreamMessage` is kept so the `summariseProxyFailure` contract
- * (route JSON shape) is unchanged — only the value is now a class, not a
- * passthrough. Tradeoff: clients lose the verbatim upstream text (e.g.
- * "wrong latitude"); the class + upstreamStatus is enough for the UI badge.
- */
 function safeUpstreamMessage(upstreamStatus: string): string {
   switch (upstreamStatus) {
     case '400':
@@ -32,8 +22,6 @@ function safeUpstreamMessage(upstreamStatus: string): string {
   }
 }
 
-// Server-side API route to fetch weather data
-// This protects the API key by keeping it server-side only
 export async function GET(request: NextRequest) {
   const requestId = getRequestId(request);
   return timedHttp('/api/weather', 'GET', async () => {
@@ -44,13 +32,10 @@ export async function GET(request: NextRequest) {
     return res;
   }
   try {
-    // Get coordinates from query parameters or use defaults
     const url = new URL(request.url);
-    const lat = parseFloat(url.searchParams.get('lat') || '16.4023'); // Default to Baguio
+    const lat = parseFloat(url.searchParams.get('lat') || '16.4023'); 
     const lon = parseFloat(url.searchParams.get('lon') || '120.5960');
 
-    // Reject garbage before proxying: OpenWeather answers out-of-range/NaN
-    // coordinates with a bare 400 that used to surface as a mystery 500.
     if (
       !Number.isFinite(lat) || !Number.isFinite(lon) ||
       lat < -90 || lat > 90 || lon < -180 || lon > 180
@@ -61,7 +46,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Use server-side environment variable (not exposed to client)
     const apiKey = process.env.OPENWEATHER_API_KEY;
 
     if (!apiKey) {
@@ -73,7 +57,6 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      // Fetch weather data using the server-side API key
       const weatherData = await fetchWeatherData(lat, lon, apiKey);
 
       if (!weatherData) {
@@ -84,12 +67,8 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Return the weather data to the client (without exposing the API key)
       return NextResponse.json(weatherData);
     } catch (fetchError) {
-      // Upstream failure, not our bug: 502 with a sanitized class message.
-      // Raw upstream bytes stay server-side (structured log only) — response
-      // bodies must never carry raw upstream text (safe-error boundary).
       const rawMessage =
         fetchError instanceof Error ? fetchError.message : 'Unknown error occurred';
       const upstreamStatus = /error:\s*(\d{3})/.exec(rawMessage)?.[1] ?? 'unknown';

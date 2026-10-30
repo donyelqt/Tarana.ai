@@ -1,15 +1,4 @@
-/**
- * Plan Mode island configuration.
- *
- * Explore must plan with the same vocabulary Gala generates with. If these
- * drift, a plan composed on the map is not the plan Gala would have built —
- * same route, different options, different result. So the option lists are
- * imported, never re-typed.
- *
- * The alias rule is load-bearing: Visayas and Luzon are UI keys that must
- * resolve to a real member `cityId` before any request leaves the browser. A
- * region id reaching the API is a silent wrong-city generation.
- */
+
 import React from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -24,10 +13,7 @@ import {
 
 const noop = jest.fn()
 
-/**
- * Budget is behind a popover, as it is in Gala. Select it the way a user does:
- * open the combobox, then pick the option.
- */
+
 async function pickBudget(user: ReturnType<typeof userEvent.setup>, option: string) {
   await user.click(screen.getByRole('button', { name: /budget range/i }))
   await user.click(await screen.findByRole('button', { name: option }))
@@ -54,14 +40,14 @@ describe('PlanIslandConfig', () => {
   it('offers Gala\'s own option vocabulary, not a re-typed copy', () => {
     setup()
 
-    // Destination tiles: Gala's pills verbatim (labels, not city ids).
+    
     expect(screen.getByRole('button', { name: /^Baguio/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Manila/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Davao/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Visayas/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Luzon/i })).toBeInTheDocument()
 
-    // Every Gala interest is offered.
+    
     interests.forEach((i) => {
       expect(screen.getByRole('button', { name: new RegExp(i.label, 'i') })).toBeInTheDocument()
     })
@@ -78,7 +64,7 @@ describe('PlanIslandConfig', () => {
     await user.click(screen.getByRole('button', { name: paxOptions[1] }))
     await user.click(screen.getByRole('button', { name: durationOptions[1] }))
 
-    // Duration and budget and pax set, but no interest yet.
+    
     expect(screen.getByRole('button', { name: /generate itinerary/i })).toBeDisabled()
 
     await user.click(screen.getByRole('button', { name: /Nature & Scenery/i }))
@@ -125,7 +111,7 @@ describe('PlanIslandConfig', () => {
 
     const formData = (props.onSubmit as jest.Mock).mock.calls[0][0]
     expect(formData.cityId).toBe('boracay')
-    // A region name must never leave the browser as a scope.
+    
     expect(['visayas', 'luzon']).not.toContain(formData.cityId)
   })
 
@@ -160,8 +146,8 @@ describe('PlanIslandConfig', () => {
     const user = userEvent.setup()
     const props = setup({ isGenerating: true })
 
-    // The button keeps its identity while its label reports progress, so match
-    // either state rather than pinning the idle string.
+    
+    
     const submit = screen.getByRole('button', { name: /generat/i })
     expect(submit).toBeDisabled()
 
@@ -173,7 +159,7 @@ describe('PlanIslandConfig', () => {
   it('labels every control for assistive tech', () => {
     setup()
 
-    // Destination group and each field group carry a name.
+    
     expect(screen.getByRole('group', { name: /destination/i })).toBeInTheDocument()
     expect(screen.getByText('Budget Range')).toBeInTheDocument()
     expect(screen.getByText('Number of Pax')).toBeInTheDocument()
@@ -200,9 +186,9 @@ describe('PlanIslandConfig', () => {
     await user.click(screen.getByRole('button', { name: /Culture & Arts/i }))
     await user.click(screen.getByRole('button', { name: /generate itinerary/i }))
 
-    // Dates do not reach the generation prompt. They are the saved trip's date
-    // range, which is why omitting them made every Plan Mode save land as
-    // "Date not specified" (useItineraryGenerator.ts:143).
+    
+    
+    
     const formData = (props.onSubmit as jest.Mock).mock.calls[0][0]
     expect(formData.dates).toHaveProperty('start')
     expect(formData.dates).toHaveProperty('end')
@@ -215,17 +201,13 @@ describe('PlanIslandConfig date derivation', () => {
     ;(global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({ results: [] }) })
   })
 
-  /**
-   * Drives the real DatePicker rather than poking state. The calendar lives in
-   * a Radix popover with its own grid semantics; driving it the way a user does
-   * is the only way to prove the wiring, not just the arithmetic.
-   */
+  
   async function pickStartDay(user: ReturnType<typeof userEvent.setup>, day: number) {
     await user.click(screen.getByText(/start date/i))
     const calendar = await screen.findByRole('dialog')
-    // react-day-picker renders each day as a gridcell wrapping a button, and
-    // the cell itself does not select. Scoped to the calendar because a bare
-    // /\b5\b/ also matches the "3-5" pax tile.
+    
+    
+    
     const cell = within(calendar).getByRole('gridcell', { name: new RegExp(`^${day}$`) })
     await user.click(within(cell).getByRole('button'))
     await user.keyboard('{Escape}')
@@ -236,15 +218,15 @@ describe('PlanIslandConfig date derivation', () => {
     setup()
 
     await pickStartDay(user, 5)
-    await user.click(screen.getByRole('button', { name: durationOptions[2] })) // "3 Days"
+    await user.click(screen.getByRole('button', { name: durationOptions[2] })) 
 
-    // Asserted on the picker's own formatted text, not a bare day number: a
-    // /\b6\b/ also matches the "3-5" pax tile, which makes a loose day
-    // matcher ambiguous.
+    
+    
+    
     await waitFor(() => expect(screen.queryByText('End date')).not.toBeInTheDocument())
-    // A 3-day trip starting on the 5th ends on the 7th. The month and year
-    // come from the calendar react-day-picker opens, so this does not assume
-    // "today" and cannot rot.
+    
+    
+    
     const { format } = require('date-fns') as typeof import('date-fns')
     const start = new Date()
     start.setDate(5)
@@ -264,10 +246,10 @@ describe('PlanIslandConfig date derivation', () => {
     }
 
     await pickStartDay(user, 5)
-    await user.click(screen.getByRole('button', { name: durationOptions[1] })) // "2 Days"
+    await user.click(screen.getByRole('button', { name: durationOptions[1] })) 
     await waitFor(() => expect(screen.getByText(expectedFor(6))).toBeInTheDocument())
 
-    await user.click(screen.getByRole('button', { name: durationOptions[2] })) // "3 Days"
+    await user.click(screen.getByRole('button', { name: durationOptions[2] })) 
     await waitFor(() => expect(screen.getByText(expectedFor(7))).toBeInTheDocument())
   })
 
@@ -286,15 +268,15 @@ describe('PlanIslandConfig date derivation', () => {
     await pickBudget(user, budgetOptions[0])
     await pickStartDay(user, 5)
     await user.click(screen.getByRole('button', { name: paxOptions[0] }))
-    await user.click(screen.getByRole('button', { name: durationOptions[0] })) // "1 Day"
+    await user.click(screen.getByRole('button', { name: durationOptions[0] })) 
     await user.click(screen.getByRole('button', { name: /Nature & Scenery/i }))
 
-    // Now hand-edit the END date. The derivation only fires when start or
-    // duration changes, so editing the end date is the one path that can
-    // leave a range contradicting the chosen duration.
-    // Both pickers now show a date, so target the END trigger by position
-    // rather than matching text alone. The pattern is PLAN_DATE_FORMAT's
-    // "Sep 30, 2026" shape, not the default "September 30th, 2026".
+    
+    
+    
+    
+    
+    
     const endTrigger = screen
       .getAllByRole('button')
       .filter((b) => /^\w{3,9} \d{1,2}, \d{4}$/.test(b.textContent || ''))[1]
@@ -306,10 +288,10 @@ describe('PlanIslandConfig date derivation', () => {
 
     await user.click(screen.getByRole('button', { name: /generate itinerary/i }))
 
-    // A "1 Day" trip whose end date is the 20th must not save. The toast text
-    // is deliberately not asserted: this repo's ToastProvider is a context
-    // shim that renders no toast UI, so the message is never in the DOM. The
-    // observable contract is that submit did not fire.
+    
+    
+    
+    
     expect(props.onSubmit).not.toHaveBeenCalled()
   })
 })

@@ -48,19 +48,15 @@ import {
 
 const BLUE = '#0066FF';
 
-/** Web parity: FloatingSearchCard MIN_QUERY + SEARCH_DEBOUNCE_MS. */
+
 const MIN_QUERY = 2;
 const SEARCH_DEBOUNCE_MS = 220;
 const MAX_SUGGESTIONS = 8;
 
-/**
- * Web parity: FloatingSearchCard SlidingSegmented thumb spring. NOTE these
- * are the SEGMENT constants (stiffness 420, damping 34, mass 0.9) — NOT the
- * island morph constants (210/23/1). Each motion keeps its own verified set.
- */
+
 const SEG_SPRING = { stiffness: 420, damping: 34, mass: 0.9 } as const;
 
-/** Web parity: VEHICLE_OPTIONS (Ride reuses the Bike glyph — web does too). */
+
 const VEHICLE_OPTIONS: Array<{ value: ExploreVehicleType; label: string }> = [
   { value: 'car', label: 'Drive' },
   { value: 'walk', label: 'Walk' },
@@ -77,15 +73,14 @@ const VEHICLE_GLYPHS: Record<ExploreVehicleType, (p: { color: string }) => React
   truck: ({ color }) => <TruckIcon size={16} color={color} />,
 };
 
-/** Web parity: ROUTE_TYPE_OPTIONS values (Scenic sends 'thrilling'). */
+
 const ROUTE_TYPE_OPTIONS: Array<{ value: ExploreRouteType; label: string; glyph: string }> = [
   { value: 'fastest', label: 'Fastest', glyph: '⚡' },
   { value: 'shortest', label: 'Shortest', glyph: '➲' },
   { value: 'thrilling', label: 'Scenic', glyph: '◷' },
 ];
 
-/** Web parity: options-drawer avoid pills. Departure datetime omitted — it needs
- * a native picker dep; the web default is unset so defaults stay at parity. */
+
 const AVOID_OPTIONS: Array<{ key: 'avoidTolls' | 'avoidFerries' | 'avoidTrafficJams' | 'avoidHighways'; label: string }> = [
   { key: 'avoidTolls', label: 'Tolls' },
   { key: 'avoidFerries', label: 'Ferries' },
@@ -93,10 +88,7 @@ const AVOID_OPTIONS: Array<{ key: 'avoidTolls' | 'avoidFerries' | 'avoidTrafficJ
   { key: 'avoidHighways', label: 'Highways' },
 ];
 
-/**
- * Apple-style segmented track: one white thumb sliding between icon-only
- * options. Web SlidingSegmented parity (gray-50 track, thumb + labels).
- */
+
 function SlidingTrack<T extends string>({
   options,
   value,
@@ -160,23 +152,7 @@ function SlidingTrack<T extends string>({
   );
 }
 
-/**
- * Explore — web `ExploreMapView` translated to native (§8).
- *
- * Same composition: TomTom map background (the actual web map via
- * /embed/map — same markers/polylines/glow/traffic/retry, key stays
- * allowlisted server-side) + DynamicIsland search card (same 210/23
- * spring morph, collapsed "Where to?" pill) + traffic badge + map
- * controls (recenter/tilt/style) + bottom route sheet. No map SDK or
- * motion libs invented: WebView + Reanimated are the native carriers.
- *
- * Island content is a 1:1 of FloatingSearchCard (no title row, no X —
- * the hamburger corner is excluded per call): borderless From/To with
- * absolute left swap circle, icon-only vehicle track with sliding thumb,
- * transparent route-type row, sliders options button, gradient avoid
- * pills, magnifier CTA. Collapse = post-calc or keyboard-away (the
- * native translation of outside-click/Escape).
- */
+
 export default function Explore({ navigation }: { navigation: any }) {
   const [fromText, setFromText] = useState('');
   const [toText, setToText] = useState('');
@@ -199,8 +175,8 @@ export default function Explore({ navigation }: { navigation: any }) {
 
   const fromRef = useRef<TextInput | null>(null);
   const toRef = useRef<TextInput | null>(null);
-  // Sequence guard: a slow response can never overwrite a later one
-  // (web useLocationSearch pattern, minus AbortController).
+  
+  
   const seq = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -210,9 +186,9 @@ export default function Explore({ navigation }: { navigation: any }) {
     []
   );
 
-  // Native translation of web outside-click/Escape dismiss: a user-sent
-  // keyboard retreat means "done with input". No routing guard needed —
-  // expanded survives on `routing`, and on error the toast owns the screen.
+  
+  
+  
   useEffect(() => {
     const sub = Keyboard.addListener('keyboardDidHide', () => setIslandOpen(false));
     return () => sub.remove();
@@ -255,7 +231,7 @@ export default function Explore({ navigation }: { navigation: any }) {
     }, SEARCH_DEBOUNCE_MS);
   };
 
-  // Web LocationField clear(): drop the commit, reopen the list, refocus.
+  
   const clearField = (which: 'from' | 'to') => {
     seq.current += 1;
     if (timer.current) clearTimeout(timer.current);
@@ -289,9 +265,9 @@ export default function Explore({ navigation }: { navigation: any }) {
 
   const go = async () => {
     if (!from || !to) return;
-    // Web parity (FloatingSearchCard close): drop focus so the keyboard
-    // retracts together with the card. Never on pick — auto-advance needs
-    // the gesture chain alive.
+    
+    
+    
     Keyboard.dismiss();
     setRouting(true);
     setError(null);
@@ -300,7 +276,7 @@ export default function Explore({ navigation }: { navigation: any }) {
     setOpenWhich(null);
     try {
       setRoute(await calculateRoute(from, to, prefs));
-      // Web parity: collapse back to the pill once the route is on the map.
+      
       setIslandOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Route request failed.');
@@ -309,7 +285,7 @@ export default function Explore({ navigation }: { navigation: any }) {
     }
   };
 
-  // Web parity: handleClose clears route AND endpoints (not just the sheet).
+  
   const closeRoute = () => {
     setRoute(null);
     setSelectedId('primary');
@@ -326,7 +302,7 @@ export default function Explore({ navigation }: { navigation: any }) {
       setFrom(place);
       setFromText(place.name);
       setFromList([]);
-      // Auto-advance (web handleOriginCommit): land on the unfilled end.
+      
       if (!to) toRef.current?.focus();
     } else {
       setTo(place);
@@ -341,8 +317,8 @@ export default function Explore({ navigation }: { navigation: any }) {
   const expanded = islandOpen || routing;
   const hasEndpoint = !!from || !!to;
 
-  // Selected route drives the map's primary polyline (web selectAlternative
-  // promotes the tap to primary and keeps traffic as-is — mirrored here).
+  
+  
   const selectedAlt = route?.alternatives.find((a) => a.id === selectedId) ?? null;
   const mapPrimary = route
     ? selectedAlt
@@ -363,15 +339,15 @@ export default function Explore({ navigation }: { navigation: any }) {
     picked: Place | null,
     inputRef: React.RefObject<TextInput | null>
   ) => {
-    // Web parity (LocationField isTyping): typing = text no longer matches
-    // the committed place. A focused field holding a place offers popular.
+    
+    
     const typing = value.trim().length >= MIN_QUERY && value !== (picked?.name ?? '');
     const items = typing ? list : POPULAR_LOCATIONS;
     const showList = openWhich === which && (items.length > 0 || typing);
     return (
-      // Open field stacks above its sibling: equal zIndex ties paint the
-      // later sibling (To) over the earlier dropdown (From) on both
-      // platforms — elevation carries it on Android, zIndex on iOS.
+      
+      
+      
       <View style={[styles.fieldWrap, showList && styles.fieldWrapOpen]}>
         <View style={styles.fieldHead}>
           <View style={[styles.dot, which === 'from' ? styles.dotFrom : styles.dotTo]} />
@@ -579,8 +555,8 @@ export default function Explore({ navigation }: { navigation: any }) {
             <View style={styles.submitWrap}>
               <GradientCTA
                 variant="app"
-                // Web submit carries a leading magnifier; GradientCTA is
-                // canonical-shared so the glyph rides the title, not the module.
+                
+                
                 title="⌕  Get directions"
                 loadingTitle="Finding best route…"
                 loading={routing}

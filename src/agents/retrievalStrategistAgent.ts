@@ -6,13 +6,6 @@ export interface RetrievalStrategistDeps {
   geminiModel: unknown;
 }
 
-/**
- * The only strategy space the Strategist is allowed to pick from. Every value
- * names a retrieval path that already exists inside findAndScoreActivities --
- * this slice selects between them explicitly instead of calling blind and
- * recording `expandedQueries: []`. No new retrieval code, no new model call:
- * the same single search runs, but the session now says what was asked for.
- */
 export type RetrievalStrategy = 'curated' | 'tomtom-live' | 'interest-first' | 'honest-empty';
 
 export interface StrategyDecision {
@@ -23,16 +16,6 @@ export interface StrategyDecision {
 export class RetrievalStrategistAgent {
   constructor(private readonly deps: RetrievalStrategistDeps) {}
 
-  /**
-   * Pick a strategy from what is known BEFORE any search runs: the scope and
-   * the request shape. Deterministic and testable -- no model call involved.
-   *
-   *  - baguio + no interests          -> curated (deterministic catalog, zero upstream)
-   *  - baguio + stated interests      -> interest-first (personalization layer leads)
-   *  - strict-city members           -> tomtom-live (the shared 50-POI pool is their only ground)
-   *  - anything else (ph-wide/world) -> honest-empty (no pool exists yet; never
-   *    fall back to another city's data)
-   */
   decideStrategy(session: RequestSession): StrategyDecision {
     const cityId = (session.preferences.cityId ?? 'baguio').toLowerCase();
     const hasInterests =
@@ -63,7 +46,7 @@ export class RetrievalStrategistAgent {
         weatherType,
         session.preferences.durationDays,
         this.deps.geminiModel,
-        true, // trafficAware
+        true, 
         session.preferences.cityId ?? "baguio"
       );
 

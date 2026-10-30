@@ -7,17 +7,17 @@ import { timedHttp } from '@/lib/observability/httpMetrics';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
 import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
-// Rate limiter for password reset attempts
+
 const resetPasswordRateLimit = createRateLimitMiddleware(rateLimitConfigs.auth);
 
 export async function POST(request: NextRequest) {
   return timedHttp('/api/auth/reset-password', 'POST', async () => {
     const requestId = getRequestId(request);
   try {
-    // Check required environment variables
+    
     checkRequiredEnvVars(['NEXTAUTH_SECRET', 'SUPABASE_SERVICE_ROLE_KEY']);
 
-    // Apply rate limiting
+    
     const rateLimitResult = resetPasswordRateLimit(request);
     if (!rateLimitResult.allowed) {
       const response = NextResponse.json(
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Comprehensive password validation
+    
     const passwordValidation = validatePasswordStrength(password);
     if (!passwordValidation.isValid) {
       return NextResponse.json(
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find user by reset token and check if it's still valid
+    
     const user = await findUserByResetToken(token);
 
     if (!user) {
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if token has expired
+    
     if (user.reset_token_expiry) {
       const now = new Date();
       const tokenExpiry = new Date(user.reset_token_expiry);
@@ -71,10 +71,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Hash the new password
+    
     const hashedPassword = await hashPassword(password);
 
-    // Update user's password and clear reset token
+    
     try {
       await resetPassword(user.id, hashedPassword);
     } catch (updateError) {

@@ -14,14 +14,9 @@ type ItineraryActivity = {
 interface ItineraryMapProps {
   activities: ItineraryActivity[];
   className?: string;
-  height?: string; // e.g. "320px" or "h-80"
+  height?: string; 
 }
 
-/**
- * ItineraryMap — polyline-only map for Gala itineraries.
- * Reads N activity lat/lon and renders ordered polyline + N numbered markers.
- * Does NOT reuse InteractiveRouteMap (which requires RouteData legs[].geometry).
- */
 export default function ItineraryMap({ activities, className = "", height = "320px" }: ItineraryMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -64,14 +59,12 @@ export default function ItineraryMap({ activities, className = "", height = "320
         if (cancelled) return;
         mapRef.current = map;
 
-        // Fit bounds to points (with padding)
         if (points.length > 1 && map.fitBounds) {
           const bounds = new (window as any).tt.LngLatBounds();
           points.forEach((p) => bounds.extend([p.lon, p.lat] as any));
           map.fitBounds(bounds, { padding: 40, maxZoom: 15 });
         }
 
-        // Add numbered markers
         markersRef.current.forEach((m) => { try { m.remove(); } catch {} });
         markersRef.current = [];
 
@@ -96,7 +89,6 @@ export default function ItineraryMap({ activities, className = "", height = "320
           markersRef.current.push(marker);
         });
 
-        // Add ordered polyline
         if (points.length > 1) {
           const geojson = {
             type: "Feature" as const,
@@ -110,7 +102,6 @@ export default function ItineraryMap({ activities, className = "", height = "320
           const sourceId = "itinerary-polyline";
           const layerId = "itinerary-polyline-layer";
 
-          // Remove previous if exists (hot reload)
           try { if (map.getLayer(layerId)) map.removeLayer(layerId); } catch {}
           try { if (map.getSource(sourceId)) map.removeSource(sourceId); } catch {}
 

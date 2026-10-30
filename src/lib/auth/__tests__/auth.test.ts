@@ -83,7 +83,6 @@ describe('auth jwt() Google branch — no id-less sessions', () => {
 
     await expect(jwt(googleJwtArgs())).rejects.toThrow('auth_user_row_missing');
 
-    // One initial read + exactly one retry.
     expect(mockSingle).toHaveBeenCalledTimes(2);
     expect(mockedFrom).toHaveBeenCalledTimes(2);
 
@@ -113,7 +112,6 @@ describe('auth jwt() Google branch — no id-less sessions', () => {
     const token = await jwt(googleJwtArgs());
 
     expect(token.id).toBe('uuid-123');
-    // Never falls back to the Google sub.
     expect(token.id).not.toBe('google-sub-123');
     expect(token.name).toBe('Test User');
     expect((token as any).tosAccepted).toBe(true);
@@ -130,22 +128,17 @@ describe('auth jwt() Google branch — no id-less sessions', () => {
         },
         error: null,
       },
-      // Sign-in also pins the credential-change instant onto the session.
       { data: { password_changed_at: null }, error: null },
     ]);
     const jwt = authOptions.callbacks?.jwt as unknown as (args: any) => Promise<any>;
 
     const token = await jwt(googleJwtArgs());
 
-    // Two user-row reads (initial + exactly one retry) plus the credential
-    // stamp read: the retry stays bounded at one.
     expect(mockSingle).toHaveBeenCalledTimes(3);
     expect(token.id).toBe('uuid-retry-456');
     expect(token.id).not.toBe('google-sub-123');
     expect(token.name).toBe('Retry User');
-    // The sign-in path stamps the credential instant it read.
     expect(token.pwdChangedAt).toBeNull();
-    // NULL tos_accepted_at (first-time OAuth) stays falsy for the consent gate.
     expect((token as any).tosAccepted).toBe(false);
   });
 });
@@ -162,8 +155,6 @@ describe('auth signIn() Google branch — verified email gates account linking',
     authOptions.callbacks?.signIn as unknown as (args: any) => Promise<boolean>;
 
   test('Google identity with no usable email -> denied, no lookup', async () => {
-    // `email_verified` cannot redeem a missing address: there is nothing to
-    // match, link, or provision.
     const { mockSingle } = mockUsersSelectSequence([]);
 
     const allowed = await signIn()({
@@ -181,11 +172,6 @@ describe('auth signIn() Google branch — verified email gates account linking',
   });
 
   test('unverified Google email over an existing password row -> denied, no write', async () => {
-    // No email_verified anywhere in the Google handshake below the raw
-    // userinfo profile, so the check must live in this callback and run
-    // BEFORE any row lookup, insert, or update. A Google identity can assert
-    // any address; linking without proof of ownership hands an attacker the
-    // account the row belongs to.
     const { mockSingle } = mockUsersSelectSequence([
       { data: { id: 'uuid-victim', image: null }, error: null },
     ]);
@@ -193,7 +179,6 @@ describe('auth signIn() Google branch — verified email gates account linking',
     const allowed = await signIn()(googleSignInArgs('victim@example.com', false));
 
     expect(allowed).toBe(false);
-    // Refused before touching the database: zero reads, zero writes.
     expect(mockSingle).toHaveBeenCalledTimes(0);
     expect(mockLogger.error).toHaveBeenCalledWith(
       'Google sign-in refused: email not verified',
@@ -211,8 +196,6 @@ describe('auth signIn() Google branch — verified email gates account linking',
     const allowed = await signIn()(googleSignInArgs('new@example.com', false));
 
     expect(allowed).toBe(false);
-    // Refused before touching the database: nothing created for an unproven
-    // address.
     expect(mockSingle).toHaveBeenCalledTimes(0);
     expect(mockLogger.error).toHaveBeenCalledWith(
       'Google sign-in refused: email not verified',

@@ -49,7 +49,7 @@ const TravelersSection = ({ id }: { id?: string }) => {
               key={index}
               className="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-[5px_5px_10px_theme(colors.sky.300/50%),_-5px_-5px_10px_theme(colors.white/70%)] transition-shadow"
             >
-              {/* Image container with exact same width as the card */}
+              {}
               <div className="aspect-[4/3] relative w-full h-40">
                 <Image
                   src={traveler.image || "/placeholder.svg"}
@@ -61,7 +61,7 @@ const TravelersSection = ({ id }: { id?: string }) => {
                 />
               </div>
 
-              {/* Title and description */}
+              {}
               <div className="p-6 text-center h-44">
                 <h3 className="text-2xl font-medium mb-3">{traveler.title}</h3>
                 <p className="text-gray-600 text-sm leading-relaxed">{traveler.description}</p>

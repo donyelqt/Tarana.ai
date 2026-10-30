@@ -118,8 +118,6 @@ describe('Profile API Route Tests', () => {
 
     const response = await PATCH(authedRequest({ fullName: 'a'.repeat(150) }));
     expect(response.status).toBe(200);
-    // sanitizeName caps at 100 chars, so the route-level >100 branch is
-    // unreachable — the service receives the truncated name.
     expect(mockedUpdateProfileByEmail).toHaveBeenCalledWith(
       'Test@Example.com',
       { fullName: 'a'.repeat(100), location: undefined, bio: undefined }

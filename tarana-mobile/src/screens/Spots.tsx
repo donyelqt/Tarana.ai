@@ -14,28 +14,6 @@ import { TrafficBadge } from './ui';
 
 const TOP_PICKS = 3;
 
-/**
- * Spots — suggested spots per city, via the data seam.
- *
- * HARD RULE (Metro probe): never import web search/traffic modules here.
- * `intelligentSearch` imports Node `crypto`, `itineraryData` value-imports
- * ~40 images from `public/` plus web-only icons, and `agenticTrafficAgent`
- * is orphaned — all quarantined. Traffic badges render API-returned values
- * only (`traffic` field below, measured server-side).
- *
- * The one shared import is `tarana-web/data/cityConfig` (zero Node/Next
- * imports — probe-verified portable), used for city display names only.
- * Data comes from `../data` (session-free proxy, validated at boundary);
- * offline throws → error state below, never a login wall.
- */
-/**
- * Spots — web `SuggestedSpots` composition, native (§8 + user call).
- *
- * Same shaping, same order: header + "Top picks in {city}" subtitle +
- * city pills + top-3 cards, then a "Show all" disclosure with compact
- * rows (browse preserved). Null-coord entries never reach the list
- * (dropped in the seam, like `toSpotCard` → null → filtered).
- */
 const SPOT_CITIES: CityId[] = ['baguio', 'cebu', 'manila', 'davao', 'boracay', 'el_nido'];
 
 export default function Spots() {
@@ -61,8 +39,6 @@ export default function Spots() {
   }, [city, load]);
 
   const { width: viewportWidth } = useWindowDimensions();
-  // 1.15 cards peek: card fills the guttered width minus a peek strip,
-  // so the next card advertises the swipe. Snap interval = card + gap.
   const cardWidth = Math.round(viewportWidth - 32 - 56);
   const snapInterval = cardWidth + 12;
 
@@ -70,8 +46,6 @@ export default function Spots() {
   const rest = (cards ?? []).slice(TOP_PICKS);
 
   return (
-    // Top inset only (Home/AuthEntry precedent): content clears the notch /
-    // punch-hole camera and status bar. Bottom stays navigator-owned.
     <SafeAreaView style={styles.root} edges={['top']}>
     <ScrollView
       style={styles.scroll}
@@ -144,12 +118,6 @@ export default function Spots() {
   );
 }
 
-/**
- * Spot card — Home card language via shared `spotCardStyles`: photo-led
- * full-bleed top, name, pin meta, traffic badge. Spots-only additions kept:
- * the "Open in Maps" action (this screen's purpose) and peak-hours in meta.
- * Fixed width comes from the caller (viewport-derived).
- */
 function SpotCard({ card: item, width }: { card: SpotView; width: number }) {
   const url = spotMapsUrl(item.lat, item.lon);
   const uri = resolveWebImage(item.image);
@@ -184,10 +152,6 @@ function SpotCard({ card: item, width }: { card: SpotView; width: number }) {
     </View>
   );
 }
-/**
- * Compact row for the "show all" disclosure: name + distance · time +
- * badge, tap opens Maps. Same data as the card, denser composition.
- */
 function SpotRow({ card: item }: { card: SpotView }) {
   const url = spotMapsUrl(item.lat, item.lon);
   return (

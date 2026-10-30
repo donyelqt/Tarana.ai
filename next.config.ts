@@ -4,10 +4,10 @@ import path from "path";
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname),
   transpilePackages: ['lucide-react'],
-  // No version fingerprint on responses.
+  
   poweredByHeader: false,
-  // Middleware matcher skips static/image paths, so these headers would
-  // otherwise ship without HSTS/nosniff/DENY. Apply at the config layer.
+  
+  
   async headers() {
     return [
       { source: '/_next/static/:path*', headers: [
@@ -24,17 +24,17 @@ const nextConfig: NextConfig = {
     ];
   },
   
-  // Webpack configuration to fix Windows HMR issues
+  
   webpack: (config, { dev, isServer }) => {
     if (dev) {
-      // Disable webpack cache to prevent chunk manifest corruption on Windows
+      
       config.cache = false;
       
-      // Use polling instead of native file watching (more reliable on Windows)
+      
       config.watchOptions = {
-        poll: 1000, // Check for changes every second
-        aggregateTimeout: 300, // Delay before rebuilding after changes
-        // Use string glob patterns, not RegExp
+        poll: 1000, 
+        aggregateTimeout: 300, 
+        
         ignored: [
           '**/node_modules/**',
           '**/.next/**',
@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
     return config;
   },
   
-  // Production build optimization
+  
   productionBrowserSourceMaps: false,
   
   images: {
@@ -87,14 +87,14 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        // No producer in src/ can return this host any more (Tier 1 Google
-        // Places photos were removed in the S4 follow-up: the photo URL
-        // embeds the server key). Kept deliberately: legacy `itineraries`
-        // rows written before that change may still hold such a URL, and
-        // `resolveItineraryImage` does not host-validate, so dropping the
-        // pattern would turn an existing row into a next/image loader throw
-        // (the thumb.wikimedia.org crash class). Remove only after a
-        // migration rewrites stored keyed URLs.
+        
+        
+        
+        
+        
+        
+        
+        
         protocol: 'https',
         hostname: 'maps.googleapis.com',
         pathname: '/maps/api/place/photo/**',
@@ -105,9 +105,9 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        // Wikimedia moved page-image thumbnails from upload.wikimedia.org to
-        // thumb.wikimedia.org (Phabricator T427465). Both hosts are allowed
-        // while the migration is in flight.
+        
+        
+        
         protocol: 'https',
         hostname: 'thumb.wikimedia.org',
         pathname: '/**',
@@ -120,8 +120,8 @@ const nextConfig: NextConfig = {
     ],
   },
   eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
+    
+    
     ignoreDuringBuilds: true,
   },
 };

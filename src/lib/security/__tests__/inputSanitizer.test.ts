@@ -53,7 +53,6 @@ describe('Password Validation Tests', () => {
         'sunshine1'
       ];
 
-      // Test each common password individually with correct expectations
       const testCases = [
         { password: 'password', expectedError: 'Password is too common' },
         { password: '12345678', expectedError: 'Avoid sequential patterns' },
@@ -97,7 +96,7 @@ describe('Password Validation Tests', () => {
     });
 
     test('should reject passwords with repeated single characters', () => {
-      const result = validatePasswordStrength('aaaaaaaa'); // 8 chars to pass length check
+      const result = validatePasswordStrength('aaaaaaaa'); 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Avoid repeating characters');
     });
@@ -121,7 +120,6 @@ describe('Password Validation Tests', () => {
 
     test('should give higher score for longer passwords', () => {
       const result = validatePasswordStrength('thisisaverylongsecurephrasefortesting');
-      // Long password should have good score due to length (avoid common substring "password")
       expect(result.isValid).toBe(true);
       expect(result.score).toBeGreaterThan(0);
     });
@@ -136,7 +134,6 @@ describe('Password Validation Tests', () => {
     test('should provide feedback for strong passwords', () => {
       const result = validatePasswordStrength('thisisaverylongsecurephrase');
       expect(result.isValid).toBe(true);
-      // current implementation returns empty feedback for valid passwords; ensure feedback array exists and no errors
       expect(Array.isArray(result.feedback)).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
@@ -154,7 +151,6 @@ describe('Password Validation Tests', () => {
     test('should provide feedback for sequential patterns', () => {
       const result = validatePasswordStrength('qwertyuiop');
       expect(result.isValid).toBe(false);
-      // 'qwertyuiop' contains common substring "qwerty" so currently flagged as common, not sequential
       expect(result.feedback).toContain('Choose a less common password');
     });
   });
@@ -169,7 +165,6 @@ describe('Password Validation Tests', () => {
     test('should handle password with only spaces', () => {
       const result = validatePasswordStrength('        ');
       expect(result.isValid).toBe(false);
-      // This will fail because of repeated characters (' ' repeated 8 times)
       expect(result.errors).toContain('Avoid repeating characters');
     });
 
@@ -180,19 +175,17 @@ describe('Password Validation Tests', () => {
 
     test('should handle numeric passwords', () => {
       const result = validatePasswordStrength('123456789012');
-      // Note: This will fail because '12345678' is a common pattern
-      // The function checks for '12345678' in the pattern
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Avoid sequential patterns');
     });
 
     test('should handle single repeated character with less than 3 repetitions', () => {
-      const result = validatePasswordStrength('paassword'); // Only 2 'a's in a row
+      const result = validatePasswordStrength('paassword'); 
       expect(result.isValid).toBe(true);
     });
 
     test('should reject when 3 or more characters repeat', () => {
-      const result = validatePasswordStrength('passsword'); // 3 's's in a row
+      const result = validatePasswordStrength('passsword'); 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Avoid repeating characters');
     });

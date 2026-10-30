@@ -10,9 +10,6 @@ import { getSavedMeals } from "@/lib/data/supabaseMeals";
 export const RecommendedCafes = () => {
   const { data: session } = useSession();
 
-  // Shared cache with the saved-meals page (same key + fetcher): zero extra
-  // fetch when both pages are visited. Ranked by taste overlap with saves;
-  // ratings order until saves load.
   const { data: savedMeals = [] } = useQuery({
     queryKey: ["saved-meals", session?.user?.id],
     queryFn: async () => {

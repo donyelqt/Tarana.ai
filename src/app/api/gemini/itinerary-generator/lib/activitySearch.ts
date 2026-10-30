@@ -1,4 +1,4 @@
-// Removed legacy vector search import - now using unified intelligent search
+
 import { proposeSubqueries } from "../agent/agent";
 import { logger } from "../../../../../lib/observability/logger";
 import { getCityTime } from "@/lib/traffic/peakHours";
@@ -54,10 +54,10 @@ type EffectiveItinerary = {
   searchMetadata?: { searchMethod: string; totalResults: number; processingTime: number; allowedActivities?: Array<{ title: string; [k: string]: unknown }> };
 } | null;
 
-// Initialize unified intelligent search engine
+
 const intelligentSearchEngine = new IntelligentSearchEngine();
-// Retrieved POI fields are third-party data interpolated into the model
-// prompt: strip instruction keywords, URLs, and control chars, cap length.
+
+
 function sanitizePoiField(value: unknown): string {
   if (typeof value !== 'string') return '';
   return value
@@ -81,7 +81,7 @@ export async function findAndScoreActivities(
     let effectiveSampleItinerary: EffectiveItinerary = null;
     
     try {
-        // Create search context for unified intelligent search
+        
         const searchContext: SearchContext = {
             interests: Array.isArray(interests) ? interests : [],
             weatherCondition: weatherType,
@@ -93,19 +93,19 @@ export async function findAndScoreActivities(
             userPreferences: {}
         };
         
-        // Use intelligent search engine
+        
         const availableActivities = sampleItineraryCombined.items[0].activities;
-        // Log shape only: verbatim prompts carry PII (names, hotels, dates).
+        
         logger.info(`\n🔍 INTELLIGENT SEARCH: Starting search`, { entryPoint: 'activitySearch', promptLength: prompt.length });
         const intelligentResults = await intelligentSearchEngine.search(prompt, searchContext);
         logger.info(`✅ INTELLIGENT SEARCH: Found ${intelligentResults.length} results with traffic-aware scoring`, { entryPoint: 'activitySearch' });
         
-        // Enhanced intelligent search with query expansion if needed
+        
         let finalResults = intelligentResults;
         if (intelligentResults.length < 2) {
             logger.info(`🔍 EXPANDING SEARCH: Only ${intelligentResults.length} results, generating sub-queries for broader coverage`, { entryPoint: 'activitySearch' });
             
-            // Generate AI sub-queries to expand search coverage
+            
             const subqueries = await proposeSubqueries({
                 model: model as unknown as ReturnType<GoogleGenerativeAI["getGenerativeModel"]>,
                 userPrompt: prompt,
@@ -114,17 +114,17 @@ export async function findAndScoreActivities(
                 durationDays,
                 existingTitles: intelligentResults.map(r => r.activity.title),
                 maxQueries: 2,
-                includeTrafficData: trafficAware, // respect the traffic toggle
+                includeTrafficData: trafficAware, 
             });
 
-            // Run additional intelligent searches with sub-queries
+            
             const expandedResults: IntelligentSearchResult[] = [];
             for (const subquery of subqueries) {
                 const subResults = await intelligentSearchEngine.search(subquery, searchContext);
                 expandedResults.push(...subResults);
             }
             
-            // Merge and deduplicate results
+            
             const allResults = [...intelligentResults, ...expandedResults];
             const uniqueResults = new Map();
             
@@ -142,7 +142,7 @@ export async function findAndScoreActivities(
             logger.info(`✅ EXPANDED SEARCH: Final results count: ${finalResults.length}`, { entryPoint: 'activitySearch' });
         }
 
-        // Process unified intelligent search results - only use activities that exist in the database
+        
         const databaseActivities = sampleItineraryCombined.items[0].activities;
         const databaseTitles = new Set(databaseActivities.map((act: Activity) => act.title.toLowerCase()));
         
@@ -215,7 +215,7 @@ export async function findAndScoreActivities(
             logger.info(`🎛️ RANDOM INTEREST MODE: Using full catalog with ${similar.length} activities for traffic analysis.`, { entryPoint: 'activitySearch' });
         }
 
-        // Apply unified intelligent filtering and optimization
+        
         const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as unknown as Record<string, string[]>)[weatherType] ?? [];
 
         const scoredSimilar = similar.map((s: ProcessedResult) => {
@@ -250,11 +250,11 @@ export async function findAndScoreActivities(
             .sort((a, b) => b.relevanceScore - a.relevanceScore)
             .slice(0, 40);
 
-        // ── Strict city scoping: Baguio stays Baguio, other cities use ONLY the shared tourist POI pool ──
-        // User selects "Manila" → only Manila places. Zero results = honest empty (NEVER Baguio leakage).
+        
+        
         if (cityId !== "baguio") {
-          // ph-wide/world have no shared tourist pool yet. Honest empty —
-          // never fall through to the Baguio-only supplement below.
+          
+          
           if (!isTargetCityId(cityId)) {
             logger.warn(`⚠️ STRICT CITY: no shared tourist pool for scope "${cityId}" — returning EMPTY (no Baguio leakage)`, { entryPoint: 'activitySearch', cityId: cityId })
             filteredSimilar = []
@@ -262,10 +262,10 @@ export async function findAndScoreActivities(
             try {
               const city = getCityConfig(cityId)
 
-              // Layer 1 — interest-targeted retrieval (personalization).
-              // Layer 2 — the shared 50-POI tourist pool (coverage).
-              // Interests lead the pool so stated preferences shape what the
-              // composer sees; tourists backfill to keep coverage wide.
+              
+              
+              
+              
               const safeInterests = Array.isArray(interests)
                 ? interests.filter(i => i && i !== "Random")
                 : []
@@ -276,14 +276,14 @@ export async function findAndScoreActivities(
                 logger.info(`🎯 STRICT CITY: ${cityId} → ${interestPois.length} interest-matched POIs for [${safeInterests.slice(0, 2).join(', ')}]`, { entryPoint: 'activitySearch', cityId: cityId })
               }
 
-              // Daily rotation applies to the COVERAGE layer only.
-              //
-              // rotateByDay is a rotation, not a shuffle: it moves the tail to
-              // the front while preserving relative order. Applied to the
-              // merged list it would push interest matches behind tourist rows
-              // (and could slice them out entirely), destroying the priority
-              // mergeInterestFirst establishes. So rotate the tourist layer for
-              // day-to-day variety, then merge once with interests ahead.
+              
+              
+              
+              
+              
+              
+              
+              
               const dayIndex = Math.floor(getCityTime(cityId).getTime() / 86400000)
               const rotatedTourists = touristPois.length > 1
                 ? rotateByDay(touristPois, dayIndex)
@@ -320,7 +320,7 @@ export async function findAndScoreActivities(
                 }))
                 logger.info(`🌍 STRICT CITY: ${cityId} → ${filteredSimilar.length} shared tourist POIs`, { entryPoint: 'activitySearch', cityId: cityId })
               } else {
-                // STRICT: honest empty — do NOT leak Baguio results into another city
+                
                 logger.warn(`⚠️ STRICT CITY: shared tourist POI pool returned 0 for ${cityId} — returning EMPTY (no Baguio leakage)`, { entryPoint: 'activitySearch', cityId: cityId })
                 filteredSimilar = []
               }
@@ -330,12 +330,12 @@ export async function findAndScoreActivities(
             }
           }
         } else if (filteredSimilar.length < 8) {
-            // Baguio fallback: supplement with Baguio TomTom when vector insufficient.
-            // H1-fix (2026-09-04): was passing raw `prompt` (e.g., "Create a personalized
-            // 1 Day-day itinerary...") which returned 0 results from TomTom POI search.
-            // Now uses the same compact interest-mapped query candidates as the
-            // strict-city branch above — guaranteed to match at least the
-            // genericQuery fallback even for raw verbose prompts.
+            
+            
+            
+            
+            
+            
             try {
                 const city = getCityConfig("baguio")
                 const bounds = {
@@ -366,7 +366,7 @@ export async function findAndScoreActivities(
                         logger.warn(`BAGUIO SUPPLEMENT query "${q}" failed`, { entryPoint: 'activitySearch', error: qErr })
                     }
                 }
-                // Bounds post-filter (spec 9.1 #7)
+                
                 {
                     const beforeBounds = baguioTomResults.length
                     const filteredByBounds = baguioTomResults.filter(r => {
@@ -413,13 +413,13 @@ export async function findAndScoreActivities(
             }
         }
 
-        // Baguio never-500 safety net: pgvector (semantic) + TomTom supplement can
-        // both come back empty (dead embeddings, zero POI hits, weather wipeout).
-        // Fall back to compact local text-match over the curated catalog — terms,
-        // never the verbatim prompt sentence (full-sentence `includes` can never
-        // hit short titles). Three tiers so Baguio always returns *something*:
-        // terms+weather → terms only → full catalog. Strict-city keeps
-        // honest-empty (no Baguio leakage into other cities).
+        
+        
+        
+        
+        
+        
+        
         if (filteredSimilar.length === 0 && cityId === "baguio") {
             const terms = extractMatchTerms(interests);
             const allowedWeatherTags: string[] = (WEATHER_TAG_FILTERS as unknown as Record<string, string[]>)[weatherType] ?? [];
@@ -450,10 +450,10 @@ export async function findAndScoreActivities(
             }));
         }
 
-        // Shortlist BEFORE traffic+image fan-out (spots parity: enrich the head, not the
-        // catalog). 12 covers the hungriest layout — 4 days × 3 slots × 1 (relaxed pace) —
-        // so multi-day trips can't starve. Baguio input is relevance-sorted; strict-city
-        // input was day-rotated upstream, so the head varies day to day.
+        
+        
+        
+        
         const FINALIST_CAP = 12;
         if (filteredSimilar.length > FINALIST_CAP) {
             logger.info(`✂️ SHORTLIST: capping ${filteredSimilar.length} → ${FINALIST_CAP} before traffic+image enrichment`, { entryPoint: 'activitySearch', FINALIST_CAP: FINALIST_CAP });
@@ -465,7 +465,7 @@ export async function findAndScoreActivities(
             let sanitisedAllowedActivities: Array<{ image: string | StaticImageData; title: string; time: string; desc: string; tags: string[]; peakHours?: string; trafficAnalysis?: unknown }>;
 
             if (trafficAware) {
-                // Apply traffic-aware activity search with detailed logging
+                
                 logger.info(`\n🚦 TRAFFIC-AWARE SEARCH: Processing ${filteredSimilar.length} activities`, { entryPoint: 'activitySearch' });
                 const trafficOptions = createDefaultTrafficOptions();
                 const trafficEnhancedActivities = await trafficAwareActivitySearch.enhanceActivitiesWithTraffic(
@@ -474,7 +474,7 @@ export async function findAndScoreActivities(
                 );
                 logger.info(`✅ TRAFFIC-AWARE SEARCH: Enhanced ${trafficEnhancedActivities.length} activities with real-time traffic data`, { entryPoint: 'activitySearch' });
                 
-                // Log detailed traffic integration results
+                
                                 const trafficSummary = trafficEnhancedActivities.map(activity => ({
                     name: activity.title,
                     coordinates: activity.trafficAnalysis ? `${activity.trafficAnalysis.lat}, ${activity.trafficAnalysis.lon}` : 'NO_COORDS',
@@ -490,11 +490,11 @@ export async function findAndScoreActivities(
                 logger.info(`🎯 TOMTOM API SUCCESS RATE: ${successfulTrafficFetches}/${totalActivities} (${Math.round(successfulTrafficFetches/totalActivities*100)}%)`, { entryPoint: 'activitySearch', successfulTrafficFetches: successfulTrafficFetches, totalActivities: totalActivities });
                 logger.info(`📊 DETAILED TRAFFIC DATA:`, { entryPoint: 'activitySearch', trafficSummary });
 
-                // Soft traffic ranking — keep all, rank by combinedTrafficScore instead of hard drop
-                // Previously hard-filtered HIGH/SEVERE → 0 results on congested PH days (retention killer)
-                // Now we rank: VERY_LOW/LOW/MODERATE naturally score higher, HIGH/SEVERE penalized via trafficAwareActivitySearch
+                
+                
+                
                 const trafficFilteredActivities = trafficEnhancedActivities
-                // Log soft penalty for observability (not filter)
+                
                 trafficFilteredActivities.forEach(a => {
                   const lvl = a.trafficAnalysis?.realTimeTraffic?.trafficLevel
                   if (lvl === 'HIGH' || lvl === 'SEVERE') {
@@ -502,9 +502,9 @@ export async function findAndScoreActivities(
                   }
                 })
 
-                // Final activity selection and validation
+                
                 finalActivities = trafficFilteredActivities.slice(0, Math.min(20, trafficFilteredActivities.length));
-                // Enrich with accurate per-location images (Tier 0 curated for Baguio, Tier 1-3 for PH/world)
+                
                 try {
                     finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5, city: getCityConfig(cityId).name, cityId: cityId as CityId }) as unknown as typeof finalActivities
                 } catch (e) {
@@ -512,7 +512,7 @@ export async function findAndScoreActivities(
                 }
                 logger.info(` FINAL SELECTION: Selected ${finalActivities.length} activities for itinerary generation`, { entryPoint: 'activitySearch' });
 
-                // Build sanitised allowed activities (with traffic data)
+                
                 sanitisedAllowedActivities = finalActivities.map(activity => ({
                     image: activity.image,
                     title: activity.title,
@@ -526,7 +526,7 @@ export async function findAndScoreActivities(
                     } : undefined
                 }));
             } else {
-                // FAST MODE: Skip traffic enhancement, use raw search results
+                
                 logger.info(`⚡ FAST MODE: Skipping traffic integration for ${filteredSimilar.length} activities`, { entryPoint: 'activitySearch' });
                 finalActivities = filteredSimilar.map(s => ({
                     ...s.metadata,
@@ -536,7 +536,7 @@ export async function findAndScoreActivities(
                     confidence: s.confidence || 0.7
                 })).slice(0, 20);
 
-                // Enrich fast-mode images as well (curated stays, new places get fetched)
+                
                 try {
                     finalActivities = await enrichActivitiesWithImages(finalActivities as unknown as Array<{ title: string; lat?: number; lon?: number; image?: unknown }>, { concurrency: 5, city: getCityConfig(cityId).name, cityId: cityId as CityId }) as unknown as typeof finalActivities
                 } catch (e) {
@@ -552,7 +552,7 @@ export async function findAndScoreActivities(
                 }));
             }
 
-            // Group activities by time period
+            
             const groupByPeriod = () => ({
                 Morning: [] as Activity[],
                 Afternoon: [] as Activity[],
@@ -608,7 +608,7 @@ export async function findAndScoreActivities(
                 items.push({ period: "Flexible Time", activities: buckets.Flexible });
             }
 
-            // Log traffic integration for traffic-aware mode only
+            
             if (trafficAware) {
                 const finalTrafficStats = finalActivities.map(activity => ({
                     activity: activity.title,
@@ -624,13 +624,13 @@ export async function findAndScoreActivities(
                 logger.info(`📈 TRAFFIC-AWARE ITINERARY:`, { entryPoint: 'activitySearch', finalTrafficStats });
             }
 
-            // Add traffic tags only in traffic-aware mode
+            
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const validatedActivities = trafficAware ? finalActivities.map(activity => {
                 const trafficLevel = activity.trafficAnalysis?.realTimeTraffic?.trafficLevel;
                 const tags = [...(activity.tags || [])];
                 
-                // Add traffic tags
+                
                 if (trafficLevel === 'VERY_LOW' || trafficLevel === 'LOW') {
                     tags.push('low-traffic');
                 } else if (trafficLevel === 'MODERATE') {
@@ -678,27 +678,27 @@ export async function findAndScoreActivities(
                 }
             } as unknown as typeof effectiveSampleItinerary;
         } else if (cityId === "baguio") {
-            // H1-fix (2026-09-04): empty-result fallback for Baguio-class cities.
-            // Previous behavior: if vector + TomTom both returned 0, filteredSimilar
-            // stayed empty, effectiveSampleItinerary stayed null, composer threw,
-            // 500 to the user. This branch fires when filteredSimilar.length === 0
-            // (NOT on a thrown exception — the catch block at :633 still handles
-            // that path with a different strategy). Matches against the local
-            // curated database using COMPACT terms (interests + city name), not
-            // the raw prompt sentence — title.includes("Create a personalized 1
-            // Day-day itinerary...") almost never matches in production.
-            //
-            // STRICT non-Baguio guard: sampleItineraryCombined is a Baguio-only
-            // catalog. Returning it for Cebu/Manila/Davao would be cross-city
-            // leakage, so non-Baguio cities stop at the honest empty result above.
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
             const safeInterestsForFallback = Array.isArray(interests)
                 ? interests.filter(i => i && i !== "Random")
                 : [];
-            // This branch is Baguio-only (guarded above), so the config lookup
-            // cannot be another city.
+            
+            
             const cityForFallback = getCityConfig(cityId).name;
-            // Compact tokens: each interest becomes one token, plus the city name.
-            // Example: interests=["Food & Culinary"] → ["food culinary", "<city>"]
+            
+            
             const INTEREST_TOKEN_MAP: Record<string, string> = {
                 "Food & Culinary": "food culinary",
                 "Nature & Scenery": "nature scenery park",
@@ -717,7 +717,7 @@ export async function findAndScoreActivities(
                     const haystack = `${activity.title} ${activity.desc} ${(activity.tags || []).join(" ")}`.toLowerCase();
                     return compactTokens.some(tok => haystack.includes(tok));
                 })
-                : allCurated.slice(0, 20); // last-ditch: return first 20 curated
+                : allCurated.slice(0, 20); 
 
             if (fallbackMatches.length > 0) {
                 effectiveSampleItinerary = {
@@ -755,11 +755,11 @@ export async function findAndScoreActivities(
     } catch (searchErr) {
         logger.warn(`Intelligent search failed, falling back to basic search`, { entryPoint: 'activitySearch', error: searchErr });
 
-        // STRICT non-Baguio guard: this fallback matches the Baguio-only
-        // curated catalog. For Cebu/Manila/Davao, refuse to substitute Baguio
-        // activities — return the honest empty result instead.
+        
+        
+        
         if (cityId === "baguio") {
-        // Ultimate fallback: return a subset of activities based on simple text matching
+        
         const availableActivities = sampleItineraryCombined.items[0].activities;
         const basicMatches = availableActivities.filter((activity: Activity) => 
             activity.title.toLowerCase().includes(prompt.toLowerCase()) ||
@@ -794,9 +794,7 @@ export async function findAndScoreActivities(
     return effectiveSampleItinerary;
 }
 
-/**
- * Determine time of day based on city time (defaults to Baguio/Manila for backward compat)
- */
+
 function determineTimeOfDay(cityId: string = "baguio"): 'morning' | 'afternoon' | 'evening' | 'anytime' {
     const cityTime = getCityTime(cityId);
     const hour = cityTime.getHours();

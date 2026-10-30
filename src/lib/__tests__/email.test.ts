@@ -2,9 +2,7 @@
 import { sendPasswordResetEmail } from '../email/email';
 import * as emailConfig from '../email/emailConfig';
 
-// Use global nodemailer mocks from jest.setup.js
 
-// Mock console methods
 const consoleSpy = {
   log: jest.spyOn(console, 'log').mockImplementation(),
   error: jest.spyOn(console, 'error').mockImplementation(),
@@ -15,8 +13,6 @@ describe('Email Service', () => {
     jest.clearAllMocks();
     consoleSpy.log.mockClear();
     consoleSpy.error.mockClear();
-    // Wire nodemailer mock to use shared global sendMail mock so expectations on global.mockSendMail are valid.
-    // jest.setup defines mockCreateTransport to return a fresh sendMail each call; we override to reuse the shared mock.
     const sharedSendMail = (global as any).mockSendMail;
     const sharedCreateTransport = (global as any).mockCreateTransport;
     if (sharedCreateTransport && sharedSendMail) {
@@ -25,7 +21,6 @@ describe('Email Service', () => {
         verify: jest.fn().mockResolvedValue(true),
         close: jest.fn(),
       }));
-      // Also expose as bare global for tests that reference mockCreateTransport without namespace
       (globalThis as any).mockCreateTransport = sharedCreateTransport;
       (globalThis as any).mockSendMail = sharedSendMail;
     }
@@ -41,15 +36,12 @@ describe('Email Service', () => {
     const testResetUrl = 'https://tarana.ai/auth/reset-password?token=abc123';
 
     it('returns true without logging the reset URL when SMTP is not configured', async () => {
-      // Mock no email configuration
       jest.spyOn(emailConfig, 'getEmailTransportConfig').mockReturnValue(null);
       jest.spyOn(emailConfig, 'validateEmailConfig').mockReturnValue(null);
 
       const result = await sendPasswordResetEmail(testEmail, testResetUrl);
 
       expect(result).toBe(true);
-      // The reset URL embeds a live takeover-capable token and must never
-      // reach stdout, even in dev.
       expect(consoleSpy.log).not.toHaveBeenCalledWith(
         expect.stringContaining('Password reset link'),
         expect.anything()
@@ -58,7 +50,6 @@ describe('Email Service', () => {
     });
 
     it('should send email successfully with valid configuration', async () => {
-      // Mock valid email configuration
       const mockTransportConfig = {
         host: 'smtp.sendgrid.net',
         port: 587,
@@ -134,20 +125,17 @@ describe('Email Service', () => {
 
       const emailCall = global.mockSendMail.mock.calls[0][0];
 
-      // Validate HTML content
       expect(emailCall.html).toContain('Tarana.ai');
       expect(emailCall.html).toContain('Reset Your Password');
       expect(emailCall.html).toContain(testResetUrl);
       expect(emailCall.html).toContain('expire in 1 hour');
       expect(emailCall.html).toContain('Reset Password');
       
-      // Validate text content
       expect(emailCall.text).toContain('Reset Your Tarana.ai Password');
       expect(emailCall.text).toContain(testResetUrl);
       expect(emailCall.text).toContain('expire in 1 hour');
       expect(emailCall.text).toContain('The Tarana.ai Team');
       
-      // Validate email structure
       expect(emailCall.from).toBe('"Tarana.ai" <noreply@tarana.ai>');
       expect(emailCall.to).toBe(testEmail);
       expect(emailCall.subject).toBe('Reset Your Tarana.ai Password');
@@ -184,7 +172,7 @@ describe('Email Service', () => {
 
       const result = await sendPasswordResetEmail(testEmail, testResetUrl);
 
-      expect(result).toBe(true); // Should return true to prevent email enumeration
+      expect(result).toBe(true); 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error sending password reset email:',
         testError
@@ -223,7 +211,7 @@ describe('Email Service', () => {
 
       const result = await sendPasswordResetEmail(testEmail, testResetUrl);
 
-      expect(result).toBe(true); // Should return true to prevent email enumeration
+      expect(result).toBe(true); 
       expect(consoleSpy.error).toHaveBeenCalledWith(
         'Error sending password reset email:',
         expect.any(Error)

@@ -6,10 +6,6 @@ import { timedHttp } from '@/lib/observability/httpMetrics';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
 import { createRateLimitMiddleware, rateLimitConfigs } from '@/lib/security/rateLimiter';
-/**
- * GET /api/locations/search
- * Search for locations with autocomplete functionality
- */
 export async function GET(request: NextRequest) {
   return timedHttp('/api/locations/search', 'GET', async () => {
     const requestId = getRequestId(request);
@@ -24,9 +20,7 @@ export async function GET(request: NextRequest) {
     const rawQuery = searchParams.get('q');
     const boundsParam = searchParams.get('bounds');
 
-    // Bound the query: unbounded q fans out to paid TomTom on every keystroke.
     const query = (rawQuery ?? '').trim().slice(0, 200);
-    // Validate query parameter
     if (!query || query.length < 2) {
       return NextResponse.json(
         { error: 'Query parameter "q" is required and must be at least 2 characters' },
@@ -39,7 +33,6 @@ export async function GET(request: NextRequest) {
       { entryPoint: '/api/locations/search', queryLength: query.length },
       requestId
     );
-    // Parse bounds if provided
     let bounds: BoundingBox | undefined;
     if (boundsParam) {
       try {
@@ -59,17 +52,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Forward the browser's Referer so TomTom's Referer allowlist accepts the
-    // server-side call.
     const forwardedReferer = request.headers.get('referer') || request.headers.get('origin') || undefined;
 
-    // Search for locations using TomTom service
     const searchResults = await tomtomRoutingService.searchLocations(query.trim(), bounds, forwardedReferer);
     
-    // Generate search suggestions based on results
     const suggestions = generateSearchSuggestions(searchResults, query);
     
-    // Calculate bounds for results
     const resultsBounds = calculateResultsBounds(searchResults);
 
     const response: LocationSearchResponse = {
@@ -94,14 +82,10 @@ export async function GET(request: NextRequest) {
   }, (res) => res.status);
 }
 
-/**
- * Generate search suggestions based on results and query
- */
 function generateSearchSuggestions(results: SearchResult[], query: string): string[] {
   const suggestions: string[] = [];
   const queryLower = query.toLowerCase();
   
-  // Add common location types if query is short
   if (query.length <= 3) {
     const commonTypes = [
       'university', 'hotel', 'restaurant', 'park', 'mall', 'hospital',
@@ -115,7 +99,6 @@ function generateSearchSuggestions(results: SearchResult[], query: string): stri
     });
   }
   
-  // Add variations based on results
   const categories = new Set<string>();
   results.forEach(result => {
     if (result.category && !categories.has(result.category)) {
@@ -124,7 +107,6 @@ function generateSearchSuggestions(results: SearchResult[], query: string): stri
     }
   });
   
-  // Add Baguio-specific suggestions
   const baguioSuggestions = [
     'Session Road', 'Burnham Park', 'Baguio Cathedral', 'Wright Park',
     'The Mansion', 'Mines View Park', 'Camp John Hay', 'SM City Baguio',
@@ -137,16 +119,11 @@ function generateSearchSuggestions(results: SearchResult[], query: string): stri
     }
   });
   
-  // Remove duplicates and limit to 5 suggestions
   return Array.from(new Set(suggestions)).slice(0, 5);
 }
 
-/**
- * Calculate bounding box that contains all search results
- */
 function calculateResultsBounds(results: SearchResult[]): BoundingBox {
   if (results.length === 0) {
-    // Default to Baguio City bounds
     return {
       topLeft: { lat: 16.45, lng: 120.55 },
       bottomRight: { lat: 16.35, lng: 120.65 }
@@ -165,7 +142,6 @@ function calculateResultsBounds(results: SearchResult[]): BoundingBox {
     maxLng = Math.max(maxLng, result.coordinates.lng);
   });
   
-  // Add some padding
   const latPadding = (maxLat - minLat) * 0.1 || 0.01;
   const lngPadding = (maxLng - minLng) * 0.1 || 0.01;
   

@@ -1,11 +1,3 @@
-// ====================================================================
-// RESTAURANT DATA
-// ====================================================================
-//
-// This file contains the complete restaurant data with all details
-// for the Tarana Eats feature.
-//
-// ====================================================================
 
 import { RestaurantData, FullMenu } from "./types";
 import { goodShepherdCafeMenu } from "./menus/goodShepherdCafe";
@@ -160,12 +152,12 @@ export const restaurants: RestaurantData[] = [
     popularFor: ["Local Coffee Beans", "Frappes", "Cozy Ambiance"],
     menuItems: [],
     fullMenu: kapiKullaawMenu,
-    image: "/images/kapi_kullaaw.jpg", // Assuming a placeholder image path
+    image: "/images/kapi_kullaaw.jpg", 
     tags: ["Cafe", "Coffee", "Art", "Baguio"],
     dietaryOptions: ["Vegan", "Vegetarian", "Halal"],
     about:
       "A cozy café nestled within the Ili-likha Artist Village in Baguio City. Known for its thoughtfully curated coffee selection and vibrant, creative atmosphere, it's the perfect hideaway for art lovers, coffee enthusiasts, and curious wonderers alike. Kapi Kullaaw isn't just a cafe, it's a space to slow down, soak in inspiration, and connect with the creative spirits of Baguio.",
-    hours: "Not specified", // You can update this if you have the hours
+    hours: "Not specified", 
   },
   {
     name: "Café De Casa",
@@ -385,7 +377,6 @@ export const restaurants: RestaurantData[] = [
   },
 ];
 
-// Create a record of all restaurant menus for easy lookup
 export const allRestaurantMenus: Record<string, FullMenu> = {
   "Good Shepherd Cafe": goodShepherdCafeMenu,
   "Oh My Gulay": ohMyGulayMenu,

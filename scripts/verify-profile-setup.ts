@@ -1,9 +1,3 @@
-/**
- * Verification script for Profile Settings implementation
- * Run this to check if everything is set up correctly
- * 
- * Usage: npx ts-node scripts/verify-profile-setup.ts
- */
 
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
@@ -25,7 +19,6 @@ async function verifySetup() {
 
   let allChecks = true;
 
-  // Check 1: Supabase connection
   console.log('1️⃣ Checking Supabase connection...');
   try {
     const { data, error } = await supabaseAdmin
@@ -40,7 +33,6 @@ async function verifySetup() {
     allChecks = false;
   }
 
-  // Check 2: Users table structure
   console.log('2️⃣ Checking users table structure...');
   try {
     const { data, error } = await supabaseAdmin
@@ -72,7 +64,6 @@ async function verifySetup() {
     }
   }
 
-  // Check 3: Test user query
   console.log('3️⃣ Testing profile query...');
   try {
     const { data, error } = await supabaseAdmin
@@ -99,7 +90,6 @@ async function verifySetup() {
     allChecks = false;
   }
 
-  // Check 4: API route files
   console.log('4️⃣ Checking API route files...');
   const apiRoutePath = join(process.cwd(), 'src/app/api/profile/route.ts');
   if (existsSync(apiRoutePath)) {
@@ -109,7 +99,6 @@ async function verifySetup() {
     allChecks = false;
   }
 
-  // Check 5: Settings page
   console.log('5️⃣ Checking Settings page...');
   const settingsPagePath = join(process.cwd(), 'src/app/settings/page.tsx');
   if (existsSync(settingsPagePath)) {
@@ -126,7 +115,6 @@ async function verifySetup() {
     allChecks = false;
   }
 
-  // Final summary
   console.log('═══════════════════════════════════════════════════');
   if (allChecks) {
     console.log('✅ All checks passed! Profile Settings is ready to use.');
@@ -144,5 +132,4 @@ async function verifySetup() {
   console.log('═══════════════════════════════════════════════════\n');
 }
 
-// Run verification
 verifySetup().catch(console.error);

@@ -1,9 +1,6 @@
 import { getCityTimezone } from "@/lib/data/cityConfig"
 
-/**
- * Peak Hours Management for Manila Timezone
- * Handles peak hours detection and low-traffic activity suggestions
- */
+
 
 export interface PeakHoursPeriod {
   start: string;
@@ -15,43 +12,35 @@ export interface ActivityPeakHours {
   timezone: string;
 }
 
-/**
- * Get current time for a city (defaults to Manila for backward compat)
- */
+
 export function getCityTime(cityId: string = "baguio"): Date {
   const tz = getCityTimezone(cityId)
   return new Date(new Date().toLocaleString("en-US", { timeZone: tz }))
 }
 
-/**
- * Get current Manila time
- * @deprecated Use getCityTime('baguio') — kept for backward compat
- */
+
 export function getManilaTime(): Date {
   return getCityTime("baguio")
 }
 
-/**
- * Parse peak hours string into structured periods
- * Examples: "10 am - 11 am / 4 pm - 6 pm", "Saturday & Sunday 6 am - 5 pm"
- */
+
 export function parsePeakHours(peakHoursStr: string): PeakHoursPeriod[] {
   if (!peakHoursStr) return [];
   
   const periods: PeakHoursPeriod[] = [];
   
-  // Split by "/" to handle multiple time ranges
+  
   const timeRanges = peakHoursStr.split('/').map(range => range.trim());
   
   for (const range of timeRanges) {
-    // Skip day-specific ranges for now (e.g., "Saturday & Sunday")
+    
     if (range.toLowerCase().includes('saturday') || 
         range.toLowerCase().includes('sunday') || 
         range.toLowerCase().includes('weekday')) {
       continue;
     }
     
-    // Extract time range pattern like "10 am - 11 am" or "4 pm - 6 pm"
+    
     const timeMatch = range.match(/(\d{1,2}):?(\d{0,2})\s*(am|pm)\s*-\s*(\d{1,2}):?(\d{0,2})\s*(am|pm)/i);
     
     if (timeMatch) {
@@ -67,9 +56,7 @@ export function parsePeakHours(peakHoursStr: string): PeakHoursPeriod[] {
   return periods;
 }
 
-/**
- * Convert time string to 24-hour format for comparison
- */
+
 export function convertTo24Hour(timeStr: string): number {
   const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   if (!match) return -1;
@@ -83,12 +70,10 @@ export function convertTo24Hour(timeStr: string): number {
     hour24 = 0;
   }
   
-  return hour24 * 100 + parseInt(minute); // Return as HHMM format for easy comparison
+  return hour24 * 100 + parseInt(minute); 
 }
 
-/**
- * Check if current Manila time falls within peak hours
- */
+
 export function isCurrentlyPeakHours(peakHoursStr: string): boolean {
   const manilaTime = getManilaTime();
   const currentHour = manilaTime.getHours();
@@ -102,13 +87,13 @@ export function isCurrentlyPeakHours(peakHoursStr: string): boolean {
     const endTime = convertTo24Hour(period.end);
     
     if (startTime !== -1 && endTime !== -1) {
-      // Handle cases where end time is next day (rare but possible)
+      
       if (startTime <= endTime) {
         if (currentTime24 >= startTime && currentTime24 <= endTime) {
           return true;
         }
       } else {
-        // Crosses midnight
+        
         if (currentTime24 >= startTime || currentTime24 <= endTime) {
           return true;
         }
@@ -119,9 +104,7 @@ export function isCurrentlyPeakHours(peakHoursStr: string): boolean {
   return false;
 }
 
-/**
- * Get peak hours context for AI prompt
- */
+
 export function getPeakHoursContext(): string {
   const manilaTime = getManilaTime();
   const timeStr = manilaTime.toLocaleTimeString('en-US', {
@@ -159,10 +142,7 @@ export function getPeakHoursContext(): string {
   `;
 }
 
-/**
- * Filter activities to prioritize low-traffic options based on current time
- * STRICT filtering - absolutely no peak hour activities allowed
- */
+
 export function filterLowTrafficActivities<T extends { peakHours?: string; title?: string }>(
   activities: T[]
 ): { lowTraffic: T[]; currentlyPeak: T[] } {
@@ -196,9 +176,7 @@ export function filterLowTrafficActivities<T extends { peakHours?: string; title
   return { lowTraffic, currentlyPeak };
 }
 
-/**
- * Get next low-traffic time for an activity
- */
+
 export function getNextLowTrafficTime(peakHoursStr: string): string {
   if (!peakHoursStr) return "Available now";
   
@@ -209,7 +187,7 @@ export function getNextLowTrafficTime(peakHoursStr: string): string {
   
   const currentTime24 = manilaTime.getHours() * 100 + manilaTime.getMinutes();
   
-  // Find the next time when it's not peak hours
+  
   for (const period of periods) {
     const endTime = convertTo24Hour(period.end);
     if (endTime !== -1 && currentTime24 < endTime) {
@@ -222,19 +200,17 @@ export function getNextLowTrafficTime(peakHoursStr: string): string {
   return "Available now";
 }
 
-/**
- * Check if a given time is during peak hours
- */
+
 export function isPeakHour(date: Date): boolean {
   const hour = date.getHours();
   const minute = date.getMinutes();
   const currentTime24 = hour * 100 + minute;
   
-  // General peak hours: 7-9 AM, 12-2 PM, 5-7 PM
+  
   const peakPeriods = [
-    { start: 700, end: 900 },   // Morning rush
-    { start: 1200, end: 1400 }, // Lunch rush
-    { start: 1700, end: 1900 }  // Evening rush
+    { start: 700, end: 900 },   
+    { start: 1200, end: 1400 }, 
+    { start: 1700, end: 1900 }  
   ];
   
   return peakPeriods.some(period => 
@@ -242,39 +218,35 @@ export function isPeakHour(date: Date): boolean {
   );
 }
 
-/**
- * Get peak hour multiplier for traffic calculations
- */
+
 export function getPeakHourMultiplier(date: Date): number {
   if (isPeakHour(date)) {
     const hour = date.getHours();
-    // Higher multiplier during rush hours
+    
     if ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)) {
-      return 1.5; // 50% increase during rush hours
+      return 1.5; 
     }
-    return 1.3; // 30% increase during lunch hours
+    return 1.3; 
   }
-  return 1.0; // No multiplier during off-peak hours
+  return 1.0; 
 }
 
-/**
- * Get next peak hour period
- */
+
 export function getNextPeakHour(date: Date): Date | null {
   const hour = date.getHours();
   const nextPeakHour = new Date(date);
   
   if (hour < 7) {
-    // Next peak is morning rush
+    
     nextPeakHour.setHours(7, 0, 0, 0);
   } else if (hour < 12) {
-    // Next peak is lunch rush
+    
     nextPeakHour.setHours(12, 0, 0, 0);
   } else if (hour < 17) {
-    // Next peak is evening rush
+    
     nextPeakHour.setHours(17, 0, 0, 0);
   } else {
-    // Next peak is tomorrow morning
+    
     nextPeakHour.setDate(nextPeakHour.getDate() + 1);
     nextPeakHour.setHours(7, 0, 0, 0);
   }

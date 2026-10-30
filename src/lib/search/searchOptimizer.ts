@@ -1,10 +1,3 @@
-/**
- * Search Optimization and Query Enhancement Engine
- * Provides query expansion, intent detection, and search result optimization
- * 
- * @author Doniele Arys Antonio
- * @version 2.0.0
- */
 
 import { generateEmbedding } from '../ai/embeddings';
 import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
@@ -37,9 +30,6 @@ export interface SearchOptimization {
   filterRecommendations: string[];
 }
 
-/**
- * Advanced query processing and intent detection
- */
 export class QueryProcessor {
   private static readonly INTENT_PATTERNS = {
     exploration: ['explore', 'discover', 'find', 'see', 'visit', 'check out'],
@@ -85,7 +75,6 @@ export class QueryProcessor {
     
     const intentScores = new Map<string, number>();
     
-    // Calculate intent scores
     for (const [intent, patterns] of Object.entries(this.INTENT_PATTERNS)) {
       const matches = patterns.filter(pattern => 
         queryLower.includes(pattern) || words.some(word => word.includes(pattern))
@@ -96,7 +85,6 @@ export class QueryProcessor {
       }
     }
 
-    // Determine primary and secondary intents
     const sortedIntents = Array.from(intentScores.entries())
       .sort(([, a], [, b]) => b - a);
     
@@ -104,7 +92,6 @@ export class QueryProcessor {
     const secondary = sortedIntents.slice(1, 3).map(([intent]) => intent);
     const confidence = sortedIntents[0]?.[1] || 0.3;
 
-    // Extract entities
     const entities = {
       activities: this.extractActivityEntities(queryLower),
       locations: this.extractLocationEntities(queryLower),
@@ -152,7 +139,6 @@ export class QueryProcessor {
   private static extractPreferenceEntities(query: string): string[] {
     const preferences: string[] = [];
     
-    // Budget preferences
     if (query.includes('cheap') || query.includes('budget') || query.includes('affordable')) {
       preferences.push('budget-friendly');
     }
@@ -160,7 +146,6 @@ export class QueryProcessor {
       preferences.push('luxury');
     }
     
-    // Group preferences
     if (query.includes('family') || query.includes('kids') || query.includes('children')) {
       preferences.push('family-friendly');
     }
@@ -171,7 +156,6 @@ export class QueryProcessor {
       preferences.push('solo-friendly');
     }
     
-    // Accessibility preferences
     if (query.includes('accessible') || query.includes('wheelchair') || query.includes('elderly')) {
       preferences.push('accessible');
     }
@@ -186,11 +170,9 @@ export class QueryProcessor {
     const relatedTerms: string[] = [];
     const negativeTerms: string[] = [];
 
-    // Add intent-based expansions
     const intentExpansions = this.getIntentExpansions(intent.primary);
     expanded.push(...intentExpansions);
 
-    // Add synonym expansions
     for (const [term, termSynonyms] of Object.entries(this.ACTIVITY_SYNONYMS)) {
       if (queryLower.includes(term)) {
         synonyms.push(...termSynonyms);
@@ -198,18 +180,15 @@ export class QueryProcessor {
       }
     }
 
-    // Add related terms based on entities
     for (const activity of intent.entities.activities) {
       relatedTerms.push(...this.getRelatedTerms(activity));
     }
 
-    // Add contextual expansions
     if (intent.entities.timeReferences.length > 0) {
       const timeContext = intent.entities.timeReferences[0];
       relatedTerms.push(...this.getTimeRelatedTerms(timeContext));
     }
 
-    // Add negative terms to avoid irrelevant results
     negativeTerms.push(...this.getNegativeTerms(intent.primary));
 
     return {
@@ -275,9 +254,6 @@ export class QueryProcessor {
   }
 }
 
-/**
- * Search result optimization and ranking enhancement
- */
 export class SearchOptimizer {
   private static readonly BOOST_FACTORS = {
     exactMatch: 2.0,
@@ -300,7 +276,6 @@ export class SearchOptimizer {
       let boostMultiplier = 1.0;
       const boostReasons: string[] = [];
 
-      // Apply query expansion boosts
       const expandedQuery = optimization.queryExpansion;
       boostMultiplier *= this.calculateQueryExpansionBoost(
         result.activity,
@@ -308,14 +283,12 @@ export class SearchOptimizer {
         boostReasons
       );
 
-      // Apply intent alignment boosts
       boostMultiplier *= this.calculateIntentAlignmentBoost(
         result.activity,
         optimization.intentAnalysis,
         boostReasons
       );
 
-      // Apply contextual boosts
       for (const [factor, boost] of optimization.contextualBoosts.entries()) {
         if (this.activityMatchesFactor(result.activity, factor)) {
           boostMultiplier *= boost;
@@ -323,10 +296,8 @@ export class SearchOptimizer {
         }
       }
 
-      // Apply temporal optimization
       boostMultiplier *= this.calculateTemporalBoost(result.activity, context, boostReasons);
 
-      // Update scores
       optimizedResult.scores.composite *= boostMultiplier;
       optimizedResult.confidence = Math.min(optimizedResult.confidence * boostMultiplier, 1.0);
       optimizedResult.reasoning.push(...boostReasons);
@@ -343,13 +314,11 @@ export class SearchOptimizer {
     let boost = 1.0;
     const activityText = `${activity.title} ${activity.desc}`.toLowerCase();
 
-    // Exact match boost
     if (activityText.includes(expandedQuery.original.toLowerCase())) {
       boost *= this.BOOST_FACTORS.exactMatch;
       boostReasons.push('Exact query match');
     }
 
-    // Synonym match boost
     const synonymMatches = expandedQuery.synonyms.filter(syn => 
       activityText.includes(syn.toLowerCase())
     ).length;
@@ -359,7 +328,6 @@ export class SearchOptimizer {
       boostReasons.push(`Synonym matches: ${synonymMatches}`);
     }
 
-    // Related terms boost
     const relatedMatches = expandedQuery.relatedTerms.filter(term => 
       activityText.includes(term.toLowerCase())
     ).length;
@@ -369,7 +337,6 @@ export class SearchOptimizer {
       boostReasons.push(`Related term matches: ${relatedMatches}`);
     }
 
-    // Negative terms penalty
     const negativeMatches = expandedQuery.negativeTerms.filter(term => 
       activityText.includes(term.toLowerCase())
     ).length;
@@ -391,7 +358,6 @@ export class SearchOptimizer {
     const activityText = `${activity.title} ${activity.desc}`.toLowerCase();
     const tags = activity.tags || [];
 
-    // Primary intent alignment
     const primaryPatterns = QueryProcessor['INTENT_PATTERNS'][intent.primary as keyof typeof QueryProcessor['INTENT_PATTERNS']] || [];
     const primaryMatches = primaryPatterns.filter(pattern => 
       activityText.includes(pattern) || tags.some(tag => tag.toLowerCase().includes(pattern))
@@ -402,7 +368,6 @@ export class SearchOptimizer {
       boostReasons.push(`Primary intent alignment: ${intent.primary}`);
     }
 
-    // Secondary intent alignment
     for (const secondaryIntent of intent.secondary) {
       const secondaryPatterns = QueryProcessor['INTENT_PATTERNS'][secondaryIntent as keyof typeof QueryProcessor['INTENT_PATTERNS']] || [];
       const secondaryMatches = secondaryPatterns.filter(pattern => 
@@ -425,7 +390,6 @@ export class SearchOptimizer {
   ): number {
     let boost = 1.0;
 
-    // Time of day alignment
     const activityTime = activity.time.toLowerCase();
     const contextTime = context.timeOfDay;
 
@@ -434,11 +398,8 @@ export class SearchOptimizer {
       boostReasons.push(`Time alignment: ${contextTime}`);
     }
 
-    // Peak hours consideration
     if (activity.peakHours) {
       const currentTime = context.currentTime || new Date();
-      // This would integrate with the existing peak hours logic
-      // For now, we'll add a placeholder boost
       boost *= 1.1;
       boostReasons.push('Peak hours optimized');
     }
@@ -475,7 +436,6 @@ export class SearchOptimizer {
     
     const contextualBoosts = new Map<string, number>();
     
-    // Add context-based boosts
     for (const interest of context.interests) {
       contextualBoosts.set(interest.toLowerCase(), 1.3);
     }
@@ -500,12 +460,10 @@ export class SearchOptimizer {
   ): string[] {
     const recommendations: string[] = [];
 
-    // Intent-based filter recommendations
     if (intent.confidence > 0.7) {
       recommendations.push(`Filter by ${intent.primary} activities`);
     }
 
-    // Entity-based recommendations
     if (intent.entities.timeReferences.length > 0) {
       recommendations.push(`Filter by ${intent.entities.timeReferences[0]} availability`);
     }
@@ -514,7 +472,6 @@ export class SearchOptimizer {
       recommendations.push(`Apply ${intent.entities.preferences.join(', ')} filters`);
     }
 
-    // Context-based recommendations
     if (context.weatherCondition !== 'clear') {
       recommendations.push(`Filter by ${context.weatherCondition}-appropriate activities`);
     }
@@ -523,7 +480,6 @@ export class SearchOptimizer {
       recommendations.push('Filter by group-friendly activities');
     }
 
-    // Always add at least one recommendation
     if (recommendations.length === 0) {
       recommendations.push(`Optimize for ${context.timeOfDay} activities`);
       recommendations.push(`Filter by ${context.interests.join(', ') || 'general'} interests`);
@@ -533,6 +489,5 @@ export class SearchOptimizer {
   }
 }
 
-// Export utilities
 export const queryProcessor = QueryProcessor;
 export const searchOptimizer = SearchOptimizer;

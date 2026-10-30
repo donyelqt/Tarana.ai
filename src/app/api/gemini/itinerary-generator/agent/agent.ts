@@ -6,9 +6,6 @@ import { getActivityCoordinates } from "@/lib/data";
 import { withTimeout } from "@/lib/upstream/withTimeout";
 import { logger } from "../../../../../lib/observability/logger";
 
-// Lightweight agentic helper: ask the model to propose up to N targeted sub-queries
-// to improve retrieval coverage (e.g., fill gaps for weather, interests, or time slots).
-// Returns a deduped list of short search queries.
 export async function proposeSubqueries(params: {
   model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>;
   userPrompt: string;
@@ -23,7 +20,6 @@ export async function proposeSubqueries(params: {
   const { model, userPrompt, interests, weatherType, durationDays, existingTitles, includePeakHoursContext = true, includeTrafficData = true } = params;
   const maxQueries = Math.min(params.maxQueries ?? 3, 5);
   
-  // Get current Manila time context for peak hours optimization
   const manilaTime = getManilaTime();
   const currentTimeStr = manilaTime.toLocaleTimeString('en-US', {
     hour: 'numeric',
@@ -32,12 +28,10 @@ export async function proposeSubqueries(params: {
     timeZone: 'Asia/Manila'
   });
   
-  // Get real-time traffic context for major Baguio locations
   let trafficContext = "";
   if (includeTrafficData) {
     logger.info(`🚦 AGENT: Fetching real-time traffic data for subquery optimization`, { entryPoint: 'agent' });
     try {
-      // Sample key Baguio locations for traffic assessment
       const keyLocations = [
         { name: "Burnham Park", coords: getActivityCoordinates("Burnham Park") },
         { name: "Session Road", coords: getActivityCoordinates("Baguio Public Market") },
@@ -95,8 +89,6 @@ export async function proposeSubqueries(params: {
       Existing titles: ${existingTitles.slice(0, 60).join(" | ")}
       Output a JSON array of strings only, e.g.: ["low traffic morning hike", "evening market less crowded", "indoor museum avoid peak hours", "activities near low traffic areas"].
     `;
-    // Bounded under the 60s Vercel Hobby kill (see structuredOutputEngine.ts);
-    // subquery generation is best-effort coverage, so a timeout returns [].
     const resp = await withTimeout(
       'gemini-subqueries',
       model.generateContent({

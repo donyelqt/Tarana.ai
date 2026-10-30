@@ -8,20 +8,6 @@ import {
 
 const BLUE = '#0066FF';
 
-/**
- * BottomRouteSheet parity (native recomposition, no map).
- *
- * Same grammar as web: drag handle → traffic dot + label + close →
- * big duration · distance · arrival · delay → alternatives pill bar
- * (Best + tappable) → Show/Hide details (why-this-route + savings,
- * congestion/delay/incidents grid, updated stamp). Turn steps render
- * below — they have no web-sheet equivalent (web shows them on the
- * map); they are the native compensation for no polylines, kept from
- * the previous mobile sheet. Selecting an alternative promotes it to
- * primary and keeps traffic as-is — mirrors useRouteCalculation
- * selectAlternative. No silent 5-min refresh (traffic-analysis/[id]
- * contract unverified session-free) — the stamp shows update time only.
- */
 export default function ExploreSheet({
   route,
   selectedId,
@@ -173,7 +159,6 @@ export default function ExploreSheet({
   );
 }
 
-/** Arrival is an opaque server string (usually ISO) — format defensively, else now+minutes. */
 function formatArrival(value: string | null, fallbackMinutes: number): string | null {
   if (value) {
     try {
@@ -182,7 +167,6 @@ function formatArrival(value: string | null, fallbackMinutes: number): string | 
         return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       }
     } catch {
-      /* fall through to computed */
     }
   }
   try {

@@ -92,14 +92,12 @@ describe('Credit Tiers Utility Functions', () => {
     const voyagerTier = TIER_CONFIGS[2];
 
     it('should return correct status for each tier', () => {
-      // With 2 referrals: Explorer unlocked, Smart Traveler next, Voyager locked
       expect(getTierStatus(explorerTier, 2)).toBe('unlocked');
       expect(getTierStatus(smartTravelerTier, 2)).toBe('next');
       expect(getTierStatus(voyagerTier, 2)).toBe('locked');
     });
 
     it('should handle edge cases', () => {
-      // With 3 referrals: Explorer and Smart Traveler unlocked, Voyager next
       expect(getTierStatus(explorerTier, 3)).toBe('unlocked');
       expect(getTierStatus(smartTravelerTier, 3)).toBe('unlocked');
       expect(getTierStatus(voyagerTier, 3)).toBe('next');
@@ -111,9 +109,9 @@ describe('Credit Tiers Utility Functions', () => {
       expect(calculateProgressPercentage(0)).toBe(0);
       expect(calculateProgressPercentage(1)).toBeCloseTo(33.33, 1);
       expect(calculateProgressPercentage(2)).toBeCloseTo(66.67, 1);
-      expect(calculateProgressPercentage(3)).toBe(0); // Next tier starts
-      expect(calculateProgressPercentage(4)).toBe(50); // Halfway to Voyager
-      expect(calculateProgressPercentage(5)).toBe(100); // All tiers unlocked
+      expect(calculateProgressPercentage(3)).toBe(0); 
+      expect(calculateProgressPercentage(4)).toBe(50); 
+      expect(calculateProgressPercentage(5)).toBe(100); 
     });
 
     it('should handle boundary values', () => {
@@ -150,7 +148,6 @@ describe('Credit Tiers Utility Functions', () => {
     });
 
     it('should handle calculation errors gracefully', () => {
-      // These should not throw but handle edge cases
       expect(() => getCurrentTier(0)).not.toThrow();
       expect(() => getNextTier(1000)).not.toThrow();
     });

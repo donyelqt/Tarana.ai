@@ -1,14 +1,3 @@
-/**
- * Tests for GET /api/spots?city= (dashboard Suggested Spots scope).
- * Baguio serves the FULL mixed pool — curated entries (zero enrichment) in
- * catalog order plus up to 8 TomTom extras — rotated by day via rotateByDay.
- * Full-pool rotation replaced curated-first because the display slices 3:
- * curated-first pinned extras at indices 37+ where they never rendered.
- * Extras are enriched and only photo-verified extras (real http photo, never
- * TomTom-map-only) join. Other cities serve live TomTom search enriched with
- * real photos + measured traffic. Unknown cities 400; TomTom failures
- * degrade (Baguio → curated-only rotation, others → empty pool, never 500).
- */
 import { GET } from '../route';
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import { getTouristPois } from '@/lib/services/touristPoiService';
@@ -39,8 +28,6 @@ jest.mock('@/lib/services/imageService', () => ({
   enrichActivitiesWithImages: jest.fn(),
 }));
 
-// jest.setup.js replaces global Response with a minimal mock lacking the
-// static json() NextResponse.json() delegates to. Restore just that static.
 const MockedResponse = globalThis.Response as unknown as {
   new (body?: unknown, init?: { status?: number; headers?: Record<string, string> }): InstanceType<typeof globalThis.Response>;
   json(body: unknown, init?: { status?: number }): unknown;
@@ -85,11 +72,9 @@ describe('GET /api/spots', () => {
     baguioSearchMock.mockReset();
     touristPoiMock.mockReset();
     trafficMock.mockReset();
-    // Default: no TomTom/Tourist POI results (Baguio → curated-only, others → empty).
     baguioSearchMock.mockResolvedValue([]);
     touristPoiMock.mockResolvedValue([]);
     trafficMock.mockResolvedValue({ congestionScore: 10 });
-    // Passthrough by default: images stay undefined (map-guard drops extras).
     enrichMock.mockImplementation(async (acts: unknown[]) => acts);
   });
 
@@ -116,7 +101,6 @@ describe('GET /api/spots', () => {
     const day1 = Date.UTC(2026, 7, 4);
     const nowSpy = jest.spyOn(Date, 'now');
     try {
-      // Same-day deterministic on the curated-only pool.
       nowSpy.mockReturnValue(day1);
       const res = await get('baguio');
       expect(res.status).toBe(200);
@@ -133,7 +117,6 @@ describe('GET /api/spots', () => {
       nowSpy.mockReturnValue(day1);
       const repeat = (await (await get('baguio')).json()).spots;
       expect(repeat).toEqual(first);
-      // Curated-only pool is still a rotation: consecutive days differ, same set.
       nowSpy.mockReturnValue(day1 + 86400000);
       const next = (await (await get('baguio')).json()).spots;
       expect(next).not.toEqual(first);
@@ -141,7 +124,6 @@ describe('GET /api/spots', () => {
         [...first.map((s: { name: string }) => s.name)].sort()
       );
       expect(next).toHaveLength(curated.length);
-      // On the aligned day (offset 0) the curated-only pool returns catalog order.
       const dayIndex1 = Math.floor(day1 / 86400000);
       const alignedDayIndex =
         dayIndex1 - (dayIndex1 % curated.length);
@@ -151,7 +133,6 @@ describe('GET /api/spots', () => {
     } finally {
       nowSpy.mockRestore();
     }
-    // ONE TomTom supplement with the Baguio bounds/countrySet/language.
     expect(baguioSearchMock).toHaveBeenCalledTimes(4);
     expect(baguioSearchMock).toHaveBeenCalledWith(
       'tourist attractions Baguio City',
@@ -179,11 +160,9 @@ describe('GET /api/spots', () => {
     const res = await get('baguio');
     const body = await res.json();
     expect(body.spots).toHaveLength(curated.length + 1);
-    // Mixed pool: same set as curated + extra, in rotated order.
     expect(
       [...(body.spots as { name: string }[]).map((s) => s.name)].sort()
     ).toEqual([...curated.map((c) => c.name), 'Extra Viewpoint'].sort());
-    // Curated entries untouched by enrichment: original images, no measured traffic.
     const byName = new Map(
       (body.spots as { name: string }[]).map((s) => [s.name, s])
     );
@@ -191,7 +170,6 @@ describe('GET /api/spots', () => {
       expect(byName.get(c.name)).toEqual(c);
       expect((byName.get(c.name) as { traffic?: unknown }).traffic).toBeUndefined();
     }
-    // Extra enriched (photo + traffic), found by name (rotation may move it).
     const extra = byName.get('Extra Viewpoint') as unknown as {
       name: string;
       image: string;
@@ -200,7 +178,6 @@ describe('GET /api/spots', () => {
     expect(extra.name).toBe('Extra Viewpoint');
     expect(extra.image).toBe('https://photos.example/Extra%20Viewpoint.jpg');
     expect(extra.traffic).toBe('Low');
-    // Enrich ran for the extra only — never for the 37 curated titles.
     expect(enrichMock).toHaveBeenCalledTimes(1);
     const enrichArg = enrichMock.mock.calls[0][0] as { title: string }[];
     expect(enrichArg.map((a) => a.title)).toEqual(['Extra Viewpoint']);
@@ -245,9 +222,7 @@ describe('GET /api/spots', () => {
     const first = curated[0];
     expect(first.lat).not.toBeNull();
     baguioSearchMock.mockResolvedValue([
-      // Exact curated coords → dupe.
       { name: 'Dupe Exact', coordinates: { lat: first.lat, lng: first.lon } },
-      // Same toFixed(3) bucket → dupe.
       {
         name: 'Dupe Bucket',
         coordinates: {
@@ -255,9 +230,7 @@ describe('GET /api/spots', () => {
           lng: Number((first.lon as number).toFixed(3)) + 0.0004,
         },
       },
-      // Out of Baguio bounds → dropped.
       { name: 'Cebu Far', coordinates: { lat: 10.3, lng: 123.9 } },
-      // Genuine extra.
       { name: 'Genuine Extra', coordinates: { lat: 16.442, lng: 120.642 } },
     ]);
     enrichMock.mockImplementation(async (acts: { title: string }[]) =>
@@ -292,10 +265,8 @@ describe('GET /api/spots', () => {
     );
     const res = await get('baguio');
     const body = await res.json();
-    // Enrich saw at most 8 candidates (extras only).
     const enrichArg = enrichMock.mock.calls[0][0] as unknown[];
     expect(enrichArg).toHaveLength(8);
-    // Mixed pool: curated + 8 extras as one rotating set.
     expect(body.spots).toHaveLength(curated.length + 8);
     expect(
       [...(body.spots as { name: string }[]).map((s) => s.name)].sort()
@@ -328,16 +299,13 @@ describe('GET /api/spots', () => {
       nowSpy.mockReturnValue(day1);
       const first = await names();
       expect(first).toHaveLength(curated.length + 5);
-      // Same-day deterministic over the mixed pool.
       nowSpy.mockReturnValue(day1);
       expect(await names()).toEqual(first);
       nowSpy.mockReturnValue(day1 + 86400000);
       const next = await names();
-      // Full-pool rotation: the whole order shifts (head included), same set.
       expect(next).not.toEqual(first);
       expect(next.slice(0, 3)).not.toEqual(first.slice(0, 3));
       expect([...next].sort()).toEqual([...first].sort());
-      // Extras are mixed into the pool — visible within a slice-3 head on some day.
       const seenHeads = new Set<string>();
       for (let d = 0; d < 7; d++) {
         nowSpy.mockReturnValue(day1 + d * 86400000);
@@ -356,11 +324,7 @@ describe('GET /api/spots', () => {
     expect((await res.json()).city).toBe('baguio');
   });
 
-  // Frozen clock: /api/spots rotates the pool by UTC day, so a two-row pool
-  // comes back in a date-dependent order. Asserting a hard-coded order here
-  // passed only on even days. These tests cover mapping and enrichment, not
-  // rotation, so the day is pinned to offset 0 and the order is stable.
-  const FROZEN_DAY = Date.UTC(2026, 0, 1); // an exact multiple of 86400000
+  const FROZEN_DAY = Date.UTC(2026, 0, 1); 
   let nowSpy: jest.SpyInstance<number, []>;
 
   beforeEach(() => {
@@ -377,7 +341,6 @@ describe('GET /api/spots', () => {
     const res = await get('cebu');
     expect(res.status).toBe(200);
     const body = await res.json();
-    // SM Seaside overlay first, live row behind it; both get head-6 enrichment.
     expect(body.spots).toEqual([
       { name: 'SM Seaside City Cebu', image: null, lat: 10.281732, lon: 123.880608, peakHours: null, traffic: 'Low' },
       { name: 'Cebu Spot', image: null, lat: 10.3, lon: 123.9, peakHours: null, traffic: 'Low' },
@@ -404,7 +367,6 @@ describe('GET /api/spots', () => {
     trafficMock.mockRejectedValue(new Error('flow down'));
     const res = await get('cebu');
     const body = await res.json();
-    // Overlay is prepended: spots[0] is SM Seaside, spots[1] the live row.
     expect(body.spots[0].traffic).toBeUndefined();
     expect(body.spots[0].image).toBeNull();
     expect(body.spots[1].traffic).toBeUndefined();
@@ -437,7 +399,6 @@ describe('GET /api/spots', () => {
     expect(elNidoBody).toMatchObject({ success: true, city: 'el_nido' });
     expect(elNidoBody.spots[0].name).toBe('Big Lagoon');
 
-    // No Baguio-curated row may appear under either new scope.
     for (const spots of [boracayBody.spots, elNidoBody.spots]) {
       for (const spot of spots as { name: string }[]) {
         expect(spot.name).not.toBe('Burnham Park');
@@ -463,7 +424,7 @@ describe('GET /api/spots', () => {
     trafficMock.mockResolvedValue({ congestionScore: 10 });
     const names = async () =>
       (((await (await get('cebu')).json()).spots as { name: string }[]).map((s) => s.name));
-    const day1 = Date.UTC(2026, 7, 4); // two consecutive UTC days
+    const day1 = Date.UTC(2026, 7, 4); 
     const nowSpy = jest.spyOn(Date, 'now');
     try {
       nowSpy.mockReturnValue(day1);

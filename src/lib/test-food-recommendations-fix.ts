@@ -1,16 +1,9 @@
-/**
- * Comprehensive Test Suite for Food Recommendations JSON Parser Fix
- * Tests all edge cases and recovery strategies
- */
 
 import { RobustFoodJsonParser } from './robustFoodJsonParser';
 import { FoodRecommendationErrorHandler, FoodErrorType } from './foodRecommendationErrorHandler';
 
 export class FoodRecommendationsTestSuite {
   
-  /**
-   * Run all tests
-   */
   static async runAllTests(): Promise<void> {
     console.log('🧪 Starting Food Recommendations Test Suite...\n');
     
@@ -49,9 +42,6 @@ export class FoodRecommendationsTestSuite {
     }
   }
   
-  /**
-   * Test 1: Valid JSON response
-   */
   static testValidJson(): void {
     const validResponse = `{
       "matches": [
@@ -76,9 +66,6 @@ export class FoodRecommendationsTestSuite {
     }
   }
   
-  /**
-   * Test 2: Truncated JSON (the original error case)
-   */
   static testTruncatedJson(): void {
     const truncatedResponse = `{
   "matches": [
@@ -95,15 +82,11 @@ export class FoodRecommendationsTestSuite {
       throw new Error('Failed to handle truncated JSON');
     }
     
-    // Should still extract the restaurant name
     if (result.data.matches.length === 0) {
       throw new Error('No matches extracted from truncated JSON');
     }
   }
   
-  /**
-   * Test 3: Malformed JSON with common errors
-   */
   static testMalformedJson(): void {
     const malformedResponse = `{
       'matches': [
@@ -124,9 +107,6 @@ export class FoodRecommendationsTestSuite {
     }
   }
   
-  /**
-   * Test 4: JSON with explanatory text
-   */
   static testJsonWithExplanation(): void {
     const responseWithText = `Here is the restaurant recommendation for your request:
 
@@ -155,9 +135,6 @@ export class FoodRecommendationsTestSuite {
     }
   }
   
-  /**
-   * Test 5: JSON in code blocks
-   */
   static testCodeBlockJson(): void {
     const codeBlockResponse = `Here are the recommendations:
 
@@ -182,9 +159,6 @@ export class FoodRecommendationsTestSuite {
     }
   }
   
-  /**
-   * Test 6: Partially corrupted JSON
-   */
   static testPartiallyCorruptedJson(): void {
     const corruptedResponse = `{
       "matches": [
@@ -204,21 +178,16 @@ export class FoodRecommendationsTestSuite {
       throw new Error('Failed to handle partially corrupted JSON');
     }
     
-    // Should extract at least some data
     if (result.data.matches.length === 0) {
       throw new Error('No data extracted from corrupted JSON');
     }
   }
   
-  /**
-   * Test 7: Completely invalid response
-   */
   static testCompletelyInvalidResponse(): void {
     const invalidResponse = `This is not JSON at all. Just random text with no structure.`;
     
     const result = RobustFoodJsonParser.parseResponse(invalidResponse);
     
-    // Should still succeed with empty matches
     if (!result.success || !result.data) {
       throw new Error('Failed to handle completely invalid response');
     }
@@ -228,11 +197,7 @@ export class FoodRecommendationsTestSuite {
     }
   }
   
-  /**
-   * Test 8: Error handling system
-   */
   static testErrorHandling(): void {
-    // Test error creation
     const testError = new Error('Test JSON parsing error');
     const foodError = FoodRecommendationErrorHandler.createError(testError, 'test_context');
     
@@ -244,23 +209,18 @@ export class FoodRecommendationsTestSuite {
       throw new Error('Missing error metadata');
     }
     
-    // Test error response creation
     const errorResponse = FoodRecommendationErrorHandler.createErrorResponse(foodError);
     
     if (!errorResponse.error || !errorResponse.requestId) {
       throw new Error('Invalid error response structure');
     }
     
-    // Test statistics
     const stats = FoodRecommendationErrorHandler.getStats();
     if (stats.totalErrors === 0) {
       throw new Error('Error statistics not updated');
     }
   }
   
-  /**
-   * Test 9: Performance test
-   */
   static testPerformance(): void {
     const largeResponse = `{
       "matches": [
@@ -284,7 +244,7 @@ export class FoodRecommendationsTestSuite {
       throw new Error('Failed to parse large response');
     }
     
-    if (parseTime > 100) { // Should parse in under 100ms
+    if (parseTime > 100) { 
       throw new Error(`Performance issue: parsing took ${parseTime}ms`);
     }
     
@@ -293,9 +253,6 @@ export class FoodRecommendationsTestSuite {
     }
   }
   
-  /**
-   * Test the actual problematic response from the terminal
-   */
   static testActualProblematicResponse(): void {
     const actualResponse = `\`\`\`json
 {
@@ -320,7 +277,6 @@ export class FoodRecommendationsTestSuite {
       throw new Error('Failed to handle actual problematic response');
     }
     
-    // Should extract at least the first complete restaurant
     if (result.data.matches.length === 0) {
       throw new Error('No matches extracted from actual response');
     }
@@ -332,12 +288,10 @@ export class FoodRecommendationsTestSuite {
   }
 }
 
-// Export test runner for easy execution
 export async function runFoodRecommendationsTests(): Promise<void> {
   await FoodRecommendationsTestSuite.runAllTests();
 }
 
-// Auto-run tests if this file is executed directly
 if (typeof window === 'undefined' && require.main === module) {
   runFoodRecommendationsTests().catch(console.error);
 }

@@ -19,10 +19,6 @@ import { agara_ramen, baguio_cathedral, baguio_panorama, baguio_public_market, b
 
   import { budgetOptions, interestLabels } from './tripFieldOptions';
 
-  // The two option lists live in `tripFieldOptions.ts` so a screen that only
-  // needs the vocabulary does not pull in the activity catalog below. They are
-  // re-exported here to keep every existing importer's `from ...itineraryData`
-  // specifier working, and because the strings must exist exactly once.
   export { budgetOptions, interestLabels };
 
    export {
@@ -31,20 +27,8 @@ import { agara_ramen, baguio_cathedral, baguio_panorama, baguio_public_market, b
    taranaai, the_mansion_baguio, treetopcampjohnhay, viewspark, vizcossessionroad, wrightpark
  };    
   
-  // `budgetOptions` and `interestLabels` are re-exported above.
    export const paxOptions = ["1", "2", "3-5", "6+"];
    export const durationOptions = ["1 Day", "2 Days", "3 Days", "4-5 Days"];
-   /**
-    * The icon beside each canonical interest label.
-    *
-    * The labels come from `tripFieldOptions.ts`; the icon is the generator's own
-    * presentation layer, so a surface that needs only the vocabulary (the
-    * saved-trips editor) can import the labels without the catalog, and a
-    * surface that wants icons maps them here as this module always has.
-    *
-    * Keyed by the label union, so adding a label to `interestLabels` is a
-    * compile error here until the icon that carries it exists.
-    */
    type InterestLabel = (typeof interestLabels)[number];
 
    const interestIconComponents: Record<InterestLabel, typeof Dices> = {
@@ -66,19 +50,19 @@ import { agara_ramen, baguio_cathedral, baguio_panorama, baguio_public_market, b
   
   
   export interface Activity {
-  image: StaticImageData | string; // Allow string for potential future API responses
+  image: StaticImageData | string; 
   title: string;
   time: string;
   desc: string;
   tags: string[];
   peakHours?: string;
-  relevanceScore?: number; // Optional relevance score from RAG results
-  trafficAnalysis?: any; // Traffic analysis data from TomTom API
-  combinedTrafficScore?: number; // Traffic score for recommendation
-  trafficRecommendation?: 'VISIT_NOW' | 'VISIT_SOON' | 'AVOID_NOW' | 'PLAN_LATER'; // Traffic-based recommendation
-  crowdLevel?: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH'; // Crowd level assessment
-  lat?: number; // Latitude coordinate
-  lon?: number; // Longitude coordinate
+  relevanceScore?: number; 
+  trafficAnalysis?: any; 
+  combinedTrafficScore?: number; 
+  trafficRecommendation?: 'VISIT_NOW' | 'VISIT_SOON' | 'AVOID_NOW' | 'PLAN_LATER'; 
+  crowdLevel?: 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH'; 
+  lat?: number; 
+  lon?: number; 
 }
   
   export interface ItinerarySection {
@@ -92,7 +76,6 @@ import { agara_ramen, baguio_cathedral, baguio_panorama, baguio_public_market, b
     items: ItinerarySection[];
   }
   
-  // Enhanced sample itinerary data with detailed information for Google Gemini
   export const sampleItinerary: ItineraryData = {
     title: "Your 1 Day Itinerary",
     subtitle: "A personalized Baguio Experience",
@@ -412,4 +395,4 @@ import { agara_ramen, baguio_cathedral, baguio_panorama, baguio_public_market, b
     ]
   };
   
-  export const taranaai_icon = taranaai; // Exporting for the placeholder in preview
+  export const taranaai_icon = taranaai; 

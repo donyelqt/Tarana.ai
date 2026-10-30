@@ -1,15 +1,8 @@
-/**
- * Referral Credit System - Main Export
- * 
- * A comprehensive system for managing user referrals, credits, and tier-based rewards
- */
 
-// Services
 export { CreditService } from './CreditService';
 export { ReferralService } from './ReferralService';
 export { TierService } from './TierService';
 
-// Client-side utilities
 export {
   storeReferralCode,
   getStoredReferralCode,
@@ -18,7 +11,6 @@ export {
   checkAndStoreReferralFromURL,
 } from './client/referralTracking';
 
-// Types and Interfaces
 export type {
   UserTier,
   TierConfig,
@@ -38,10 +30,8 @@ export type {
   DailyCreditAllocation,
 } from './types';
 
-// Constants
 export { TIER_CONFIGS } from './types';
 
-// Errors
 export {
   ReferralSystemError,
   InsufficientCreditsError,

@@ -1,12 +1,3 @@
-/**
- * Plan results surface.
- *
- * The sheet is the only place a generated plan is readable, so it has to be
- * honest about what it knows. A stop whose coordinates could not be resolved is
- * still a stop: it is listed by name and marked, never dropped and never given
- * a fake pin. Silently omitting stops would make a 3-stop day look complete
- * when the user only sees 2.
- */
 import React from 'react'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -39,8 +30,6 @@ const itinerary: ItineraryData = {
   ],
 }
 
-// Day 1: Burnham Park and Mystery Tower resolve; Session Road does not.
-// Day 2: Nonexistent Place does not. The two misses are the only ones marked.
 const resolvedFor = (title: string) =>
   title === 'Burnham Park'
     ? { lat: 16.4093, lon: 120.595 }
@@ -51,8 +40,6 @@ const resolvedFor = (title: string) =>
 type SheetOverrides = Omit<Partial<React.ComponentProps<typeof PlanSheet>>, 'activeDay' | 'onDayChange'>
 
 function setup(overrides: SheetOverrides = {}) {
-  // The sheet no longer owns the selected day — the surface does, so the map
-  // and the tabs cannot disagree. The harness stands in for that owner.
   function Host(props: Omit<React.ComponentProps<typeof PlanSheet>, 'activeDay' | 'onDayChange'>) {
     const [day, setDay] = React.useState(0)
     return <PlanSheet {...props} activeDay={day} onDayChange={setDay} />
@@ -128,12 +115,8 @@ describe('PlanSheet', () => {
   })
 
   it('marks only the stops it could not resolve', async () => {
-    // Day 1 holds Burnham Park (resolves), Mystery Tower (resolves) and
-    // Session Road (no registry entry, no exact provider hit). The marker
-    // belongs on the third row only.
     setup()
 
-    // Resolution settles in a promise, so the row updates a tick after render.
     await act(async () => {})
 
     expect(screen.getAllByText(/no location/i)).toHaveLength(1)
@@ -149,7 +132,6 @@ describe('PlanSheet', () => {
     const resolveCoordinates = jest.fn(resolvedFor)
     setup({ resolveCoordinates })
 
-    // Day 1 spans two periods (Morning, Evening) and holds three stops.
     expect(resolveCoordinates).toHaveBeenCalledTimes(3)
   })
 
@@ -166,8 +148,6 @@ describe('PlanSheet', () => {
     const user = userEvent.setup()
     const props = setup({ isSaving: true })
 
-    // The label reports progress, so match either state rather than pinning
-    // the idle string.
     await user.click(screen.getByRole('button', { name: /sav(e|ing)/i }))
 
     expect(props.onSave).not.toHaveBeenCalled()
@@ -190,7 +170,6 @@ describe('PlanSheet minimize', () => {
     await user.click(screen.getByRole('button', { name: /minimize plan/i }))
 
     expect(props.onMinimize).toHaveBeenCalledTimes(1)
-    // Minimize must NOT be a discard.
     expect(props.onClose).not.toHaveBeenCalled()
   })
 

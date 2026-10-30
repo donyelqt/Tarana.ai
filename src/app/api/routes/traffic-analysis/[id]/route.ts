@@ -26,10 +26,6 @@ const routeSnapshotSchema = z.object({
 
 const requestBodySchema = z.object({ route: routeSnapshotSchema }).strict()
 
-/**
- * POST /api/routes/traffic-analysis/[id]
- * Recompute traffic for a route already held by the caller.
- */
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -38,11 +34,6 @@ export async function POST(
   const requestId = getRequestId(request)
 
   return timedHttp('/api/routes/traffic-analysis/[id]', 'POST', async () => {
-    // Rate limit FIRST, before parsing, so a refused caller cannot make the
-    // handler reach the billed upstream. This route has no auth gate -- it is
-    // reached by the Explore hook from any browser -- so the limit is the only
-    // thing standing between an anonymous caller and TomTom spend. S8b applied
-    // exactly this to routes/calculate; this route was never enumerated.
     const limited = createRateLimitMiddleware(rateLimitConfigs.heavy)(request)
     if (!limited.allowed) {
       const res = NextResponse.json(

@@ -33,8 +33,6 @@ export class ConciergeAgent {
   constructor(private readonly deps: ConciergeDependencies) {}
 
   async initialize(request: NextRequest): Promise<ConciergeInitializeResult> {
-    // Bench bypass for k6 (non-prod only): per-request HMAC proof, not a
-    // guessable static header. See benchToken.ts for the wire format.
     const benchUserId = resolveBenchUserId(request.headers.get(BENCH_TOKEN_HEADER));
     if (benchUserId !== null) {
       const rawBody = await request.clone().json().catch(() => ({} as any));
@@ -66,8 +64,6 @@ export class ConciergeAgent {
     }
 
     const creditBalance = await this.getCreditBalance(authSession.user.id);
-    // The bench path returns before this point, so any request reaching
-    // here pays the normal credit gate — no second bypass check needed.
     if (creditBalance && creditBalance.remainingToday < 1) {
       throw new InsufficientCreditsError(1, creditBalance.remainingToday, "tarana_gala");
     }
@@ -122,8 +118,6 @@ export class ConciergeAgent {
   private extractPreferences(data: ConciergePayload): RequestPreferences {
     const durationValue = data.duration != null ? String(data.duration) : null;
     const durationMatch = durationValue ? durationValue.match(/\d+/) : null;
-    // Same allocation guard as the Gala route: durationDays feeds
-    // Array.from({length}) downstream — clamp before it can OOM.
     const durationDays = durationMatch ? Math.min(Math.max(parseInt(durationMatch[0], 10), 1), 14) : null;
 
     const interests: string[] = Array.isArray(data.interests) ? data.interests : [];

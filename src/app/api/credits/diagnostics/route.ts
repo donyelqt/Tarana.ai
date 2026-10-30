@@ -10,10 +10,7 @@ import {
   getUserProfileRow,
 } from '@/lib/services/creditDiagnostics';
 
-/**
- * GET /api/credits/diagnostics
- * Comprehensive diagnostic check for credit system
- */
+
 export const GET = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/credits/diagnostics', 'GET', async () => {
     if (process.env.NODE_ENV === 'production') {
@@ -26,7 +23,7 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       errors: [],
     };
 
-    // CHECK 1: Does user_profiles table exist?
+    
     try {
       const table = await checkTableExists('user_profiles');
 
@@ -39,7 +36,7 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       diagnostics.errors.push(`user_profiles table check failed: ${error}`);
     }
 
-    // CHECK 2: Does user profile exist?
+    
     try {
       const { profile, error: profileError } = await getUserProfileRow(userId);
 
@@ -54,7 +51,7 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       diagnostics.errors.push(`Profile check failed: ${error}`);
     }
 
-    // CHECK 3: Does credit_transactions table exist?
+    
     try {
       const table = await checkTableExists('credit_transactions');
 
@@ -67,9 +64,9 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       diagnostics.errors.push(`credit_transactions table check failed: ${error}`);
     }
 
-    // CHECK 4: Does consume_credits function exist?
+    
     try {
-      // Use raw SQL to check if function exists
+      
       const func = await checkConsumeCreditsFunction();
 
       diagnostics.checks.consumeCreditsFunctionExists = func.exists;
@@ -77,13 +74,13 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
         diagnostics.checks.consumeCreditsFunctionNote = func.note;
       }
     } catch (error: any) {
-      // Fallback: If function check fails, assume it exists if tables are there
-      // The real test will be during actual credit consumption
+      
+      
       diagnostics.checks.consumeCreditsFunctionExists = diagnostics.checks.userProfilesTableExists;
       diagnostics.checks.consumeCreditsFunctionNote = 'Function existence inferred from table structure';
     }
       
-    // CHECK 5: Get recent transactions
+    
     try {
       const { transactions, error: txError } = await getRecentTransactions(userId, 5);
 
@@ -96,15 +93,15 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       diagnostics.errors.push(`Transaction fetch failed: ${error}`);
     }
 
-    // CHECK 6: report readiness only. A GET must not create rows — prefetch
-    // or a crawler would silently provision profiles. The caller runs the
-    // explicit POST /api/credits/init-profile when creation is wanted.
+    
+    
+    
     diagnostics.checks.profileCreated = false;
     if (!diagnostics.checks.userProfileExists) {
       diagnostics.hint = 'Run POST /api/credits/init-profile to create the profile';
     }
 
-    // SUMMARY
+    
     diagnostics.summary = {
       migrationRun: diagnostics.checks.userProfilesTableExists &&
                     diagnostics.checks.creditTransactionsTableExists &&

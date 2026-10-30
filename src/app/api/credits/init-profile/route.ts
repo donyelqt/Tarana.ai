@@ -4,13 +4,9 @@ import { handleApiError } from '@/lib/errors/handleApiError';
 import { timedHttp } from '@/lib/observability/httpMetrics';
 import { createUserProfile, userProfileExists } from '@/lib/services/userService';
 
-/**
- * Initialize user profile for existing users (one-time fix)
- */
 export const POST = withAuth(async (req: NextRequest, userId: string) => {
   return timedHttp('/api/credits/init-profile', 'POST', async () => {
   try {
-    // Check if profile already exists
     const exists = await userProfileExists(userId);
 
     if (exists) {
@@ -21,7 +17,6 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       });
     }
 
-    // Create user profile (same default row as registration)
     try {
       await createUserProfile(userId);
     } catch {

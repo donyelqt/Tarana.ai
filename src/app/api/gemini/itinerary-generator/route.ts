@@ -69,19 +69,19 @@ const pipelineCoordinator = new PipelineCoordinator({
   itineraryComposer: itineraryComposerAgent,
 });
 
-// Vercel Hobby caps Node functions at 60s. Generations run 7.5–60s per bench
-// docs; a Vercel kill skips every refund block by construction, so total work
-// is bounded below this limit (retries × timeout + delay < 60s) and the
-// timeout-charge policy is documented here: a request killed at the platform
-// limit is charged with no possible refund (refund-after-death is impossible).
+
+
+
+
+
 export const maxDuration = 60;
 
 const USE_MULTI_AGENT = isFlagEnabled('USE_MULTI_AGENT');
 const IDEMPOTENCY_ROUTE = '/api/gemini/itinerary-generator';
 
 async function consumeCredit(userId: string) {
-    // Billing descriptions persist to credit_transactions and surface via
-    // history: prompt bytes (names, hotels, dates) must never land there.
+    
+    
     await CreditService.consumeCredits({
         userId,
         amount: 1,
@@ -90,9 +90,9 @@ async function consumeCredit(userId: string) {
     });
 }
 
-// H1 hotfix (2026-09-01): detect zero-activity itineraries so we can refund the
-// credit on a happy-path zero result. Imported from ./lib/zeroActivityItinerary
-// so the unit test can exercise it without pulling in next/server.
+
+
+
 
 async function handleMultiAgentPost(req: NextRequest, userId: string): Promise<NextResponse> {
     let claim: IdempotencyClaim | null = null;
@@ -115,7 +115,7 @@ async function handleMultiAgentPost(req: NextRequest, userId: string): Promise<N
     try {
         const key = getIdempotencyKey(req);
         if (key) {
-            // Read a clone so ConciergeAgent can still consume the original body.
+            
             const rawBody = await req.clone().json().catch(() => null);
             claim = await claimIdempotency(
                 userId,
@@ -158,7 +158,7 @@ async function handleMultiAgentPost(req: NextRequest, userId: string): Promise<N
             throw new Error("Itinerary generation returned no result");
         }
 
-        // H2: charge-before moved into pipelineCoordinator.handleRequest (before generation)
+        
         generated = true;
         const responsePayload = { text: JSON.stringify(session.itinerary.json) };
         await completeClaim(200, responsePayload);
@@ -186,11 +186,11 @@ async function handleMultiAgentPost(req: NextRequest, userId: string): Promise<N
             return NextResponse.json(responseBody, { status: 400 });
         }
 
-        // Primary refund lives in PipelineCoordinator.catch (it owns charged-state);
-        // this block covers only a session returned without an itinerary. Once a
-        // valid result exists, a storage failure must not refund a successful
-        // generation. The bench exemption is gated on the bypass being active,
-        // not bare id equality (see pipelineCoordinator).
+        
+        
+        
+        
+        
         let routeRefunded = false;
         if (!generated && !(error as any).__galaRefunded && session?.userId && !(benchBypassEnabled() && session.userId === configuredBenchUserId())) {
             try {
@@ -219,9 +219,9 @@ async function handleMultiAgentPost(req: NextRequest, userId: string): Promise<N
         if (session) {
             clearSession(session.id);
         }
-        // Refund observability: emit the per-request counter snapshot so a
-        // spike of failed/noop refunds is visible in Vercel logs. Swallowed
-        // refund failures were previously invisible by construction.
+        
+        
+        
         const snapshot = takeRefundSnapshot();
         if (snapshot.refunded > 0 || snapshot.failed > 0 || snapshot.noop > 0) {
           logger.info(`[refund-metrics] request=${session?.id ?? '?'} refunded=${snapshot.refunded} failed=${snapshot.failed} noop=${snapshot.noop}`, { refunded: snapshot.refunded, failed: snapshot.failed, noop: snapshot.noop }, getRequestId(req));
@@ -229,7 +229,7 @@ async function handleMultiAgentPost(req: NextRequest, userId: string): Promise<N
     }
 }
 
-// Main logic for generating an itinerary, wrapped for caching
+
 const getCachedItinerary = unstable_cache(
     async (requestBody: any, hash: string) => {
         const requestId = hash.substring(0, 8);
@@ -240,7 +240,7 @@ const getCachedItinerary = unstable_cache(
             const safeInterests = interests ?? [];
             const safeBudget = budget === undefined || budget === null ? undefined : String(budget);
             const safePax = pax === undefined || pax === null ? undefined : String(pax);
-            const trafficAware = options?.trafficAware !== false; // Default true
+            const trafficAware = options?.trafficAware !== false; 
 
             if (!geminiModel) {
                 throw new ItineraryError(ErrorType.GENERATION, "Gemini model not available", false, requestId);
@@ -250,8 +250,8 @@ const getCachedItinerary = unstable_cache(
                 if (!duration) return null;
                 const match = duration.toString().match(/\d+/);
                 if (!match) return null;
-                // Allocation guard: durationDays feeds Array.from({length})
-                // in organizeItineraryByDays — clamp before it can OOM.
+                
+                
                 return Math.min(Math.max(parseInt(match[0], 10), 1), 14);
             })();
 
@@ -280,7 +280,7 @@ const getCachedItinerary = unstable_cache(
             );
             const detailedPrompt = buildDetailedPrompt(prompt, effectiveSampleItinerary, weatherData, safeInterests, durationDays, safeBudget, safePax, true, cityId);
             
-            // Use Guaranteed JSON Engine for 100% reliable output
+            
             const peakHoursContext = getPeakHoursContext();
             const weatherContext = `Weather: ${weatherData?.weather?.[0]?.description || 'clear'}, ${weatherData?.main?.temp || 20}°C`;
             const trafficContext = "Real-time traffic analysis integrated with peak hours filtering";
@@ -295,17 +295,17 @@ const getCachedItinerary = unstable_cache(
                 requestId
             );
             
-            // Server-truth images: the model output carries no searchMetadata,
-            // so thread the pre-model enriched allowlist explicitly. The
-            // re-attach step trusts ONLY this list (model URLs → Gala logo).
+            
+            
+            
             const serverAllowed = (effectiveSampleItinerary as any)?.searchMetadata?.allowedActivities;
             const finalItinerary = await handleItineraryProcessing(guaranteedItinerary, prompt, durationDays, peakHoursContext, serverAllowed);
             return { text: JSON.stringify(finalItinerary) };
-        }, 3, 1000); // 3 retries with 1 second base delay
+        }, 3, 1000); 
     },
-    ['itinerary-requests'], // Cache key prefix
+    ['itinerary-requests'], 
     {
-        revalidate: 30 * 60, // 30-minute cache revalidation
+        revalidate: 30 * 60, 
         tags: ['itineraries'],
     }
 );
@@ -317,23 +317,23 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
 
     let charged = false;
     let cacheKeyBase = '';
-    // Per-attempt refund identity: stable within this invocation (so
-    // overlapping refund calls dedupe) but unique across retries (so a
-    // retried request's legitimate second refund is never swallowed).
-    // Body-derived fingerprints must NOT be used here: two identical
-    // requests are two separate charges needing independent refunds.
+    
+    
+    
+    
+    
     const attemptId = randomUUID();
-    // Idempotency claim handle: owned by the keyed branch below (after
-    // validation), read by the success/failure completions and the catch
-    // block. Null on the unkeyed path, which flows exactly as before.
+    
+    
+    
     let claim: IdempotencyClaim | null = null;
     try {
-        // Bench HMAC accepted here too (k6 targets this URL); the bench
-        // identity skips the balance pre-check and charge below, mirroring
-        // the multi-agent coordinator. withAuth resolved the session;
-        // a bench request arrives here only if its HMAC proof matched.
+        
+        
+        
+        
         const isBenchRequest = false;
-        // ✅ CREDIT SYSTEM: Check available credits (fail-closed)
+        
         if (!isBenchRequest) {
             const balance = await CreditService.getCurrentBalance(userId);
             if (balance.remainingToday < 1) {
@@ -347,10 +347,10 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
             }
         }
 
-        // Hard 32KB body cap (Task 9 hardening): the schema validates shape
-        // but not raw size; an unbounded req.json() lets any client push an
-        // oversized payload through zod + downstream compute. k6 bench payload
-        // is ~350B; mobile does not call this route. Reject loud with 413.
+        
+        
+        
+        
         const contentLength = Number(req.headers.get('content-length') ?? 0);
         if (contentLength > 32 * 1024) {
             return NextResponse.json({
@@ -373,10 +373,10 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         const requestBody: ItineraryRequest = parsedRequestBody.data;
         const { prompt } = requestBody;
 
-        // Idempotency (2.3): a retried generation must not charge twice.
-        // Claim runs after validation (400s never bill, never claim) and
-        // before the charge, mirroring saved-itineraries/[id] PATCH.
-        // Unkeyed requests flow unchanged (opt-in contract, not a mandate).
+        
+        
+        
+        
         const key = getIdempotencyKey(req);
         if (key) {
           claim = await claimIdempotency(userId, IDEMPOTENCY_ROUTE, key, hashIdempotencyPayload(rawRequestBody));
@@ -411,7 +411,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
             return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
         }
         
-        // ✅ CRITICAL: Check if this is a refresh request (bypass cache)
+        
         const isRefreshRequest = req.headers.get('x-refresh-request') === 'true' || 
                                  req.headers.get('x-bypass-cache') === 'true';
         
@@ -419,22 +419,22 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
             logger.info('🔄 REFRESH REQUEST DETECTED - Bypassing cache for fresh generation', {}, getRequestId(req));
         }
 
-        // Handle health check endpoint
+        
         if (req.nextUrl.searchParams.get('action') === 'health') {
             const health = await GuaranteedJsonEngine.healthCheck();
             return NextResponse.json(health);
         }
 
-        // Handle metrics endpoint
+        
         if (req.nextUrl.searchParams.get('action') === 'metrics') {
             const metrics = GuaranteedJsonEngine.getMetrics();
             return NextResponse.json(metrics);
         }
 
-        // Charge BEFORE generating (TOCTOU / wasted-compute fix, mirrors the
-        // optimized route). consumeCredits is an atomic check-and-deduct RPC,
-        // so concurrent same-user requests are serialized with no over-spend.
-        // Bench requests skip the charge (coordinator parity).
+        
+        
+        
+        
         if (!isBenchRequest) {
         try {
             await CreditService.consumeCredits({
@@ -456,25 +456,25 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
             throw creditErr;
         }
         }
-        // Generate a stable cache key from the request body
+        
         const baseHash = createHash('sha256').update(JSON.stringify(requestBody)).digest('hex');
         cacheKeyBase = `${userId}:${baseHash}`;
         
         let responseData;
         
-        // ✅ CACHE BYPASS: For refresh requests, skip cache and generate fresh
+        
         if (isRefreshRequest) {
             logger.info('⏩ Executing fresh generation (cache bypassed)', {}, getRequestId(req));
             const requestId = cacheKeyBase.substring(0, 8);
             
-            // Generate fresh itinerary without cache
+            
             responseData = await ErrorHandler.withRetry(async () => {
                 const { prompt, weatherData, interests, duration, budget, pax, options } = requestBody;
                 const cityId = (requestBody as any)?.cityId || "baguio";
                 const safeInterests = interests ?? [];
                 const safeBudget = budget === undefined || budget === null ? undefined : String(budget);
                 const safePax = pax === undefined || pax === null ? undefined : String(pax);
-                const trafficAware = options?.trafficAware !== false; // Default true
+                const trafficAware = options?.trafficAware !== false; 
 
                 if (!geminiModel) {
                     throw new ItineraryError(ErrorType.GENERATION, "Gemini model not available", false, requestId);
@@ -484,7 +484,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
                     if (!duration) return null;
                     const match = duration.toString().match(/\d+/);
                     if (!match) return null;
-                    // Same allocation guard as the classic path above.
+                    
                     return Math.min(Math.max(parseInt(match[0], 10), 1), 14);
                 })();
 
@@ -534,15 +534,15 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
             
             logger.info('✅ Fresh generation completed (refresh mode)', {}, getRequestId(req));
         } else {
-            // Normal flow: Use cached function
+            
             responseData = await getCachedItinerary(requestBody, cacheKeyBase);
         }
 
 
-        // H1 hotfix (2026-09-01): detect zero-activity itineraries after both
-        // cached and refresh paths and refund the credit on the happy-path zero.
-        // Runs on every POST() (not inside the cache wrapper) so it always fires,
-        // including on cache hits that return an empty result.
+        
+        
+        
+        
         if (isZeroActivityItinerary(responseData?.text)) {
             if (charged) {
                 try {
@@ -554,7 +554,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
                         idempotencyKey: `refund:zero:${attemptId}`,
                     });
                 } catch {
-                    // best-effort; swallow refund errors
+                    
                 }
             }
             const zeroSnapshot = takeRefundSnapshot();
@@ -586,8 +586,8 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
         return NextResponse.json(successBody);
 
     } catch (e: any) {
-        // If we charged but generation failed, refund so the user isn't billed
-        // for an itinerary we couldn't deliver.
+        
+        
         if (charged) {
             try {
                 await CreditService.refundCredits({
@@ -598,18 +598,18 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
                     idempotencyKey: `refund:fail:${attemptId}`,
                 });
             } catch {
-                // best-effort; swallow refund errors
+                
             }
         }
-        // Refund observability: per-request counter snapshot (see
-        // handleMultiAgentPost finally). Emitted on the failure path too so a
-        // charged-but-unrefunded request is visible even when processing died.
+        
+        
+        
         const snapshot = takeRefundSnapshot();
         if (snapshot.refunded > 0 || snapshot.failed > 0 || snapshot.noop > 0) {
           logger.info(`[refund-metrics] request=${userId || '?'} refunded=${snapshot.refunded} failed=${snapshot.failed} noop=${snapshot.noop}`, { refunded: snapshot.refunded, failed: snapshot.failed, noop: snapshot.noop }, getRequestId(req));
         }
-        // req.body is a ReadableStream in the App Router (JSON.stringify() yields
-        // "{}"), so never derive a correlation id from it. Use userId + URL.
+        
+        
         const requestId = createHash('sha256').update(`${userId || 'anon'}:${req.url}`).digest('hex').substring(0, 8);
         const errorDetails = ErrorHandler.handleError(e, requestId);
         logger.error("Error in itinerary generation pipeline:", { errorDetails }, getRequestId(req));

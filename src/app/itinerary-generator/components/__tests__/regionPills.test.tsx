@@ -40,7 +40,6 @@ const baseProps: React.ComponentProps<typeof ItineraryForm> = {
   setSelectedCity: noopDispatch,
 };
 
-/** Every city the backend will accept as `cityId`. */
 const ROUTE_CITY_IDS: readonly CityId[] = [
   "baguio",
   "cebu",
@@ -55,8 +54,6 @@ const ROUTE_CITY_IDS: readonly CityId[] = [
 describe("Gala region pills", () => {
   describe("the alias contract", () => {
     it("shows the dashboard region row plus the pre-existing wide scopes", () => {
-      // ph-wide and world were on the picker before this change and stay put;
-      // only the city list narrows and gains the two region aliases.
       expect(CITY_PILLS.map((p) => p.label)).toEqual([
         "Baguio",
         "Manila",
@@ -69,8 +66,6 @@ describe("Gala region pills", () => {
     });
 
     it("resolves every pill to a real backend city id, never to a region name", () => {
-      // This is the invariant that keeps the API green: a region id sent as
-      // cityId would be rejected by the route's zod enum with a 400.
       for (const pill of CITY_PILLS) {
         expect(ROUTE_CITY_IDS).toContain(pill.cityId);
         expect(pill.cityId).not.toBe(pill.label);
@@ -85,10 +80,6 @@ describe("Gala region pills", () => {
     });
 
     it("resolves Visayas and Luzon inside the dashboard's own member sets", () => {
-      // Visayas = boracay + cebu, Luzon = baguio + manila, as the dashboard
-      // declares. Gala cannot import those constants (dashboard/utils pulls the
-      // curated itinerary catalog into the client bundle), so this test is
-      // what stops the two surfaces from drifting apart.
       const visayas = CITY_PILLS.find((p) => p.label === "Visayas");
       const luzon = CITY_PILLS.find((p) => p.label === "Luzon");
 
@@ -123,8 +114,6 @@ describe("Gala region pills", () => {
         </ToastProvider>
       );
 
-      // Manila and Luzon both resolve to Metro Manila; deriving the pressed
-      // state from the city id would light up both tiles at once.
       const luzon = screen.getByRole("button", { name: /^Luzon/i });
       const manila = screen.getByRole("button", { name: /^Manila/i });
       expect(luzon).toHaveAttribute("aria-pressed", "false");

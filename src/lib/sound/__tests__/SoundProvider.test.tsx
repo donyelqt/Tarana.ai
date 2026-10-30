@@ -60,7 +60,7 @@ describe('SoundProvider', () => {
       </SoundProvider>
     );
     fireEvent.pointerDown(screen.getByRole('button', { name: 'real button' }));
-    expect(oscSpy).toHaveBeenCalledTimes(2); // chime + shimmer partial
+    expect(oscSpy).toHaveBeenCalledTimes(2); 
   });
 
   it('throws outside the provider', () => {

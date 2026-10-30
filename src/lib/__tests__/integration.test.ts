@@ -21,7 +21,6 @@ jest.mock('@/lib/observability/logger', () => ({
 
 const mockLogger = logger as jest.Mocked<typeof logger>;
 
-// Mock all dependencies - use getter for supabaseAdmin to allow mutable mock
 jest.mock('@/lib/data/supabaseAdmin', () => ({
   get supabaseAdmin() { return (global as any).__testSupabaseAdmin ?? (global as any).mockSupabaseAdmin; },
   set supabaseAdmin(v: any) { (global as any).__testSupabaseAdmin = v; },
@@ -64,17 +63,13 @@ describe('Password Reset Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // Setup default mocks
     (global as any).__testSupabaseAdmin = mockSupabaseAdmin;
     process.env.NEXTAUTH_URL = 'http://localhost:3000';
     
-    // Mock crypto - use utf8 not hex (Buffer.from hex with non-hex produces empty)
     (crypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test-token-hex'));
     
-    // Mock bcrypt
     (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_password_123');
     
-    // Mock email service - both paths share same mock
     (email.sendPasswordResetEmail as jest.Mock).mockResolvedValue(true);
     const emailIndex = require('@/lib/email') as any;
     if (emailIndex?.sendPasswordResetEmail) {
@@ -93,13 +88,11 @@ describe('Password Reset Integration Tests', () => {
   };
 
   describe('Complete Password Reset Flow', () => {
-    // debt: mockSupabaseAdmin shared mock not correctly capturing update calls due to jest.setup non-configurable mock; skipping until mock is writable
     it.skip('should complete full password reset workflow successfully', async () => {
       const userEmail = 'test@example.com';
       const newPassword = 'newSecurePassword123';
       const mockUser = { id: 'user-123', email: userEmail };
       
-      // Step 1: Request password reset
       (auth.findUserByEmailFromSupabase as jest.Mock).mockResolvedValue(mockUser);
       mockSupabaseAdmin.from().update().eq.mockResolvedValue({ error: null });
       
@@ -110,7 +103,6 @@ describe('Password Reset Integration Tests', () => {
       expect(forgotResponse.status).toBe(200);
       expect(forgotData.message).toBe('If an account with that email exists, we have sent a password reset link.');
       
-      // Verify token was stored
       expect(mockSupabaseAdmin.from().update).toHaveBeenCalled();
       const forgotUpdateCalls = (mockSupabaseAdmin.from().update as jest.Mock).mock.calls;
       expect(forgotUpdateCalls.length).toBeGreaterThan(0);
@@ -118,8 +110,7 @@ describe('Password Reset Integration Tests', () => {
       expect(forgotUpdateCall).toHaveProperty('reset_token');
       expect(forgotUpdateCall).toHaveProperty('reset_token_expiry');
       
-      // Step 2: Reset password with token
-      const resetToken = '746573742d746f6b656e2d686578'; // hex of 'test-token-hex'
+      const resetToken = '746573742d746f6b656e2d686578'; 
       const mockUserWithToken = {
         id: 'user-123',
         reset_token: resetToken,
@@ -142,7 +133,6 @@ describe('Password Reset Integration Tests', () => {
       expect(resetResponse.status).toBe(200);
       expect(resetData.message).toBe('Password has been reset successfully');
       
-      // Verify password was hashed and token cleared
       const resetUpdateCalls = (mockSupabaseAdmin.from().update as jest.Mock).mock.calls;
       expect(resetUpdateCalls.length).toBeGreaterThanOrEqual(2);
       const passwordUpdateCall = resetUpdateCalls[1][0];
@@ -155,19 +145,17 @@ describe('Password Reset Integration Tests', () => {
       const userEmail = 'test@example.com';
       const mockUser = { id: 'user-123', email: userEmail };
       
-      // Step 1: Request password reset
       (auth.findUserByEmailFromSupabase as jest.Mock).mockResolvedValue(mockUser);
       mockSupabaseAdmin.from().update().eq.mockResolvedValue({ error: null });
       
       const forgotRequest = createMockRequest({ email: userEmail });
       await forgotPasswordPOST(forgotRequest);
       
-      // Step 2: Try to reset with expired token
       const resetToken = '746573742d746f6b656e2d686578';
       const expiredUser = {
         id: 'user-123',
         reset_token: resetToken,
-        reset_token_expiry: new Date(Date.now() - 3600000).toISOString(), // Expired 1 hour ago
+        reset_token_expiry: new Date(Date.now() - 3600000).toISOString(), 
       };
       
       mockSupabaseAdmin.from().select().eq().single.mockResolvedValue({ 
@@ -188,12 +176,10 @@ describe('Password Reset Integration Tests', () => {
   });
 
   describe('Email Configuration Integration', () => {
-    // debt: email mock is mocked to return true without logging; real implementation would log when SMTP not configured
     it.skip('should handle missing email configuration gracefully', async () => {
       const userEmail = 'test@example.com';
       const mockUser = { id: 'user-123', email: userEmail };
       
-      // Mock no email configuration
       (emailConfig.getEmailTransportConfig as jest.Mock).mockReturnValue(null);
       (emailConfig.validateEmailConfig as jest.Mock).mockReturnValue(null);
       
@@ -220,7 +206,6 @@ describe('Password Reset Integration Tests', () => {
       const userEmail = 'test@example.com';
       const mockUser = { id: 'user-123', email: userEmail };
       
-      // Mock SendGrid configuration
       const sendGridConfig = {
         host: 'smtp.sendgrid.net',
         port: 587,
@@ -267,7 +252,6 @@ describe('Password Reset Integration Tests', () => {
       (auth.findUserByEmailFromSupabase as jest.Mock).mockResolvedValue(mockUser);
       mockSupabaseAdmin.from().update().eq.mockResolvedValue({ error: null });
       
-      // Mock email failure
       (email.sendPasswordResetEmail as jest.Mock).mockResolvedValue(false);
       
       mockLogger.warn.mockClear();
@@ -286,7 +270,6 @@ describe('Password Reset Integration Tests', () => {
     });
 
     it('should prevent timing attacks between existing and non-existing users', async () => {
-      // Test with non-existing user
       (auth.findUserByEmailFromSupabase as jest.Mock).mockResolvedValue(null);
       
       const request1 = createMockRequest({ email: 'nonexistent@example.com' });
@@ -294,7 +277,6 @@ describe('Password Reset Integration Tests', () => {
       const response1 = await forgotPasswordPOST(request1);
       const time1 = Date.now() - start1;
       
-      // Test with existing user
       const mockUser = { id: 'user-123', email: 'existing@example.com' };
       (auth.findUserByEmailFromSupabase as jest.Mock).mockResolvedValue(mockUser);
       mockSupabaseAdmin.from().update().eq.mockResolvedValue({ error: null });
@@ -304,18 +286,15 @@ describe('Password Reset Integration Tests', () => {
       const response2 = await forgotPasswordPOST(request2);
       const time2 = Date.now() - start2;
       
-      // Both should return same message
       const data1 = await response1.json();
       const data2 = await response2.json();
       
       expect(data1.message).toBe(data2.message);
       expect(response1.status).toBe(response2.status);
       
-      // Timing should be similar (within reasonable bounds for testing)
       expect(Math.abs(time1 - time2)).toBeLessThan(100);
     });
 
-    // debt: token reuse check relies on update call count which is flaky with shared mock
     it.skip('should ensure token cannot be reused after successful password reset', async () => {
       const resetToken = '746573742d746f6b656e2d686578';
       const newPassword = 'newPassword123';
@@ -326,7 +305,6 @@ describe('Password Reset Integration Tests', () => {
         reset_token_expiry: new Date(Date.now() + 3600000).toISOString(),
       };
       
-      // First reset attempt - should succeed
       mockSupabaseAdmin.from().select().eq().single.mockResolvedValue({ 
         data: mockUser, 
         error: null 
@@ -338,14 +316,12 @@ describe('Password Reset Integration Tests', () => {
       
       expect(response1.status).toBe(200);
       
-      // Verify token was cleared
       const tokenClearCalls = (mockSupabaseAdmin.from().update as jest.Mock).mock.calls;
       expect(tokenClearCalls.length).toBeGreaterThan(0);
       const tokenClearCall = tokenClearCalls[0][0];
       expect(tokenClearCall.reset_token).toBeNull();
       expect(tokenClearCall.reset_token_expiry).toBeNull();
       
-      // Second reset attempt with same token - should fail
       mockSupabaseAdmin.from().select().eq().single.mockResolvedValue({ 
         data: null, 
         error: { message: 'No rows returned' } 
@@ -361,13 +337,12 @@ describe('Password Reset Integration Tests', () => {
   });
 
   describe('Error Recovery Integration', () => {
-    // debt: supabaseAdmin null mock via global variable not reliably triggering 500 in all environments
     it.skip('should handle database connection failures gracefully', async () => {
       const userEmail = 'test@example.com';
       const mockUser = { id: 'user-123', email: userEmail };
       
       (auth.findUserByEmailFromSupabase as jest.Mock).mockResolvedValue(mockUser);
-      (global as any).__testSupabaseAdmin = null; // Simulate connection failure
+      (global as any).__testSupabaseAdmin = null; 
       
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       
@@ -383,7 +358,6 @@ describe('Password Reset Integration Tests', () => {
       (global as any).__testSupabaseAdmin = mockSupabaseAdmin;
     });
 
-    // debt: concurrent test expects exactly 2 update calls but shared mock counts extra due to beforeEach setup
     it.skip('should handle concurrent password reset requests', async () => {
       const userEmail = 'test@example.com';
       const mockUser = { id: 'user-123', email: userEmail };
@@ -391,7 +365,6 @@ describe('Password Reset Integration Tests', () => {
       (auth.findUserByEmailFromSupabase as jest.Mock).mockResolvedValue(mockUser);
       mockSupabaseAdmin.from().update().eq.mockResolvedValue({ error: null });
       
-      // Simulate concurrent requests
       const request1 = createMockRequest({ email: userEmail });
       const request2 = createMockRequest({ email: userEmail });
       
@@ -400,11 +373,9 @@ describe('Password Reset Integration Tests', () => {
         forgotPasswordPOST(request2)
       ]);
       
-      // Both should succeed
       expect(response1.status).toBe(200);
       expect(response2.status).toBe(200);
       
-      // Both should generate tokens (last one wins in database)
       expect(mockSupabaseAdmin.from().update).toHaveBeenCalledTimes(2);
     });
   });

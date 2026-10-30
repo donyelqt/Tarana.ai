@@ -8,11 +8,6 @@ import { resolveCameraTarget, applyCameraTarget } from './cameraTarget';
 import { Loader2 } from 'lucide-react';
 
 interface InteractiveRouteMapProps {
-  /**
-   * Where the map should open when a deep link preselects a destination.
-   * Null keeps the Baguio home view. Only read once, at initialization —
-   * later changes go through the camera resolver, not a re-init.
-   */
   initialCenter?: [number, number] | null;
   currentRoute: RouteData | null;
   alternativeRoutes: RouteData[];
@@ -20,10 +15,6 @@ interface InteractiveRouteMapProps {
   origin: LocationPoint | null;
   destination: LocationPoint | null;
   waypoints: LocationPoint[];
-  /**
-   * Plan mode with nothing to frame holds the current view instead of
-   * homing to Baguio. Threaded from ExploreMapView's planMode state.
-   */
   planMode?: boolean;
   isLoading: boolean;
   onRouteSelect?: (routeId: string) => void;
@@ -31,11 +22,6 @@ interface InteractiveRouteMapProps {
   onStyleChange?: (style: MapStyle) => void;
   onStyleChanging?: (changing: boolean) => void;
   recenterSignal?: number;
-  /**
-   * Signed zoom steps: negative zooms out, positive zooms in. A number rather
-   * than a direction enum so repeated presses accumulate, matching how
-   * recenterSignal already works.
-   */
   zoomSignal?: number;
   tiltOn?: boolean;
   styleControlRef?: React.MutableRefObject<{ changeStyle: (style: MapStyle) => void } | null>;
@@ -47,7 +33,6 @@ declare global {
   }
 }
 
-// TomTom SDK configuration
 const TOMTOM_CONFIG = {
   SDK_VERSION: '6.25.0',
   BASE_URL: 'https://api.tomtom.com/maps-sdk-for-web/cdn/6.x',
@@ -77,11 +62,7 @@ export default function InteractiveRouteMap({
   styleControlRef,
 }: InteractiveRouteMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  // Last applied zoomSignal, so an unchanged signal cannot re-zoom.
   const lastZoomSignalRef = useRef<number | undefined>(undefined);
-  // Read once at initialization. initializeMap has an empty dep list on
-  // purpose (it must not re-run on prop changes), so a ref is how it reaches
-  // the first-render deep-link centre without a stale closure.
   const initialCenterRef = useRef<[number, number] | null>(initialCenter);
   const mapInstanceRef = useRef<any>(null);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -93,11 +74,6 @@ export default function InteractiveRouteMap({
   const plottedRouteCountRef = useRef(0);
   const markersRef = useRef<any[]>([]);
 
-  // Where the camera should be. ONE decision for both triggers — the recenter
-  // control and the overlay pass — so they cannot disagree. The previous
-  // hardcoded-Baguio fallback here fought the endpoint framing: the deep link
-  // bumped the signal, this effect snapped back to Baguio, and the selected spot
-  // was left off-centre (5km for Great Wall) or entirely off-screen (Cebu).
   useEffect(() => {
     if (recenterSignal === undefined || !mapInstanceRef.current || !isMapLoaded) return;
     const map = mapInstanceRef.current;
@@ -120,19 +96,6 @@ export default function InteractiveRouteMap({
     });
   }, [recenterSignal, isMapLoaded, currentRoute, origin, destination, waypoints, planMode]);
 
-  /**
-   * Zoom in/out from the rail's circular buttons.
-   *
-   * Two things this deliberately does not do. It does not re-enable TomTom's
-   * `NavigationControl`, which PR #689 removed from this page: that control is
-   * rectangular, pins itself to the map's top-right, and would sit on top of
-   * the app's own right-hand rail. It also does not move the camera centre —
-   * zoom keeps whatever the user was looking at centred, which is the point of
-   * a zoom control sitting beside recenter and tilt.
-   *
-   * The last applied value is tracked so a re-render with an unchanged signal
-   * cannot re-zoom, and so a burst of presses applies as steps.
-   */
   useEffect(() => {
     if (zoomSignal === undefined || !mapInstanceRef.current || !isMapLoaded) return;
     if (lastZoomSignalRef.current === zoomSignal) return;
@@ -149,7 +112,6 @@ export default function InteractiveRouteMap({
     if (next === current) return;
     map.easeTo?.({ zoom: next, duration: 300 });
   }, [zoomSignal, isMapLoaded]);
-  // Apply or remove the camera tilt (3D perspective) when the tilt toggle changes
   useEffect(() => {
     if (!mapInstanceRef.current || !isMapLoaded) return;
     const map = mapInstanceRef.current;
@@ -159,7 +121,6 @@ export default function InteractiveRouteMap({
     });
   }, [tiltOn, isMapLoaded]);
 
-  // Initialize map using the TomTom utility service
   const initializeMap = useCallback(async () => {
     if (!mapRef.current || mapInstanceRef.current) {
       return;
@@ -167,14 +128,12 @@ export default function InteractiveRouteMap({
 
     try {
 
-      // Get API key from environment or fallback
       const apiKey = process.env.NEXT_PUBLIC_TOMTOM_API_KEY;
 
       if (!apiKey) {
         throw new Error('TomTom API key is required');
       }
 
-      // A deep link opens on the spot; otherwise Baguio city is the home view.
 
       const openOn = initialCenterRef.current;
       const mapConfig: TomTomMapConfig = {
@@ -185,16 +144,14 @@ export default function InteractiveRouteMap({
         style: currentMapStyle,
         enable3D: false,
         enableTerrain: false,
-        worldView: true, // Enable world map optimizations
-        minZoom: ZOOM_LEVELS.WORLD, // Allow zooming out to world view
-        maxZoom: ZOOM_LEVELS.BUILDING // Allow detailed building-level zoom
+        worldView: true, 
+        minZoom: ZOOM_LEVELS.WORLD, 
+        maxZoom: ZOOM_LEVELS.BUILDING 
       };
 
-      // Create map using utility service
       const map = await createTomTomMap(mapConfig);
       mapInstanceRef.current = map;
 
-      // Set loaded state
 
       setIsMapLoaded(true);
       setIsSdkLoaded(true);
@@ -207,7 +164,6 @@ export default function InteractiveRouteMap({
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setMapError(`Failed to initialize map: ${errorMessage}`);
 
-      // Clean up failed map instance
       if (mapInstanceRef.current) {
         try {
           mapInstanceRef.current.remove();
@@ -219,7 +175,6 @@ export default function InteractiveRouteMap({
     }
   }, []);
 
-  // Load TomTom Maps with improved error handling
   useEffect(() => {
     let isMounted = true;
 
@@ -229,7 +184,6 @@ export default function InteractiveRouteMap({
       try {
         setMapError(null);
 
-        // Update SDK status
         const sdkStatus = getTomTomSDKStatus();
         setIsSdkLoaded(sdkStatus.isLoaded);
         setRetryCount(sdkStatus.retryCount);
@@ -264,7 +218,6 @@ export default function InteractiveRouteMap({
 
     return () => {
       isMounted = false;
-      // Clean up map instance on unmount to prevent persistence
       if (mapInstanceRef.current) {
         try {
           mapInstanceRef.current.remove();
@@ -276,14 +229,12 @@ export default function InteractiveRouteMap({
     };
   }, [initializeMap]);
 
-  // Retry map initialization
   const retryMapInitialization = useCallback(() => {
     setMapError(null);
     setIsMapLoaded(false);
     setIsSdkLoaded(false);
     setRetryCount(0);
 
-    // Clean up existing map instance
     if (mapInstanceRef.current) {
       try {
         mapInstanceRef.current.remove();
@@ -293,16 +244,13 @@ export default function InteractiveRouteMap({
       mapInstanceRef.current = null;
     }
 
-    // Reset the TomTom service
     resetTomTomService();
 
-    // Trigger re-initialization
     setTimeout(() => {
       initializeMap();
     }, 100);
   }, [initializeMap]);
 
-  // Handle map style change
   const handleStyleChange = useCallback(async (newStyle: MapStyle) => {
     if (!mapInstanceRef.current || !mapRef.current || isChangingStyle || newStyle === currentMapStyle) {
       return;
@@ -316,7 +264,6 @@ export default function InteractiveRouteMap({
 
       console.log(`🎨 Changing map style from ${currentMapStyle} to ${newStyle}`);
 
-      // Use the updated changeMapStyle function that recreates the map
       const newMapInstance = await changeMapStyle(
         mapInstanceRef.current,
         newStyle,
@@ -324,7 +271,6 @@ export default function InteractiveRouteMap({
         mapRef.current
       );
 
-      // Update the map instance reference
       mapInstanceRef.current = newMapInstance;
       setCurrentMapStyle(newStyle);
       onStyleChange?.(newStyle);
@@ -343,8 +289,6 @@ export default function InteractiveRouteMap({
     }
   }, [currentMapStyle, isChangingStyle, onStyleChange, onStyleChanging]);
 
-  // Expose the internal style-change handler to the parent via ref so the
-  // page-level control triggers it directly (the proven-working path).
   useEffect(() => {
     if (styleControlRef) {
       styleControlRef.current = { changeStyle: (s: MapStyle) => { void handleStyleChange(s); } };
@@ -354,19 +298,14 @@ export default function InteractiveRouteMap({
     };
   }, [styleControlRef, handleStyleChange]);
 
-  // Update map with route data
   useEffect(() => {
     if (!mapInstanceRef.current || !isMapLoaded) return;
 
     const map = mapInstanceRef.current;
 
-    // Skip if we're currently changing styles to prevent flickering
     if (isChangingStyle) return;
 
-    // Clear existing markers and routes with proper error handling
     try {
-      // Remove existing markers
-      // Remove existing markers using tracked ref
       if (markersRef.current.length > 0) {
         markersRef.current.forEach((marker: any) => {
           try {
@@ -378,15 +317,12 @@ export default function InteractiveRouteMap({
         markersRef.current = [];
       }
 
-      // Fallback cleanup (just in case)
       try {
         const remainingMarkers = (map as any).getMarkers?.() || [];
         remainingMarkers.forEach((marker: any) => marker.remove());
       } catch (e) {
-        // Ignore
       }
 
-      // Clean up any existing glow animations
       if ((map as any)._primaryRouteGlowAnimation) {
         clearInterval((map as any)._primaryRouteGlowAnimation);
         (map as any)._primaryRouteGlowAnimation = null;
@@ -396,8 +332,6 @@ export default function InteractiveRouteMap({
         (map as any)._altRouteGlowAnimations = [];
       }
 
-      // Remove existing route layers safely (including glow layers)
-      // AGGRESSIVE CLEANUP: Scan all layers and remove anything related to our routes
       try {
         const style = map.getStyle();
         if (style && style.layers) {
@@ -430,13 +364,10 @@ export default function InteractiveRouteMap({
       console.warn('Error during map cleanup:', error);
     }
 
-    // Add modern, sleek markers with glassmorphism effects
     try {
-        // Create custom origin marker with modern styling
         if (origin && window.tt.Marker && window.tt.Popup) {
           console.log('🟢 Adding modern origin marker:', origin);
 
-          // Create custom origin marker element
           const originElement = document.createElement('div');
           originElement.className = 'origin-marker';
           originElement.innerHTML = `
@@ -552,11 +483,9 @@ export default function InteractiveRouteMap({
           markersRef.current.push(originMarker);
         }
 
-        // Create custom destination marker with modern styling
         if (destination && window.tt.Marker && window.tt.Popup) {
           console.log('🔴 Adding modern destination marker:', destination);
 
-          // Create custom destination marker element
           const destElement = document.createElement('div');
           destElement.className = 'destination-marker';
           destElement.innerHTML = `
@@ -672,12 +601,10 @@ export default function InteractiveRouteMap({
           markersRef.current.push(destMarker);
         }
 
-      // Create custom waypoint markers with modern styling
       waypoints.forEach((waypoint, index) => {
         if (waypoint && window.tt.Marker && window.tt.Popup) {
           console.log(`🔵 Adding modern waypoint ${index + 1} marker:`, waypoint);
 
-          // Create custom waypoint marker element
           const waypointElement = document.createElement('div');
           waypointElement.className = 'waypoint-marker';
           waypointElement.innerHTML = `
@@ -803,8 +730,6 @@ export default function InteractiveRouteMap({
       });
 
 
-      // Same resolver the recenter control uses — one source of truth for the
-      // camera, so the two triggers can never disagree.
       applyCameraTarget(map, resolveCameraTarget({
         origin,
         destination,
@@ -824,7 +749,6 @@ export default function InteractiveRouteMap({
 
     } catch (error) {
       console.warn('Error adding modern markers:', error);
-      // Fallback to simple markers if custom ones fail
       try {
         if (origin) {
           const m = new window.tt.Marker({ color: '#22c55e', scale: 1.2 })
@@ -843,7 +767,6 @@ export default function InteractiveRouteMap({
       }
     }
 
-    // RENDER ALTERNATIVE ROUTES FIRST (so they appear BELOW primary route)
     alternativeRoutes.forEach((route, index) => {
       if (route.legs && Array.isArray(route.legs)) {
         try {
@@ -883,7 +806,6 @@ export default function InteractiveRouteMap({
               }
             });
 
-            // Add click handler for alternative routes
             map.on('click', layerId, () => {
               onRouteSelect?.(route.id);
             });
@@ -904,7 +826,6 @@ export default function InteractiveRouteMap({
       }
     });
 
-    // RENDER PRIMARY ROUTE LAST (so it appears ABOVE alternative routes)
     if (currentRoute && currentRoute.legs && Array.isArray(currentRoute.legs)) {
       try {
         const routeCoordinates = currentRoute.legs.flatMap(leg =>
@@ -939,7 +860,6 @@ export default function InteractiveRouteMap({
             }
           });
 
-          // Add enhanced animated pulsing glow effect for visibility
           const animateRouteGlow = () => {
             if (map.getLayer('route-primary-glow-outer')) {
               map.setPaintProperty('route-primary-glow-outer', 'line-opacity',
@@ -955,13 +875,10 @@ export default function InteractiveRouteMap({
             }
           };
 
-          // Start animation
           const glowAnimationId = setInterval(animateRouteGlow, 50);
 
-          // Store animation ID for cleanup
           (map as any)._primaryRouteGlowAnimation = glowAnimationId;
 
-          // Add hover interactions for primary route
           map.on('mouseenter', 'route-primary', () => {
             const canvas = map.getCanvas();
             if (canvas) canvas.style.cursor = 'pointer';
@@ -972,12 +889,10 @@ export default function InteractiveRouteMap({
             if (canvas) canvas.style.cursor = '';
           });
 
-          // Add click handler for primary route
           map.on('click', 'route-primary', () => {
             onRouteSelect?.(currentRoute.id);
           });
 
-          // Fit map to route bounds
           if (window.tt.LngLatBounds) {
             const bounds = new window.tt.LngLatBounds();
             routeCoordinates.forEach((coord: number[]) => bounds.extend(coord));
@@ -988,7 +903,6 @@ export default function InteractiveRouteMap({
         console.warn('Error adding primary route:', error);
       }
     }
-    // Update the plotted count ref for next cleanup
     plottedRouteCountRef.current = alternativeRoutes.length;
   }, [currentRoute?.id, alternativeRoutes.map(r => r.id).join(','), origin?.lat, origin?.lng, destination?.lat, destination?.lng, waypoints.length, isMapLoaded, planMode]);
 
@@ -1013,7 +927,7 @@ export default function InteractiveRouteMap({
 
   return (
     <div className="relative h-full w-full bg-gray-100">
-      {/* Map Container */}
+      {}
       <div ref={mapRef} className="w-full h-full">
         {!isMapLoaded && !mapError && (
           <div className="h-full flex items-center justify-center bg-muted/50">
@@ -1037,14 +951,14 @@ export default function InteractiveRouteMap({
         )}
       </div>
 
-      {/* Loading Overlay */}
+      {}
       {isLoading && isMapLoaded && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
           <RouteAnalysisLoader size="md" text="Analyzing routes..." showText={true} />
         </div>
       )}
 
-      {isMapLoaded && null /* floating overlays moved to page level */}
+      {isMapLoaded && null }
     </div>
   );
 }

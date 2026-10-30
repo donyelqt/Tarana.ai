@@ -1,10 +1,3 @@
-/**
- * Comprehensive Test Suite for Intelligent Search System
- * Tests all components: search algorithms, optimization, caching, and indexing
- * 
- * @author Doniele Arys Antonio
- * @version 2.0.0
- */
 
 import { IntelligentSearchEngine, type SearchContext } from '../search/intelligentSearch';
 import { QueryProcessor, SearchOptimizer } from '../search/searchOptimizer';
@@ -12,12 +5,12 @@ import { SearchIndexManager, TextProcessor } from '../search/searchIndex';
 import { SmartCacheManager } from '../performance/smartCacheManager';
 import type { Activity } from '@/app/itinerary-generator/data/itineraryData';
 
-// Mock embedding generation to avoid external API calls
+
 jest.mock('../ai/embeddings', () => ({
   generateEmbedding: jest.fn().mockResolvedValue(Array(8).fill(0.1)),
 }));
 
-// Mock supabaseAdmin for intelligentSearch - will be configured per-test to return activity data
+
 jest.mock('../data/supabaseAdmin', () => ({
   supabaseAdmin: {
     rpc: jest.fn().mockResolvedValue({ data: [], error: null }),
@@ -29,7 +22,7 @@ jest.mock('../data/supabaseAdmin', () => ({
   },
 }));
 
-// Mock traffic modules to avoid external calls
+
 jest.mock('../traffic/peakHours', () => ({
   isCurrentlyPeakHours: jest.fn().mockReturnValue(false),
   getManilaTime: jest.fn().mockReturnValue(new Date()),
@@ -43,7 +36,6 @@ jest.mock('../data/baguioCoordinates', () => ({
   getActivityCoordinates: jest.fn().mockReturnValue(null),
 }));
 
-// Mock activities for testing
 const mockActivities: Activity[] = [
   {
     image: '/test-image1.jpg',
@@ -79,7 +71,6 @@ const mockActivities: Activity[] = [
   }
 ];
 
-// Mock search context
 const mockSearchContext: SearchContext = {
   interests: ['nature', 'culture'],
   weatherCondition: 'clear',
@@ -93,7 +84,7 @@ const mockSearchContext: SearchContext = {
 
 const mockContext = mockSearchContext;
 
-// Configure supabase rpc mock to return mockActivities as semantic results for IntelligentSearchEngine
+
 import { supabaseAdmin } from '../data/supabaseAdmin';
 const mockedRpc = (supabaseAdmin as any)?.rpc as jest.Mock;
 if (mockedRpc) {
@@ -130,7 +121,7 @@ describe('TextProcessor', () => {
     it('should handle empty and invalid input', () => {
       expect(TextProcessor.tokenize('')).toEqual([]);
       expect(TextProcessor.tokenize('   ')).toEqual([]);
-      expect(TextProcessor.tokenize('a b c')).toEqual([]); // Too short tokens
+      expect(TextProcessor.tokenize('a b c')).toEqual([]); 
     });
   });
 
@@ -234,7 +225,6 @@ describe('SearchIndexManager', () => {
       const results = indexManager.searchByTokens('beautiful scenic');
       
       expect(results.length).toBeGreaterThan(0);
-      // First result should be most relevant
       expect(results[0].searchTokens.some(token => 
         token.includes('beautiful') || token.includes('scenic')
       )).toBe(true);
@@ -363,7 +353,6 @@ describe('IntelligentSearchEngine', () => {
     it('should handle empty query gracefully', async () => {
       const results = await searchEngine.search('', mockSearchContext);
       
-      // Should still return some results (fallback behavior)
       expect(results).toBeDefined();
       expect(Array.isArray(results)).toBe(true);
     });
@@ -377,7 +366,6 @@ describe('IntelligentSearchEngine', () => {
       const results = await searchEngine.search('museum art', cultureContext);
       
       expect(results.length).toBeGreaterThan(0);
-      // Should prioritize cultural activities
       const topResult = results[0];
       expect(topResult.activity.tags).toContain('Culture & Arts');
     });
@@ -457,17 +445,14 @@ describe('Integration Tests', () => {
   it('should perform end-to-end intelligent search with caching', async () => {
     const query = 'beautiful nature parks';
     
-    // First search - should miss cache
     const results1 = await searchEngine.search(query, mockSearchContext);
     cacheManager.cacheSearchResults(query, mockSearchContext, results1);
     
-    // Second search - should hit cache
     const cachedResults = cacheManager.getCachedSearchResults(query, mockSearchContext);
     
     expect(results1.length).toBeGreaterThan(0);
     expect(cachedResults).toEqual(results1);
     
-    // Verify cache statistics
     const stats = cacheManager.getCacheStats();
     expect(stats.searchResults.totalEntries).toBe(1);
   });
@@ -498,7 +483,6 @@ describe('Integration Tests', () => {
     const startTime = Date.now();
     const promises = [];
     
-    // Simulate concurrent searches
     for (let i = 0; i < 10; i++) {
       promises.push(
         searchEngine.search(`test query ${i}`, mockSearchContext)
@@ -509,7 +493,7 @@ describe('Integration Tests', () => {
     const endTime = Date.now();
     
     expect(results.length).toBe(10);
-    expect(endTime - startTime).toBeLessThan(5000); // Should complete within 5 seconds
+    expect(endTime - startTime).toBeLessThan(5000); 
     
     results.forEach(result => {
       expect(Array.isArray(result)).toBe(true);
@@ -545,7 +529,6 @@ describe('Error Handling', () => {
   });
 
   it('should provide fallback results when search fails', async () => {
-    // Test with empty activities array
     const results = await searchEngine.search('test query', mockSearchContext);
     
     expect(results).toBeDefined();

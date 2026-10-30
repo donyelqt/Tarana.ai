@@ -1,16 +1,3 @@
-/**
- * Shared exchange logic for the mobile token bridge.
- *
- * Two entry points need the same core behavior:
- *  - POST /api/auth/mobile-token — API callers (web SPA, iOS where cookies
- *    are shared by WebBrowser.openAuthSessionAsync).
- *  - GET /api/auth/mobile-token/exchange-redirect — UI redirect target for
- *    Android, where Chrome Custom Tabs does NOT share cookies with the app's
- *    fetch, so the exchange must run server-side against the real session
- *    cookie and hand the token back in the redirect URL.
- *
- * Keeping the logic here means the two routes cannot drift.
- */
 import { getToken } from 'next-auth/jwt';
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimiter, rateLimitConfigs } from '@/lib/security/rateLimiter';
@@ -30,8 +17,6 @@ import { getRequestId } from '@/middleware/requestId';
 
 export type ExchangeRequest = {
   req: NextRequest;
-  /** If set, the caller wants the token returned in a redirect URL instead of
-   *  a JSON body (mobile web-browser flow). */
   redirectUrl?: string | null;
 };
 
@@ -48,10 +33,6 @@ export type ExchangeError = {
   status: 401 | 403 | 429 | 500;
 };
 
-/**
- * Run the exchange. Returns either a success payload or an error response
- * the caller can send directly.
- */
 export async function runMobileTokenExchange({
   req,
   redirectUrl,
@@ -83,7 +64,6 @@ export async function runMobileTokenExchange({
     };
   }
 
-  // This endpoint is a web-session-only exchange, not a mobile-token refresh.
   const existingAuthorization = req.headers.get('authorization');
   if (existingAuthorization?.toLowerCase().startsWith('bearer ')) {
     return {
@@ -105,8 +85,6 @@ export async function runMobileTokenExchange({
     };
   }
 
-  // A mobile token presented as a cookie would otherwise be silently
-  // re-exchanged, creating an unintended refresh chain.
   if ((token as { mobile?: boolean }).mobile === true) {
     return {
       response: NextResponse.json(
@@ -136,10 +114,6 @@ export async function runMobileTokenExchange({
     };
   }
 
-  // `getToken` only verifies signature and expiry, so it will happily hand
-  // back a session the `jwt` callback would have discarded. Re-run the same
-  // credential-change check here, or a reset would still mint a fresh 15-minute
-  // bearer token from the very session it just invalidated.
   const currentChangedAt = await readPasswordChangedAt(userId);
   if (
     !isSessionTokenCurrent(
@@ -164,9 +138,6 @@ export async function runMobileTokenExchange({
       ),
     };
   }
-  // `undefined` means the lookup failed; the token is still minted, but it
-  // must carry "never changed" rather than the unreadable value, so a later
-  // successful read does not reject a token that was issued in good faith.
   const lastPasswordChangeAt = currentChangedAt ?? null;
 
   const payload: MobileTokenPayload = {
@@ -175,9 +146,6 @@ export async function runMobileTokenExchange({
     email,
     tosAccepted: true,
     mobile: true,
-    // Carry the web session's credential stamp so the mobile token inherits
-    // the invalidation the web session is subject to; a token minted from a
-    // pre-reset session would otherwise stay valid for its full 15 minutes.
     pwdChangedAt: lastPasswordChangeAt,
   };
 
@@ -202,9 +170,6 @@ export async function runMobileTokenExchange({
     userId,
   };
 
-  // Mobile web-browser flow: hand the token back in the redirect URL. The
-  // mobile app parses it from the final URL — correct on both iOS and
-  // Android, where cookie sharing is unreliable.
   if (redirectUrl) {
     const target = new URL(redirectUrl);
     target.searchParams.set('token', mobileToken);

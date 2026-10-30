@@ -12,13 +12,6 @@ import {
 import { tomtomRoutingService } from '@/lib/services/tomtomRouting';
 import type { SearchResult } from '@/types/route-optimization';
 
-/**
- * Fixed, interest-independent query buckets. They are search phrases, not
- * fabricated places, and each bucket is POI-only at the provider.
- *
- * Source for the POI endpoint contract:
- * https://docs.tomtom.com/search-api/documentation/search-service/points-of-interest-search
- */
 export const TOURIST_QUERY_BUCKETS: readonly string[] = [
   'tourist attraction',
   'landmark',
@@ -32,7 +25,6 @@ export const TOURIST_QUERY_BUCKETS: readonly string[] = [
   'monument',
 ];
 
-/** UI interest label → compact provider query term. */
 export const INTEREST_QUERY_MAP: Record<string, string> = {
   'Food & Culinary': 'restaurants',
   'Nature & Scenery': 'park viewpoint',
@@ -41,9 +33,7 @@ export const INTEREST_QUERY_MAP: Record<string, string> = {
   'Adventure': 'outdoor attraction',
 };
 
-/** Max interest queries per request — bounds upstream calls. */
 export const INTEREST_QUERY_LIMIT = 2;
-/** Raw provider results fetched per interest query. */
 export const INTEREST_RAW_LIMIT = 25;
 
 type TouristPoiSearch = typeof tomtomRoutingService.searchPois;
@@ -62,16 +52,6 @@ const defaultDeps: TouristPoiDeps = {
   writeFresh: upsertTouristPlaces,
 };
 
-/**
- * Interest-targeted POI retrieval — the personalization layer.
- *
- * Gala's non-Baguio path needs the user's stated interests to actually steer
- * retrieval. The tourist allowlist rejects restaurants/cafes by design, so
- * this layer applies structural eligibility (real POI, in-city, finite
- * coords) without the tourist-category requirement, then dedupes.
- *
- * Bounded: at most `INTEREST_QUERY_LIMIT` upstream queries.
- */
 export async function getInterestPois(
   cityId: unknown,
   interestLabels: readonly string[],
@@ -114,17 +94,6 @@ export async function getInterestPois(
   return accepted;
 }
 
-/**
- * Canonical live tourist-POI retrieval for both Gala and Dashboard.
- *
- * Read-first from `places`; TomTom POI backfill only when fresh coverage is
- * below target. Returns up to 50 unique, in-bounds, category-verified POIs.
- * Reconciliation, not accumulation: the newest upstream batch wins, so the
- * result is deterministic for a given cache state.
- *
- * `limit` is clamped to `TOURIST_POI_TARGET` (50) by design; callers cannot
- * raise the pool above the reviewed cap.
- */
 export async function getTouristPois(
   cityId: unknown,
   limit: number = TOURIST_POI_TARGET,
@@ -142,9 +111,6 @@ export async function getTouristPois(
     bottomRight: { lat: city.bounds.south, lng: city.bounds.east },
   };
 
-  // Stop when the ACCEPTED tourist count reaches the target, not when the raw
-  // upstream count does. Buckets may be mostly non-tourist/out-of-bounds, so
-  // breaking on raw volume would strand coverage below target.
   let accepted = cached;
   try {
     for (const bucket of TOURIST_QUERY_BUCKETS) {
@@ -157,8 +123,6 @@ export async function getTouristPois(
       accepted = selectTouristPois([...accepted, ...batch], cityId, target);
     }
   } catch (error) {
-    // Upstream failure degrades to whatever fresh cache rows we already have;
-    // it must not surface as a request failure or wipe valid cache rows.
     logger.warn('Tourist POI upstream search failed; serving cache-only', {
       entryPoint: 'touristPoiService',
       cityId,
@@ -166,8 +130,6 @@ export async function getTouristPois(
     });
   }
 
-  // readFreshPlaces normalizes cached rows back to the raw provider id, so a
-  // plain id comparison is correct and already-cached rows are not rewritten.
   const cachedIds = new Set(cached.map((row) => row.id));
   const newRows = accepted.filter((result) => !cachedIds.has(result.id));
   if (newRows.length > 0) {

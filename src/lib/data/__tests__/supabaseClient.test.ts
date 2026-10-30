@@ -1,10 +1,3 @@
-/**
- * Regression guard for the Metro crash: importing supabaseClient must NEVER
- * throw on missing env. ES imports hoist, so on mobile the shared module
- * evaluates before ensureWebEnv() injects env — the legacy module-evaluation
- * throw was structurally unfixable from the mobile side. Env is now read
- * lazily, and the identical error surfaces at first use instead.
- */
 describe('supabaseClient lazy init', () => {
   const URL_KEY = 'NEXT_PUBLIC_SUPABASE_URL';
   const ANON_KEY = 'NEXT_PUBLIC_SUPABASE_ANON_KEY';
@@ -75,7 +68,6 @@ describe('supabaseClient lazy init', () => {
     expect(base).toBeDefined();
     expect(typeof base.from).toBe('function');
     expect(base.auth).toBeDefined();
-    // Base client is cached across calls.
     expect(getSupabase()).toBe(base);
     const authed = createSupabaseClientWithToken('token');
     expect(authed).toBeDefined();

@@ -26,7 +26,7 @@ export default function FoodMatchCard({
       <div className="font-semibold text-lg">{match.name}</div>
       <div className="text-gray-500 text-sm">{match.meals} meals under ₱{match.price}</div>
       
-      {/* AI Recommendation Reason */}
+      {}
       {match.reason && (
         <div className="mt-2 px-2 py-1 bg-blue-50 rounded text-sm text-blue-800 border border-blue-100">
           <p className="italic">"{match.reason}"</p>

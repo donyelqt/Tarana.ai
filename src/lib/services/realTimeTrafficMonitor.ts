@@ -1,7 +1,3 @@
-/**
- * Real-time Traffic Monitoring Service
- * Provides live traffic updates and alternative route suggestions
- */
 
 import { 
   RouteData,
@@ -14,11 +10,11 @@ import {
 import { routeTrafficAnalyzer } from './routeTrafficAnalysis';
 
 interface TrafficMonitoringConfig {
-  updateInterval: number; // milliseconds
+  updateInterval: number; 
   alertThresholds: {
-    congestionIncrease: number; // percentage
-    delayIncrease: number; // seconds
-    newIncidentRadius: number; // meters
+    congestionIncrease: number; 
+    delayIncrease: number; 
+    newIncidentRadius: number; 
   };
 }
 
@@ -38,18 +34,15 @@ class RealTimeTrafficMonitor {
 
   constructor() {
     this.config = {
-      updateInterval: 2 * 60 * 1000, // 2 minutes
+      updateInterval: 2 * 60 * 1000, 
       alertThresholds: {
-        congestionIncrease: 20, // 20% increase triggers alert
-        delayIncrease: 300, // 5 minutes additional delay
-        newIncidentRadius: 1000 // 1km radius for incident alerts
+        congestionIncrease: 20, 
+        delayIncrease: 300, 
+        newIncidentRadius: 1000 
       }
     };
   }
 
-  /**
-   * Start monitoring a route for real-time traffic changes
-   */
   async startMonitoring(
     routeId: string, 
     route: RouteData,
@@ -57,10 +50,8 @@ class RealTimeTrafficMonitor {
   ): Promise<void> {
     console.log(`🔍 Traffic Monitor: Starting monitoring for route ${routeId}`);
 
-    // Get initial traffic analysis
     const initialAnalysis = await routeTrafficAnalyzer.analyzeRouteTraffic(route);
 
-    // Create monitoring session
     const monitoring: ActiveMonitoring = {
       routeId,
       route,
@@ -76,9 +67,6 @@ class RealTimeTrafficMonitor {
     console.log(`✅ Traffic Monitor: Monitoring started for route ${routeId} with ${this.config.updateInterval/1000}s intervals`);
   }
 
-  /**
-   * Stop monitoring a route
-   */
   stopMonitoring(routeId: string): void {
     const monitoring = this.activeMonitoring.get(routeId);
     if (monitoring) {
@@ -88,9 +76,6 @@ class RealTimeTrafficMonitor {
     }
   }
 
-  /**
-   * Add subscriber to existing monitoring session
-   */
   subscribe(routeId: string, callback: (update: RouteUpdate) => void): boolean {
     const monitoring = this.activeMonitoring.get(routeId);
     if (monitoring) {
@@ -100,24 +85,17 @@ class RealTimeTrafficMonitor {
     return false;
   }
 
-  /**
-   * Remove subscriber from monitoring session
-   */
   unsubscribe(routeId: string, callback: (update: RouteUpdate) => void): void {
     const monitoring = this.activeMonitoring.get(routeId);
     if (monitoring) {
       monitoring.subscribers.delete(callback);
       
-      // Stop monitoring if no subscribers
       if (monitoring.subscribers.size === 0) {
         this.stopMonitoring(routeId);
       }
     }
   }
 
-  /**
-   * Get current monitoring status
-   */
   getMonitoringStatus(routeId: string): {
     isMonitoring: boolean;
     duration: number;
@@ -135,9 +113,6 @@ class RealTimeTrafficMonitor {
     };
   }
 
-  /**
-   * Force immediate traffic check for a route
-   */
   async forceUpdate(routeId: string): Promise<RouteUpdate | null> {
     const monitoring = this.activeMonitoring.get(routeId);
     if (!monitoring) return null;
@@ -145,20 +120,11 @@ class RealTimeTrafficMonitor {
     return await this.checkTrafficUpdates(routeId);
   }
 
-  /**
-   * Get all active monitoring sessions
-   */
   getActiveMonitoring(): string[] {
     return Array.from(this.activeMonitoring.keys());
   }
 
-  // ============================================================================
-  // PRIVATE METHODS
-  // ============================================================================
 
-  /**
-   * Check for traffic updates on a monitored route
-   */
   private async checkTrafficUpdates(routeId: string): Promise<RouteUpdate | null> {
     const monitoring = this.activeMonitoring.get(routeId);
     if (!monitoring) return null;
@@ -166,19 +132,15 @@ class RealTimeTrafficMonitor {
     try {
       console.log(`🔄 Traffic Monitor: Checking updates for route ${routeId}`);
 
-      // Get fresh traffic analysis
       const newAnalysis = await routeTrafficAnalyzer.analyzeRouteTraffic(monitoring.route);
       
-      // Compare with last analysis to detect changes
       const changes = this.detectTrafficChanges(monitoring.lastAnalysis, newAnalysis);
       
       if (changes.hasSignificantChange) {
         console.log(`🚨 Traffic Monitor: Significant changes detected for route ${routeId}:`, changes);
 
-        // Generate alerts
         const alerts = this.generateTrafficAlerts(changes, monitoring);
         
-        // Create route update
         const update: RouteUpdate = {
           routeId,
           updateType: this.determineUpdateType(changes),
@@ -187,18 +149,14 @@ class RealTimeTrafficMonitor {
           timestamp: new Date()
         };
 
-        // Store alerts in history
         monitoring.alertHistory.push(...alerts);
         
-        // Keep only last 10 alerts
         if (monitoring.alertHistory.length > 10) {
           monitoring.alertHistory = monitoring.alertHistory.slice(-10);
         }
 
-        // Update last analysis
         monitoring.lastAnalysis = newAnalysis;
 
-        // Notify all subscribers
         monitoring.subscribers.forEach(callback => {
           try {
             callback(update);
@@ -209,7 +167,6 @@ class RealTimeTrafficMonitor {
 
         return update;
       } else {
-        // Update last analysis even if no significant changes
         monitoring.lastAnalysis = newAnalysis;
         console.log(`✅ Traffic Monitor: No significant changes for route ${routeId}`);
       }
@@ -217,7 +174,6 @@ class RealTimeTrafficMonitor {
     } catch (error) {
       console.error(`❌ Traffic Monitor: Update check failed for route ${routeId}:`, error);
       
-      // Generate error alert
       const errorAlert: TrafficAlert = {
         id: `error_${Date.now()}`,
         type: 'incident',
@@ -246,9 +202,6 @@ class RealTimeTrafficMonitor {
     return null;
   }
 
-  /**
-   * Detect significant changes between traffic analyses
-   */
   private detectTrafficChanges(
     oldAnalysis: RouteTrafficAnalysis, 
     newAnalysis: RouteTrafficAnalysis
@@ -262,7 +215,6 @@ class RealTimeTrafficMonitor {
       resolvedIncidents: this.findResolvedIncidents(oldAnalysis, newAnalysis)
     };
 
-    // Check if changes exceed thresholds
     changes.hasSignificantChange = 
       Math.abs(changes.congestionChange) >= this.config.alertThresholds.congestionIncrease ||
       changes.delayChange >= this.config.alertThresholds.delayIncrease ||
@@ -273,9 +225,6 @@ class RealTimeTrafficMonitor {
     return changes;
   }
 
-  /**
-   * Find new incidents that weren't in the previous analysis
-   */
   private findNewIncidents(oldAnalysis: RouteTrafficAnalysis, newAnalysis: RouteTrafficAnalysis): TrafficIncident[] {
     const oldIncidentIds = new Set<string>();
     oldAnalysis.segmentAnalysis.forEach(segment => {
@@ -294,9 +243,6 @@ class RealTimeTrafficMonitor {
     return newIncidents;
   }
 
-  /**
-   * Find incidents that were resolved
-   */
   private findResolvedIncidents(oldAnalysis: RouteTrafficAnalysis, newAnalysis: RouteTrafficAnalysis): TrafficIncident[] {
     const newIncidentIds = new Set<string>();
     newAnalysis.segmentAnalysis.forEach(segment => {
@@ -315,13 +261,9 @@ class RealTimeTrafficMonitor {
     return resolvedIncidents;
   }
 
-  /**
-   * Generate traffic alerts based on detected changes
-   */
   private generateTrafficAlerts(changes: any, monitoring: ActiveMonitoring): TrafficAlert[] {
     const alerts: TrafficAlert[] = [];
 
-    // Congestion increase alert
     if (changes.congestionChange >= this.config.alertThresholds.congestionIncrease) {
       alerts.push({
         id: `congestion_${Date.now()}`,
@@ -335,7 +277,6 @@ class RealTimeTrafficMonitor {
       });
     }
 
-    // Traffic level change alert
     if (changes.trafficLevelChange) {
       alerts.push({
         id: `level_${Date.now()}`,
@@ -349,7 +290,6 @@ class RealTimeTrafficMonitor {
       });
     }
 
-    // New incident alerts
     changes.newIncidents.forEach((incident: any) => {
       alerts.push({
         id: `incident_${incident.id}`,
@@ -363,7 +303,6 @@ class RealTimeTrafficMonitor {
       });
     });
 
-    // Resolved incident alerts (good news!)
     changes.resolvedIncidents.forEach((incident: any) => {
       alerts.push({
         id: `resolved_${incident.id}`,
@@ -372,7 +311,7 @@ class RealTimeTrafficMonitor {
         message: `Traffic incident resolved: ${incident.events[0]?.description || 'Incident cleared'}`,
         affectedSegments: [incident.from, incident.to],
         alternativeAvailable: false,
-        estimatedDelay: -incident.delay, // Negative delay indicates improvement
+        estimatedDelay: -incident.delay, 
         timestamp: new Date()
       });
     });
@@ -380,9 +319,6 @@ class RealTimeTrafficMonitor {
     return alerts;
   }
 
-  /**
-   * Determine the type of update based on changes
-   */
   private determineUpdateType(changes: any): 'traffic' | 'incident' | 'reroute' | 'eta' {
     if (changes.newIncidents.length > 0 || changes.resolvedIncidents.length > 0) {
       return 'incident';
@@ -399,12 +335,9 @@ class RealTimeTrafficMonitor {
     return 'traffic';
   }
 
-  /**
-   * Clean up expired monitoring sessions
-   */
   cleanup(): void {
     const now = Date.now();
-    const maxAge = 2 * 60 * 60 * 1000; // 2 hours
+    const maxAge = 2 * 60 * 60 * 1000; 
     let cleaned = 0;
 
     for (const [routeId, monitoring] of this.activeMonitoring.entries()) {
@@ -420,10 +353,8 @@ class RealTimeTrafficMonitor {
   }
 }
 
-// Export singleton instance
 export const realTimeTrafficMonitor = new RealTimeTrafficMonitor();
 
-// Run cleanup every hour
 setInterval(() => {
   realTimeTrafficMonitor.cleanup();
 }, 60 * 60 * 1000);

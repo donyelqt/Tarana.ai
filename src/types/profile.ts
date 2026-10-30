@@ -1,6 +1,3 @@
-/**
- * Type definitions for user profile
- */
 
 export interface UserProfile {
   id: string;

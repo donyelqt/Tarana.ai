@@ -1,17 +1,9 @@
-// ====================================================================
-// SOM TAM THAI RESTAURANT MENU DATA
-// ====================================================================
-// Som Tam Thai Restaurant in Baguio offers a vibrant, authentic taste of Thailand 
-// with their signature papaya salad, flavorful stir-fries, aromatic curries, 
-// and refreshing beverages, all crafted with fresh, local ingredients.
-// ====================================================================
 
 import { FullMenu } from "../types";
 
 export const somTamThaiRestaurantMenu: FullMenu = {
   Breakfast: [],
   Lunch: [
-    // Noodles
     {
       name: "Pad Thai (Stir-Fried Noodles)",
       description: "Classic Thai rice noodles stir-fried with egg, tofu, bean sprouts, and peanuts.",
@@ -48,7 +40,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 280,
       image: "/images/comingsoon.png",
     },
-    // Fried Rice
     {
       name: "Kao Pad Gai (Chicken Fried Rice)",
       description: "Fragrant Thai-style fried rice with chicken.",
@@ -97,7 +88,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 30,
       image: "/images/comingsoon.png",
     },
-    // Chicken Dishes
     {
       name: "Krapow Gai (Stir-fried Chicken)",
       description: "Minced chicken stir-fried with Thai basil and chili.",
@@ -128,7 +118,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 180,
       image: "/images/comingsoon.png",
     },
-    // Chicken Curries
     {
       name: "Kaeng Kiew Liew Gai (Chicken in Red Curry)",
       description: "Chicken simmered in spicy red curry.",
@@ -147,7 +136,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 200,
       image: "/images/comingsoon.png",
     },
-    // Vegetable Dishes
     {
       name: "Thao Lan Tao (Stir-fried Snow Peas)",
       description: "Crisp snow peas stir-fried with garlic and oyster sauce.",
@@ -172,7 +160,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 200,
       image: "/images/comingsoon.png",
     },
-    // Seafood Dishes
     {
       name: "Pla Som Rod",
       description: "Crispy fried fish topped with sweet and sour chili sauce.",
@@ -185,7 +172,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 300,
       image: "/images/comingsoon.png",
     },
-    // Beef Dishes
     {
       name: "Kaeng Kiew Wan Nua (Beef in Green Curry)",
       description: "Tender beef in aromatic green curry.",
@@ -210,7 +196,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 250,
       image: "/images/comingsoon.png",
     },
-    // Pork Dishes
     {
       name: "Pad Prik Khing Moo Krob (Crispy Pork in Red Curry)",
       description: "Crispy pork stir-fried in red curry paste.",
@@ -235,7 +220,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 200,
       image: "/images/comingsoon.png",
     },
-    // Soups
     {
       name: "Tom Yum Goong (Shrimp)",
       description: "Spicy and sour shrimp soup with lemongrass and herbs.",
@@ -254,7 +238,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 340,
       image: "/images/comingsoon.png",
     },
-    // Salads
     {
       name: "Som Tam (Papaya Salad)",
       description: "Spicy green papaya salad with peanuts.",
@@ -281,7 +264,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
     },
   ],
   Dinner: [
-    // Noodles
     {
       name: "Pad Thai (Stir-Fried Noodles)",
       description: "Classic Thai rice noodles stir-fried with egg, tofu, bean sprouts, and peanuts.",
@@ -318,7 +300,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 280,
       image: "/images/comingsoon.png",
     },
-    // Fried Rice
     {
       name: "Kao Pad Gai (Chicken Fried Rice)",
       description: "Fragrant Thai-style fried rice with chicken.",
@@ -367,7 +348,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 30,
       image: "/images/comingsoon.png",
     },
-    // Chicken Dishes
     {
       name: "Krapow Gai (Stir-fried Chicken)",
       description: "Minced chicken stir-fried with Thai basil and chili.",
@@ -398,7 +378,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 180,
       image: "/images/comingsoon.png",
     },
-    // Chicken Curries
     {
       name: "Kaeng Kiew Liew Gai (Chicken in Red Curry)",
       description: "Chicken simmered in spicy red curry.",
@@ -417,7 +396,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 200,
       image: "/images/comingsoon.png",
     },
-    // Vegetable Dishes
     {
       name: "Thao Lan Tao (Stir-fried Snow Peas)",
       description: "Crisp snow peas stir-fried with garlic and oyster sauce.",
@@ -442,7 +420,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 200,
       image: "/images/comingsoon.png",
     },
-    // Seafood Dishes
     {
       name: "Pla Som Rod",
       description: "Crispy fried fish topped with sweet and sour chili sauce.",
@@ -455,7 +432,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 300,
       image: "/images/comingsoon.png",
     },
-    // Beef Dishes
     {
       name: "Kaeng Kiew Wan Nua (Beef in Green Curry)",
       description: "Tender beef in aromatic green curry.",
@@ -480,7 +456,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 250,
       image: "/images/comingsoon.png",
     },
-    // Pork Dishes
     {
       name: "Pad Prik Khing Moo Krob (Crispy Pork in Red Curry)",
       description: "Crispy pork stir-fried in red curry paste.",
@@ -505,7 +480,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 200,
       image: "/images/comingsoon.png",
     },
-    // Soups
     {
       name: "Tom Yum Goong (Shrimp)",
       description: "Spicy and sour shrimp soup with lemongrass and herbs.",
@@ -524,7 +498,6 @@ export const somTamThaiRestaurantMenu: FullMenu = {
       price: 340,
       image: "/images/comingsoon.png",
     },
-    // Salads
     {
       name: "Som Tam (Papaya Salad)",
       description: "Spicy green papaya salad with peanuts.",

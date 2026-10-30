@@ -2,17 +2,6 @@ import { SavedMeal } from '@/app/saved-meals/data';
 import { allRestaurantMenus } from '@/app/tarana-eats/data/taranaEatsData';
 import { restaurants } from '@/app/tarana-eats/data/taranaEatsData';
 
-/**
- * Saved-meals data access — authenticated server routes only.
- *
- * RLS remediation 2026-09-19: this module previously queried `saved_meals`
- * through the anon-key client (getSupabase()), relying on permissive RLS
- * policies that were removed (prod had USING(true) — any anon client could
- * read/write all users' rows). Authorization now lives server-side exactly
- * like savedItineraries.ts: the API route reads the NextAuth session cookie
- * and queries with the service-role admin client. The client never sends a
- * userId it could forge; the server derives identity from the session.
- */
 
 const TABLE_NAME = 'saved_meals' as const;
 
@@ -32,7 +21,6 @@ export async function getSavedMeals(): Promise<SavedMeal[]> {
   const { data } = await authedFetch<{ data: SavedMeal[] }>('/api/saved-meals', {
     method: 'GET',
   });
-  // Map Supabase fields to SavedMeal interface
   return (data || []).map((meal: any) => ({
     id: meal.id,
     cafeName: meal.cafe_name,
@@ -87,7 +75,6 @@ async function getIndividualSavedMeals(data: any): Promise<SavedMeal[]> {
 function buildMealDetail(data: any, individualSavedMeals: SavedMeal[]) {
   const restaurant = restaurants.find(r => r.name === data.cafe_name);
 
-  // Transform menu_items to match the expected savedMeals structure for combined meals
   const savedMealsData = (data.menu_items || []).map((item: any, index: number) => ({
     id: item.id || `${data.id}_item_${index}`,
     name: item.name || `${data.meal_type} Meal`,
@@ -169,11 +156,6 @@ export async function deleteMeal(mealId: string): Promise<boolean> {
   }
 }
 
-/**
- * Fetch the caller's personal notes (title + notes) for one saved meal.
- * Returns null when no notes row exists — the user simply hasn't written
- * notes yet, which is a valid state, not an error.
- */
 export async function getMealNotes(mealId: string): Promise<{ title: string | null; notes: string | null } | null> {
   try {
     const { data } = await authedFetch<{ data: any; notes: any }>('/api/saved-meals/' + mealId, {
@@ -187,10 +169,6 @@ export async function getMealNotes(mealId: string): Promise<{ title: string | nu
   }
 }
 
-/**
- * Upsert the caller's personal notes for one saved meal. Sends a PATCH to
- * the same [id] endpoint that handles note updates. Returns true on success.
- */
 export async function updateMealNotes(
   mealId: string,
   fields: { title: string | null; notes: string | null }

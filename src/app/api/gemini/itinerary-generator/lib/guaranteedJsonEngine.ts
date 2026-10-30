@@ -1,8 +1,3 @@
-/**
- * Guaranteed JSON Output Engine
- * Enterprise-grade solution that eliminates ALL JSON parsing errors
- * Uses multiple validation layers and automatic error recovery
- */
 
 import { Buffer } from 'buffer';
 import { jsonrepair } from 'jsonrepair';
@@ -71,7 +66,6 @@ function extractResponseText(result: any): string | null {
             return decoded;
           }
         } catch {
-          // ignore decode errors
         }
       }
     }
@@ -84,7 +78,6 @@ function extractResponseText(result: any): string | null {
       return extracted;
     }
   } catch {
-    // ignore
   }
 
   return null;
@@ -109,9 +102,6 @@ function compactSampleItinerary(sample: any) {
   return { items: compactItems };
 }
 
-/**
- * Multi-layer JSON generation with guaranteed success
- */
 export class GuaranteedJsonEngine {
   private static readonly MAX_ATTEMPTS = 1;
   
@@ -125,9 +115,6 @@ export class GuaranteedJsonEngine {
     averageAttempts: 0
   };
 
-  /**
-   * Main entry point - guarantees valid JSON output
-   */
   static async generateGuaranteedJson(
     prompt: string,
     sampleItinerary: any,
@@ -137,8 +124,6 @@ export class GuaranteedJsonEngine {
     requestId: string = 'unknown'
   ): Promise<StructuredItinerary> {
     
-    // Check cache first - simplified approach
-    // Note: This is a complex caching scenario that would require more sophisticated implementation
     
     logger.info(`🛡️ GUARANTEED ENGINE: Starting generation for request ${requestId}`, { entryPoint: 'guaranteedJsonEngine', requestId });
     const startTime = Date.now();
@@ -147,10 +132,8 @@ export class GuaranteedJsonEngine {
     const compactSample = compactSampleItinerary(sampleItinerary);
     
     try {
-      // WEEK 1 OPTIMIZATION: Race both strategies in parallel - use first success!
       logger.info(`🏁 GUARANTEED ENGINE: Racing strategies in parallel for ${requestId}`, { entryPoint: 'guaranteedJsonEngine', requestId });
       
-      // CRITICAL FIX: Race for first success, don't wait for all
       const raceForFirstSuccess = new Promise<{ result: StructuredItinerary | null; strategyIndex: number }>((resolve) => {
         const strategies: Array<{
           name: string;
@@ -256,7 +239,6 @@ export class GuaranteedJsonEngine {
         return result;
       }
       
-      // All strategies failed - use guaranteed fallback
       logger.info(`🆘 GUARANTEED ENGINE: All strategies failed, using fallback`, { entryPoint: 'guaranteedJsonEngine' });
       this.metrics.fallbackUsed++;
       return this.createIntelligentFallback(sampleItinerary, requestId, prompt);
@@ -268,9 +250,6 @@ export class GuaranteedJsonEngine {
     }
   }
 
-  /**
-   * Strategy 1: Structured Output with Function Calling
-   */
   private static async attemptStructuredOutput(
     prompt: string,
     sampleItinerary: any,
@@ -301,12 +280,8 @@ export class GuaranteedJsonEngine {
         controls?.signal
       );
       
-      // Validate the result
       const validation = ItinerarySchema.safeParse(result);
       if (validation.success) {
-        // Poison filter: StructuredOutputEngine's internal error-fallback returns a
-        // schema-valid itinerary with ZERO activities. Accepting it lets the empty
-        // shell win the race and discard perfectly good retrieved candidates.
         const totalActivities = validation.data.items.reduce(
           (sum, s) => sum + (Array.isArray(s.activities) ? s.activities.length : 0),
           0
@@ -332,9 +307,6 @@ export class GuaranteedJsonEngine {
     }
   }
 
-  /**
-   * Strategy 2: Enhanced Prompt Engineering with Multiple Attempts
-   */
   private static async attemptPromptEngineering(
     prompt: string,
     sampleItinerary: any,
@@ -363,7 +335,6 @@ export class GuaranteedJsonEngine {
 
         logger.info(`🔧 GUARANTEED ENGINE: Prompt engineering attempt ${attempt}/${this.MAX_ATTEMPTS}`, { entryPoint: 'guaranteedJsonEngine', attempt, maxAttempts: this.MAX_ATTEMPTS });
         
-        // Build progressive prompt (gets simpler with each attempt)
         const enhancedPrompt = EnhancedPromptEngine.buildProgressivePrompt(
           EnhancedPromptEngine.buildBulletproofPrompt(
             prompt, sampleItinerary, weatherContext, trafficContext, additionalContext
@@ -372,7 +343,6 @@ export class GuaranteedJsonEngine {
           this.MAX_ATTEMPTS
         );
 
-        // Generate with strict JSON mode
         const result = await this.generateWithStrictJson(enhancedPrompt, attempt, controls);
         
         if (controls?.shouldAbort?.()) {
@@ -465,9 +435,6 @@ export class GuaranteedJsonEngine {
     try {
       const requestOptions = controls?.signal ? { signal: controls.signal } : undefined;
 
-      // Timer handle captured so the race's timeout is cleared on success —
-      // a pending setTimeout kept the serverless invocation alive past the
-      // budget (§2.2).
       let timeoutId: NodeJS.Timeout | undefined;
       const result = await Promise.race([
         geminiModel!.generateContent({
@@ -508,9 +475,6 @@ export class GuaranteedJsonEngine {
     }
   }
 
-  /**
-   * Parse and validate JSON with multiple recovery strategies
-   */
   private static parseAndValidateJson(
     text: string,
     attempt: number
@@ -526,7 +490,6 @@ export class GuaranteedJsonEngine {
       return null;
     };
 
-    // Strategy 1: Direct parsing
     try {
       const parsed = JSON.parse(text);
       const direct = validatePayload(parsed, 'Direct JSON parsing');
@@ -537,7 +500,6 @@ export class GuaranteedJsonEngine {
       logger.info(`🔄 GUARANTEED ENGINE: Direct parsing failed, trying recovery...`, { entryPoint: 'guaranteedJsonEngine' });
     }
 
-    // Strategy 2: Syntax validation and fixing
     const syntaxCheck = JsonSyntaxValidator.validateSyntax(text);
     if (syntaxCheck.cleanedJson) {
       try {
@@ -551,7 +513,6 @@ export class GuaranteedJsonEngine {
       }
     }
 
-    // Strategy 3: Aggressive fixing
     const fixed = JsonSyntaxValidator.attemptFix(text);
     try {
       const parsed = JSON.parse(fixed);
@@ -563,7 +524,6 @@ export class GuaranteedJsonEngine {
       logger.info(`❌ GUARANTEED ENGINE: All JSON recovery strategies failed`, { entryPoint: 'guaranteedJsonEngine' });
     }
 
-    // Strategy 4: jsonrepair rescue
     try {
       const repaired = jsonrepair(text);
       const reparsed = typeof repaired === 'string' ? JSON.parse(repaired) : repaired;
@@ -606,9 +566,6 @@ export class GuaranteedJsonEngine {
     return value;
   }
 
-  /**
-   * Create intelligent fallback based on available data
-   */
   private static createIntelligentFallback(
     sampleItinerary: any,
     requestId: string,
@@ -617,10 +574,8 @@ export class GuaranteedJsonEngine {
     
     logger.info(`🆘 GUARANTEED ENGINE: Creating intelligent fallback for ${requestId}`, { entryPoint: 'guaranteedJsonEngine', requestId });
 
-    // Try to extract activities from sample itinerary
     const activities = this.extractActivitiesFromSample(sampleItinerary);
 
-    // Derive city label from the detailed prompt (client prompt includes "for <City>, ...")
     const CITY_LABELS: Array<[RegExp, string]> = [
       [/for Cebu/i, "Cebu City"],
       [/for Manila/i, "Manila"],
@@ -633,10 +588,8 @@ export class GuaranteedJsonEngine {
     const cityLabel = CITY_LABELS.find(([re]) => re.test(prompt))?.[1] ?? "Baguio City";
 
     if (activities.length > 0) {
-      // Create a proper itinerary structure with all time periods
       const itineraryItems = [];
       
-      // Add morning period
       itineraryItems.push({
         period: "Day 1 - Morning",
         activities: activities.slice(0, 2),
@@ -645,7 +598,6 @@ export class GuaranteedJsonEngine {
           undefined
       });
       
-      // Add afternoon period
       itineraryItems.push({
         period: "Day 1 - Afternoon",
         activities: activities.slice(2, 4),
@@ -654,7 +606,6 @@ export class GuaranteedJsonEngine {
           undefined
       });
       
-      // Add evening period
       itineraryItems.push({
         period: "Day 1 - Evening",
         activities: activities.slice(4, 6),
@@ -670,7 +621,6 @@ export class GuaranteedJsonEngine {
       };
     }
 
-    // Ultimate fallback with reason fields for empty periods
     return {
       title: `${cityLabel} Itinerary`,
       subtitle: "Unable to generate custom itinerary - please try again",
@@ -690,9 +640,6 @@ export class GuaranteedJsonEngine {
     };
   }
 
-  /**
-   * Extract valid activities from sample itinerary
-   */
   private static extractActivitiesFromSample(sampleItinerary: any): any[] {
     if (!sampleItinerary?.items) return [];
     
@@ -714,12 +661,9 @@ export class GuaranteedJsonEngine {
       }
     }
     
-    return activities.slice(0, 6); // Limit to 6 activities
+    return activities.slice(0, 6); 
   }
 
-  /**
-   * Validate activity structure
-   */
   private static isValidActivity(activity: any): boolean {
     return activity &&
            typeof activity.title === 'string' &&
@@ -728,17 +672,11 @@ export class GuaranteedJsonEngine {
            typeof activity.desc === 'string';
   }
 
-  /**
-   * Update performance metrics
-   */
   private static updateAverageAttempts(attempts: number): void {
     const total = this.metrics.averageAttempts * (this.metrics.totalRequests - 1) + attempts;
     this.metrics.averageAttempts = total / this.metrics.totalRequests;
   }
 
-  /**
-   * Get performance metrics
-   */
   static getMetrics() {
     const total = this.metrics.totalRequests;
     return {
@@ -750,9 +688,6 @@ export class GuaranteedJsonEngine {
     };
   }
 
-  /**
-   * Health check for the guaranteed engine
-   */
   static async healthCheck(): Promise<{ status: string; details: any }> {
     try {
       const testPrompt = "Generate a simple Baguio itinerary with one morning activity.";
@@ -782,9 +717,6 @@ export class GuaranteedJsonEngine {
     }
   }
 
-  /**
-   * Reset metrics (for testing)
-   */
   static resetMetrics(): void {
     this.metrics = {
       totalRequests: 0,

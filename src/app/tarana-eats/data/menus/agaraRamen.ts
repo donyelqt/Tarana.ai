@@ -1,9 +1,3 @@
-// ====================================================================
-// AGARA RAMEN MENU DATA
-// ====================================================================
-// Agara Ramen offers a variety of rich, flavorful ramen bowls crafted with 
-// authentic broths like shoyu, miso, and tonkotsu, complemented by fresh toppings.
-// ====================================================================
 
 import { FullMenu } from "../types";
 

@@ -1,4 +1,3 @@
-// Utility functions for managing saved itineraries
 import type { StaticImageData } from "next/image";
 import type { WeatherData } from "../core/utils";
 import type { RefreshMetadata, TrafficSnapshot } from "../services/itineraryRefreshService";
@@ -18,7 +17,6 @@ export interface ItineraryActivity {
   time: string;
   desc: string;
   tags: string[];
-  // ✅ CRITICAL: Traffic metadata fields for smart refresh
   trafficAnalysis?: {
     realTimeTraffic?: {
       trafficLevel?: string;
@@ -49,8 +47,6 @@ export interface ItineraryData {
 export interface SavedItinerary {
   id: string;
   title: string;
-  // The columns are nullable text, and the editor can clear either; a null
-  // means "not set", which the list page renders as an absent line.
   date: string | null;
   budget: string | null;
   image: string | StaticImageData;
@@ -63,17 +59,13 @@ export interface SavedItinerary {
     selectedInterests: string[];
   };
   itineraryData: ItineraryData;
-  weatherData?: WeatherData; // Added optional weatherData property
+  weatherData?: WeatherData; 
   createdAt: string;
-  // Enhanced refresh metadata
   refreshMetadata?: RefreshMetadata;
   trafficSnapshot?: TrafficSnapshot;
   activityCoordinates?: Array<{ lat: number; lon: number; name: string }>;
 }
 
-// Browser callers MUST go through /api/saved-itineraries: the app mints no
-// Supabase JWT (NextAuth custom `users` table, so auth.uid() is always NULL)
-// and the route authorizes via the session cookie with the admin client.
 async function requestItinerariesApi<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -107,8 +99,6 @@ function readApiErrorDetail(body: unknown, status: number): string {
 async function getCurrentUserId(): Promise<string | null> {
   try {
     if (typeof window === 'undefined') {
-      // Exception: the auth entry point is genuinely runtime-selected —
-      // server uses next-auth + authOptions, browser uses next-auth/react.
       const { getServerSession } = await import('next-auth');
       const { authOptions } = await import('../auth/auth');
 
@@ -126,14 +116,11 @@ async function getCurrentUserId(): Promise<string | null> {
 }
 
 async function getServerAdminClient(): Promise<SupabaseClient> {
-  // Exception: supabaseAdmin throws on client-side import by design, so it
-  // can only be loaded inside the server branch at runtime.
   const { supabaseAdmin } = await import('./supabaseAdmin');
   return supabaseAdmin;
 }
 
 function toSavedItinerary(row: Record<string, unknown>): SavedItinerary {
-  // Boundary cast: columns are controlled by our own table + API mapper.
   return mapApiRow(row) as SavedItinerary;
 }
 
@@ -225,7 +212,7 @@ export const deleteItinerary = async (id: string): Promise<void> => {
         .from('itineraries')
         .delete()
         .eq('id', id)
-        .eq('user_id', userId); // Ensure user can only delete their own itineraries
+        .eq('user_id', userId); 
       if (error) {
         await logServerError('Error deleting itinerary from Supabase', error);
         throw new Error('Failed to delete itinerary');
@@ -245,14 +232,6 @@ export const deleteItinerary = async (id: string): Promise<void> => {
   }
 };
 
-// Single builder for partial updates; the [id] API takes these camelCase
-// keys while the direct server path translates them to snake_case below.
-//
-// `title`, `date` and `budget` pass through on explicit null/empty so a
-// user clearing a field in the editor persists, instead of being dropped as
-// falsy. The remaining fields keep their truthiness guards: dropping a
-// cleared `image` or an empty `formData` is the existing behavior, and
-// changing it would alter writes the editor never makes.
 function buildUpdatePayload(
   updatedData: Partial<Omit<SavedItinerary, 'id' | 'createdAt' | 'userId'>>
 ): Record<string, unknown> {
@@ -267,11 +246,9 @@ function buildUpdatePayload(
   if (updatedData.formData) payload.formData = updatedData.formData;
   if (updatedData.itineraryData) payload.itineraryData = updatedData.itineraryData;
   if (updatedData.weatherData) payload.weatherData = updatedData.weatherData;
-  // Explicit undefined checks: null/empty values must reach the database.
   if (updatedData.refreshMetadata !== undefined) payload.refreshMetadata = updatedData.refreshMetadata;
   if (updatedData.trafficSnapshot !== undefined) payload.trafficSnapshot = updatedData.trafficSnapshot;
   if (updatedData.activityCoordinates !== undefined) payload.activityCoordinates = updatedData.activityCoordinates;
-  // Do not allow updating user_id or created_at directly
   return payload;
 }
 
@@ -302,7 +279,6 @@ export const updateItinerary = async (id: string, updatedData: Partial<Omit<Save
     }
     const admin = await getServerAdminClient();
     if (Object.keys(payload).length === 0) {
-      // Optionally, fetch and return the existing itinerary
       const { data, error } = await admin
         .from('itineraries')
         .select('*')
@@ -316,7 +292,7 @@ export const updateItinerary = async (id: string, updatedData: Partial<Omit<Save
       .from('itineraries')
       .update(toDbUpdatePayload(payload))
       .eq('id', id)
-      .eq('user_id', userId) // Ensure user can only update their own itineraries
+      .eq('user_id', userId) 
       .select()
       .single();
     if (error || !data) return null;
@@ -337,7 +313,6 @@ export const updateItinerary = async (id: string, updatedData: Partial<Omit<Save
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    // Preserve the null-on-missing contract the refresh flow relies on.
     if (message.toLowerCase().includes('not found')) return null;
     throw new Error('Failed to update itinerary');
   }

@@ -1,35 +1,3 @@
-/**
- * SavedCafes row delete — the observable contract of a row either surviving
- * a tap or not.
- *
- * The rules live in `../savedRowDelete` and both saved lists consume the
- * same module (SavedTrips already did; SavedCafes is the second consumer, so
- * the delete control there is new). A screen's own delete wiring cannot be
- * rendered here — this repo's mobile suite is pure logic, no renderer — and
- * that is exactly where the dangerous mistakes hide: a wrong `tapDeletes`
- * result deletes a row on the FIRST tap, which is the one failure a user
- * cannot undo.
- *
- * What is pinned here, and why each is a contract rather than a detail:
- * 1. `mealRow` projects `cafe_name` as the row's name, because the screen
- *    reader announces that string — an id there would read as gibberish.
- * 2. The label changes from "Delete X" to "Confirm delete X" when armed, so
- *    the second tap is announced as a confirmation and not a blind repeat.
- * 3. The first tap never deletes; only the second tap on the same row does.
- *    A single accidental tap destroying a saved meal is worse than a delete
- *    needing two taps.
- * 4. A different row cannot be deleted while another is armed: the model
- *    arms exactly one row, so the delete follows intent, not proximity.
- * 5. While a delete is in flight, another tap cannot enqueue a second one —
- *    a double-tap on the confirm control must not produce two DELETEs.
- * 6. Both outcomes dispose of the model, so no stale armed id survives into
- *    the next row's tap and deletes a row the user never touched.
- * 7. The armed row carries a written caption, not just a color: an armed row
- *    turning red-on-red is the one state change a color-blind user may not
- *    perceive.
- * 8. The seam's message survives but a throw with no message falls back, so
- *    the user always sees a reason rather than an empty error line.
- */
 import { describe, expect, it } from '@jest/globals';
 import {
   afterDelete,

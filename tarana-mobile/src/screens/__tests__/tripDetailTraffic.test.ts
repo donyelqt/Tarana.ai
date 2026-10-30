@@ -1,33 +1,3 @@
-/**
- * Per-stop traffic resolution — the observable contract of which source
- * wins, per saved row.
- *
- * A stop's traffic is stored in one of two shapes depending on where it was
- * saved: a structured `trafficLevel` (mobile enrichment, five levels) or a
- * tag string 'low-traffic' / 'moderate-traffic' (every web-saved row —
- * `src/app/saved-trips/[id]/page.tsx:602-603` reads traffic off
- * `activity.tags` only). The mobile detail screen used to read
- * `trafficLevel` alone, so a stop saved on the web had known traffic that
- * rendered as nothing at all: the single most decision-relevant per-stop
- * fact vanished for every web-saved stop.
- *
- * This module is pure, so these tests need no navigation stack, no SQLite,
- * and no React Native render — the same seam `../savedMeals` takes.
- *
- * What is pinned here, and why each is a contract rather than a detail:
- * 1. `trafficLevel` wins when present. It carries all five levels; the two
- *    tags can express only two, so preferring the field is what keeps a
- *    saved `SEVERE` rendering `SEVERE` rather than collapsing to a tag.
- * 2. A web-saved row (tag only) renders its badge. The bug itself: the tag
- *    is the only traffic those rows have.
- * 3. A row with neither source renders no badge. No traffic is a claim of
- *    ignorance, not a blank level to default into.
- * 4. A row carrying both agrees with itself. "LOW" plus 'low-traffic' must
- *    not become two different answers depending on which field is read
- *    first.
- * 5. Tag casing is not guessed at — the exact web spellings are the only
- *    ones that count, and a near-miss tag is not a traffic tag.
- */
 import { describe, expect, it } from '@jest/globals';
 import { activityTrafficLevel, isTrafficTag } from '../tripTraffic';
 
@@ -53,7 +23,6 @@ describe('activityTrafficLevel — the structured field is preferred', () => {
   });
 
   it('prefers the field even when a tag disagrees with it', () => {
-    // The field carries five levels; the tag can only say LOW/MODERATE.
     expect(activityTrafficLevel('SEVERE', ['moderate-traffic'])).toBe('SEVERE');
   });
 });
@@ -81,9 +50,6 @@ describe('activityTrafficLevel — the tag fallback (the web parity gap)', () =>
 });
 
 describe('ActivitySheet — the badge site resolves from both sources', () => {
-  // ActivitySheet passes both the level and the tags, the same seam
-  // TripDetail uses; the sheet is reachable from every activity card, so it
-  // must resolve a web-saved row's tag, not silently drop it.
   it('renders the same badge when the field and its tag agree', () => {
     expect(activityTrafficLevel('LOW', ['low-traffic'])).toBe('LOW');
   });

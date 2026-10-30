@@ -1,10 +1,3 @@
-/**
- * Advanced Search Index and Data Structures
- * Provides optimized indexing, caching, and data access patterns for intelligent search
- * 
- * @author Doniele Arys Antonio
- * @version 2.0.0
- */
 
 import type { Activity } from "@/app/itinerary-generator/data/itineraryData";
 import { generateEmbedding } from '../ai/embeddings';
@@ -19,12 +12,12 @@ export interface IndexedActivity extends Activity {
 }
 
 export interface SearchIndex {
-  tokenIndex: Map<string, Set<string>>; // token -> activity IDs
-  categoryIndex: Map<string, Set<string>>; // category -> activity IDs
-  timeSlotIndex: Map<string, Set<string>>; // timeSlot -> activity IDs
-  tagIndex: Map<string, Set<string>>; // tag -> activity IDs
-  embeddings: Map<string, number[]>; // activity ID -> embedding vector
-  activities: Map<string, IndexedActivity>; // activity ID -> full activity data
+  tokenIndex: Map<string, Set<string>>; 
+  categoryIndex: Map<string, Set<string>>; 
+  timeSlotIndex: Map<string, Set<string>>; 
+  tagIndex: Map<string, Set<string>>; 
+  embeddings: Map<string, number[]>; 
+  activities: Map<string, IndexedActivity>; 
   metadata: {
     totalActivities: number;
     lastIndexed: number;
@@ -32,9 +25,6 @@ export interface SearchIndex {
   };
 }
 
-/**
- * Advanced text tokenization and preprocessing
- */
 export class TextProcessor {
   private static readonly STOP_WORDS = new Set([
     'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
@@ -90,12 +80,10 @@ export class TextProcessor {
     const tokenCounts = new Map<string, number>();
     const tfidf = new Map<string, number>();
     
-    // Calculate term frequency
     for (const token of tokens) {
       tokenCounts.set(token, (tokenCounts.get(token) || 0) + 1);
     }
     
-    // Calculate TF-IDF
     for (const [token, count] of tokenCounts.entries()) {
       const tf = count / tokens.length;
       const df = documentFrequencies.get(token) || 1;
@@ -107,13 +95,10 @@ export class TextProcessor {
   }
 }
 
-/**
- * High-performance search index with advanced data structures
- */
 export class SearchIndexManager {
   private index: SearchIndex;
   private documentFrequencies: Map<string, number> = new Map();
-  private readonly CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+  private readonly CACHE_DURATION = 30 * 60 * 1000; 
   private readonly INDEX_VERSION = '2.0.0';
 
   constructor() {
@@ -136,18 +121,13 @@ export class SearchIndexManager {
     };
   }
 
-  /**
-   * Build comprehensive search index from activities
-   */
   async buildIndex(activities: Activity[]): Promise<void> {
     console.log('Building intelligent search index...');
     const startTime = Date.now();
     
-    // Reset index
     this.index = this.createEmptyIndex();
     this.documentFrequencies.clear();
     
-    // First pass: collect document frequencies
     const allTokens = new Set<string>();
     for (const activity of activities) {
       const text = `${activity.title} ${activity.desc} ${(activity.tags || []).join(' ')}`;
@@ -157,7 +137,6 @@ export class SearchIndexManager {
       expandedTokens.forEach(token => allTokens.add(token));
     }
     
-    // Calculate document frequencies
     for (const token of allTokens) {
       let count = 0;
       for (const activity of activities) {
@@ -169,7 +148,6 @@ export class SearchIndexManager {
       this.documentFrequencies.set(token, count);
     }
     
-    // Second pass: build index
     for (let i = 0; i < activities.length; i++) {
       const activity = activities[i];
       await this.indexActivity(activity, i.toString());
@@ -191,17 +169,13 @@ export class SearchIndexManager {
     const ngrams = TextProcessor.generateNGrams(tokens, 2);
     const allTokens = [...expandedTokens, ...ngrams];
     
-    // Calculate category scores using TF-IDF
     const tfidf = TextProcessor.calculateTFIDF(tokens, this.documentFrequencies, this.index.metadata.totalActivities || 1);
     const categoryScores = this.calculateCategoryScores(activity, tfidf);
     
-    // Determine time slot
     const timeSlot = this.determineTimeSlot(activity.time);
     
-    // Calculate popularity score
     const popularityScore = this.calculatePopularityScore(activity);
     
-    // Create indexed activity
     const indexedActivity: IndexedActivity = {
       ...activity,
       id,
@@ -212,10 +186,8 @@ export class SearchIndexManager {
       lastUpdated: Date.now()
     };
     
-    // Store in main activities map
     this.index.activities.set(id, indexedActivity);
     
-    // Build token index
     for (const token of allTokens) {
       if (!this.index.tokenIndex.has(token)) {
         this.index.tokenIndex.set(token, new Set());
@@ -223,9 +195,8 @@ export class SearchIndexManager {
       this.index.tokenIndex.get(token)!.add(id);
     }
     
-    // Build category index
     for (const [category, score] of Object.entries(categoryScores)) {
-      if (score > 0.1) { // Only index significant category matches
+      if (score > 0.1) { 
         if (!this.index.categoryIndex.has(category)) {
           this.index.categoryIndex.set(category, new Set());
         }
@@ -233,13 +204,11 @@ export class SearchIndexManager {
       }
     }
     
-    // Build time slot index
     if (!this.index.timeSlotIndex.has(timeSlot)) {
       this.index.timeSlotIndex.set(timeSlot, new Set());
     }
     this.index.timeSlotIndex.get(timeSlot)!.add(id);
     
-    // Build tag index
     for (const tag of activity.tags || []) {
       const normalizedTag = tag.toLowerCase();
       if (!this.index.tagIndex.has(normalizedTag)) {
@@ -248,7 +217,6 @@ export class SearchIndexManager {
       this.index.tagIndex.get(normalizedTag)!.add(id);
     }
     
-    // Generate and store embedding (async, non-blocking)
     try {
       const embedding = await generateEmbedding(text);
       this.index.embeddings.set(id, embedding);
@@ -275,11 +243,10 @@ export class SearchIndexManager {
       
       for (const keyword of keywords) {
         if (text.includes(keyword)) {
-          score += 0.5; // Fixed score instead of relying on TF-IDF which might be 0
+          score += 0.5; 
         }
       }
       
-      // Ensure minimum score for any matches
       if (score > 0) {
         scores[category] = Math.min(score / keywords.length + 0.1, 1.0);
       } else {
@@ -295,43 +262,34 @@ export class SearchIndexManager {
     
     if (time.includes('24 hours') || time.includes('anytime')) return 'anytime';
     
-    // Check for specific time patterns
     if (time.includes('6:00 am') || time.includes('morning') || time.match(/[6-9]:\d{2}\s*am/)) return 'morning';
     if (time.includes('9:00 pm') || time.includes('night') || time.match(/(?:9|1[0-2]):\d{2}\s*pm/) || time.includes('2:00 am')) return 'evening';
     if (time.includes('pm') || time.includes('afternoon')) return 'afternoon';
     if (time.includes('am')) return 'morning';
     
-    // Default based on common activity patterns
     return 'anytime';
   }
 
   private calculatePopularityScore(activity: Activity): number {
-    let score = 0.5; // Base score
+    let score = 0.5; 
     
-    // Boost for free activities
     if (activity.desc.toLowerCase().includes('free')) score += 0.2;
     
-    // Boost for highly rated or famous places
     const famousKeywords = ['famous', 'popular', 'must-see', 'iconic', 'landmark'];
     const desc = activity.desc.toLowerCase();
     const matchCount = famousKeywords.filter(keyword => desc.includes(keyword)).length;
     score += matchCount * 0.1;
     
-    // Boost for central locations
     if (desc.includes('center') || desc.includes('central')) score += 0.1;
     
     return Math.min(score, 1.0);
   }
 
-  /**
-   * Fast token-based search with ranking
-   */
   searchByTokens(query: string, limit: number = 50): IndexedActivity[] {
     const tokens = TextProcessor.tokenize(query);
     const expandedTokens = TextProcessor.expandTokens(tokens);
     const activityScores = new Map<string, number>();
     
-    // Score activities based on token matches
     for (const token of expandedTokens) {
       const activityIds = this.index.tokenIndex.get(token);
       if (activityIds) {
@@ -342,28 +300,22 @@ export class SearchIndexManager {
       }
     }
     
-    // Convert to activities with scores
     const results: Array<{ activity: IndexedActivity; score: number }> = [];
     
     for (const [activityId, score] of activityScores.entries()) {
       const activity = this.index.activities.get(activityId);
       if (activity) {
-        // Normalize score and add popularity boost
         const normalizedScore = (score / expandedTokens.length) + (activity.popularityScore * 0.2);
         results.push({ activity, score: normalizedScore });
       }
     }
     
-    // Sort by score and return top results
     return results
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
       .map(result => result.activity);
   }
 
-  /**
-   * Category-based filtering
-   */
   filterByCategory(category: string): IndexedActivity[] {
     const activityIds = this.index.categoryIndex.get(category.toLowerCase());
     if (!activityIds) return [];
@@ -374,9 +326,6 @@ export class SearchIndexManager {
       .sort((a, b) => (b.categoryScores[category] || 0) - (a.categoryScores[category] || 0));
   }
 
-  /**
-   * Time slot filtering
-   */
   filterByTimeSlot(timeSlot: string): IndexedActivity[] {
     const activityIds = this.index.timeSlotIndex.get(timeSlot);
     if (!activityIds) return [];
@@ -387,9 +336,6 @@ export class SearchIndexManager {
       .sort((a, b) => b.popularityScore - a.popularityScore);
   }
 
-  /**
-   * Tag-based filtering
-   */
   filterByTags(tags: string[]): IndexedActivity[] {
     const normalizedTags = tags.map(tag => tag.toLowerCase());
     const activityIds = new Set<string>();
@@ -407,30 +353,18 @@ export class SearchIndexManager {
       .sort((a, b) => b.popularityScore - a.popularityScore);
   }
 
-  /**
-   * Get embedding for similarity search
-   */
   getEmbedding(activityId: string): number[] | null {
     return this.index.embeddings.get(activityId) || null;
   }
 
-  /**
-   * Get all activities
-   */
   getAllActivities(): IndexedActivity[] {
     return Array.from(this.index.activities.values());
   }
 
-  /**
-   * Get activity by ID
-   */
   getActivity(id: string): IndexedActivity | null {
     return this.index.activities.get(id) || null;
   }
 
-  /**
-   * Get index statistics
-   */
   getIndexStats(): {
     totalActivities: number;
     totalTokens: number;
@@ -451,14 +385,10 @@ export class SearchIndexManager {
     };
   }
 
-  /**
-   * Check if index needs rebuilding
-   */
   needsRebuilding(): boolean {
     const age = Date.now() - this.index.metadata.lastIndexed;
     return age > this.CACHE_DURATION || this.index.metadata.version !== this.INDEX_VERSION;
   }
 }
 
-// Export singleton instance
 export const searchIndexManager = new SearchIndexManager();

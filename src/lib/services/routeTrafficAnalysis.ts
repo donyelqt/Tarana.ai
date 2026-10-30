@@ -1,7 +1,3 @@
-/**
- * Route Traffic Analysis Service
- * Enhanced traffic analysis specifically for route optimization
- */
 
 import {
   RouteData,
@@ -58,16 +54,12 @@ interface RouteTrafficCache {
 
 class RouteTrafficAnalyzer {
   private cache: Map<string, RouteTrafficCache> = new Map();
-  private readonly CACHE_DURATION = 3 * 60 * 1000; // 3 minutes for route traffic
-  private readonly SEGMENT_ANALYSIS_POINTS = 5; // Number of points to analyze per route segment
+  private readonly CACHE_DURATION = 3 * 60 * 1000; 
+  private readonly SEGMENT_ANALYSIS_POINTS = 5; 
 
-  /**
-   * Analyze traffic conditions for a complete route
-   */
   async analyzeRouteTraffic(route: TrafficRouteSnapshot): Promise<RouteTrafficAnalysis> {
     logger.info('Route traffic analysis started', { entryPoint: LOG_ENTRY_POINT, routeIdLength: route.id.length });
 
-    // Check cache first
     const cached = this.cache.get(route.id);
     if (cached && Date.now() < cached.expiry) {
       logger.info('Using cached route traffic analysis', { entryPoint: LOG_ENTRY_POINT, routeIdLength: route.id.length });
@@ -75,19 +67,14 @@ class RouteTrafficAnalyzer {
     }
 
     try {
-      // Analyze route segments
       const segmentAnalyses = await this.analyzeRouteSegments(route);
       
-      // Calculate overall traffic metrics
       const overallAnalysis = this.calculateOverallTrafficMetrics(segmentAnalyses);
       
-      // Get peak hour analysis
       const peakHourImpact = this.analyzePeakHourImpact(route, overallAnalysis);
       
-      // Generate historical comparison
       const historicalComparison = this.generateHistoricalComparison(route, overallAnalysis);
       
-      // Calculate recommendation score
       const recommendationScore = this.calculateRouteRecommendationScore(
         overallAnalysis,
         segmentAnalyses,
@@ -106,7 +93,6 @@ class RouteTrafficAnalyzer {
         lastUpdated: new Date()
       };
 
-      // Cache the result
       this.cache.set(route.id, {
         routeId: route.id,
         analysis,
@@ -131,14 +117,10 @@ class RouteTrafficAnalyzer {
         ...getErrorLogMetadata(error)
       });
       
-      // Return fallback analysis
       return this.createFallbackAnalysis(route);
     }
   }
 
-  /**
-   * Compare multiple routes for traffic efficiency
-   */
   async compareRouteTraffic(routes: RouteData[]): Promise<RouteComparison> {
     logger.info('Comparing route traffic', { entryPoint: LOG_ENTRY_POINT, routeCount: routes.length });
 
@@ -147,12 +129,10 @@ class RouteTrafficAnalyzer {
     }
 
     try {
-      // Analyze traffic for all routes
       const trafficAnalyses = await Promise.all(
         routes.map(route => this.analyzeRouteTraffic(route))
       );
 
-      // Calculate comparison metrics
       const bestRoute = this.findBestRoute(routes, trafficAnalyses);
       const recommendation = this.generateRouteRecommendation(routes, trafficAnalyses, bestRoute);
 
@@ -184,9 +164,6 @@ class RouteTrafficAnalyzer {
     }
   }
 
-  /**
-   * Predict traffic conditions for future departure times
-   */
   async predictTrafficConditions(route: RouteData, departureTime: Date): Promise<RouteTrafficAnalysis> {
     logger.info('Predicting route traffic conditions', {
       entryPoint: LOG_ENTRY_POINT,
@@ -195,14 +172,11 @@ class RouteTrafficAnalyzer {
     });
 
     try {
-      // Get current traffic analysis as baseline
       const currentAnalysis = await this.analyzeRouteTraffic(route);
       
-      // Calculate time-based traffic adjustments
       const timeBasedMultiplier = this.calculateTimeBasedTrafficMultiplier(departureTime);
       const peakHourMultiplier = getPeakHourMultiplier(departureTime);
       
-      // Apply predictions to current data
       const predictedAnalysis: RouteTrafficAnalysis = {
         ...currentAnalysis,
         congestionScore: Math.min(100, currentAnalysis.congestionScore * timeBasedMultiplier * peakHourMultiplier),
@@ -218,7 +192,6 @@ class RouteTrafficAnalyzer {
         lastUpdated: new Date()
       };
 
-      // Recalculate recommendation score
       predictedAnalysis.recommendationScore = this.calculateRouteRecommendationScore(
         { 
           trafficLevel: predictedAnalysis.overallTrafficLevel,
@@ -248,17 +221,10 @@ class RouteTrafficAnalyzer {
     }
   }
 
-  // ============================================================================
-  // PRIVATE HELPER METHODS
-  // ============================================================================
 
-  /**
-   * Analyze traffic for individual route segments
-   */
   private async analyzeRouteSegments(route: TrafficRouteSnapshot): Promise<RouteSegmentTraffic[]> {
     const segments: RouteSegmentTraffic[] = [];
     
-    // Divide route into segments for analysis
     const segmentPoints = this.divideRouteIntoSegments(route.geometry.coordinates);
     
     for (let i = 0; i < segmentPoints.length - 1; i++) {
@@ -266,7 +232,6 @@ class RouteTrafficAnalyzer {
         const startPoint = segmentPoints[i];
         const endPoint = segmentPoints[i + 1];
         
-        // Analyze traffic at midpoint of segment
         const midPoint = this.calculateMidpoint(startPoint, endPoint);
         const trafficData = await tomtomTrafficService.getLocationTrafficData(midPoint.lat, midPoint.lng);
         
@@ -292,7 +257,6 @@ class RouteTrafficAnalyzer {
           ...getErrorLogMetadata(error)
         });
         
-        // Add fallback segment
         segments.push(this.createFallbackSegment(i, segmentPoints[i], segmentPoints[i + 1]));
       }
     }
@@ -300,9 +264,6 @@ class RouteTrafficAnalyzer {
     return segments;
   }
 
-  /**
-   * Calculate overall traffic metrics from segment analyses
-   */
   private calculateOverallTrafficMetrics(segments: RouteSegmentTraffic[]) {
     let totalDelay = 0;
     let totalCongestionScore = 0;
@@ -311,12 +272,10 @@ class RouteTrafficAnalyzer {
     segments.forEach(segment => {
       totalDelay += segment.delaySeconds;
       
-      // Calculate segment congestion score
       const speedRatio = segment.speedKmh / Math.max(segment.freeFlowSpeedKmh, 1);
       const segmentCongestion = Math.max(0, (1 - speedRatio) * 100);
       totalCongestionScore += segmentCongestion;
       
-      // Track highest traffic level
       if (this.getTrafficLevelValue(segment.trafficLevel) > this.getTrafficLevelValue(highestTrafficLevel)) {
         highestTrafficLevel = segment.trafficLevel;
       }
@@ -331,9 +290,6 @@ class RouteTrafficAnalyzer {
     };
   }
 
-  /**
-   * Analyze peak hour impact on route
-   */
   private analyzePeakHourImpact(route: TrafficRouteSnapshot, overallAnalysis: any): PeakHourAnalysis {
     const now = new Date();
     const isCurrentPeakHour = isPeakHour(now);
@@ -344,13 +300,10 @@ class RouteTrafficAnalyzer {
       peakHourMultiplier: peakMultiplier,
       expectedTrafficIncrease: (peakMultiplier - 1) * 100,
       nextPeakHour: getNextPeakHour(now) || undefined,
-      historicalAverage: route.summary.travelTimeInSeconds / 60 // Convert to minutes
+      historicalAverage: route.summary.travelTimeInSeconds / 60 
     };
   }
 
-  /**
-   * Generate historical traffic comparison
-   */
   private generateHistoricalComparison(route: TrafficRouteSnapshot, overallAnalysis: any): TrafficHistoryData {
     const typicalTime = route.summary.travelTimeInSeconds;
     const currentTime = typicalTime + overallAnalysis.totalDelay;
@@ -358,14 +311,11 @@ class RouteTrafficAnalyzer {
     return {
       typicalTravelTime: typicalTime,
       currentVsTypical: currentTime / typicalTime,
-      weekdayPattern: [1.0, 0.8, 0.9, 1.2, 1.4, 1.3, 0.7], // Mock weekday pattern
+      weekdayPattern: [1.0, 0.8, 0.9, 1.2, 1.4, 1.3, 0.7], 
       hourlyPattern: this.generateHourlyPattern()
     };
   }
 
-  /**
-   * Calculate route recommendation score
-   */
   private calculateRouteRecommendationScore(
     overallAnalysis: any,
     segments: RouteSegmentTraffic[],
@@ -373,28 +323,21 @@ class RouteTrafficAnalyzer {
   ): number {
     let score = 100;
     
-    // Penalize based on congestion score
     score -= overallAnalysis.congestionScore * 0.8;
     
-    // Penalize for incidents
     const incidentCount = segments.reduce((sum, seg) => sum + seg.incidents.length, 0);
     score -= Math.min(incidentCount * 15, 40);
     
-    // Penalize for peak hour impact
     if (peakHourImpact.isCurrentlyPeakHour) {
       score -= peakHourImpact.expectedTrafficIncrease * 0.5;
     }
     
-    // Penalize for severe traffic levels
     const severeSegments = segments.filter(seg => seg.trafficLevel === 'SEVERE').length;
     score -= severeSegments * 20;
     
     return Math.max(0, Math.min(100, Math.round(score)));
   }
 
-  /**
-   * Find the best route from comparison
-   */
   private findBestRoute(routes: RouteData[], analyses: RouteTrafficAnalysis[]): RouteData {
     let bestRoute = routes[0];
     let bestScore = 0;
@@ -402,9 +345,8 @@ class RouteTrafficAnalyzer {
     routes.forEach((route, index) => {
       const analysis = analyses[index];
       
-      // Calculate composite score
-      const timeScore = 100 - (route.summary.travelTimeInSeconds / 60); // Lower time is better
-      const trafficScore = 100 - analysis.congestionScore; // Lower congestion is better
+      const timeScore = 100 - (route.summary.travelTimeInSeconds / 60); 
+      const trafficScore = 100 - analysis.congestionScore; 
       const recommendationScore = analysis.recommendationScore;
       
       const compositeScore = (timeScore * 0.4) + (trafficScore * 0.35) + (recommendationScore * 0.25);
@@ -418,9 +360,6 @@ class RouteTrafficAnalyzer {
     return bestRoute;
   }
 
-  /**
-   * Generate route recommendation
-   */
   private generateRouteRecommendation(
     routes: RouteData[],
     analyses: RouteTrafficAnalysis[],
@@ -451,7 +390,6 @@ class RouteTrafficAnalyzer {
       priority = 'high';
     }
     
-    // Calculate time savings vs worst route
     const worstTime = Math.max(...routes.map(r => r.summary.travelTimeInSeconds));
     const timeSavings = Math.round((worstTime - bestRoute.summary.travelTimeInSeconds) / 60);
     
@@ -465,9 +403,6 @@ class RouteTrafficAnalyzer {
     };
   }
 
-  /**
-   * Calculate comparison metrics
-   */
   private calculateComparisonMetrics(routes: RouteData[], analyses: RouteTrafficAnalysis[]) {
     const times = routes.map(r => r.summary.travelTimeInSeconds);
     const distances = routes.map(r => r.summary.lengthInMeters);
@@ -480,7 +415,6 @@ class RouteTrafficAnalyzer {
     };
   }
 
-  // Helper methods for segment analysis
   private divideRouteIntoSegments(coordinates: Coordinates[]): Coordinates[] {
     if (coordinates.length <= this.SEGMENT_ANALYSIS_POINTS) {
       return coordinates;
@@ -493,7 +427,6 @@ class RouteTrafficAnalyzer {
       segmentPoints.push(coordinates[i]);
     }
     
-    // Always include the last point
     if (segmentPoints[segmentPoints.length - 1] !== coordinates[coordinates.length - 1]) {
       segmentPoints.push(coordinates[coordinates.length - 1]);
     }
@@ -509,20 +442,18 @@ class RouteTrafficAnalyzer {
   }
 
   private estimateSegmentSpeed(trafficData: LocationTrafficData): number {
-    // Estimate speed based on traffic level
-    const baseSpeed = 50; // km/h
+    const baseSpeed = 50; 
     const congestionFactor = 1 - (trafficData.congestionScore / 100);
     return Math.max(10, baseSpeed * congestionFactor);
   }
 
   private estimateFreeFlowSpeed(trafficData: LocationTrafficData): number {
-    return 60; // Default free flow speed in km/h
+    return 60; 
   }
 
   private calculateSegmentDelay(start: Coordinates, end: Coordinates, trafficData: LocationTrafficData): number {
-    // Calculate distance and estimate delay
     const distance = this.calculateDistance(start, end);
-    const freeFlowTime = (distance / 60) * 3600; // seconds at 60 km/h
+    const freeFlowTime = (distance / 60) * 3600; 
     const currentSpeed = this.estimateSegmentSpeed(trafficData);
     const currentTime = (distance / currentSpeed) * 3600;
     
@@ -530,8 +461,7 @@ class RouteTrafficAnalyzer {
   }
 
   private calculateDistance(start: Coordinates, end: Coordinates): number {
-    // Haversine formula for distance calculation
-    const R = 6371; // Earth's radius in km
+    const R = 6371; 
     const dLat = (end.lat - start.lat) * Math.PI / 180;
     const dLng = (end.lng - start.lng) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -542,7 +472,6 @@ class RouteTrafficAnalyzer {
   }
 
   private determineRoadType(start: Coordinates, end: Coordinates): string {
-    // Simple road type determination based on distance
     const distance = this.calculateDistance(start, end);
     if (distance > 5) return 'highway';
     if (distance > 1) return 'arterial';
@@ -588,17 +517,15 @@ class RouteTrafficAnalyzer {
   private calculateTimeBasedTrafficMultiplier(departureTime: Date): number {
     const hour = departureTime.getHours();
     
-    // Traffic multipliers by hour
-    if (hour >= 7 && hour <= 9) return 1.5; // Morning rush
-    if (hour >= 17 && hour <= 19) return 1.6; // Evening rush
-    if (hour >= 12 && hour <= 14) return 1.2; // Lunch time
-    if (hour >= 22 || hour <= 5) return 0.7; // Late night/early morning
+    if (hour >= 7 && hour <= 9) return 1.5; 
+    if (hour >= 17 && hour <= 19) return 1.6; 
+    if (hour >= 12 && hour <= 14) return 1.2; 
+    if (hour >= 22 || hour <= 5) return 0.7; 
     
-    return 1.0; // Normal traffic
+    return 1.0; 
   }
 
   private generateHourlyPattern(): number[] {
-    // Mock 24-hour traffic pattern (0-23)
     return [
       0.3, 0.2, 0.2, 0.3, 0.4, 0.6, 0.8, 1.4, 1.6, 1.2,
       1.0, 1.1, 1.3, 1.2, 1.0, 0.9, 1.1, 1.5, 1.7, 1.3,
@@ -610,7 +537,7 @@ class RouteTrafficAnalyzer {
     return {
       overallTrafficLevel: 'MODERATE',
       segmentAnalysis: [],
-      estimatedDelay: 300, // 5 minutes default
+      estimatedDelay: 300, 
       alternativeRecommendation: false,
       peakHourImpact: {
         isCurrentlyPeakHour: isPeakHour(new Date()),
@@ -630,9 +557,6 @@ class RouteTrafficAnalyzer {
     };
   }
 
-  /**
-   * Clear expired cache entries
-   */
   clearExpiredCache(): void {
     const now = Date.now();
     let cleared = 0;
@@ -653,6 +577,5 @@ class RouteTrafficAnalyzer {
   }
 }
 
-// Export singleton instance
 export const routeTrafficAnalyzer = new RouteTrafficAnalyzer();
 

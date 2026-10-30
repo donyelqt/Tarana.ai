@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { TaranaEatsFormValues, ResultMatch } from '@/types/tarana-eats';
 import { combinedFoodData, createFoodPrompt, FullMenu } from '../data/taranaEatsData';
 
-// Extended ResultMatch to include full menu
 export interface ExtendedResultMatch extends ResultMatch {
   fullMenu?: FullMenu;
   reason?: string;
@@ -12,27 +11,13 @@ export const useTaranaEatsAI = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Generate AI-powered food recommendations based on user preferences
-   */
   const generateRecommendations = async (preferences: TaranaEatsFormValues) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Create a prompt for Gemini API
       const prompt = createFoodPrompt(preferences);
       
-      // Only the prompt and the user's choices go over the wire.
-      //
-      // This used to ship `combinedFoodData`, a 129KB copy of the restaurant
-      // catalog. The route imports that same catalog server-side
-      // (`@/app/tarana-eats/data/restaurants`) and cross-checks any
-      // client-supplied list against its registry, so the client's copy was
-      // redundant: `serverKnownRestaurants` dropped every entry anyway and
-      // fell back to the server catalog. At 130KB the request blew past the
-      // route's 32KB body cap and every generation failed with a 413 before
-      // reaching the model.
       const payload = {
         prompt,
         preferences: {
@@ -43,9 +28,6 @@ export const useTaranaEatsAI = () => {
           mealType: preferences.mealType
         }
       };
-      // Stable per-form key: identical resubmits (double-click, retry) share
-      // one key so the server dedupes instead of double-charging. Any field
-      // change yields a new key. FNV-1a hex over the canonical form shape.
       const fingerprintSource = JSON.stringify({
         budget: preferences.budget ?? null,
         cuisine: preferences.cuisine ?? null,
@@ -60,7 +42,6 @@ export const useTaranaEatsAI = () => {
       }
       const idempotencyKey = `eats:${(fingerprintHash >>> 0).toString(16).padStart(8, "0")}`;
 
-      // Call the Gemini API
       const response = await fetch('/api/gemini/food-recommendations', {
         method: 'POST',
         headers: {
@@ -77,7 +58,6 @@ export const useTaranaEatsAI = () => {
 
       const data = await response.json();
       
-      // Transform the AI response to match the expected ResultMatch format
       const recommendations = transformGeminiResponse(data, preferences);
       
       setLoading(false);
@@ -90,17 +70,12 @@ export const useTaranaEatsAI = () => {
     }
   };
 
-  /**
-   * Transform the Gemini API response to the format expected by the UI
-   */
   const transformGeminiResponse = (response: any, preferences: TaranaEatsFormValues): ExtendedResultMatch[] => {
     try {
       const placeholderImage = "/images/placeholders/hero-placeholder.svg";
       
-      // If we already have properly structured data, use it directly and enhance with full menu data
       if (response.matches && Array.isArray(response.matches)) {
         return response.matches.map((match: { name: string; [key: string]: any }) => {
-          // Find the corresponding restaurant to get its full menu
           const restaurant = combinedFoodData.restaurants.find(r => r.name === match.name);
           if (restaurant) {
             return {
@@ -118,17 +93,14 @@ export const useTaranaEatsAI = () => {
         });
       }
       
-      // Otherwise, use restaurants from our data that match the user preferences
       return combinedFoodData.restaurants
         .filter(restaurant => {
-          // Filter by cuisine if specified
           if (preferences.cuisine && preferences.cuisine !== "Show All") {
             if (!restaurant.cuisine.includes(preferences.cuisine)) {
               return false;
             }
           }
           
-          // Filter by dietary restrictions
           if (preferences.restrictions && preferences.restrictions.length > 0) {
             const hasAllRestrictions = preferences.restrictions.every(restriction => 
               restaurant.dietaryOptions.includes(restriction)
@@ -138,7 +110,6 @@ export const useTaranaEatsAI = () => {
             }
           }
           
-          // Filter by meal type
           if (preferences.mealType && preferences.mealType.length > 0) {
             const hasMatchingMealType = preferences.mealType.some(mealType => 
               restaurant.popularFor.includes(mealType)
@@ -154,7 +125,6 @@ export const useTaranaEatsAI = () => {
           const budgetNum = preferences.budget ? parseInt(preferences.budget.replace(/[^\d]/g, '')) : null;
           const finalPrice = budgetNum && budgetNum > 0 ? budgetNum : restaurant.priceRange.max;
           
-          // DEBUG LOGGING - Remove after fixing
           console.log("🔍 AI HOOK DEBUG:", {
             restaurantName: restaurant.name,
             userBudgetInput: preferences.budget,

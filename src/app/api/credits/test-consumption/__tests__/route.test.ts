@@ -122,8 +122,6 @@ describe('Test Consumption API Route Tests', () => {
     const response = await POST(authedRequest());
     const serialized = JSON.stringify(await response.json());
 
-    // Postgres details/hint name constraints and columns; they must not reach
-    // the response body of a dev/preview diagnostic.
     expect(serialized).not.toContain('SCHEMA_HINT_SENTINEL');
     expect(serialized).not.toContain('HINT_SENTINEL');
     expect(serialized).toContain('42P01');

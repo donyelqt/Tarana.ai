@@ -1,4 +1,3 @@
-// Polyfill for global.Response.json used by NextResponse.json (jest.setup.js overrides Response)
 const MockedResponse = globalThis.Response as unknown as {
   new (body?: unknown, init?: { status?: number; headers?: Record<string, string> }): InstanceType<typeof globalThis.Response> & {
     status: number;
@@ -26,7 +25,6 @@ jest.mock('@/lib/observability/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 }));
 
-// Mock dependencies — route owns token generation + email, service owns DB write
 jest.mock('@/lib/services/passwordService', () => ({
   storeResetToken: jest.fn(),
 }));
@@ -58,7 +56,6 @@ describe('/api/auth/forgot-password', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Mock environment variables
     process.env.NEXTAUTH_URL = 'http://localhost:3000';
 
     (mockCrypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test-token-hex'));
@@ -135,7 +132,6 @@ describe('/api/auth/forgot-password', () => {
       await POST(request2);
       const time2 = Date.now() - start2;
 
-      // Response times should be similar (within reasonable bounds)
       expect(Math.abs(time1 - time2)).toBeLessThan(100);
     });
   });
@@ -168,7 +164,7 @@ describe('/api/auth/forgot-password', () => {
       const afterCall = Date.now();
 
       const expiry: Date = mockStoreResetToken.mock.calls[0][2];
-      const expectedExpiry = new Date(beforeCall + 3600000); // 1 hour
+      const expectedExpiry = new Date(beforeCall + 3600000); 
       const maxExpectedExpiry = new Date(afterCall + 3600000);
 
       expect(expiry.getTime()).toBeGreaterThanOrEqual(expectedExpiry.getTime());

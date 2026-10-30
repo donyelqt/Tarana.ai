@@ -44,30 +44,6 @@ const WAYPOINTS = [
   { id: 'waypoint-2', cx: 120, cy: 50, label: '2', delay: 0.25 },
 ];
 
-/**
- * Route discovery simulation mini-map.
- *
- * Iter-3 (brutal roast pass): replaces the abstract constellation with a
- * realistic, domain-specific navigation loading state.
- *
- *   - Mini-map canvas with dot grid, building blocks, a main highway, and a
- *     small park for visual texture (no more graph paper).
- *   - Three structurally different ghost routes (north / highway / south)
- *     drawn progressively and dismissed as alternatives.
- *   - Optimal route split into 4 traffic-coloured segments (green / yellow /
- *     red / green) that draw sequentially to communicate real-time traffic.
- *   - Two numbered waypoint markers pop in along the optimal route.
- *   - A glowing vehicle dot rides along the optimal path via CSS Motion Path
- *     (offset-path) after the segments are drawn.
- *   - Origin / destination use real navigation-pin SVGs with drop-shadow
- *     filter and pulse rings, not flat dots.
- *   - Glass card with backdrop-blur, subtle border, and a "FASTEST" badge
- *     that pops in once the optimal route resolves.
- *   - Data-rich status text cycles through real navigation terminology.
- *
- * Map-init state (`showText={false}`) renders a tiny mini-map card with two
- * pulsing endpoint markers — keeps both contexts intact, just leaner.
- */
 export default function RouteAnalysisLoader({
   showText = true,
   text,
@@ -137,24 +113,24 @@ export default function RouteAnalysisLoader({
             </filter>
           </defs>
 
-          {/* Map canvas */}
+          {}
           <rect width="200" height="130" rx="10" fill="#f9fafb" />
           <rect width="200" height="130" rx="10" fill={`url(#${gridId})`} />
 
-          {/* Building blocks (city texture) */}
+          {}
           <rect x="28" y="18" width="26" height="20" rx="2" fill="#e5e7eb" />
           <rect x="62" y="22" width="20" height="16" rx="2" fill="#e5e7eb" />
           <rect x="98" y="62" width="28" height="22" rx="2" fill="#e5e7eb" />
           <rect x="138" y="68" width="22" height="28" rx="2" fill="#e5e7eb" />
           <rect x="36" y="78" width="20" height="18" rx="2" fill="#d1fae5" opacity="0.55" />
 
-          {/* Local streets */}
+          {}
           <line x1="0" y1="50" x2="200" y2="50" stroke="#f3f4f6" strokeWidth="5" />
           <line x1="0" y1="100" x2="200" y2="100" stroke="#f3f4f6" strokeWidth="5" />
           <line x1="60" y1="0" x2="60" y2="130" stroke="#f3f4f6" strokeWidth="5" />
           <line x1="140" y1="0" x2="140" y2="130" stroke="#f3f4f6" strokeWidth="5" />
 
-          {/* Main highway */}
+          {}
           <path d="M 0,75 Q 100,72 200,75" stroke="#cbd5e1" strokeWidth="7" fill="none" />
           <path
             d="M 0,75 Q 100,72 200,75"
@@ -165,7 +141,7 @@ export default function RouteAnalysisLoader({
             opacity="0.55"
           />
 
-          {/* Ghost alternative routes */}
+          {}
           <g fill="none" strokeLinecap="round" strokeLinejoin="round">
             {GHOST_ROUTES.map((g, i) => (
               <path
@@ -177,7 +153,7 @@ export default function RouteAnalysisLoader({
             ))}
           </g>
 
-          {/* Optimal route — traffic-coloured segments */}
+          {}
           <g fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5">
             {OPTIMAL_SEGMENTS.map((seg, i) => (
               <path
@@ -191,14 +167,14 @@ export default function RouteAnalysisLoader({
             ))}
           </g>
 
-          {/* Celebratory halo over the optimal route */}
+          {}
           <path
             d={OPTIMAL_PATH_D}
             className="celebrate-halo"
             filter={`url(#${shadowId})`}
           />
 
-          {/* Vehicle dot riding the optimal path */}
+          {}
           <circle
             cx="20"
             cy="90"
@@ -210,7 +186,7 @@ export default function RouteAnalysisLoader({
             filter={`url(#${shadowId})`}
           />
 
-          {/* Waypoint markers */}
+          {}
           {WAYPOINTS.map((wp) => (
             <g
               key={wp.id}
@@ -244,7 +220,7 @@ export default function RouteAnalysisLoader({
             </g>
           ))}
 
-          {/* FASTEST badge */}
+          {}
           <g
             className="badge-fastest"
             style={{ transformOrigin: '170px 13px', transformBox: 'view-box' }}
@@ -265,7 +241,7 @@ export default function RouteAnalysisLoader({
             </text>
           </g>
 
-          {/* Origin pin */}
+          {}
           <g
             className="origin-pin"
             style={{ transformOrigin: '20px 90px', transformBox: 'view-box' }}
@@ -279,7 +255,7 @@ export default function RouteAnalysisLoader({
             <circle cx="0" cy="-2" r="6" fill="#22c55e" className="marker-ping" />
           </g>
 
-          {/* Destination pin */}
+          {}
           <g
             className="destination-pin"
             style={{ transformOrigin: '180px 40px', transformBox: 'view-box' }}

@@ -1,9 +1,3 @@
-// ====================================================================
-// KOCO CAFE MENU DATA
-// ====================================================================
-// KoCO Café in Baguio City is a cozy café and bistro offering specialty coffee, 
-// comfort food, and decadent desserts in a warm, inviting space.
-// ====================================================================
 
 import { FullMenu } from "../types";
 
@@ -161,7 +155,6 @@ export const kocoCafeMenu: FullMenu = {
     },
   ],
   Drinks: [
-    // Hot Coffee Drinks
     {
       name: "Cafe Latte",
       description: "Espresso with steamed milk and light foam",
@@ -204,7 +197,6 @@ export const kocoCafeMenu: FullMenu = {
       price: 160,
       image: "/images/comingsoon.png",
     },
-    // Hot Chocolate Drinks
     {
       name: "Dark Choco",
       description: "Rich dark chocolate drink",
@@ -223,14 +215,12 @@ export const kocoCafeMenu: FullMenu = {
       price: 160,
       image: "/images/comingsoon.png",
     },
-    // Tea
     {
       name: "Choice of Tea",
       description: "Selection of premium teas",
       price: 120,
       image: "/images/comingsoon.png",
     },
-    // Iced Drinks
     {
       name: "Iced Americano",
       description: "Espresso shots over ice with cold water",

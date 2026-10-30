@@ -34,7 +34,7 @@ const MealCardPopup = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-3xl mx-auto flex flex-col">
-        {/* Header */}
+        {}
         <div className="bg-blue-600 text-white p-4 rounded-t-2xl flex items-center justify-between">
             <div className="flex items-center gap-3">
                 <div className="p-1 rounded-full">
@@ -50,7 +50,7 @@ const MealCardPopup = ({
             </button>
         </div>
 
-        {/* Body */}
+        {}
         <div className="p-4 flex-grow">
           <div className="text-left mb-4">
             <h3 className="text-2xl font-bold text-gray-900">{restaurantName}</h3>
@@ -75,7 +75,7 @@ const MealCardPopup = ({
           </div>
         </div>
 
-        {/* Footer */}
+        {}
         <div className="p-4 border-t border-gray-100 mt-auto">
             <div className="flex justify-between items-center text-sm mb-3">
                 <div>

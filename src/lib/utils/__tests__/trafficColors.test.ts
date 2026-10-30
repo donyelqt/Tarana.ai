@@ -1,9 +1,6 @@
 import { getTrafficLevelFromScore, getTrafficColorFromScore, getTrafficLevelClasses } from '../trafficColors';
 import { TrafficLevel } from '@/types/route-optimization';
 
-// ============================================================================
-// RC2: Threshold alignment across trafficColors.ts
-// ============================================================================
 describe('getTrafficLevelFromScore — threshold alignment (RC2)', () => {
   const thresholds: [number, TrafficLevel][] = [
     [0, 'VERY_LOW'],
@@ -30,9 +27,6 @@ describe('getTrafficLevelFromScore — threshold alignment (RC2)', () => {
   });
 });
 
-// ============================================================================
-// RC1 validation: 21% score (from screenshot) maps to LOW, NOT SEVERE
-// ============================================================================
 describe('Regression — 21% congestion (screenshot bug)', () => {
   it('should map 21% congestion score to LOW (not SEVERE)', () => {
     expect(getTrafficLevelFromScore(21)).toBe('LOW');
@@ -40,18 +34,15 @@ describe('Regression — 21% congestion (screenshot bug)', () => {
 
   it('should map 21% congestion to green color (not red)', () => {
     const scheme = getTrafficColorFromScore(21);
-    expect(scheme.color).toBe('#22c55e'); // green-500
-    expect(scheme.textColor).toBe('#15803d'); // green-700
+    expect(scheme.color).toBe('#22c55e'); 
+    expect(scheme.textColor).toBe('#15803d'); 
   });
 });
 
-// ============================================================================
-// RC2: Color mapping consistency
-// ============================================================================
 describe('getTrafficColorFromScore — color mapping', () => {
   it('VERY_LOW (0-14) should be emerald', () => {
     const scheme = getTrafficColorFromScore(5);
-    expect(scheme.color).toBe('#10b981'); // emerald
+    expect(scheme.color).toBe('#10b981'); 
     expect(scheme.backgroundColor).toBe('rgba(16, 185, 129, 0.1)');
   });
 
@@ -76,9 +67,6 @@ describe('getTrafficColorFromScore — color mapping', () => {
   });
 });
 
-// ============================================================================
-// Edge cases
-// ============================================================================
 describe('Traffic level edge cases', () => {
   it('negative score should return VERY_LOW', () => {
     expect(getTrafficLevelFromScore(-5)).toBe('VERY_LOW');
@@ -89,9 +77,7 @@ describe('Traffic level edge cases', () => {
   });
 
   it('fractional scores should use integer thresholds', () => {
-    // 24.9 should still be LOW (not >=25, not MODERATE)
     expect(getTrafficLevelFromScore(24.9)).toBe('LOW');
-    // 25.0 should be MODERATE
     expect(getTrafficLevelFromScore(25)).toBe('MODERATE');
   });
 });

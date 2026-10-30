@@ -220,9 +220,7 @@ describe('recommendations engine', () => {
     const day1 = new Date('2026-09-03T02:00:00+08:00');
     const first = rankSpots(pool, day1, 3, peak).map((a) => a.title);
     expect(rankSpots(pool, day1, 3, peak).map((a) => a.title)).toEqual(first);
-    // Off-peak B, C outrank in-peak A, D regardless of rotation
     expect(first.slice(0, 2)).toEqual(expect.arrayContaining(['B', 'C']));
-    // Rotation varies the order across days
     const day2 = new Date('2026-09-04T02:00:00+08:00');
     const orders = new Set(
       [0, 1, 2, 3, 4, 5, 6].map((d) =>
@@ -249,7 +247,6 @@ describe('recommendations engine', () => {
     const ranked = rankCafes([{ cafeName: 'Itaewon Cafe' } as never]);
     expect(ranked.length).toBe(3);
     expect(ranked.map((r) => r.restaurant.name)).not.toContain('Itaewon Cafe');
-    // Korean/cuisine overlap should surface another Korean-leaning spot first
     expect(ranked[0].score).toBeGreaterThanOrEqual(ranked[1].score);
     const fallback = rankCafes([]);
     expect(fallback).toHaveLength(3);
@@ -300,7 +297,6 @@ describe('recommendations engine', () => {
 
   it('toCafeCard uses city peak state for traffic', () => {
     const [first] = rankCafes([]);
-    // isPeakHour reads LOCAL hours — construct locally so this holds in any TZ
     const lunchRush = new Date(2026, 8, 3, 12, 30);
     expect(toCafeCard(first, { lat: 16.4134, lon: 120.5934 }, lunchRush)?.traffic).toBe('High');
     const dawn = new Date(2026, 8, 3, 5, 0);

@@ -13,31 +13,13 @@ import { ChevronDown, MapPin, Mountain, Waves, Building2, Map, Globe, Activity }
 import { DollarSign, PiggyBank, CreditCard, Wallet, Coins, Gem } from "lucide-react";
 
 export interface DestinationPill {
-  /** Stable UI key. Two pills may share a cityId, so this is what drives the pressed state. */
   key: string;
-  /** What the user reads on the tile. */
   label: string;
-  /** The city that is ACTUALLY generated. Never a region name. */
   cityId: CityId;
   sublabel: string;
   Icon: any;
 }
 
-/**
- * Destination pills mirror the dashboard's Suggested Spots row
- * (Baguio / Manila / Davao / Visayas / Luzon).
- *
- * Visayas and Luzon are ALIASES, not scopes. A Gala itinerary is strictly
- * single-city: one cityId, one POI bounds box, one map viewport. A region
- * union would have to route a day across members that sit 282 km apart over
- * open water (boracay->cebu) or 206 km apart on land (baguio->manila), against
- * a 50 km city search radius. So each region pill resolves to its member with
- * the best coverage, and the sublabel names that city so the tile never
- * promises more than it delivers.
- *
- * The cityId sent to the API is always a real member id, so no route, zod
- * enum, CITY_CONFIGS row, TargetCityId entry, or persistence change is needed.
- */
 export const CITY_PILLS: DestinationPill[] = [
   { key: "baguio", label: "Baguio", cityId: "baguio", sublabel: "City of Pines", Icon: Mountain },
   { key: "manila", label: "Manila", cityId: "manila", sublabel: "Capital", Icon: Building2 },
@@ -77,25 +59,20 @@ export default function ItineraryForm({
   setSelectedCity,
 }: ItineraryFormProps) {
   const { toast } = useToast();
-  // Pill identity is UI-only: Manila and Luzon both anchor to Metro Manila, so
-  // the pressed tile follows the pill the user pressed, not the city id.
   const [activePillKey, setActivePillKey] = useState(
     CITY_PILLS.find((p) => p.cityId === selectedCity)?.key ?? CITY_PILLS[0].key
   );
-  // Local state to control the budget popover
   const [openBudget, setOpenBudget] = useState(false);
 
-  // Calculate end date whenever start date or duration changes
   useEffect(() => {
     if (dates.start && duration) {
       const startDate = new Date(dates.start);
-      // Extract the number from duration string like "2 Days"
       const durationMatch = duration.match(/\d+/);
       const durationNum = durationMatch ? parseInt(durationMatch[0], 10) : 0;
       
       if (durationNum > 0) {
         const endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + durationNum - 1); // -1 because the first day is included
+        endDate.setDate(startDate.getDate() + durationNum - 1); 
         setDates({
           start: dates.start,
           end: endDate
@@ -124,14 +101,12 @@ export default function ItineraryForm({
       });
       return;
     }
-    // Validate travel dates match duration
     if (dates.start && dates.end && duration) {
       const startDate = new Date(dates.start);
       const endDate = new Date(dates.end);
       const diffTime = endDate.getTime() - startDate.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       
-      // Extract the number from duration string like "2 Days"
       const durationMatch = duration.match(/\d+/);
       const durationNum = durationMatch ? parseInt(durationMatch[0], 10) : NaN;
       
@@ -219,13 +194,11 @@ export default function ItineraryForm({
         </div>
       )}
       <form className="space-y-8" onSubmit={handleSubmit}>
-        {/* Destination — strict city scope */}
+        {}
         <div>
           <Label className="block font-medium mb-2 text-gray-900">Destination</Label>
           <p className="text-xs text-gray-500 mb-3">Choose where to generate — Baguio uses curated guides, others use live locations + accurate images. Each tile generates one city, named in the subtitle.</p>
-          {/* Pills mirror the dashboard's Suggested Spots row. Visayas and
-              Luzon are aliases that resolve to a real member city id, so the
-              API never receives a region. */}
+          {}
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
             {CITY_PILLS.map((pill) => {
               const isSelected = activePillKey === pill.key
@@ -257,7 +230,7 @@ export default function ItineraryForm({
           </div>
           <p className="text-[10px] text-gray-400 mt-2">Visayas plans Boracay and Luzon plans Metro Manila — a trip is always one city.</p>
         </div>
-        {/* Budget Range */}
+        {}
         <div>
           <Label htmlFor="budget" className="block font-medium mb-2 text-gray-900">Budget Range</Label>
           <Popover open={openBudget} onOpenChange={setOpenBudget}>
@@ -281,10 +254,9 @@ export default function ItineraryForm({
               <div className="grid gap-1 p-2">
                 {budgetOptions.map((option, idx) => {
                   let Icon;
-                  // Map icon by position for visual cues
                   switch (idx) {
                     case 0:
-                      Icon = PiggyBank; // lowest
+                      Icon = PiggyBank; 
                       break;
                     case 1:
                       Icon = Wallet;
@@ -293,7 +265,7 @@ export default function ItineraryForm({
                       Icon = CreditCard;
                       break;
                     case 3:
-                      Icon = Gem; // highest
+                      Icon = Gem; 
                       break;
                     default:
                       Icon = DollarSign;
@@ -317,7 +289,7 @@ export default function ItineraryForm({
             </PopoverContent>
           </Popover>
         </div>
-        {/* Number of Pax */}
+        {}
         <div>
           <Label className="block font-medium mb-2 text-gray-900">Number of Pax.</Label>
           <div className="grid grid-cols-4 gap-3">
@@ -337,7 +309,7 @@ export default function ItineraryForm({
             ))}
           </div>
         </div>
-        {/* Duration */}
+        {}
         <div>
           <Label className="block font-medium mb-2 text-gray-900">Duration</Label>
           <div className="grid grid-cols-4 gap-3">
@@ -357,7 +329,7 @@ export default function ItineraryForm({
             ))}
           </div>
         </div>
-        {/* Travel Dates */}
+        {}
         <div>
           <Label className="block font-medium mb-2 text-gray-900">Travel Dates</Label>
           <div className="relative">
@@ -377,7 +349,7 @@ export default function ItineraryForm({
             </div>
           </div>
         </div>
-        {/* Travel Interests */}
+        {}
         <div>
           <Label className="block font-medium mb-2 text-gray-700">Travel Interests</Label>
           <div className="grid grid-cols-2 gap-3">
@@ -400,7 +372,7 @@ export default function ItineraryForm({
             ))}
           </div>
         </div>
-        {/* Generate Button */}
+        {}
         <div>
           <Button
             type="submit"

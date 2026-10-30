@@ -30,10 +30,6 @@ const initialState: RouteCalculationState = {
   lastUpdated: null,
 }
 
-/**
- * Owns all route-calculation state and the call to /api/routes/calculate.
- * Pure orchestration — no UI.
- */
 export function useRouteCalculation() {
   const [state, setState] = useState<RouteCalculationState>(initialState)
   const abortRef = useRef<NodeJS.Timeout | null>(null)
@@ -102,10 +98,6 @@ export function useRouteCalculation() {
     }
   }, [])
 
-  /**
-   * Promote an alternative to the primary slot while preserving the others.
-   * Mirrors Google's behaviour where tapping an alternative route makes it the active one.
-   */
   const selectAlternative = useCallback((routeId: string) => {
     setState((prev) => {
       if (!prev.currentRoute || prev.currentRoute.id === routeId) return prev
@@ -129,11 +121,6 @@ export function useRouteCalculation() {
 
   const clear = useCallback(() => setState(initialState), [])
 
-  /**
-   * Patch the current traffic analysis (used by the 5-minute auto-refresh).
-   * Reads the route id outside the updater so the updater stays pure —
-   * StrictMode double-invokes impure updaters, which doubled this fetch.
-   */
   const refreshTraffic = useCallback(async () => {
     const route = stateRef.current.currentRoute
     if (!route) return
@@ -159,7 +146,6 @@ export function useRouteCalculation() {
         lastUpdated: new Date(),
       }))
     } catch {
-      /* silent — refresh is best-effort */
     }
   }, [])
 

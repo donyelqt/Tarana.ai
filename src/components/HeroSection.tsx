@@ -8,8 +8,8 @@ import { goodtaste, taranaai2 } from "../../public"
 const HeroSection = ({ id }: { id?: string }) => {
     return (
         <section id={id} className="w-full bg-white relative overflow-hidden">
-            {/* Flat 4-layer dot lines aligned with text */}
-            {/* Above "Your 1 Day Itinerary" - outside mockup, aligned with right panel */}
+            {}
+            {}
             <div
                 className="absolute pointer-events-none flex flex-col top-[360px] -right-[20px] md:top-[440px] md:right-[340px]"
             >
@@ -26,7 +26,7 @@ const HeroSection = ({ id }: { id?: string }) => {
                 </div>
             </div>
 
-            {/* Above "Plan Your" - aligned with heading text */}
+            {}
             <div
                 className="absolute pointer-events-none flex flex-col top-[70px] -left-[50px] md:left-[320px] md:top-[100px]"
             >
@@ -43,10 +43,10 @@ const HeroSection = ({ id }: { id?: string }) => {
                 </div>
             </div>
 
-            {/* Hero content */}
+            {}
             <div className="max-w-7xl mx-auto px-4 pt-32 pb-12 md:pt-40 md:pb-16">
                 <div className="flex flex-col items-center text-center">
-                    {/* Heading */}
+                    {}
                     <h1 className="text-4xl md:text-6xl font-bold text-center mb-6 max-w-4xl">
                         Plan Your Perfect{" "}
                         <span className="bg-gradient-to-b from-blue-700 to-blue-500 bg-clip-text text-transparent">Baguio Trip</span>
@@ -54,13 +54,13 @@ const HeroSection = ({ id }: { id?: string }) => {
                         in Seconds
                     </h1>
 
-                    {/* Description */}
+                    {}
                     <p className="text-lg text-gray-700 text-center max-w-3xl mb-12">
                         We craft your perfect itinerary — personalized to your budget, interests, group size, and real-time
                         traffic conditions — so you can focus on the adventure, not the stress.
                     </p>
 
-                    {/* CTA Button */}
+                    {}
                     <div className="group">
                         <Link
                             href="/auth/signup"
@@ -73,13 +73,13 @@ const HeroSection = ({ id }: { id?: string }) => {
                 </div>
             </div>
 
-            {/* App Preview Mockup */}
+            {}
             <div className="max-w-6xl mx-auto px-4 pb-0 md:pb-0">
                 <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 overflow-hidden">
                     <div className="flex flex-col md:flex-row">
-                        {/* Mobile horizontal nav / Desktop vertical sidebar */}
+                        {}
                         <div className="md:w-64 bg-gray-50">
-                            {/* Mobile: horizontal scrollable nav */}
+                            {}
                             <div className="flex md:hidden items-center gap-2 p-3 border-b border-gray-100 overflow-x-auto">
                                 <div className="flex items-center mr-2 flex-shrink-0">
                                     <Image src={taranaai2} alt="Tarana.ai" width={80} height={14} />
@@ -101,7 +101,7 @@ const HeroSection = ({ id }: { id?: string }) => {
                                     Settings
                                 </div>
                             </div>
-                            {/* Desktop: vertical sidebar */}
+                            {}
                             <div className="hidden md:block p-6">
                                 <div className="flex items-center mb-8">
                                     <Image src={taranaai2} alt="Tarana.ai" width={120} height={20} />
@@ -127,7 +127,7 @@ const HeroSection = ({ id }: { id?: string }) => {
                             </div>
                         </div>
 
-                        {/* Center Form */}
+                        {}
                         <div className="flex-1 p-6 md:p-8">
                             <h3 className="text-lg font-semibold text-gray-900 mb-6">Let&apos;s Plan Your Baguio Adventure</h3>
                             <div className="space-y-5">
@@ -203,7 +203,7 @@ const HeroSection = ({ id }: { id?: string }) => {
                             </div>
                         </div>
 
-                        {/* Right Preview */}
+                        {}
                         <div className="w-full md:w-80 bg-gray-50 p-6 border-t md:border-t-0 md:border-l border-gray-100">
                             <div className="text-xs text-gray-500 mb-1">Your 1 Day Itinerary</div>
                             <div className="text-xs text-gray-400 mb-4">A preview of your Baguio Experience</div>

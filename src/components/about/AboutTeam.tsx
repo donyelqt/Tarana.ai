@@ -72,7 +72,7 @@ function TeamCard({ member }: { member: typeof teamMembers[0] }) {
           priority
         />
       </div>
-      {/* Overlay */}
+      {}
       <div
         className={`absolute inset-0 transition-all duration-300 ${
           hovered
@@ -80,7 +80,7 @@ function TeamCard({ member }: { member: typeof teamMembers[0] }) {
             : 'bg-gradient-to-t from-blue-600/100 via-white/10 to-transparent opacity-80'
         }`}
       />
-      {/* Default name/title (hidden on hover) */}
+      {}
       <div
         className={`relative z-10 p-6 w-full text-center mt-auto transition-opacity duration-300 ${
           hovered ? 'opacity-0 pointer-events-none' : 'opacity-100'
@@ -89,7 +89,7 @@ function TeamCard({ member }: { member: typeof teamMembers[0] }) {
         <h3 className="text-white text-xl font-semibold mb-1">{member.name}</h3>
         <p className="text-white text-base">{member.title}</p>
       </div>
-      {/* Hover content */}
+      {}
       <div
         className={`absolute inset-0 flex flex-col items-start justify-center z-20 transition-opacity duration-300 ${
           hovered ? 'opacity-100' : 'opacity-0 pointer-events-none'

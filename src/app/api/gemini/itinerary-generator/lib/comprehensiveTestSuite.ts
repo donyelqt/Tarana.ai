@@ -1,21 +1,11 @@
-/**
- * Comprehensive Test Suite for JSON Reliability
- * Tests all components of the guaranteed JSON generation system
- */
 
 import { GuaranteedJsonEngine } from './guaranteedJsonEngine';
 import { StructuredOutputEngine } from './structuredOutputEngine';
 import { EnhancedPromptEngine, JsonSyntaxValidator } from './enhancedPromptEngine';
 import { ItinerarySchema } from './structuredOutputEngine';
 
-/**
- * Test scenarios covering all edge cases
- */
 export class ComprehensiveTestSuite {
   
-  /**
-   * Run all tests and return comprehensive results
-   */
   static async runAllTests(): Promise<{
     passed: number;
     failed: number;
@@ -85,32 +75,25 @@ export class ComprehensiveTestSuite {
     };
   }
 
-  /**
-   * Test JSON Syntax Validator
-   */
   private static async testJsonSyntaxValidator(): Promise<void> {
-    // Test valid JSON
     const validJson = '{"title": "Test", "items": []}';
     const validResult = JsonSyntaxValidator.validateSyntax(validJson);
     if (!validResult.isValid) {
       throw new Error('Valid JSON marked as invalid');
     }
 
-    // Test invalid JSON with trailing comma
     const invalidJson = '{"title": "Test", "items": [],}';
     const invalidResult = JsonSyntaxValidator.validateSyntax(invalidJson);
     if (invalidResult.isValid) {
       throw new Error('Invalid JSON marked as valid');
     }
 
-    // Test fixing capability
     const fixed = JsonSyntaxValidator.attemptFix(invalidJson);
     const fixedResult = JsonSyntaxValidator.validateSyntax(fixed);
     if (!fixedResult.isValid) {
       throw new Error('JSON fixing failed');
     }
 
-    // Test markdown removal
     const markdownJson = '```json\n{"title": "Test"}\n```';
     const cleanedMarkdown = JsonSyntaxValidator.attemptFix(markdownJson);
     if (cleanedMarkdown.includes('```')) {
@@ -118,14 +101,10 @@ export class ComprehensiveTestSuite {
     }
   }
 
-  /**
-   * Test Enhanced Prompt Engine
-   */
   private static async testEnhancedPromptEngine(): Promise<void> {
     const testPrompt = "Generate a Baguio itinerary";
     const sampleData = { items: [{ activities: [] }] };
     
-    // Test bulletproof prompt generation
     const bulletproofPrompt = EnhancedPromptEngine.buildBulletproofPrompt(
       testPrompt, sampleData, "Clear weather", "Low traffic"
     );
@@ -138,7 +117,6 @@ export class ComprehensiveTestSuite {
       throw new Error('Bulletproof prompt missing mandatory instructions');
     }
 
-    // Test progressive prompt
     const progressivePrompt = EnhancedPromptEngine.buildProgressivePrompt(
       testPrompt, 3, 5
     );
@@ -147,7 +125,6 @@ export class ComprehensiveTestSuite {
       throw new Error('Progressive prompt not simplifying correctly');
     }
 
-    // Test prompt cleaning
     const messyPrompt = "Test   \n\n\n  prompt   ";
     const cleaned = EnhancedPromptEngine.cleanPrompt(messyPrompt);
     if (cleaned !== "Test prompt") {
@@ -155,17 +132,12 @@ export class ComprehensiveTestSuite {
     }
   }
 
-  /**
-   * Test Structured Output Engine
-   */
   private static async testStructuredOutputEngine(): Promise<void> {
-    // Test health check
     const health = await StructuredOutputEngine.healthCheck();
     if (!health.status) {
       throw new Error('Structured output engine health check failed');
     }
 
-    // Test schema validation
     const validItinerary = {
       title: "Test Itinerary",
       subtitle: "Test subtitle",
@@ -187,14 +159,9 @@ export class ComprehensiveTestSuite {
     }
   }
 
-  /**
-   * Test Guaranteed JSON Engine
-   */
   private static async testGuaranteedJsonEngine(): Promise<void> {
-    // Reset metrics for clean test
     GuaranteedJsonEngine.resetMetrics();
 
-    // Test simple generation
     const result = await GuaranteedJsonEngine.generateGuaranteedJson(
       "Generate a simple Baguio itinerary",
       null,
@@ -204,30 +171,23 @@ export class ComprehensiveTestSuite {
       "test-guaranteed"
     );
 
-    // Validate result structure
     const validation = ItinerarySchema.safeParse(result);
     if (!validation.success) {
       throw new Error(`Guaranteed engine produced invalid structure: ${validation.error.message}`);
     }
 
-    // Check metrics
     const metrics = GuaranteedJsonEngine.getMetrics();
     if (metrics.totalRequests === 0) {
       throw new Error('Metrics not being tracked');
     }
 
-    // Test health check
     const health = await GuaranteedJsonEngine.healthCheck();
     if (health.status === 'unhealthy') {
       throw new Error('Guaranteed engine health check failed');
     }
   }
 
-  /**
-   * Test edge cases
-   */
   private static async testEdgeCases(): Promise<void> {
-    // Test empty prompt
     const emptyResult = await GuaranteedJsonEngine.generateGuaranteedJson(
       "",
       null,
@@ -242,7 +202,6 @@ export class ComprehensiveTestSuite {
       throw new Error('Empty prompt handling failed');
     }
 
-    // Test very long prompt
     const longPrompt = "Generate itinerary ".repeat(100);
     const longResult = await GuaranteedJsonEngine.generateGuaranteedJson(
       longPrompt,
@@ -258,7 +217,6 @@ export class ComprehensiveTestSuite {
       throw new Error('Long prompt handling failed');
     }
 
-    // Test special characters
     const specialPrompt = "Generate itinerary with ₱ symbols and émojis 🎉";
     const specialResult = await GuaranteedJsonEngine.generateGuaranteedJson(
       specialPrompt,
@@ -275,9 +233,6 @@ export class ComprehensiveTestSuite {
     }
   }
 
-  /**
-   * Test performance under stress
-   */
   private static async testPerformanceStress(): Promise<void> {
     const concurrentTests = 3;
     const startTime = Date.now();
@@ -296,7 +251,6 @@ export class ComprehensiveTestSuite {
     const results = await Promise.all(promises);
     const duration = Date.now() - startTime;
 
-    // Validate all results
     for (let i = 0; i < results.length; i++) {
       const validation = ItinerarySchema.safeParse(results[i]);
       if (!validation.success) {
@@ -304,27 +258,22 @@ export class ComprehensiveTestSuite {
       }
     }
 
-    // Check performance
-    if (duration > 30000) { // 30 seconds max for 3 concurrent requests
+    if (duration > 30000) { 
       throw new Error(`Performance test too slow: ${duration}ms`);
     }
 
     console.log(`🚀 Performance test: ${concurrentTests} concurrent requests in ${duration}ms`);
   }
 
-  /**
-   * Test schema validation thoroughly
-   */
   private static async testSchemaValidation(): Promise<void> {
-    // Test missing required fields
     const invalidStructures = [
-      { title: "Test" }, // Missing subtitle and items
-      { title: "Test", subtitle: "Test" }, // Missing items
-      { title: "Test", subtitle: "Test", items: [] }, // Empty items array
+      { title: "Test" }, 
+      { title: "Test", subtitle: "Test" }, 
+      { title: "Test", subtitle: "Test", items: [] }, 
       { 
         title: "Test", 
         subtitle: "Test", 
-        items: [{ period: "Day 1 - Morning" }] // Missing activities
+        items: [{ period: "Day 1 - Morning" }] 
       },
       {
         title: "Test",
@@ -332,7 +281,7 @@ export class ComprehensiveTestSuite {
         items: [{
           period: "Day 1 - Morning",
           activities: [{
-            title: "Test", // Missing other required fields
+            title: "Test", 
           }]
         }]
       }
@@ -345,7 +294,6 @@ export class ComprehensiveTestSuite {
       }
     }
 
-    // Test valid minimal structure
     const validMinimal = {
       title: "Test",
       subtitle: "Test",
@@ -361,11 +309,7 @@ export class ComprehensiveTestSuite {
     }
   }
 
-  /**
-   * Test error recovery mechanisms
-   */
   private static async testErrorRecovery(): Promise<void> {
-    // Test with malformed sample data
     const malformedSample = {
       items: "not an array",
       invalid: true
@@ -385,13 +329,9 @@ export class ComprehensiveTestSuite {
       throw new Error('Error recovery failed to produce valid output');
     }
 
-    // Test timeout scenarios (simulated)
     console.log('✅ Error recovery mechanisms working correctly');
   }
 
-  /**
-   * Generate test report
-   */
   static generateTestReport(results: any): string {
     const { passed, failed, results: testResults, overallStatus } = results;
     
@@ -416,14 +356,8 @@ export class ComprehensiveTestSuite {
   }
 }
 
-/**
- * Automated test runner for CI/CD
- */
 export class AutomatedTestRunner {
   
-  /**
-   * Run tests and exit with appropriate code
-   */
   static async runAndExit(): Promise<void> {
     try {
       const results = await ComprehensiveTestSuite.runAllTests();
@@ -444,9 +378,6 @@ export class AutomatedTestRunner {
     }
   }
 
-  /**
-   * Quick smoke test for deployment validation
-   */
   static async smokeTest(): Promise<boolean> {
     try {
       console.log('💨 Running smoke test...');

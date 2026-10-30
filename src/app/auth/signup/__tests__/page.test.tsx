@@ -4,14 +4,12 @@ import '@testing-library/jest-dom';
 import { useRouter } from 'next/navigation';
 import { validatePasswordStrength } from '@/lib/security/inputSanitizer';
 
-// Polyfill requestSubmit for jsdom
 if (typeof HTMLFormElement !== 'undefined' && !HTMLFormElement.prototype.requestSubmit) {
   HTMLFormElement.prototype.requestSubmit = function (this: HTMLFormElement) {
     // @ts-ignore
     this.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
   } as any;
 }
-// Ensure jsdom's not-implemented requestSubmit doesn't throw
 const originalRequestSubmit = HTMLFormElement.prototype.requestSubmit;
 try {
   // @ts-ignore check if it throws
@@ -21,20 +19,16 @@ try {
   } as any;
 } catch {}
 
-// Mock the signup page component
 jest.mock('../page', () => ({
   default: () => <div>Mocked SignUp Page</div>,
 }));
 
-// Mock the router
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
-// Mock fetch
 global.fetch = jest.fn();
 
-// Realistic SignUpForm that mirrors src/app/auth/signup/page.tsx validation & submit logic
 const SignUpForm = () => {
   const [fullName, setFullName] = React.useState('');
   const [email, setEmail] = React.useState('');
@@ -144,7 +138,6 @@ describe('Signup Page Integration Tests', () => {
   test('shows validation error for common password', async () => {
     render(<SignUpForm />);
 
-    // 'password' triggers the common-password check in validatePasswordStrength
     fireEvent.change(screen.getByLabelText(/^Full Name$/), { target: { value: 'John Doe' } });
     fireEvent.change(screen.getByLabelText(/^Email$/), { target: { value: 'john@example.com' } });
     fireEvent.change(screen.getByLabelText(/^Password$/), { target: { value: 'password' } });

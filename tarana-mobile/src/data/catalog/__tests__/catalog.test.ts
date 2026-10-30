@@ -1,11 +1,3 @@
-/**
- * Catalog completeness gate.
- *
- * The offline detail screen hides its menu section when `hasMenu` is false
- * (no dead buttons). This test pins the invariant that every vendored cafe
- * entry actually carries a real menu, so a future entry added without
- * `fullMenu` fails here instead of silently hiding content in the app.
- */
 import { describe, expect, it } from '@jest/globals';
 import { CAFES, menuDishCount } from '../index';
 import type { Cafe, FullMenu } from '../types';
@@ -27,14 +19,10 @@ describe('mobile cafe catalog', () => {
     (_name: string, cafe: Cafe) => {
       expect(cafe.hasMenu).toBe(true);
 
-      // Every slot must exist as an array — a missing key renders as
-      // `undefined` in the detail screen and crashes on `.length`.
       for (const slot of MEAL_SLOTS) {
         expect(Array.isArray(cafe.fullMenu[slot])).toBe(true);
       }
 
-      // At least one dish somewhere: a cafe menu of all-empty slots is a
-      // regressed copy, not real content.
       expect(menuDishCount(cafe.fullMenu)).toBeGreaterThan(0);
     }
   );
@@ -49,9 +37,6 @@ describe('mobile cafe catalog', () => {
         expect(dish.name.trim()).not.toBe('');
         expect(typeof dish.description).toBe('string');
         expect(dish.description.trim()).not.toBe('');
-        // Prices are pesos. Zero-priced dishes are real upstream data (e.g.
-        // Yoshimeatsu's included-with-buffet sides), so only reject negatives
-        // and non-numbers, which are transcription errors.
         expect(typeof dish.price).toBe('number');
         expect(dish.price).toBeGreaterThanOrEqual(0);
         expect(typeof dish.image).toBe('string');

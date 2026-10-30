@@ -5,7 +5,6 @@ import { getMenuByRestaurantName, restaurants } from '../data/taranaEatsData';
 export const useMenuSelections = (match: ResultMatch) => {
   const [selectedItems, setSelectedItems] = useState<MenuItem[]>([]);
 
-  // Reset selections when restaurant changes
   useEffect(() => {
     setSelectedItems([]);
   }, [match.name]);
@@ -27,13 +26,11 @@ export const useMenuSelections = (match: ResultMatch) => {
 
   const getMenuItems = (match: ResultMatch): MenuItem[] => {
     if (match.fullMenu) {
-      // Flatten all menu categories into a single array
       return Object.values(match.fullMenu)
         .flat()
-        .filter(item => item); // Remove any undefined items
+        .filter(item => item); 
     }
     
-    // Fallback: get menu by restaurant name from data store
     const fullMenu = getMenuByRestaurantName(match.name, restaurants);
     return Object.values(fullMenu).flat().filter(item => item);
   };

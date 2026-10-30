@@ -1,27 +1,3 @@
-/**
- * Proof that password-reset session invalidation actually works end to end.
- *
- * Run: npx tsx scripts/prove-session-invalidation.ts
- * Exit 0 = every assertion held.
- *
- * This cannot be a jest test: next-auth's `jwt` entry pulls an ESM-only
- * dependency that jest does not transform, so the real encode/decode path is
- * unreachable there. The jest suite (`src/lib/auth/__tests__/
- * sessionValidity.test.ts`) covers the callback contract; this script proves
- * the contract holds through the library's own session route, which is where
- * the original implementation silently failed.
- *
- * What it proves, in order:
- *   1. `iat` is re-stamped on re-encode (so it cannot date a session) — the
- *      reason the credential instant is pinned as a custom claim.
- *   2. A custom claim survives the encode/decode round-trip.
- *   3. Returning null from `jwt` does NOT discard a session: next-auth
- *      serialises the ORIGINAL token back and the session survives — the exact
- *      failure mode of the first implementation.
- *   4. Returning an empty body from `session` DOES discard it
- *      (`getServerSession` -> null) — the shipped mechanism.
- *   5. A session whose stamp matches the account is still returned intact.
- */
 import { encode, decode, getToken } from 'next-auth/jwt';
 
 const SECRET = 'p'.repeat(40);
@@ -36,14 +12,6 @@ function check(label: string, ok: boolean, detail = '') {
   if (!ok) failures++;
 }
 
-/** Mirror of next-auth's OWN session body contract, parameterised by how a
- *  theoretical rejection could be expressed. It intentionally does NOT mirror
- *  the app's callbacks: this script proves the library premise the app relies
- *  on (a key-less body is "no session"; a null `jwt` return is ignored), while
- *  the app's real `session` callback is pinned separately in
- *  `src/lib/auth/__tests__/sessionValidity.test.ts` ("session() credential-
- *  change gate" describe).
- */
 function options(rejectVia: 'jwt-null' | 'session-empty', defensiveSession: boolean) {
   return {
     secret: SECRET,
@@ -57,9 +25,6 @@ function options(rejectVia: 'jwt-null' | 'session-empty', defensiveSession: bool
       },
       async session({ session, token }: any) {
         if (rejectVia === 'session-empty' && (token[CLAIM] ?? null) !== LIVE) return {};
-        // The original code dereferenced `token.id` unconditionally; the
-        // `defensiveSession` variant models the one-token edit (`token?.id`)
-        // that would make a null token survive.
         if (session.user) session.user.id = defensiveSession ? token?.id : token.id;
         return session;
       },
@@ -83,7 +48,6 @@ async function sessionFor(
     cookies: { [COOKIE]: cookie },
   };
   const res = { getHeader: () => [], setHeader: () => {}, setCookie: () => {} };
-  // Silence next-auth's expected JWT_SESSION_ERROR logging for the null case.
   const orig = console.error;
   console.error = () => {};
   try {
@@ -147,14 +111,6 @@ async function main() {
   );
 
   console.log('\n6. the harness stub only ever minted stamped tokens; shipped enforcement comes from elsewhere');
-  // Scoped honestly. Step 6 used to claim it proved the deployed mobile
-  // regression (pre-deploy tokens have no stamp key). It cannot: this script
-  // drives hand-built JWEs, not the exchange, so every minted token carries
-  // whatever the harness wrote. The real regression guard lives in the jest
-  // suite (mobileToken.test.ts: validator shape) and the exchange tests
-  // (stale source session -> 401). This step keeps the round-trip evidence
-  // that matters here: the stamp survives the same encode/getToken path the
-  // middleware uses.
   const rawMobile = await encode({
     token: { sub: 'u1', id: 'u1', email: 'u@example.com', tosAccepted: true, mobile: true, [CLAIM]: LIVE },
     secret: SECRET,

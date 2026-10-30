@@ -61,7 +61,6 @@ describe('CreditService', () => {
       insert: mockInsert,
     }));
 
-    // also patch global mock
     const g: any = global as any;
     if (g.mockSupabaseAdmin) {
       g.mockSupabaseAdmin.rpc = mockRpc;

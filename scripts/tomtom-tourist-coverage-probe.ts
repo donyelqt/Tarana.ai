@@ -4,15 +4,6 @@ import { isTouristPoi, selectTouristPois, TOURIST_POI_TARGET, TARGET_CITY_IDS, t
 import { TOURIST_QUERY_BUCKETS } from "../src/lib/services/touristPoiService"
 import type { SearchResult } from "../src/types/route-optimization"
 
-/**
- * Read-only live coverage probe for the 50-tourist-POI target.
- *
- * It calls TomTom directly instead of importing the service so it never touches
- * Supabase or the `places` cache. Intended use is pre-implementation evidence
- * and post-deploy spot checks, not a CI gate (it needs a live API key).
- *
- * No API key or raw request URL is printed.
- */
 
 const API_KEY = process.env.TOMTOM_API_KEY || process.env.NEXT_PUBLIC_TOMTOM_API_KEY || ""
 if (!API_KEY) {
@@ -34,7 +25,6 @@ const REQUEST_HEADERS: Record<string, string> = {
 try {
   REQUEST_HEADERS.Origin = new URL(REFERER).origin
 } catch {
-  // Non-URL referer: forward as Referer only, mirroring the service.
 }
 
 type CoverageRow = {
@@ -57,7 +47,6 @@ function readNumber(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0
 }
 
-/** Map one untrusted TomTom result; the shape is read field-by-field. */
 function mapResult(raw: unknown): SearchResult {
   const record = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>
   const poi = (record.poi && typeof record.poi === "object" ? record.poi : {}) as Record<string, unknown>
@@ -126,8 +115,6 @@ async function probeCity(cityId: string): Promise<CoverageRow> {
   let overCap = 0
   for (const row of raw) {
     if (acceptedIds.has(row.id)) continue
-    // Distinguish "failed the tourist rules" from "eligible but beyond the cap"
-    // so a capped city is not misreported as having a quality gap.
     if (isTouristPoi(row, cityId as TargetCityId)) {
       overCap += 1
       continue

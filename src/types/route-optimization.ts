@@ -1,11 +1,4 @@
-/**
- * Route Optimization System Types
- * Comprehensive TypeScript interfaces for traffic-aware routing
- */
 
-// ============================================================================
-// CORE COORDINATE AND LOCATION TYPES
-// ============================================================================
 
 export interface Coordinates {
   lat: number;
@@ -26,9 +19,6 @@ export interface BoundingBox {
   bottomRight: Coordinates;
 }
 
-// ============================================================================
-// ROUTE REQUEST AND PREFERENCES
-// ============================================================================
 
 export type RouteType = 'fastest' | 'shortest' | 'eco' | 'thrilling';
 export type VehicleType = 'car' | 'truck' | 'motorcycle' | 'bicycle' | 'walk';
@@ -52,9 +42,6 @@ export interface RouteRequest {
   preferences: RoutePreferences;
 }
 
-// ============================================================================
-// ROUTE DATA STRUCTURES
-// ============================================================================
 
 export interface RouteSummary {
   lengthInMeters: number;
@@ -102,9 +89,6 @@ export interface RouteData {
   confidence?: number;
 }
 
-// ============================================================================
-// TRAFFIC ANALYSIS TYPES
-// ============================================================================
 
 export type TrafficLevel = 'VERY_LOW' | 'LOW' | 'MODERATE' | 'HIGH' | 'SEVERE';
 
@@ -168,9 +152,6 @@ export interface RouteTrafficAnalysis {
   lastUpdated: Date;
 }
 
-// ============================================================================
-// ROUTE COMPARISON AND OPTIMIZATION
-// ============================================================================
 
 export interface RouteRecommendation {
   type: 'primary' | 'alternative' | 'avoid';
@@ -194,10 +175,10 @@ export interface RouteComparison {
 }
 
 export interface RouteEvaluationCriteria {
-  travelTime: number;        // Weight: 40%
-  trafficConditions: number; // Weight: 30%
-  distance: number;          // Weight: 20%
-  roadQuality: number;       // Weight: 10%
+  travelTime: number;        
+  trafficConditions: number; 
+  distance: number;          
+  roadQuality: number;       
 }
 
 export interface RouteRanking {
@@ -208,9 +189,6 @@ export interface RouteRanking {
   weaknesses: string[];
 }
 
-// ============================================================================
-// LOCATION SEARCH AND GEOCODING
-// ============================================================================
 
 export interface SearchResult {
   id: string;
@@ -243,9 +221,6 @@ export interface AddressResult {
   coordinates: Coordinates;
 }
 
-// ============================================================================
-// API RESPONSE TYPES
-// ============================================================================
 
 export interface RouteResponse {
   routes: RouteData[];
@@ -275,13 +250,10 @@ export interface LocationSearchResponse {
   totalResults: number;
 }
 
-// ============================================================================
-// REAL-TIME MONITORING TYPES
-// ============================================================================
 
 export interface RouteStatus {
   isActive: boolean;
-  progress: number; // 0-100
+  progress: number; 
   currentLocation?: Coordinates;
   nextInstruction?: RouteInstruction;
   estimatedTimeRemaining: number;
@@ -308,9 +280,6 @@ export interface RouteUpdate {
   timestamp: Date;
 }
 
-// ============================================================================
-// COMPONENT STATE TYPES
-// ============================================================================
 
 export interface RouteOptimizationState {
   currentRoute: RouteData | null;
@@ -352,9 +321,6 @@ export interface MapVisualizationConfig {
   };
 }
 
-// ============================================================================
-// EVENT HANDLERS AND CALLBACKS
-// ============================================================================
 
 export interface MapEventHandlers {
   onRouteClick: (segment: RouteSegmentTraffic) => void;
@@ -371,9 +337,6 @@ export interface RouteCalculationCallbacks {
   onAlternativeRouteSelected: (route: RouteData) => void;
 }
 
-// ============================================================================
-// ERROR TYPES
-// ============================================================================
 
 export interface RouteError {
   type: 'api_error' | 'validation_error' | 'network_error' | 'rate_limit' | 'service_unavailable';
@@ -383,9 +346,6 @@ export interface RouteError {
   retryable: boolean;
 }
 
-// ============================================================================
-// UTILITY TYPES
-// ============================================================================
 
 export type RouteCalculationStatus = 'idle' | 'calculating' | 'success' | 'error';
 export type MapLoadingState = 'loading' | 'loaded' | 'error';

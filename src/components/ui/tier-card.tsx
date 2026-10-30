@@ -2,12 +2,6 @@ import React from 'react';
 import { Check, Zap } from 'lucide-react';
 import { TierCardProps } from '../../types/credit-tiers';
 
-/**
- * TierCard component for displaying individual credit tiers
- * Implements three visual states: unlocked (green), next (blue), locked (gray)
- * Matches design specifications: 12px border radius, 16px padding, proper typography
- * Enhanced with accessibility features, improved color contrast, and error handling
- */
 export const TierCard: React.FC<TierCardProps> = ({
   tierName,
   dailyCredits,
@@ -16,7 +10,6 @@ export const TierCard: React.FC<TierCardProps> = ({
   status,
   icon
 }) => {
-  // Validate props with comprehensive error handling
   if (!tierName || typeof tierName !== 'string' || tierName.trim().length === 0) {
     console.warn('TierCard: Invalid tierName provided:', tierName);
     return null;
@@ -37,13 +30,12 @@ export const TierCard: React.FC<TierCardProps> = ({
     return null;
   }
 
-  // Color schemes based on tier status with improved contrast ratios for accessibility
   const getStatusStyles = () => {
     switch (status) {
       case 'unlocked':
         return {
           background: 'bg-green-50',
-          border: 'border-green-700', // Enhanced contrast for accessibility
+          border: 'border-green-700', 
           iconBg: 'bg-green-700',
           statusBadge: 'bg-green-700 text-white',
           textColor: 'text-green-900',
@@ -52,7 +44,7 @@ export const TierCard: React.FC<TierCardProps> = ({
       case 'next':
         return {
           background: 'bg-blue-50',
-          border: 'border-blue-700', // Enhanced contrast for accessibility
+          border: 'border-blue-700', 
           iconBg: 'bg-blue-700',
           statusBadge: 'bg-blue-700 text-white',
           textColor: 'text-blue-900',
@@ -61,7 +53,7 @@ export const TierCard: React.FC<TierCardProps> = ({
       case 'locked':
         return {
           background: 'bg-gray-50',
-          border: 'border-gray-500', // Enhanced contrast for accessibility
+          border: 'border-gray-500', 
           iconBg: 'bg-gray-600',
           statusBadge: '',
           textColor: 'text-gray-800',
@@ -81,14 +73,12 @@ export const TierCard: React.FC<TierCardProps> = ({
 
   const styles = getStatusStyles();
 
-  // Get the appropriate icon with error handling
   const getIcon = () => {
     try {
       if (React.isValidElement(icon)) {
         return icon;
       }
       
-      // Fallback to default icons if needed
       if (status === 'unlocked') {
         return <Check className="w-5 h-5 text-white" aria-hidden="true" />;
       }
@@ -99,7 +89,6 @@ export const TierCard: React.FC<TierCardProps> = ({
     }
   };
 
-  // Get status badge text
   const getStatusBadgeText = () => {
     switch (status) {
       case 'unlocked':
@@ -113,7 +102,6 @@ export const TierCard: React.FC<TierCardProps> = ({
 
   const statusBadgeText = getStatusBadgeText();
 
-  // Generate accessible description
   const getAriaLabel = () => {
     const baseDescription = `${tierName} tier: ${dailyCredits} daily credits bonus, ${totalCredits} total credits per day`;
     if (status === 'unlocked') {
@@ -139,7 +127,7 @@ export const TierCard: React.FC<TierCardProps> = ({
       tabIndex={0}
     >
       <div className="flex items-start gap-4">
-        {/* Icon container - 40px × 40px with improved accessibility and design specs */}
+        {}
         <div 
           className={`
             w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm transition-colors duration-200
@@ -150,16 +138,16 @@ export const TierCard: React.FC<TierCardProps> = ({
           {getIcon()}
         </div>
 
-        {/* Content section */}
+        {}
         <div className="flex-1 min-w-0">
-          {/* Tier name and status badge row */}
+          {}
           <div className="flex items-center justify-between mb-3">
-            {/* Tier name - 16px font-semibold with improved contrast */}
+            {}
             <h3 className={`text-base font-semibold truncate ${styles.textColor}`}>
               {tierName}
             </h3>
             
-            {/* Status badge with improved accessibility */}
+            {}
             {statusBadgeText && (
               <span 
                 className={`
@@ -173,7 +161,7 @@ export const TierCard: React.FC<TierCardProps> = ({
             )}
           </div>
 
-          {/* Credits information - 14px font-medium with improved spacing and contrast */}
+          {}
           <div className="space-y-2">
             <div className="text-sm font-medium text-gray-900">
               +{dailyCredits} daily credits
@@ -182,7 +170,7 @@ export const TierCard: React.FC<TierCardProps> = ({
               Total: {totalCredits} credits/day
             </div>
             
-            {/* Referrals required (only for locked/next tiers) */}
+            {}
             {referralsRequired !== undefined && status !== 'unlocked' && (
               <div className="text-sm font-medium text-gray-700 mt-3 pt-2 border-t border-gray-300">
                 <span className="inline-flex items-center gap-1">

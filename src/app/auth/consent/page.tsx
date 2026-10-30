@@ -28,11 +28,9 @@ function ConsentForm() {
       if (!response.ok) {
         throw new Error(data.error || "Could not record acceptance");
       }
-      // Refresh the JWT so the tosAccepted claim takes effect without re-login.
       try {
         await update();
       } catch {
-        // Non-fatal: middleware re-checks on the next navigation.
       }
       router.push(callbackUrl);
     } catch (err: unknown) {

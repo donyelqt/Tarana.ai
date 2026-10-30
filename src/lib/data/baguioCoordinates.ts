@@ -1,9 +1,6 @@
 import { getCityCenter as getCityCenterCfg, isWithinCityBounds as isWithinCityBoundsCfg } from "./cityConfig"
 
-/**
- * Baguio City Activity Coordinates Database
- * Precise latitude/longitude coordinates for all activities in the itinerary system
- */
+
 
 export interface ActivityCoordinates {
   lat: number;
@@ -12,9 +9,9 @@ export interface ActivityCoordinates {
   category: string;
 }
 
-// Precise coordinates database matching itineraryData.ts activities
+
 export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
-  // Core Tourist Attractions
+  
   "Burnham Park": {
     lat: 16.4093,
     lon: 120.5950,
@@ -70,7 +67,7 @@ export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
     category: "cultural"
   },
 
-  // Shopping & Markets
+  
   "Baguio Night Market": {
     lat: 16.4121,
     lon: 120.5961,
@@ -96,7 +93,7 @@ export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
     category: "religious"
   },
 
-  // Nature & Adventure Sites
+  
   "Mirador Heritage and Eco Park": {
     lat: 16.4089,
     lon: 120.5812,
@@ -140,7 +137,7 @@ export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
     category: "trail"
   },
 
-  // La Trinidad Area (Near Baguio)
+  
   "Valley of Colors": {
     lat: 16.4583,
     lon: 120.5908,
@@ -160,7 +157,7 @@ export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
     category: "mountain"
   },
 
-  // Food & Dining
+  
   "Chimichanga by Jaimes Family Feast": {
     lat: 16.4083,
     lon: 120.5931,
@@ -247,27 +244,25 @@ export const BAGUIO_COORDINATES: Record<string, ActivityCoordinates> = {
   }
 };
 
-/**
- * Get coordinates for an activity by name
- */
+
 export function getActivityCoordinates(activityName: string): ActivityCoordinates | null {
-  // Direct match first
+  
   if (BAGUIO_COORDINATES[activityName]) {
     return BAGUIO_COORDINATES[activityName];
   }
 
-  // Fuzzy matching for partial names
+  
   const normalizedName = activityName.toLowerCase().trim();
   
   for (const [key, coords] of Object.entries(BAGUIO_COORDINATES)) {
     const normalizedKey = key.toLowerCase();
     
-    // Check if the activity name contains the key or vice versa
+    
     if (normalizedName.includes(normalizedKey) || normalizedKey.includes(normalizedName)) {
       return coords;
     }
     
-    // Check for common variations
+    
     if (normalizedName.includes('market') && normalizedKey.includes('market')) {
       return coords;
     }
@@ -282,23 +277,19 @@ export function getActivityCoordinates(activityName: string): ActivityCoordinate
   return null;
 }
 
-/**
- * Get all coordinates for a specific category
- */
+
 export function getCoordinatesByCategory(category: string): ActivityCoordinates[] {
   return Object.values(BAGUIO_COORDINATES).filter(coord => coord.category === category);
 }
 
-/**
- * Calculate distance between two coordinates (in kilometers)
- */
+
 export function calculateDistance(
   lat1: number, 
   lon1: number, 
   lat2: number, 
   lon2: number
 ): number {
-  const R = 6371; // Earth's radius in kilometers
+  const R = 6371; 
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = 
@@ -309,9 +300,7 @@ export function calculateDistance(
   return R * c;
 }
 
-/**
- * Find nearby activities within a radius
- */
+
 export function findNearbyActivities(
   centerLat: number, 
   centerLon: number, 
@@ -323,10 +312,7 @@ export function findNearbyActivities(
   });
 }
 
-/**
- * Get the center point of Baguio City
- * @deprecated Use getCityCenter('baguio') from cityConfig — kept for backward compat
- */
+
 export function getBaguioCityCenter(): ActivityCoordinates {
   const c = getCityCenterCfg("baguio")
   return {
@@ -337,13 +323,10 @@ export function getBaguioCityCenter(): ActivityCoordinates {
   };
 }
 
-/**
- * Validate if coordinates are within Baguio City bounds
- * @deprecated Use isWithinCityBounds(lat,lon,'baguio') — kept for backward compat
- */
+
 export function isWithinBaguioBounds(lat: number, lon: number): boolean {
   return isWithinCityBoundsCfg(lat, lon, "baguio")
 }
 
-// ── World-scale helpers (thin wrappers over cityConfig) ──
+
 export { isWithinCityBounds, getCityCenter, getCityBounds } from "./cityConfig"

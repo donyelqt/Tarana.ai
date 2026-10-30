@@ -8,7 +8,7 @@ const HowItWorksSection = ({ id }: { id?: string }) => {
         <h2 className="text-4xl md:text-5xl font-medium text-center mb-16 font-sans">How it Works</h2>
 
         <div className="relative">
-          {/* S-shaped Dotted line connecting the steps - refined based on image */}
+          {}
           <div className="hidden md:block absolute top-0 left-0 right-0 w-full h-full z-0 pointer-events-none">
             <div className="relative w-full h-full flex items-center justify-center" style={{ top: 'calc(47% - 185px)' }}>
               <svg width="1500px" height="100px" viewBox="0 0 800 100" preserveAspectRatio="xMidYMid meet" className="overflow-visible">
@@ -23,8 +23,8 @@ const HowItWorksSection = ({ id }: { id?: string }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10"> {/* Removed pt-10, rely on item spacing and line position */}
-            {/* Step 1 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10"> {}
+            {}
             <div className="flex flex-col items-center text-center">
               <div className="p-4 mb-6 w-64 h-34 flex items-center justify-center">
                 <Image
@@ -41,7 +41,7 @@ const HowItWorksSection = ({ id }: { id?: string }) => {
               </p>
             </div>
 
-            {/* Step 2 */}
+            {}
             <div className="flex flex-col items-center text-center">
               <div className="p-4 mb-6 w-64 h-34 flex items-center justify-center">
                 <Image
@@ -58,7 +58,7 @@ const HowItWorksSection = ({ id }: { id?: string }) => {
               </p>
             </div>
 
-            {/* Step 3 */}
+            {}
             <div className="flex flex-col items-center text-center">
               <div className="p-4 mb-6 w-64 h-34 flex items-center justify-center">
                 <Image

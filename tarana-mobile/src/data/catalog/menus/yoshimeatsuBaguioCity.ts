@@ -1,21 +1,13 @@
-// ====================================================================
-// YOSHIMEATSU BAGUIO CITY MENU DATA
-// ====================================================================
-// Yoshimeatsu Baguio City is a lively Korean-Japanese restaurant offering unlimited 
-// barbecue, sushi, and a variety of side dishes, making it a go-to spot for hearty 
-// meals and group dining in a vibrant setting.
-// ====================================================================
 
 import { FullMenu } from "../types";
 
 export const yoshimeatsuBaguioCityMenu: FullMenu = {
   Breakfast: [],
   Lunch: [
-    // Side Dishes (Unlimited)
     {
       name: "Gohan",
       description: "Japanese steamed rice - unlimited serving",
-      price: 0, // Unlimited buffet item
+      price: 0, 
       image: "/images/comingsoon.png",
     },
     {
@@ -126,7 +118,6 @@ export const yoshimeatsuBaguioCityMenu: FullMenu = {
       price: 0,
       image: "/images/comingsoon.png",
     },
-    // Meat Items (Unlimited)
     {
       name: "Plain Beef",
       description: "Unmarinated beef for grilling - unlimited serving",
@@ -261,7 +252,6 @@ export const yoshimeatsuBaguioCityMenu: FullMenu = {
     },
   ],
   Dinner: [
-    // Side Dishes (Unlimited)
     {
       name: "Gohan",
       description: "Japanese steamed rice - unlimited serving",
@@ -376,7 +366,6 @@ export const yoshimeatsuBaguioCityMenu: FullMenu = {
       price: 0,
       image: "/images/comingsoon.png",
     },
-    // Meat Items (Unlimited)
     {
       name: "Plain Beef",
       description: "Unmarinated beef for grilling - unlimited serving",

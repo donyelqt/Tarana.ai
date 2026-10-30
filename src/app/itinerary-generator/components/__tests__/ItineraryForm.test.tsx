@@ -2,7 +2,6 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
-// Create a simplified test component that isolates the traffic toggle logic
 const TrafficToggleTest = ({ trafficAware, setTrafficAware }: { trafficAware: boolean; setTrafficAware: (value: boolean) => void }) => {
   return (
     <div className="absolute top-0" style={{ left: '476px', right: '8rem' }}>
@@ -38,7 +37,6 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       render(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // Verify the toggle shows "On" when trafficAware is true
       expect(screen.getByText('On')).toBeInTheDocument();
       expect(screen.queryByText('Off')).not.toBeInTheDocument();
     });
@@ -47,7 +45,6 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       render(<TrafficToggleTest trafficAware={false} setTrafficAware={setTrafficAware} />);
 
-      // Verify the toggle shows "Off" when trafficAware is false
       expect(screen.getByText('Off')).toBeInTheDocument();
       expect(screen.queryByText('On')).not.toBeInTheDocument();
     });
@@ -56,11 +53,9 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       render(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // Find and click the toggle button
       const toggleButton = screen.getByRole('button');
       fireEvent.click(toggleButton);
 
-      // Verify the setter was called with false (toggling from true to false)
       expect(setTrafficAware).toHaveBeenCalledWith(false);
       expect(setTrafficAware).toHaveBeenCalledTimes(1);
     });
@@ -69,11 +64,9 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       render(<TrafficToggleTest trafficAware={false} setTrafficAware={setTrafficAware} />);
 
-      // Find and click the toggle button
       const toggleButton = screen.getByRole('button');
       fireEvent.click(toggleButton);
 
-      // Verify the setter was called with true (toggling from false to true)
       expect(setTrafficAware).toHaveBeenCalledWith(true);
       expect(setTrafficAware).toHaveBeenCalledTimes(1);
     });
@@ -84,7 +77,6 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       render(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // The toggle button should have blue background when on
       const toggleButton = screen.getByRole('button');
       expect(toggleButton).toHaveClass('bg-blue-600');
       expect(toggleButton).not.toHaveClass('bg-gray-300');
@@ -94,7 +86,6 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       render(<TrafficToggleTest trafficAware={false} setTrafficAware={setTrafficAware} />);
 
-      // The toggle button should have gray background when off
       const toggleButton = screen.getByRole('button');
       expect(toggleButton).toHaveClass('bg-gray-300');
       expect(toggleButton).not.toHaveClass('bg-blue-600');
@@ -104,7 +95,6 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       render(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // The toggle switch should be translated to the right when on
       const toggleSwitch = screen.getByRole('button').querySelector('span');
       expect(toggleSwitch).toHaveClass('translate-x-5');
       expect(toggleSwitch).not.toHaveClass('translate-x-0');
@@ -114,7 +104,6 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       render(<TrafficToggleTest trafficAware={false} setTrafficAware={setTrafficAware} />);
 
-      // The toggle switch should be at the left position when off
       const toggleSwitch = screen.getByRole('button').querySelector('span');
       expect(toggleSwitch).toHaveClass('translate-x-0');
       expect(toggleSwitch).not.toHaveClass('translate-x-5');
@@ -144,7 +133,6 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
 
       const toggleButton = screen.getByRole('button');
 
-      // Test focusability
       toggleButton.focus();
       expect(document.activeElement).toBe(toggleButton);
     });
@@ -155,7 +143,6 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       render(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // Verify the component renders with the expected structure
       expect(screen.getByText('Traffic')).toBeInTheDocument();
       expect(screen.getByText('On')).toBeInTheDocument();
       expect(screen.getByRole('button')).toBeInTheDocument();
@@ -165,7 +152,6 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       render(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // The traffic toggle should be absolutely positioned
       const rootContainer = screen.getByText('Traffic').closest('[style*="left"]');
       expect(rootContainer).toHaveClass('absolute');
     });
@@ -176,14 +162,11 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       render(<TrafficToggleTest trafficAware={false} setTrafficAware={setTrafficAware} />);
 
-      // Initially should be off
       expect(screen.getByText('Off')).toBeInTheDocument();
 
-      // Click to turn on
       const toggleButton = screen.getByRole('button');
       fireEvent.click(toggleButton);
 
-      // Verify state change was triggered
       expect(setTrafficAware).toHaveBeenCalledWith(true);
       expect(setTrafficAware).toHaveBeenCalledTimes(1);
     });
@@ -196,13 +179,10 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
 
       const toggleButton = screen.getByRole('button');
 
-      // Simulate rapid clicking - each click should call setTrafficAware with !trafficAware
-      // Since trafficAware is false, each click should call with true
       fireEvent.click(toggleButton);
       fireEvent.click(toggleButton);
       fireEvent.click(toggleButton);
 
-      // Should have been called 3 times with the same value (true) since trafficAware prop doesn't change
       expect(setTrafficAware).toHaveBeenCalledTimes(3);
       expect(setTrafficAware).toHaveBeenNthCalledWith(1, true);
       expect(setTrafficAware).toHaveBeenNthCalledWith(2, true);
@@ -213,13 +193,10 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       const { rerender } = render(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // Initially should show "On"
       expect(screen.getByText('On')).toBeInTheDocument();
 
-      // Re-render with same state
       rerender(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // Should still show "On"
       expect(screen.getByText('On')).toBeInTheDocument();
       expect(screen.queryByText('Off')).not.toBeInTheDocument();
     });
@@ -228,13 +205,10 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       const { rerender } = render(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // Initially should show "On"
       expect(screen.getByText('On')).toBeInTheDocument();
 
-      // Change prop to false
       rerender(<TrafficToggleTest trafficAware={false} setTrafficAware={setTrafficAware} />);
 
-      // Should now show "Off"
       expect(screen.getByText('Off')).toBeInTheDocument();
       expect(screen.queryByText('On')).not.toBeInTheDocument();
     });
@@ -245,13 +219,10 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       const { rerender } = render(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // Clear any initial calls
       setTrafficAware.mockClear();
 
-      // Re-render with same props
       rerender(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // Should not trigger state changes
       expect(setTrafficAware).not.toHaveBeenCalled();
     });
 
@@ -259,7 +230,6 @@ describe('Traffic Toggle Component - 100% Correctness & Functionality Analysis',
       const setTrafficAware = jest.fn();
       const { unmount } = render(<TrafficToggleTest trafficAware={true} setTrafficAware={setTrafficAware} />);
 
-      // Component should unmount without errors
       expect(() => unmount()).not.toThrow();
     });
   });

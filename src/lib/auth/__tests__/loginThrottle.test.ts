@@ -8,15 +8,6 @@ import {
   LOGIN_RATE_LIMIT_CONFIG,
 } from '../loginThrottle';
 
-/**
- * Regression suite for the credentials-provider login throttle.
- *
- * The bug: identity was `${email}:${first x-forwarded-for entry}`. That entry
- * is caller-supplied, so rotating it minted a fresh bucket on every attempt and
- * the lockout never fired — unlimited password guessing against a known email.
- * Proven against the old logic: ten failures with a rotated header produced
- * zero block events, while a fixed address produced a lockout.
- */
 
 const request = (headers: Record<string, string> = {}, ip?: string) =>
   ({ headers, ip } as unknown as { headers: Record<string, string>; ip?: string });
@@ -27,8 +18,6 @@ describe('login throttle identity', () => {
   });
 
   test('rotating x-forwarded-for no longer yields a fresh bucket per attempt', () => {
-    // A caller can only influence the leading entries; the trailing hop is
-    // appended by the proxy. Same trailing hop => same bucket => lockout fires.
     const email = 'victim@example.com';
     let blocked = false;
     for (let i = 0; i < LOGIN_RATE_LIMIT_CONFIG.maxAttempts + 1; i++) {
@@ -69,9 +58,7 @@ describe('login throttle identity', () => {
     expect(blocked.blocked).toBe(true);
     expect(blocked.retryAfter).toBe(LOGIN_RATE_LIMIT_CONFIG.blockDurationMs / 1000);
 
-    // Still blocked inside the window.
     expect(getLoginBlockStatus(identity, now + 1000).blocked).toBe(true);
-    // Released once the block expires.
     expect(
       getLoginBlockStatus(identity, now + LOGIN_RATE_LIMIT_CONFIG.blockDurationMs + 1).blocked
     ).toBe(false);

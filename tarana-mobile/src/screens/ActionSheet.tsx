@@ -23,13 +23,6 @@ const ACTIONS = [
   },
 ];
 
-/**
- * ActionSheet — the center-tab action (transparent modal over the tabs).
- *
- * Three feature destinations, one tap each. `replace` (not navigate) so
- * the sheet never stacks: dismissing the destination returns to the tab
- * that opened it. Backdrop and Cancel both goBack — back never traps.
- */
 export default function ActionSheet({ navigation }: { navigation: any }) {
   const go = (route: string) => {
     navigation.replace(route);

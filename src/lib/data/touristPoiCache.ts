@@ -16,15 +16,10 @@ type PlaceRow = {
   metadata: Record<string, unknown> | null;
 };
 
-/** Cache reads should never fail a user request; unavailability degrades to TomTom. */
 export function isTouristPoiCacheEnabled(): boolean {
   return process.env.TOURIST_POI_CACHE_ENABLED !== 'false';
 }
 
-/**
- * Fresh rows only: unexpired by valid_until, newest first.
- * Returns [] on any DB failure so callers can fall back to live upstream.
- */
 export async function readFreshPlaces(
   cityId: TargetCityId,
   limit: number
@@ -66,8 +61,6 @@ export async function readFreshPlaces(
         : place.category
           ? [place.category]
           : [];
-      // Stored ids are `${city}:${tomtomId}`. Return the raw provider id so
-      // cache hits and upstream results share one identity namespace.
       const providerId = typeof metadata.tomtomId === 'string' && metadata.tomtomId
         ? metadata.tomtomId
         : place.id;
@@ -97,7 +90,6 @@ export async function readFreshPlaces(
   }
 }
 
-/** Best-effort persistence; a cache write must not fail the user request. */
 export async function upsertTouristPlaces(
   cityId: TargetCityId,
   results: readonly SearchResult[]

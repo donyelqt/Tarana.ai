@@ -1,9 +1,3 @@
-// ====================================================================
-// BUDGET ALLOCATION SERVICE
-// ====================================================================
-// Intelligent budget allocation across menu items
-// Optimizes selection for best value and satisfaction
-// ====================================================================
 
 import { IndexedMenuItem } from "./menuIndexingService";
 import { TaranaEatsFormValues } from "@/types/tarana-eats";
@@ -12,9 +6,9 @@ export interface BudgetAllocation {
   selectedItems: IndexedMenuItem[];
   totalCost: number;
   remainingBudget: number;
-  utilizationRate: number; // Percentage of budget used
-  valueScore: number; // Overall value score
-  nutritionalBalance: number; // How well balanced the selection is
+  utilizationRate: number; 
+  valueScore: number; 
+  nutritionalBalance: number; 
   recommendations: string[];
 }
 
@@ -38,10 +32,6 @@ export class BudgetAllocator {
     return BudgetAllocator.instance;
   }
 
-  /**
-   * Allocate budget optimally across menu items
-   * Uses dynamic programming approach for optimal selection
-   */
   public allocateBudget(
     availableItems: IndexedMenuItem[],
     totalBudget: number,
@@ -51,14 +41,12 @@ export class BudgetAllocator {
   ): BudgetAllocation {
     console.log('💰 Allocating budget intelligently...');
 
-    // Apply constraints and filters
     let eligibleItems = this.filterItemsByConstraints(
       availableItems,
       preferences,
       constraints
     );
 
-    // Calculate optimal selection using value-based algorithm
     const selected = this.selectOptimalItems(
       eligibleItems,
       totalBudget,
@@ -90,10 +78,6 @@ export class BudgetAllocator {
     };
   }
 
-  /**
-   * Filter items based on constraints and preferences
-   * With intelligent fallback when filters are too strict
-   */
   private filterItemsByConstraints(
     items: IndexedMenuItem[],
     preferences?: TaranaEatsFormValues,
@@ -102,31 +86,25 @@ export class BudgetAllocator {
     let filtered = [...items];
     const originalCount = filtered.length;
 
-    // Filter by meal type preferences (relaxed if result is empty)
     if (preferences?.mealType && preferences.mealType.length > 0) {
       const mealFiltered = filtered.filter(item =>
         preferences.mealType!.includes(item.category)
       );
-      // Only apply if we still have items, otherwise keep all
       if (mealFiltered.length > 0) {
         filtered = mealFiltered;
       }
     }
 
-    // Filter by dietary restrictions (relaxed approach)
     if (preferences?.restrictions && preferences.restrictions.length > 0) {
       const dietaryFiltered = filtered.filter(item => {
-        // If item has no dietary labels, skip it
         if (!item.dietaryLabels || item.dietaryLabels.length === 0) {
           return false;
         }
-        // Check if item matches ANY restriction (more lenient)
         return preferences.restrictions!.some(r =>
           item.dietaryLabels?.includes(r)
         );
       });
       
-      // Only apply dietary filter if we get results, otherwise use all items
       if (dietaryFiltered.length > 0) {
         filtered = dietaryFiltered;
       } else {
@@ -134,7 +112,6 @@ export class BudgetAllocator {
       }
     }
 
-    // Apply category constraints
     if (constraints?.avoidCategories && constraints.avoidCategories.length > 0) {
       const categoryFiltered = filtered.filter(item =>
         !constraints.avoidCategories!.includes(item.category)
@@ -148,23 +125,18 @@ export class BudgetAllocator {
     return filtered;
   }
 
-  /**
-   * Select optimal items using value-based greedy algorithm with diversity
-   */
   private selectOptimalItems(
     items: IndexedMenuItem[],
     budget: number,
     groupSize: number,
     constraints?: AllocationConstraints
   ): IndexedMenuItem[] {
-    // Calculate value score for each item
     const itemsWithValue = items.map(item => ({
       item,
       value: this.calculateItemValue(item),
       efficiencyRatio: (item.popularity || 50) / Math.max(1, item.price)
     }));
 
-    // Sort by efficiency ratio (bang for buck)
     const sorted = itemsWithValue.sort((a, b) => b.efficiencyRatio - a.efficiencyRatio);
 
     const selected: IndexedMenuItem[] = [];
@@ -172,36 +144,30 @@ export class BudgetAllocator {
     const categoryCount: Record<string, number> = {};
 
     const minItems = constraints?.minItemsPerPerson || 2;
-    const maxItems = constraints?.maxItemsPerPerson || 6; // Increased from 4 to 6
-    const targetUtilization = 0.75; // Target 75% budget utilization
-    const maxUtilization = 0.90; // Maximum 90% budget utilization
+    const maxItems = constraints?.maxItemsPerPerson || 6; 
+    const targetUtilization = 0.75; 
+    const maxUtilization = 0.90; 
 
-    // More aggressive target: aim for budget utilization, not just item count
     const targetItems = Math.floor((minItems + maxItems) / 2) * groupSize;
 
     for (const { item } of sorted) {
       const utilizationRate = (currentCost / budget);
       
-      // Stop if we've exceeded target budget utilization
       if (utilizationRate >= maxUtilization) {
         break;
       }
 
-      // Check if adding this item exceeds budget
       if (currentCost + item.price > budget) {
         continue;
       }
 
-      // Check if we've reached max items
       if (selected.length >= maxItems * groupSize) {
         break;
       }
 
-      // Promote diversity: limit items per category
       const catCount = categoryCount[item.category] || 0;
-      const maxPerCategory = Math.ceil(targetItems / 3); // Max 1/3 from same category
+      const maxPerCategory = Math.ceil(targetItems / 3); 
       if (catCount >= maxPerCategory && utilizationRate < targetUtilization) {
-        // Relax category constraint if we haven't hit target budget
         if (catCount >= maxPerCategory * 1.5) {
           continue;
         }
@@ -209,24 +175,18 @@ export class BudgetAllocator {
         continue;
       }
 
-      // Add item to selection
       selected.push(item);
       currentCost += item.price;
       categoryCount[item.category] = catCount + 1;
 
-      // Continue until we hit target utilization
-      // Only stop if we have minimum items AND hit target utilization
       if (selected.length >= minItems * groupSize && utilizationRate >= targetUtilization) {
-        // We have enough items and good budget utilization - but continue a bit more
         if (selected.length >= targetItems && utilizationRate >= targetUtilization) break;
       }
     }
 
-    // Ensure we have minimum items - more aggressive fallback
     if (selected.length < minItems * groupSize) {
       console.log(`⚠️ Only ${selected.length} items selected, adding more to reach minimum`);
       
-      // Add more affordable items to reach minimum
       const remaining = items.filter(item => 
         !selected.includes(item) && 
         currentCost + item.price <= budget
@@ -241,7 +201,6 @@ export class BudgetAllocator {
       }
     }
     
-    // CRITICAL FALLBACK: If still no items, select cheapest items regardless
     if (selected.length === 0 && items.length > 0) {
       console.log('🚨 No items selected, forcing cheapest items into selection');
       const cheapest = [...items].sort((a, b) => a.price - b.price);
@@ -252,7 +211,6 @@ export class BudgetAllocator {
           selected.push(item);
           fallbackCost += item.price;
         }
-        // Ensure at least 2 items minimum
         if (selected.length >= 2 && fallbackCost > budget * 0.5) break;
       }
     }
@@ -260,34 +218,25 @@ export class BudgetAllocator {
     return selected;
   }
 
-  /**
-   * Calculate value score for an item
-   */
   private calculateItemValue(item: IndexedMenuItem): number {
     let value = 0;
 
-    // Popularity factor (0-50 points)
     value += (item.popularity || 50) * 0.5;
 
-    // Price efficiency (0-30 points) - lower relative price = higher value
     const priceScore = Math.max(0, 30 - (item.price / 50));
     value += priceScore;
 
-    // Category bonus (0-20 points)
     if (item.category === 'Lunch' || item.category === 'Dinner') {
-      value += 20; // Main meals are prioritized
+      value += 20; 
     } else if (item.category === 'Breakfast') {
       value += 15;
     } else if (item.category === 'Drinks') {
-      value += 10; // Drinks are lower priority
+      value += 10; 
     }
 
     return value;
   }
 
-  /**
-   * Calculate overall value score for selected items
-   */
   private calculateValueScore(items: IndexedMenuItem[]): number {
     if (items.length === 0) return 0;
 
@@ -298,9 +247,6 @@ export class BudgetAllocator {
     return Math.min(100, avgValue);
   }
 
-  /**
-   * Calculate nutritional balance (diversity of selection)
-   */
   private calculateNutritionalBalance(items: IndexedMenuItem[]): number {
     if (items.length === 0) return 0;
 
@@ -310,12 +256,10 @@ export class BudgetAllocator {
     });
 
     const categories = Object.keys(categoryCount).length;
-    const maxCategories = 5; // Breakfast, Lunch, Dinner, Snacks, Drinks
+    const maxCategories = 5; 
 
-    // Score based on category diversity
     const diversityScore = (categories / maxCategories) * 70;
 
-    // Score based on even distribution
     const values = Object.values(categoryCount);
     const avgCount = items.length / categories;
     const variance = values.reduce((sum, count) => 
@@ -326,9 +270,6 @@ export class BudgetAllocator {
     return Math.min(100, diversityScore + evenScore);
   }
 
-  /**
-   * Generate actionable recommendations
-   */
   private generateRecommendations(
     selected: IndexedMenuItem[],
     budget: number,
@@ -338,7 +279,6 @@ export class BudgetAllocator {
     const recommendations: string[] = [];
     const utilizationRate = (spent / budget) * 100;
 
-    // Budget utilization recommendations
     if (utilizationRate < 60) {
       recommendations.push(`You're only using ${utilizationRate.toFixed(0)}% of your budget. Consider adding more items or drinks.`);
     } else if (utilizationRate > 95) {
@@ -347,7 +287,6 @@ export class BudgetAllocator {
       recommendations.push(`Good budget management with ${(budget - spent).toFixed(0)}₱ remaining for adjustments.`);
     }
 
-    // Category distribution recommendations
     const categoryCount: Record<string, number> = {};
     selected.forEach(item => {
       categoryCount[item.category] = (categoryCount[item.category] || 0) + 1;
@@ -363,7 +302,6 @@ export class BudgetAllocator {
       recommendations.push('Add drinks to complement your meal.');
     }
 
-    // Group size recommendations
     const itemsPerPerson = selected.length / groupSize;
     if (itemsPerPerson < 2) {
       recommendations.push('Consider adding more items to ensure everyone has enough options.');
@@ -374,9 +312,6 @@ export class BudgetAllocator {
     return recommendations;
   }
 
-  /**
-   * Optimize existing selection to fit budget
-   */
   public optimizeSelection(
     currentSelection: IndexedMenuItem[],
     availableItems: IndexedMenuItem[],
@@ -384,20 +319,16 @@ export class BudgetAllocator {
   ): IndexedMenuItem[] {
     const currentTotal = currentSelection.reduce((sum, item) => sum + item.price, 0);
 
-    // If under budget, we're good
     if (currentTotal <= targetBudget) {
       return currentSelection;
     }
 
-    // Over budget - need to optimize
     console.log('⚠️ Over budget, optimizing selection...');
 
-    // Sort current selection by value (keep highest value items)
     const sortedByValue = [...currentSelection].sort((a, b) => 
       this.calculateItemValue(b) - this.calculateItemValue(a)
     );
 
-    // Greedily select items until we hit budget
     const optimized: IndexedMenuItem[] = [];
     let total = 0;
 
@@ -408,7 +339,6 @@ export class BudgetAllocator {
       }
     }
 
-    // Try to fill remaining budget with cheaper alternatives
     const notSelected = availableItems.filter(item => 
       !optimized.includes(item) && total + item.price <= targetBudget
     ).sort((a, b) => this.calculateItemValue(b) - this.calculateItemValue(a));
@@ -425,5 +355,4 @@ export class BudgetAllocator {
   }
 }
 
-// Export singleton instance
 export const budgetAllocator = BudgetAllocator.getInstance();

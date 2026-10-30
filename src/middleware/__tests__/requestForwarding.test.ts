@@ -1,19 +1,3 @@
-/**
- * Regression suite for the middleware request-header forwarding contract.
- *
- * The bug: Next applies ONLY the final middleware response's
- * `x-middleware-override-headers` list and deletes every request header not
- * named in it (verified in next/dist/server/lib/router-utils/resolve-routes.js
- * and next/dist/server/web/spec-extension/response.js). A later middleware
- * returning a bare `NextResponse.next()` therefore discarded the request id
- * that `requestIdMiddleware` had forwarded, so the middleware's id and the
- * route handler's `getRequestId` diverged.
- *
- * This shim models that wire contract faithfully: `next({request:{headers}})`
- * serialises the headers into override + per-key entries, and `next()` with no
- * init emits no override list. `applyFinalResponse` then reproduces Next's
- * replace-all semantics so the assertions test the real failure mode.
- */
 import { NextRequest } from 'next/server';
 
 class ShimHeaders {
@@ -88,7 +72,6 @@ import { requestIdMiddleware } from '../requestId';
 
 type AnyResponse = InstanceType<typeof NextResponse> & { headers: ShimHeaders };
 
-/** Reproduce Next's replace-all application of the final override list. */
 function applyFinalResponse(
   response: AnyResponse,
   originalRequestHeaders: Record<string, string>
@@ -118,8 +101,6 @@ function makeRequest(headers: Record<string, string> = {}): NextRequest {
 
 describe('middleware request-header forwarding', () => {
   test('a trailing bare next() no longer drops the forwarded request id', async () => {
-    // Priority order: requestId (110) forwards the id, then a plain
-    // middleware (50) returns a bare next() — the shape that used to wipe it.
     const handler = composeMiddleware({
       middlewares: [
         { handler: requestIdMiddleware, name: 'requestId', enabled: true, priority: 110 },
@@ -137,12 +118,10 @@ describe('middleware request-header forwarding', () => {
     const response = (await handler(makeRequest(requestHeaders))) as AnyResponse;
     const downstream = applyFinalResponse(response, requestHeaders);
 
-    // The route handler must see the same id the middleware logged.
     expect(downstream['x-request-id']).toEqual(expect.any(String));
     expect(downstream['x-request-id']).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     );
-    // The response echoes the same id for client-side correlation.
     expect(response.headers.get('x-request-id')).toBe(downstream['x-request-id']);
   });
 
@@ -151,7 +130,6 @@ describe('middleware request-header forwarding', () => {
       middlewares: [
         { handler: requestIdMiddleware, name: 'requestId', enabled: true, priority: 110 },
         {
-          // Mimics injectMobileCookie: replaces `cookie` and forwards headers.
           handler: (req: NextRequest) => {
             const headers = new Headers(req.headers);
             headers.set('cookie', 'next-auth.session-token=synthetic');
@@ -169,7 +147,6 @@ describe('middleware request-header forwarding', () => {
     const response = (await handler(makeRequest(requestHeaders))) as AnyResponse;
     const downstream = applyFinalResponse(response, requestHeaders);
 
-    // Both survive: the union, not the last writer.
     expect(downstream['x-request-id']).toMatch(/^[0-9a-f-]{36}$/i);
     expect(downstream.cookie).toBe('next-auth.session-token=synthetic');
   });

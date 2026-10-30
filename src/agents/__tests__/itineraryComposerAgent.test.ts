@@ -74,9 +74,6 @@ describe("ItineraryComposerAgent", () => {
       expect.any(String),
       session.id
     );
-    // The pre-model enriched allowlist must reach processing: the model output
-    // carries no searchMetadata, so without it every activity image degrades
-    // to the Gala logo (this was the 2026-10-01 Boracay bug).
     expect(handleItineraryProcessing).toHaveBeenCalledWith(
       { structured: true },
       "Plan",

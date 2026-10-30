@@ -13,17 +13,14 @@ import { AnimatePresence, motion } from "framer-motion"
 import { GeminiSparkles, FadingDotGrid } from "@/components/auth/GeminiSparkles"
 import { Home } from "lucide-react"
 
-// Component that uses useSearchParams
 function StatusMessage() {
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'info' } | null>(null)
     const searchParams = useSearchParams()
     
     useEffect(() => {
-        // Check if user has just registered
         if (searchParams?.get('registered') === 'true') {
             setMessage({ text: 'Account created successfully! Please sign in.', type: 'success' })
         }
-        // Check if password was reset successfully
         else if (searchParams?.get('reset') === 'success') {
             setMessage({ text: 'Password reset successfully! Please sign in with your new password.', type: 'success' })
         }
@@ -49,7 +46,6 @@ const SignIn = () => {
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     
-    // Load remembered email on component mount
     useEffect(() => {
         const rememberedEmail = localStorage.getItem('rememberedEmail')
         const shouldRemember = localStorage.getItem('rememberMe') === 'true'
@@ -66,7 +62,6 @@ const SignIn = () => {
         setIsLoading(true)
         
         try {
-            // Handle remember me by setting session duration
             const callbackUrl = '/dashboard?signedin=true'
             
             const result = await signIn('credentials', {
@@ -80,7 +75,6 @@ const SignIn = () => {
                 setError('Invalid email or password')
                 console.error('Authentication error:', result.error)
             } else {
-                // Store remember me preference in localStorage for future sessions
                 if (rememberMe) {
                     localStorage.setItem('rememberMe', 'true')
                     localStorage.setItem('rememberedEmail', email)
@@ -89,7 +83,6 @@ const SignIn = () => {
                     localStorage.removeItem('rememberedEmail')
                 }
                 
-                // Redirect to dashboard on success
                 window.location.href = callbackUrl
             }
         } catch (error) {
@@ -102,30 +95,30 @@ const SignIn = () => {
 
     return (
         <div className="min-h-screen flex">
-            {/* Left Panel */}
+            {}
             <div className="hidden md:flex w-1/2 bg-[#0066FF] flex-col justify-center items-center text-white relative overflow-hidden">
-              {/* ── Apple Liquid Glass coating ── */}
+              {}
               <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
-                {/* 1. Glass tint — slightly lighter blue simulating glass thickness over solid color */}
+                {}
                 <div className="absolute inset-0" style={{
                   background: 'rgba(255, 255, 255, 0.06)',
                 }} />
 
-                {/* 2. Top-edge specular highlight — Apple's signature: a thin bright line at the very top where virtual light hits the glass surface */}
+                {}
                 <div className="absolute top-0 left-0 right-0 h-px" style={{
                   background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)',
                   boxShadow: '0 1px 12px rgba(255,255,255,0.4)',
                 }} />
               </div>
-              {/* ── End Liquid Glass coating ── */}
+              {}
 
-              {/* Gemini sparkles — sparse white dots on blue (texture, not competing with grid) */}
+              {}
               <GeminiSparkles variant="white" count={20} minSize={2} maxSize={7} />
 
-              {/* Fading dot grid — top-left, mirrors right panel's top-right; primary texture layer */}
+              {}
               <FadingDotGrid dotColor="#cce4ff" dotSize={3} gap={14} widthFraction={0.55} heightFraction={0.6} corner="top-left" />
 
-              {/* Referral logo watermark — matches dashboard styling */}
+              {}
               <img
                 src="/images/referafriend.png"
                 alt=""
@@ -146,14 +139,14 @@ const SignIn = () => {
                 <Link href="/" className="inline-block bg-white text-[#0066FF] font-medium rounded-xl px-7 py-3 text-base shadow-md hover:bg-gray-100 transition">Back to Home</Link>
               </div>
             </div>
-            {/* Right Panel */}
+            {}
             <div className="flex flex-1 items-center justify-center bg-white relative">
-              {/* Gemini sparkles — blue/violet dots on white */}
+              {}
               <GeminiSparkles variant="blue" count={35} minSize={2} maxSize={7} />
-              {/* Fading dot grid — top-right, matches bryllim.com reference */}
+              {}
               <FadingDotGrid dotColor="#93c5fd" dotSize={3} gap={14} widthFraction={0.55} heightFraction={0.6} />
 
-              {/* Mobile Back to Home */}
+              {}
               <Link
                 href="/"
                 className="md:hidden absolute top-4 left-4 z-10 inline-flex items-center gap-1.5 bg-[#0066FF] text-white font-medium rounded-full px-4 py-1.5 text-sm shadow-sm active:scale-95 transition-transform"
@@ -163,7 +156,7 @@ const SignIn = () => {
               </Link>
               <div className="w-full max-w-md space-y-8 p-10 mx-4 relative z-10">
                     <div className="text-center mb-8">
-                      {/* Brand accent */}
+                      {}
                       <div className="w-8 h-1 bg-[#0066FF] rounded-full mx-auto mb-5" />
                       <h2 className="text-[28px] font-semibold text-gray-900 tracking-tight leading-tight">
                         Welcome back<span className="text-[#0066FF]"> to Tarana.ai</span>
@@ -244,7 +237,7 @@ const SignIn = () => {
                                 {error}
                             </div>
                         )}
-                        {/* Wrap the component that uses useSearchParams in Suspense */}
+                        {}
                         <Suspense fallback={<div className="h-10"></div>}>
                             <StatusMessage />
                         </Suspense>

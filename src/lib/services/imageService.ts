@@ -1,38 +1,14 @@
-/**
- * ImageService — Accurate per-location image resolution for PH/World scale
- *
- * Tier 0: Curated Baguio image (fastest, most accurate for known titles)
- * Tier 2: Wikimedia Commons (free, landmark-accurate)
- * Tier 2b: Unsplash Search (free tier, no billing — category-accurate for food/cafes)
- * Tier 3: TomTom Static Map snapshot — rejected as a photo, degrades to the logo layer
- *
- * Tier 1 (Google Places Photos) was removed: its photo URL embeds the server
- * key, so it could never be served to a browser. See the note below.
- * Server-only. Uses 24h in-memory cache.
- */
 
 import type { CityId } from '@/lib/data/cityConfig';
 
-const IMAGE_CACHE_TTL = 24 * 60 * 60 * 1000 // 24h
+const IMAGE_CACHE_TTL = 24 * 60 * 60 * 1000 
 
-/**
- * Remote hosts this service may hand to `next/image`.
- *
- * This MUST stay a subset of `images.remotePatterns` in `next.config.ts`.
- * `next/image` throws a runtime error for an unconfigured host, and the
- * component's `onError` handler never fires because the failure happens in
- * the loader, not the network request. Guarding here degrades to the logo
- * fallback instead of crashing the page.
- *
- * The drift guard is `src/lib/services/__tests__/imageHosts.test.ts`.
- */
 export const RENDERABLE_IMAGE_HOSTS: readonly string[] = [
   'images.unsplash.com',
   'upload.wikimedia.org',
   'thumb.wikimedia.org',
 ]
 
-/** True for local paths and for remote https URLs on a configured host. */
 export function isRenderableImageUrl(url: string | null | undefined): boolean {
   if (!url) return false
   if (url.startsWith('/')) return true
@@ -54,36 +30,19 @@ type PlaceInput = {
   placeId?: string
 }
 
-/**
- * Tier 0 is the Baguio-only curated catalog, keyed by bare place title.
- *
- * It must only ever answer for Baguio. Several of its titles are ordinary
- * venue names that also exist elsewhere ("The Mansion", "Botanical Garden",
- * "Wright Park"), so an ungated lookup hands a Manila or Cebu place a Baguio
- * photo the moment a name collides. Unknown city => no curated answer, fall
- * through to the real tiers.
- */
 function curatedImageFor(title: string, cityId?: CityId): string | undefined {
   if (cityId !== 'baguio') return undefined
   if (!title) return undefined
   const direct = CURATED_IMAGE_MAP[title]
   if (direct) return direct
-  // TomTom appends the city to bare venue names ("Mines View Park, Baguio
-  // City"). The curated catalogue keys the bare form, so an exact lookup
-  // misses and the photo falls back to fetched-or-logo even though the real
-  // image sits on disk. Strip ONE trailing ", <city>" segment and retry --
-  // never fuzzy-match, never strip deeper: "The Mansion, Baguio" must not
-  // reach a different venue's photo through substring luck.
   const stripped = title.replace(/,\s*[^,]+$/, '').trim()
   if (stripped && stripped !== title) return CURATED_IMAGE_MAP[stripped]
   return undefined
 }
 type CachedEntry = { url: string; expiry: number }
 
-// In-memory cache (per-instance). For prod, back with Supabase `place_images` table.
 const cache = new Map<string, CachedEntry>()
 
-// Global cap (spec 9.1 #9): 20 concurrent image fetches across all generations
 const GLOBAL_IMAGE_CONCURRENCY = 20;
 let globalRunning = 0;
 const globalWaiters: Array<() => void> = [];
@@ -99,7 +58,6 @@ async function withGlobalImageLimit<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-// Curated Baguio title → public image path map (Tier 0). Import lazy to avoid bundle bloat.
 const CURATED_IMAGE_MAP: Record<string, string> = {
   "Burnham Park": "/images/burnham.png",
   "Mines View Park": "/images/viewspark.png",
@@ -141,9 +99,6 @@ const CURATED_IMAGE_MAP: Record<string, string> = {
 }
 
 function getCacheKey(p: PlaceInput): string {
-  // cityId is part of the key, not decoration: the curated tier is
-  // Baguio-only, so a cached Baguio answer for "The Mansion" must never be
-  // served to a Manila request for the same title.
   return `img:${p.cityId ?? "none"}:${p.title.toLowerCase().trim()}:${p.lat?.toFixed(3) ?? "x"}:${p.lon?.toFixed(3) ?? "x"}`
 }
 
@@ -155,30 +110,12 @@ function getTomTomKey(): string | null {
   return process.env.TOMTOM_API_KEY || process.env.NEXT_PUBLIC_TOMTOM_API_KEY || null
 }
 
-// Tier 1 (Google Places Photos) was removed entirely. It could not return a
-// usable URL: the photo endpoint embeds the server key in the query string and
-// that URL is served in itinerary/spot JSON to browsers, so any authed user
-// could harvest the key. Returning null left a billed Text Search + Details
-// round-trip per uncached place for no result. A server-side byte-proxy
-// (`/api/images/places`) is the way to restore Tier 1 without the leak.
 
-// POIs whose Wikipedia page exists but carries no pageimage thumbnail.
-// Without this, Tier 2 reports a miss and Tier 2b Unsplash happily returns a
-// textually-near but wrong photo (e.g. another university's campus). Keys are
-// exact place titles as returned by the POI provider.
 const WIKIMEDIA_FILE_OVERRIDES: Record<string, string> = {
-  // Verified 2026-09-26: MCU page (id 12493904) exists with no thumbnail, but
-  // hosts File:Manila Central University, Caloocan, Mar 2024 (1).jpg
-  // (2173x1637, reachable, image/jpeg). The Nicanor Reyes Hall photo on the
-  // card today belongs to Far Eastern University, ~2km away — wrong school.
   "Manila Central University":
     "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/08/Manila_Central_University%2C_Caloocan%2C_Mar_2024_%281%29.jpg/960px-Manila_Central_University%2C_Caloocan%2C_Mar_2024_%281%29.jpg",
 };
 
-// ─────────────────────────────────────────────────────────────
-// Tier 2: Wikimedia Commons (free, accurate for landmarks/museums/parks)
-// Tier 2b: Unsplash (free tier, no billing — category-accurate for food/cafes)
-// ─────────────────────────────────────────────────────────────
 async function fetchUnsplashPhoto(place: PlaceInput): Promise<string | null> {
   const key = getUnsplashKey()
   if (!key) {
@@ -225,7 +162,6 @@ async function fetchWikimediaThumb(place: PlaceInput): Promise<string | null> {
     const controller = new AbortController()
     const t = setTimeout(() => controller.abort(), 3000)
 
-    // Search Wikimedia for title, then fetch thumbnail
     const searchUrl =
       `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=pageimages&piprop=thumbnail&pithumbsize=600&titles=${encodeURIComponent(place.title)}`
 
@@ -246,8 +182,6 @@ async function fetchWikimediaThumb(place: PlaceInput): Promise<string | null> {
     for (const page of Object.values(pages)) {
       const source = page.thumbnail?.source
       if (!source) continue
-      // Guard against another Wikimedia domain migration handing us a host
-      // that `next/image` is not configured to load (T427465).
       if (!isRenderableImageUrl(source)) {
         console.warn(`🖼️ Tier2 Wikimedia: miss "${place.title}" (unrenderable-host: ${source.slice(0, 60)})`)
         return null
@@ -262,34 +196,24 @@ async function fetchWikimediaThumb(place: PlaceInput): Promise<string | null> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Tier 3: TomTom Static Map (guaranteed, shows actual location)
-// ─────────────────────────────────────────────────────────────
 function getTomTomStaticMap(lat: number, lon: number): string | null {
   const key = getTomTomKey()
   if (!key || lat == null || lon == null) return null
-  // 600x400 basic map centered on POI — always returns an image
   return `https://api.tomtom.com/map/1/staticimage?key=${key}&center=${lon},${lat}&zoom=15&format=jpg&layer=basic&style=main&width=600&height=400&view=Unified`
 }
 
-// ─────────────────────────────────────────────────────────────
-// Public API
-// ─────────────────────────────────────────────────────────────
 
 export async function getAccurateImageForPlace(place: PlaceInput): Promise<string | null> {
   const cacheKey = getCacheKey(place)
   const cached = cache.get(cacheKey)
   if (cached && Date.now() < cached.expiry) return cached.url
 
-  // Tier 0: Curated Baguio — instant, no network. Baguio-only: see
-  // curatedImageFor. A same-named place in another city must not inherit it.
   const curated = curatedImageFor(place.title, place.cityId);
   if (curated) {
     cache.set(cacheKey, { url: curated, expiry: Date.now() + IMAGE_CACHE_TTL })
     return curated
   }
 
-  // Tier 2: Wikimedia (landmarks)
   const wiki = await fetchWikimediaThumb(place)
   if (wiki) {
     console.log(`🖼️ Image for "${place.title}": tier=wikimedia`)
@@ -297,7 +221,6 @@ export async function getAccurateImageForPlace(place: PlaceInput): Promise<strin
     return wiki
   }
 
-  // Tier 2b: Unsplash (free, no billing) — category-accurate for food/cafes where Wikimedia misses
   const unsplash = await fetchUnsplashPhoto(place)
   if (unsplash) {
     console.log(`🖼️ Image for "${place.title}": tier=unsplash`)
@@ -305,9 +228,6 @@ export async function getAccurateImageForPlace(place: PlaceInput): Promise<strin
     return unsplash
   }
 
-  // Tier 3: TomTom static map — NOT a photo. Map tiles must never serve as
-  // a place image (they displace the brand mark and look wrong in a photo
-  // slot). Return null so callers degrade to the logo base layer instead.
   if (place.lat != null && place.lon != null) {
     const tomtom = getTomTomStaticMap(place.lat, place.lon)
     if (tomtom) {
@@ -317,16 +237,10 @@ export async function getAccurateImageForPlace(place: PlaceInput): Promise<strin
     console.warn(`🖼️ Tier3 TomTom: miss "${place.title}" (missing-key: TOMTOM_API_KEY not set)`)
   }
 
-  // Tier 4: No photo available. Return null — the caller's logo base layer
-  // (SpotlightCard / ItineraryPreview) renders the brand mark instead.
   console.log(`🖼️ Image for "${place.title}": tier=no-photo → null (logo fallback)`)
   return null
 }
 
-/**
- * Batch enrich activities with accurate images — parallel with concurrency limit.
- * Keeps Baguio curated images instantly, fetches world/PH images in background.
- */
 export async function enrichActivitiesWithImages<T extends { title: string; lat?: number; lon?: number; image?: unknown }>(
   activities: T[],
   options: { concurrency?: number; city?: string; cityId?: CityId } = {}
@@ -334,11 +248,6 @@ export async function enrichActivitiesWithImages<T extends { title: string; lat?
   const concurrency = options.concurrency ?? 5
   const cityId = options.cityId
 
-  // Tier 0 applies to EVERY curated title on EVERY path. Baguio activities
-  // arrive from vector search / the TomTom supplement with `image: ""`, so
-  // the old "already curated → skip" shortcut was never actually correct:
-  // it returned before attaching the photo, leaving the empty string in
-  // place and dropping the card to the logo fallback.
   const applyCurated = (act: T): T => {
     const curated = curatedImageFor(act.title, cityId)
     return curated ? { ...act, image: curated } : act
@@ -346,7 +255,6 @@ export async function enrichActivitiesWithImages<T extends { title: string; lat?
 
   const results: T[] = activities.map(applyCurated)
 
-  // Fast path: nothing left to fetch, curated photos already attached.
   const needsFetch = activities.filter((a) => !curatedImageFor(a.title, cityId))
   if (needsFetch.length === 0) return results
 
@@ -354,7 +262,6 @@ export async function enrichActivitiesWithImages<T extends { title: string; lat?
     .map((act, idx) => ({ act, idx }))
     .filter(({ act }) => !curatedImageFor(act.title, cityId))
 
-  // Process in batches of `concurrency` to respect rate limits
   for (let i = 0; i < queue.length; i += concurrency) {
     const batch = queue.slice(i, i + concurrency)
     await Promise.all(
@@ -367,12 +274,8 @@ export async function enrichActivitiesWithImages<T extends { title: string; lat?
             city: options.city,
             cityId,
           }))
-          // Only overwrite on a real hit. Assigning unconditionally meant a
-          // chain that resolved nothing replaced a good server image with
-          // null — the same "log says resolved, card shows fallback" class.
           if (url) results[idx] = { ...act, image: url }
         } catch {
-          // Keep original image on failure
         }
       })
     )

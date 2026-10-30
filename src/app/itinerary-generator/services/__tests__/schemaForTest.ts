@@ -1,16 +1,3 @@
-/**
- * Mirror of `itineraryRequestSchema`
- * (`src/app/api/gemini/itinerary-generator/route.ts:32-57`).
- *
- * The route keeps its schema module-private, and exporting production code
- * purely so a test can import it is a worse trade than restating it here with a
- * pointer to the source. `planModeRequestShape.test.ts` in the route's own
- * `__tests__` directory carries the same mirror; if the route's schema changes,
- * both mirrors must be updated with it.
- *
- * `weatherData` matters here: `.optional()` accepts an absent key and rejects
- * a present one holding `null`.
- */
 import { z } from 'zod'
 
 export const itineraryRequestSchemaForTest = z.object({

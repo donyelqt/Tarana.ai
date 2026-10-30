@@ -7,9 +7,6 @@ import {
   TierCalculationError
 } from '../types/credit-tiers';
 
-/**
- * Static tier configuration data with validation
- */
 export const TIER_CONFIGS: readonly TierConfig[] = [
   {
     id: 'explorer',
@@ -40,26 +37,19 @@ export const TIER_CONFIGS: readonly TierConfig[] = [
   }
 ] as const;
 
-// Validate tier configurations at module load
 TIER_CONFIGS.forEach((config, index) => {
   if (!isValidTierConfig(config)) {
     throw new TierValidationError(`Invalid tier configuration at index ${index}: ${JSON.stringify(config)}`);
   }
 });
 
-/**
- * Validate referral count input
- */
 function validateReferralCount(referralCount: number): number {
   if (typeof referralCount !== 'number' || isNaN(referralCount) || !isFinite(referralCount) || referralCount < 0) {
     throw new TierValidationError(`Invalid referral count: ${referralCount}. Must be a non-negative finite number.`);
   }
-  return Math.floor(referralCount); // Ensure integer
+  return Math.floor(referralCount); 
 }
 
-/**
- * Get tier configuration by ID with validation
- */
 export function getTierById(tierId: string): TierConfig | undefined {
   if (typeof tierId !== 'string' || !tierId.trim()) {
     throw new TierValidationError(`Invalid tier ID: ${tierId}`);
@@ -68,9 +58,6 @@ export function getTierById(tierId: string): TierConfig | undefined {
   return TIER_CONFIGS.find(tier => tier.id === tierId);
 }
 
-/**
- * Get all tiers sorted by order
- */
 export function getAllTiers(): TierConfig[] {
   try {
     return [...TIER_CONFIGS].sort((a, b) => a.order - b.order);
@@ -79,19 +66,14 @@ export function getAllTiers(): TierConfig[] {
   }
 }
 
-/**
- * Calculate current tier based on referral count with validation
- */
 export function getCurrentTier(referralCount: number): TierConfig {
   const validReferralCount = validateReferralCount(referralCount);
   
   try {
-    // Find the highest tier the user has unlocked
     const unlockedTiers = TIER_CONFIGS.filter(tier => validReferralCount >= tier.referralsRequired);
     const currentTier = unlockedTiers.sort((a, b) => b.order - a.order)[0];
     
     if (!currentTier) {
-      // Fallback to first tier if no tiers are unlocked (shouldn't happen with Explorer at 0 referrals)
       return TIER_CONFIGS[0];
     }
     
@@ -101,9 +83,6 @@ export function getCurrentTier(referralCount: number): TierConfig {
   }
 }
 
-/**
- * Get the next tier to unlock with validation
- */
 export function getNextTier(referralCount: number): TierConfig | undefined {
   const validReferralCount = validateReferralCount(referralCount);
   
@@ -115,9 +94,6 @@ export function getNextTier(referralCount: number): TierConfig | undefined {
   }
 }
 
-/**
- * Calculate tier status for a given tier and user's referral count with validation
- */
 export function getTierStatus(tier: TierConfig, referralCount: number): TierStatus {
   if (!isValidTierConfig(tier)) {
     throw new TierValidationError(`Invalid tier configuration: ${JSON.stringify(tier)}`);
@@ -141,16 +117,13 @@ export function getTierStatus(tier: TierConfig, referralCount: number): TierStat
   }
 }
 
-/**
- * Calculate progress percentage to next tier with validation
- */
 export function calculateProgressPercentage(referralCount: number): number {
   const validReferralCount = validateReferralCount(referralCount);
   
   try {
     const nextTier = getNextTier(validReferralCount);
     if (!nextTier) {
-      return 100; // All tiers unlocked
+      return 100; 
     }
     
     const currentTier = getCurrentTier(validReferralCount);
@@ -174,9 +147,6 @@ export function calculateProgressPercentage(referralCount: number): number {
   }
 }
 
-/**
- * Get user tier progress information with validation
- */
 export function getUserTierProgress(referralCount: number): UserTierProgress {
   const validReferralCount = validateReferralCount(referralCount);
   

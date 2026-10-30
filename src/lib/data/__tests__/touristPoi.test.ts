@@ -43,7 +43,6 @@ describe('touristPoi', () => {
       categories: ['lake'],
       coordinates: { lat: 11.194, lng: 119.393 },
     });
-    // Each in-bounds row passes only its own scope — no cross-city bleed.
     expect(isTouristPoi(boracayPoi, 'boracay')).toBe(true);
     expect(isTouristPoi(boracayPoi, 'el_nido')).toBe(false);
     expect(isTouristPoi(elNidoPoi, 'el_nido')).toBe(true);

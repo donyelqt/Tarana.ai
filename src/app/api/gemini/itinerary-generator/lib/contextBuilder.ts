@@ -3,10 +3,6 @@ import { INTEREST_DETAILS, WEATHER_CONTEXTS } from "./config";
 import { getCityConfig } from "@/lib/data/cityConfig";
 import type { WeatherCondition } from "../types/types";
 
-/**
- * Build traffic-aware context for AI prompts
- * Combines peak hours data with real-time traffic insights
- */
 export function buildTrafficAwareContext(activities: any[], restrictToProvided: boolean = true): string {
   const activitiesWithTraffic = activities.filter((activity: any) => activity.trafficAnalysis);
 
@@ -65,7 +61,7 @@ export function buildDetailedPrompt(
         if (budget === "less than ₱3,000/day" || budget === "₱3,000 - ₱5,000/day") return "Budget";
         if (budget === "₱5,000 - ₱10,000/day") return "Mid-range";
         if (budget === "₱10,000+/day") return "Luxury";
-        return budget; // fallback to the raw value
+        return budget; 
     })();
 
     const paxCategory = (() => {
@@ -74,7 +70,7 @@ export function buildDetailedPrompt(
         if (pax === "2") return "Couple";
         if (pax === "3-5") return "Family";
         if (pax === "6+") return "Group";
-        return pax; // fallback to the raw value
+        return pax; 
     })();
 
     const peakHoursContext = getPeakHoursContext();
@@ -84,7 +80,6 @@ export function buildDetailedPrompt(
       ? sampleItinerary.searchMetadata.allowedActivities
       : null;
 
-    // Provide a curated list of activities with essential details to prevent hallucination.
     const curatedActivities = (allowedActivitiesFromSearch && allowedActivitiesFromSearch.length > 0
         ? allowedActivitiesFromSearch
         : sampleItinerary?.items?.flatMap((item: any) => item.activities || []) || []
@@ -154,10 +149,6 @@ export function buildDetailedPrompt(
     const budgetDirective = budgetContext.trim() ? `- ${budgetContext.trim()}` : '';
     const paxDirective = paxContext.trim() ? `- ${paxContext.trim()}` : '';
 
-    // The user prompt is UNTRUSTED DATA, never instructions: wrap it in
-    // explicit delimiters and truncate it so injected directives cannot
-    // override the same-role rules below. Sanitized desc (S5) is the
-    // second layer; this delimiter is the first.
     const untrustedPrompt = typeof prompt === 'string'
       ? prompt.replace(/[<>&]/g, '').slice(0, 1000)
       : '';

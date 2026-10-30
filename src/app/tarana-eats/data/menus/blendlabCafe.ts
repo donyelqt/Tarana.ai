@@ -1,9 +1,3 @@
-// ====================================================================
-// BLENDLAB CAFE MENU DATA
-// ====================================================================
-// BlendLab Café in Baguio is a trendy, inviting spot known for its specialty coffee, 
-// expertly crafted drinks, and delectable pastries.
-// ====================================================================
 
 import { FullMenu } from "../types";
 
@@ -118,7 +112,6 @@ export const blendlabCafeMenu: FullMenu = {
     },
   ],
   Drinks: [
-    // Basic Coffee
     {
       name: "Espresso",
       description: "Bold, concentrated coffee shot.",
@@ -143,7 +136,6 @@ export const blendlabCafeMenu: FullMenu = {
       price: 90,
       image: "/images/comingsoon.png",
     },
-    // Specialty Lattes
     {
       name: "Caramel Macchiato",
       description: "Espresso layered with caramel and steamed milk.",
@@ -174,7 +166,6 @@ export const blendlabCafeMenu: FullMenu = {
       price: 135,
       image: "/images/comingsoon.png",
     },
-    // Oat Milk Specialties
     {
       name: "Nitro Honey Oat Milk Latte",
       description: "Nitro-brewed coffee with oat milk and honey.",
@@ -187,7 +178,6 @@ export const blendlabCafeMenu: FullMenu = {
       price: 155,
       image: "/images/comingsoon.png",
     },
-    // Cold Brew & Specialty
     {
       name: "Nitro Cold Brew",
       description: "Smooth, nitrogen-infused cold brew coffee.",
@@ -200,7 +190,6 @@ export const blendlabCafeMenu: FullMenu = {
       price: 125,
       image: "/images/comingsoon.png",
     },
-    // Frappe & Specialty Drinks
     {
       name: "Ube Cheese Frappe",
       description: "Creamy ube frappe topped with cheese and cream.",

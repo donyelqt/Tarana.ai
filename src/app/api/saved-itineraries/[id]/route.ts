@@ -146,10 +146,6 @@ export const DELETE = withAuth(async (request: NextRequest, userId: string, ...a
       const { params } = (args[0] ?? {}) as RouteParams;
       const { id } = await params;
 
-      // A retried DELETE must not delete twice. Claim before the mutation so
-      // a client retry gets the cached response instead of a second
-      // deleteItineraryById call — which would 404 after the first
-      // already succeeded. Mirrors the saved-meals DELETE contract.
       const key = getIdempotencyKey(request);
       const claim = key
         ? await claimIdempotency(userId, `/api/saved-itineraries/${id}`, key, hashIdempotencyPayload({ id }))

@@ -1,10 +1,3 @@
-/**
- * Intelligent Search Engine for Itinerary Generation
- * Combines semantic search, fuzzy matching, NLP analysis, and ML-based scoring
- * 
- * @author Doniele Arys Antonioo
- * @version 2.0.0
- */
 
 import { createHash } from 'crypto';
 import { generateEmbedding } from '../ai/embeddings';
@@ -12,7 +5,6 @@ import { supabaseAdmin } from '../data/supabaseAdmin';
 import type { Activity } from '../../app/itinerary-generator/data/itineraryData';
 import { sampleItineraryCombined } from '../../app/itinerary-generator/data/itineraryData';
 
-// Advanced search configuration
 export interface IntelligentSearchConfig {
   semanticWeight: number;
   vectorWeight: number;
@@ -73,9 +65,6 @@ export interface IntelligentSearchResult {
   };
 }
 
-/**
- * Advanced fuzzy string matching with multiple algorithms
- */
 class FuzzyMatcher {
   private static levenshteinDistance(a: string, b: string): number {
     const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
@@ -87,9 +76,9 @@ class FuzzyMatcher {
       for (let i = 1; i <= a.length; i++) {
         const substitutionCost = a[i - 1] === b[j - 1] ? 0 : 1;
         matrix[j][i] = Math.min(
-          matrix[j][i - 1] + 1, // insertion
-          matrix[j - 1][i] + 1, // deletion
-          matrix[j - 1][i - 1] + substitutionCost // substitution
+          matrix[j][i - 1] + 1, 
+          matrix[j - 1][i] + 1, 
+          matrix[j - 1][i - 1] + substitutionCost 
         );
       }
     }
@@ -123,7 +112,6 @@ class FuzzyMatcher {
     let matches = 0;
     let transpositions = 0;
     
-    // Find matches
     for (let i = 0; i < len1; i++) {
       const start = Math.max(0, i - maxDistance);
       const end = Math.min(i + maxDistance + 1, len2);
@@ -138,7 +126,6 @@ class FuzzyMatcher {
     
     if (matches === 0) return 0;
     
-    // Count transpositions
     let k = 0;
     for (let i = 0; i < len1; i++) {
       if (!match1[i]) continue;
@@ -154,22 +141,17 @@ class FuzzyMatcher {
     const normalizedQuery = query.toLowerCase().trim();
     const normalizedTarget = target.toLowerCase().trim();
     
-    // Exact match
     if (normalizedQuery === normalizedTarget) return 1.0;
     
-    // Contains match
     if (normalizedTarget.includes(normalizedQuery)) {
       return 0.9 - (normalizedTarget.length - normalizedQuery.length) / normalizedTarget.length * 0.3;
     }
     
-    // Jaro-Winkler similarity
     const jaroWinkler = this.jaroWinklerSimilarity(normalizedQuery, normalizedTarget);
     
-    // Levenshtein distance normalized
     const maxLen = Math.max(normalizedQuery.length, normalizedTarget.length);
     const levenshtein = 1 - this.levenshteinDistance(normalizedQuery, normalizedTarget) / maxLen;
     
-    // Token-based similarity
     const queryTokens = normalizedQuery.split(/\s+/);
     const targetTokens = normalizedTarget.split(/\s+/);
     const tokenMatches = queryTokens.filter(token => 
@@ -177,14 +159,10 @@ class FuzzyMatcher {
     ).length;
     const tokenSimilarity = tokenMatches / Math.max(queryTokens.length, targetTokens.length);
     
-    // Weighted combination
     return (jaroWinkler * 0.4 + levenshtein * 0.3 + tokenSimilarity * 0.3);
   }
 }
 
-/**
- * NLP-based contextual analysis engine
- */
 class ContextualAnalyzer {
   private static readonly INTEREST_KEYWORDS = {
     'Nature & Scenery': ['nature', 'scenery', 'view', 'mountain', 'park', 'garden', 'outdoor', 'landscape', 'scenic'],
@@ -220,7 +198,6 @@ class ContextualAnalyzer {
     const descLower = activity.desc.toLowerCase();
     const tags = activity.tags || [];
 
-    // Interest matching
     for (const interest of context.interests) {
       const keywords = this.INTEREST_KEYWORDS[interest as keyof typeof this.INTEREST_KEYWORDS] || [];
       const matchCount = keywords.filter(keyword => 
@@ -233,7 +210,6 @@ class ContextualAnalyzer {
       }
     }
 
-    // Weather appropriateness
     const weatherKeywords = this.WEATHER_KEYWORDS[context.weatherCondition as keyof typeof this.WEATHER_KEYWORDS] || [];
     const weatherMatches = weatherKeywords.filter(keyword =>
       tags.some(tag => tag.toLowerCase().includes(keyword)) ||
@@ -245,7 +221,6 @@ class ContextualAnalyzer {
       factors.push(`Weather appropriate: ${context.weatherCondition} (${weatherMatches} matches)`);
     }
 
-    // Time of day relevance
     const timeKeywords = this.TIME_KEYWORDS[context.timeOfDay as keyof typeof this.TIME_KEYWORDS] || [];
     const timeMatches = timeKeywords.filter((keyword: string) =>
       titleLower.includes(keyword) || descLower.includes(keyword)
@@ -256,14 +231,12 @@ class ContextualAnalyzer {
       factors.push(`Time relevance: ${context.timeOfDay} (${timeMatches} matches)`);
     }
 
-    // Budget appropriateness
     const budgetScore = this.calculateBudgetScore(activity, context.budget);
     score += budgetScore * 0.2;
     if (budgetScore > 0) {
       factors.push(`Budget appropriate: ${context.budget}`);
     }
 
-    // Group size appropriateness
     const groupScore = this.calculateGroupSizeScore(activity, context.groupSize);
     score += groupScore * 0.15;
     if (groupScore > 0) {
@@ -280,7 +253,7 @@ class ContextualAnalyzer {
       case 'budget':
         return desc.includes('free') ? 1.0 : desc.includes('₱') && !desc.includes('₱1') ? 0.3 : 0.7;
       case 'mid-range':
-        return 0.8; // Most activities fit mid-range
+        return 0.8; 
       case 'luxury':
         return desc.includes('premium') || desc.includes('luxury') ? 1.0 : 0.6;
       default:
@@ -305,9 +278,6 @@ class ContextualAnalyzer {
 }
 
 
-/**
- * Diversity engine to ensure varied recommendations
- */
 class DiversityEngine {
   static calculateDiversityScore(
     activity: Activity,
@@ -317,7 +287,6 @@ class DiversityEngine {
     const factors: string[] = [];
     let score = 1.0;
 
-    // Tag diversity
     const activityTags = new Set(activity.tags || []);
     const existingTags = new Set(
       existingResults.flatMap(result => result.activity.tags || [])
@@ -333,17 +302,15 @@ class DiversityEngine {
       factors.push(`Some tag overlap: ${tagOverlap} tags`);
     }
 
-    // Location diversity (if available)
-    // Time slot diversity
     const activityTimeSlot = this.extractTimeSlot(activity.time);
     const existingTimeSlots = existingResults.map(r => this.extractTimeSlot(r.activity.time));
     const timeSlotCount = existingTimeSlots.filter(slot => slot === activityTimeSlot).length;
     
     if (timeSlotCount === 0) {
-      score *= 1.1; // Bonus for new time slot
+      score *= 1.1; 
       factors.push(`New time slot: ${activityTimeSlot}`);
     } else if (timeSlotCount > 2) {
-      score *= 0.8; // Penalty for overused time slot
+      score *= 0.8; 
       factors.push(`Overused time slot: ${activityTimeSlot}`);
     }
 
@@ -359,13 +326,10 @@ class DiversityEngine {
   }
 }
 
-/**
- * Main Intelligent Search Engine
- */
 export class IntelligentSearchEngine {
   private config: IntelligentSearchConfig;
   private cache: Map<string, { timestamp: number; results: IntelligentSearchResult[] }> = new Map();
-  private readonly CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+  private readonly CACHE_TTL = 15 * 60 * 1000; 
 
   constructor(config: Partial<IntelligentSearchConfig> = {}) {
     this.config = { ...DEFAULT_SEARCH_CONFIG, ...config };
@@ -383,10 +347,8 @@ export class IntelligentSearchEngine {
     }
 
     try {
-      // Multi-stage intelligent search
       const results = await this.performIntelligentSearch(query, context);
       
-      // Cache results
       this.cache.set(cacheKey, {
         timestamp: Date.now(),
         results
@@ -396,7 +358,6 @@ export class IntelligentSearchEngine {
       return results;
     } catch (error) {
       console.error('Intelligent search failed:', error);
-      // If intelligent search fails, return an empty array as we rely on the database.
       return [];
     }
   }
@@ -408,7 +369,6 @@ export class IntelligentSearchEngine {
     const results: IntelligentSearchResult[] = [];
     const processedActivities = new Set<string>();
 
-    // Stage 1: Semantic search with embeddings
     let semanticResults: any[] = [];
     if (supabaseAdmin) {
       try {
@@ -423,7 +383,6 @@ export class IntelligentSearchEngine {
       }
     }
 
-    // Stage 2: Process each activity from the database with multi-dimensional scoring
     const activities = semanticResults.map((r: any) => r.metadata as Activity);
     for (const activity of activities) {
       if (processedActivities.has(activity.title)) continue;
@@ -447,7 +406,6 @@ export class IntelligentSearchEngine {
         temporalFactors: [] as string[]
       };
 
-      // Vector similarity scoring (dedicated vector search)
       if (this.config.vectorWeight > 0) {
         const vectorMatch = semanticResults.find(r => 
           r.metadata?.title === activity.title || r.activity_id === activity.title
@@ -458,9 +416,7 @@ export class IntelligentSearchEngine {
         }
       }
 
-      // Semantic scoring (content-based matching)
       if (this.config.semanticWeight > 0) {
-        // Use title and description matching for semantic scoring
         const titleMatch = activity.title.toLowerCase().includes(query.toLowerCase()) ? 0.8 : 0;
         const descMatch = activity.desc.toLowerCase().includes(query.toLowerCase()) ? 0.6 : 0;
         const tagMatch = activity.tags.some(tag => 
@@ -474,7 +430,6 @@ export class IntelligentSearchEngine {
         }
       }
 
-      // Fuzzy matching
       if (this.config.enableFuzzyMatching && this.config.fuzzyWeight > 0) {
         const titleScore = FuzzyMatcher.calculateFuzzyScore(query, activity.title);
         const descScore = FuzzyMatcher.calculateFuzzyScore(query, activity.desc);
@@ -486,7 +441,6 @@ export class IntelligentSearchEngine {
         }
       }
 
-      // Contextual analysis
       if (this.config.enableContextualAnalysis && this.config.contextWeight > 0) {
         const contextResult = ContextualAnalyzer.analyzeContextualRelevance(query, activity, context);
         scores.contextual = contextResult.score;
@@ -497,12 +451,9 @@ export class IntelligentSearchEngine {
         }
       }
 
-      // Temporal score is a fixed neutral constant (real-time traffic analysis
-      // was deferred to the main pipeline; TemporalOptimizer deleted 2026-09-19).
-      scores.temporal = 0.5; // Neutral score — keeps composite weights stable.
+      scores.temporal = 0.5; 
       metadata.temporalFactors.push('Real-time traffic analysis deferred');
 
-      // Diversity scoring
       if (this.config.diversityWeight > 0) {
         const diversityResult = DiversityEngine.calculateDiversityScore(activity, results, context);
         scores.diversity = diversityResult.score;
@@ -512,7 +463,6 @@ export class IntelligentSearchEngine {
         }
       }
 
-      // Calculate composite score
       scores.composite = (
         scores.semantic * this.config.semanticWeight +
         scores.vector * this.config.vectorWeight +
@@ -522,10 +472,8 @@ export class IntelligentSearchEngine {
         scores.diversity * this.config.diversityWeight
       );
 
-      // Confidence calculation
       const confidence = this.calculateConfidence(scores, reasoning.length);
 
-      // Only include results above threshold
       if (scores.composite >= this.config.minSimilarityThreshold) {
         results.push({
           activity,
@@ -537,7 +485,6 @@ export class IntelligentSearchEngine {
       }
     }
 
-    // Sort by composite score and apply final ranking
     return results
       .sort((a, b) => b.scores.composite - a.scores.composite)
       .slice(0, this.config.maxResults);
@@ -590,5 +537,4 @@ export class IntelligentSearchEngine {
   }
 }
 
-// Export singleton instance
 export const intelligentSearchEngine = new IntelligentSearchEngine();

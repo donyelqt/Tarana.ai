@@ -1,19 +1,9 @@
-/**
- * Background Refresh Scheduler
- * Automated evaluation of saved itineraries for refresh needs
- * 
- * @module refreshScheduler
- * @author Tarana.ai Engineering Team
- */
 
 import { getSavedItineraries, SavedItinerary } from '../data/savedItineraries';
 import { itineraryRefreshService } from './itineraryRefreshService';
 import { fetchWeatherFromAPI } from '../core/utils';
 import { logger } from '@/lib/observability/logger';
 
-// ============================================================================
-// TYPES
-// ============================================================================
 
 export interface ScheduledEvaluationResult {
   itineraryId: string;
@@ -35,27 +25,17 @@ export interface SchedulerStats {
   results: ScheduledEvaluationResult[];
 }
 
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
 
 const LOG_ENTRY_POINT = 'refreshScheduler';
 
 const SCHEDULER_CONFIG = {
-  evaluationIntervalHours: 6, // Don't re-evaluate within 6 hours
-  maxRefreshesPerDay: 4, // Limit refreshes per itinerary per day
-  batchSize: 10, // Process in batches to avoid overload
-  batchDelayMs: 1000, // Delay between batches
+  evaluationIntervalHours: 6, 
+  maxRefreshesPerDay: 4, 
+  batchSize: 10, 
+  batchDelayMs: 1000, 
 };
 
-// ============================================================================
-// MAIN SCHEDULER FUNCTION
-// ============================================================================
 
-/**
- * Evaluate all saved itineraries for refresh needs
- * Called by cron job or manual trigger
- */
 export async function evaluateAllItineraries(requestId?: string): Promise<SchedulerStats> {
   const startTime = Date.now();
   logger.info('Scheduled refresh evaluation started', { entryPoint: LOG_ENTRY_POINT }, requestId);
@@ -171,13 +151,7 @@ export async function evaluateAllItineraries(requestId?: string): Promise<Schedu
   }
 }
 
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
 
-/**
- * Filter itineraries that should be evaluated
- */
 function filterItinerariesForEvaluation(
   itineraries: SavedItinerary[],
   requestId?: string
@@ -236,9 +210,6 @@ function filterItinerariesForEvaluation(
   });
 }
 
-/**
- * Create batches from array
- */
 function createBatches<T>(items: T[], batchSize: number): T[][] {
   const batches: T[][] = [];
   for (let i = 0; i < items.length; i += batchSize) {
@@ -247,9 +218,6 @@ function createBatches<T>(items: T[], batchSize: number): T[][] {
   return batches;
 }
 
-/**
- * Process a batch of itineraries
- */
 async function processBatch(
   itineraries: SavedItinerary[],
   requestId?: string
@@ -257,9 +225,6 @@ async function processBatch(
   return Promise.all(itineraries.map(itinerary => evaluateItinerary(itinerary, requestId)));
 }
 
-/**
- * Evaluate a single itinerary
- */
 async function evaluateItinerary(
   itinerary: SavedItinerary,
   requestId?: string
@@ -335,20 +300,15 @@ async function evaluateItinerary(
   }
 }
 
-/**
- * Extract activity coordinates from itinerary
- */
 function extractActivityCoordinates(
   itinerary: SavedItinerary
 ): Array<{ lat: number; lon: number; name: string }> {
-  // Check if coordinates are already stored
   if (itinerary.activityCoordinates && itinerary.activityCoordinates.length > 0) {
     return itinerary.activityCoordinates;
   }
 
   const coordinates: Array<{ lat: number; lon: number; name: string }> = [];
 
-  // Extract from itinerary data
   if (itinerary.itineraryData && itinerary.itineraryData.items) {
     for (const period of itinerary.itineraryData.items) {
       for (const activity of period.activities) {
@@ -365,7 +325,6 @@ function extractActivityCoordinates(
     }
   }
 
-  // Remove duplicates
   const uniqueCoordinates = coordinates.filter((coord, index, self) =>
     index === self.findIndex(c => 
       Math.abs(c.lat - coord.lat) < 0.001 && Math.abs(c.lon - coord.lon) < 0.001
@@ -375,20 +334,11 @@ function extractActivityCoordinates(
   return uniqueCoordinates;
 }
 
-/**
- * Delay helper
- */
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ============================================================================
-// MANUAL TRIGGER FUNCTION
-// ============================================================================
 
-/**
- * Manually trigger evaluation for a specific itinerary
- */
 export async function evaluateSingleItinerary(
   itineraryId: string,
   requestId?: string
@@ -424,14 +374,7 @@ export async function evaluateSingleItinerary(
   }
 }
 
-// ============================================================================
-// NOTIFICATION HELPERS (Optional)
-// ============================================================================
 
-/**
- * Send notifications for itineraries needing refresh
- * Can be extended to send emails/push notifications
- */
 export async function notifyUsersOfRefreshNeeds(
   results: ScheduledEvaluationResult[],
   requestId?: string

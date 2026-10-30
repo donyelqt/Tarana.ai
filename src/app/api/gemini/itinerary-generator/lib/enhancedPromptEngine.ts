@@ -1,20 +1,8 @@
-/**
- * Enhanced Prompt Engineering System
- * Implements industry-standard prompt engineering techniques for guaranteed JSON output
- * Uses chain-of-thought, few-shot learning, and strict format enforcement
- */
 
 import { z } from 'zod';
 
-/**
- * Advanced Prompt Engineering Engine
- * Implements multiple prompt engineering strategies for reliable JSON generation
- */
 export class EnhancedPromptEngine {
   
-  /**
-   * Generate bulletproof prompt with multiple enforcement layers
-   */
   static buildBulletproofPrompt(
     originalPrompt: string,
     sampleItinerary: any,
@@ -73,9 +61,6 @@ ${jsonSchema}
 FINAL INSTRUCTION: Return ONLY the JSON object. No explanations, no markdown, no code blocks. Just pure JSON.`;
   }
 
-  /**
-   * System prompt with role definition and constraints
-   */
   private static getSystemPrompt(): string {
     return `You are a professional travel itinerary generator AI. Your ONLY job is to return valid JSON objects that match the exact schema provided. You NEVER return explanatory text, markdown formatting, or anything other than pure JSON.
 
@@ -89,9 +74,6 @@ CRITICAL CONSTRAINTS:
 - Always close all brackets and braces properly`;
   }
 
-  /**
-   * Chain-of-thought instructions for systematic thinking
-   */
   private static getChainOfThoughtInstructions(): string {
     return `SYSTEMATIC APPROACH - Follow these steps internally (do not output these steps):
 
@@ -105,9 +87,6 @@ Step 6: VERIFY the JSON is valid and complete before output
 Remember: Think through these steps but OUTPUT ONLY THE FINAL JSON.`;
   }
 
-  /**
-   * Few-shot learning examples for pattern recognition
-   */
   private static getFewShotExamples(): string {
     return `EXAMPLE OUTPUT FORMAT (follow this exact pattern):
 
@@ -145,9 +124,6 @@ Remember: Think through these steps but OUTPUT ONLY THE FINAL JSON.`;
 CRITICAL: Your output must follow this EXACT structure and format.`;
   }
 
-  /**
-   * Strict format enforcement rules
-   */
   private static getStrictFormatEnforcement(): string {
     return `STRICT FORMAT ENFORCEMENT:
 
@@ -182,9 +158,6 @@ VALIDATION CHECKLIST:
 □ Commas placed correctly`;
   }
 
-  /**
-   * Strict JSON schema definition
-   */
   private static getStrictJsonSchema(): string {
     return `MANDATORY JSON SCHEMA (your output MUST match exactly):
 
@@ -238,9 +211,6 @@ VALIDATION CHECKLIST:
 YOUR OUTPUT MUST CONFORM TO THIS SCHEMA EXACTLY.`;
   }
 
-  /**
-   * Generate validation prompt for double-checking
-   */
   static buildValidationPrompt(jsonString: string): string {
     return `Validate this JSON for syntax errors and schema compliance:
 
@@ -257,19 +227,13 @@ Check for:
 Return ONLY "VALID" if correct, or the specific error if invalid.`;
   }
 
-  /**
-   * Clean and prepare prompt for optimal generation
-   */
   static cleanPrompt(prompt: string): string {
     return prompt
-      .replace(/\n\s*\n\s*\n/g, '\n\n') // Remove excessive newlines
-      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/\n\s*\n\s*\n/g, '\n\n') 
+      .replace(/\s+/g, ' ') 
       .trim();
   }
 
-  /**
-   * Generate prompt with progressive difficulty reduction
-   */
   static buildProgressivePrompt(
     basePrompt: string,
     attempt: number,
@@ -279,11 +243,10 @@ Return ONLY "VALID" if correct, or the specific error if invalid.`;
       return basePrompt;
     }
 
-    // Simplify prompt for retries
     const simplificationLevel = Math.min(attempt - 1, 3);
 
     const simplifications = [
-      '', // No simplification
+      '', 
       '\nSIMPLIFIED MODE: Focus on basic structure with minimal activities.',
       '\nMINIMAL MODE: Return simple itinerary with 1-2 activities maximum.',
       '\nFALLBACK MODE: Return basic structure even if activities are generic.'
@@ -295,9 +258,6 @@ Return ONLY "VALID" if correct, or the specific error if invalid.`;
 
 export class JsonSyntaxValidator {
   
-  /**
-   * Pre-validate JSON string for common syntax errors
-   */
   static validateSyntax(jsonString: string): {
     isValid: boolean;
     errors: string[];
@@ -306,7 +266,6 @@ export class JsonSyntaxValidator {
     const errors: string[] = [];
     let cleaned = jsonString.trim();
     
-    // Check for common issues
     if (!cleaned.startsWith('{')) {
       errors.push('JSON must start with opening brace {');
     }
@@ -315,19 +274,16 @@ export class JsonSyntaxValidator {
       errors.push('JSON must end with closing brace }');
     }
     
-    // Check for unescaped quotes
     const unescapedQuotes = cleaned.match(/(?<!\\)"/g);
     if (unescapedQuotes && unescapedQuotes.length % 2 !== 0) {
       errors.push('Unmatched quotes detected');
     }
     
-    // Check for trailing commas
     if (cleaned.includes(',}') || cleaned.includes(',]')) {
       errors.push('Trailing commas detected');
       cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
     }
     
-    // Check bracket balance
     const openBraces = (cleaned.match(/{/g) || []).length;
     const closeBraces = (cleaned.match(/}/g) || []).length;
     const openBrackets = (cleaned.match(/\[/g) || []).length;
@@ -341,7 +297,6 @@ export class JsonSyntaxValidator {
       errors.push(`Unbalanced brackets: ${openBrackets} open, ${closeBrackets} close`);
     }
     
-    // Try to parse
     try {
       JSON.parse(cleaned);
       return {
@@ -358,28 +313,20 @@ export class JsonSyntaxValidator {
     }
   }
   
-  /**
-   * Attempt to fix common JSON syntax errors
-   */
   static attemptFix(jsonString: string): string {
     let fixed = jsonString.trim();
     
-    // Remove markdown code blocks
     fixed = fixed.replace(/```json\s*|\s*```/g, '');
     
-    // Remove explanatory text before/after JSON
     const jsonMatch = fixed.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       fixed = jsonMatch[0];
     }
     
-    // Fix trailing commas
     fixed = fixed.replace(/,(\s*[}\]])/g, '$1');
     
-    // Fix unescaped quotes in descriptions
     fixed = fixed.replace(/"desc":\s*"([^"]*)"([^"]*)"([^"]*)"/g, '"desc": "$1\\"$2\\"$3"');
     
-    // Ensure proper string formatting
     fixed = fixed.replace(/:\s*([^",\[\]{}]+)(?=\s*[,}\]])/g, ': "$1"');
     
     return fixed;

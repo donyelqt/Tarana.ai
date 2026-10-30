@@ -5,51 +5,24 @@ import { MapPinOff, X, Minus, MapPin } from 'lucide-react'
 import type { StopCoordinates } from '../lib/resolveStopCoordinates'
 import type { ItineraryData } from '@/app/itinerary-generator/types'
 
-/** A stop whose title could not be turned into coordinates. */
 export interface ResolvedStop {
   title: string
   time: string
   coordinates: { lat: number; lon: number } | null
 }
 
-/**
- * Plan results.
- *
- * Occupies the same slot as `BottomRouteSheet`, and the map shows at most one of
- * them: the route sheet when route mode is active, this when a plan exists.
- *
- * Honesty rule, inherited from the strict-city scope: a stop whose coordinates
- * cannot be resolved is still listed, marked "No location". Dropping it would
- * make a 3-stop day render as 2 and read as complete.
- */
 export interface PlanSheetProps {
   itinerary: ItineraryData | null
-  /**
-   * Title -> coordinates. Injected rather than imported so the resolution
-   * order (registry, then provider scoped to the city) is one decision owned
-   * by the caller, and so an async lookup can settle after first paint.
-   */
   resolveCoordinates: (title: string) => StopCoordinates | null | Promise<StopCoordinates | null>
   onSave: () => void
   onClose: () => void
   isSaving?: boolean
-  /**
-   * Collapse the sheet to a compact bar without discarding the itinerary, so
-   * the map and its pins stay visible. Close still discards.
-   */
   onMinimize?: () => void
-  /** True while minimized: renders the restore bar instead of the panel. */
   minimized?: boolean
-  /**
-   * Selected day, owned by the caller so the sheet's tabs and the map's route
-   * always agree on which day is drawn. Uncontrolled here would let the map
-   * show day 1 while the sheet lists day 2.
-   */
   activeDay: number
   onDayChange: (dayIndex: number) => void
 }
 
-/** "Day 1 - Morning" / "Day 2 - Evening" / "Anytime" -> "Day 1". */
 function dayLabel(period: string): string {
   const match = period.match(/day\s*(\d+)/i)
   return match ? `Day ${match[1]}` : period
@@ -92,9 +65,6 @@ const PlanSheet: React.FC<PlanSheetProps> = ({
     [current]
   )
 
-  // Resolution can be async (provider lookup). Start every stop unresolved and
-  // let each answer land on its own, so a slow lookup never blanks the sheet
-  // and a fast one is not held back by the slowest.
   const [resolved, setResolved] = useState<Record<string, StopCoordinates | null>>({})
 
   useEffect(() => {
@@ -118,8 +88,6 @@ const PlanSheet: React.FC<PlanSheetProps> = ({
     coordinates: stop.title in resolved ? resolved[stop.title] : null,
   }))
 
-  // Minimized: a slim bar that keeps the plan reachable and the map clear.
-  // Close still discards; minimize never does.
   if (minimized) {
     return (
       <div className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-4">

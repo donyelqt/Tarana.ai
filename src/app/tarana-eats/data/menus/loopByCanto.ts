@@ -1,10 +1,3 @@
-// ====================================================================
-// LOOP BY CANTO MENU DATA
-// ====================================================================
-// Loop by Canto in Baguio City is a cozy café-restaurant offering a creative mix 
-// of comfort food, specialty coffee, and refreshing drinks in a vibrant yet 
-// relaxing atmosphere perfect for locals and tourists alike.
-// ====================================================================
 
 import { FullMenu } from "../types";
 
@@ -13,7 +6,6 @@ export const loopByCantoMenu: FullMenu = {
   Lunch: [],
   Dinner: [],
   Snacks: [
-    // Pandesal Specialties
     {
       name: "Pan de Gogo",
       description: "Soft scrambled eggs, hot pandesal, and salad",
@@ -38,7 +30,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 180,
       image: "/images/comingsoon.png",
     },
-    // Sweet Treats
     {
       name: "Crepe Suzette",
       description: "Crepes in hot orange sauce, ice cream, granita, orange slices.",
@@ -63,7 +54,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 100,
       image: "/images/comingsoon.png",
     },
-    // Salads & Light Meals
     {
       name: "Garden Fresh Salad",
       description: "Season greens, fruits, with mango or strawberry yoghurt dressing",
@@ -76,7 +66,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 220,
       image: "/images/comingsoon.png",
     },
-    // Appetizers & Sides
     {
       name: "Truffle Fries",
       description: "Golden fries tossed with truffle oil and parmesan.",
@@ -101,7 +90,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 120,
       image: "/images/comingsoon.png",
     },
-    // Main Dishes
     {
       name: "Humble-Ger",
       description: "Fried Onion Burger with cheese. Single or Double patty",
@@ -150,7 +138,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 280,
       image: "/images/comingsoon.png",
     },
-    // Specialty Drinks - Iced Teas
     {
       name: "Raspberry Iced Tea",
       description: "Fruity iced tea with raspberry flavor.",
@@ -181,7 +168,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 150,
       image: "/images/comingsoon.png",
     },
-    // Coffee & Lattes
     {
       name: "Americano",
       description: "Bold espresso diluted with hot water.",
@@ -224,7 +210,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 150,
       image: "/images/comingsoon.png",
     },
-    // Matcha Drinks
     {
       name: "Matcha Latte",
       description: "Smooth matcha green tea latte with milk.",
@@ -243,7 +228,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 150,
       image: "/images/comingsoon.png",
     },
-    // Cereal Milk Series
     {
       name: "Strawberry Matcha",
       description: "Strawberry Syrup + Sliced Fresh Strawberries",
@@ -280,7 +264,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 130,
       image: "/images/comingsoon.png",
     },
-    // Sago Series
     {
       name: "Classic",
       description: "Sago + Arnibal",
@@ -335,7 +318,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 150,
       image: "/images/comingsoon.png",
     },
-    // Smoothies & Lemonades
     {
       name: "Cheesecake Smoothie",
       description: "Lemon Square Cheesecake smoothie with mango bits",
@@ -362,7 +344,6 @@ export const loopByCantoMenu: FullMenu = {
     },
   ],
   Drinks: [
-    // Specialty Drinks - Iced Teas
     {
       name: "Raspberry Iced Tea",
       description: "Fruity iced tea with raspberry flavor.",
@@ -393,7 +374,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 150,
       image: "/images/comingsoon.png",
     },
-    // Coffee & Lattes
     {
       name: "Americano",
       description: "Bold espresso diluted with hot water.",
@@ -436,7 +416,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 150,
       image: "/images/comingsoon.png",
     },
-    // Matcha Drinks
     {
       name: "Matcha Latte",
       description: "Smooth matcha green tea latte with milk.",
@@ -455,7 +434,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 150,
       image: "/images/comingsoon.png",
     },
-    // Cereal Milk Series
     {
       name: "Strawberry Matcha",
       description: "Strawberry Syrup + Sliced Fresh Strawberries",
@@ -492,7 +470,6 @@ export const loopByCantoMenu: FullMenu = {
       price: 130,
       image: "/images/comingsoon.png",
     },
-    // Smoothies & Lemonades
     {
       name: "Cheesecake Smoothie",
       description: "Lemon Square Cheesecake smoothie with mango bits",

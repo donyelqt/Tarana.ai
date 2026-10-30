@@ -1,5 +1,3 @@
-// Adapted from shadcn UI toast component
-// https://ui.shadcn.com/docs/components/toast
 
 "use client"
 

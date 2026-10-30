@@ -1,21 +1,3 @@
-/**
- * The From/To suggestion list must escape the island, not be clipped by it,
- * and the island must collapse when a plan finishes.
- *
- * #695 capped the island's expanded wrapper with `max-h-[70dvh] overflow-y-auto`
- * so a tall planner could not be trapped behind the map's control rail on a
- * short viewport. That `overflow-y: auto` turned the wrapper into a scroll
- * container, and the suggestion list is absolutely positioned *below* its
- * field, so it was clipped to whatever height the wrapper happened to have.
- * Measured in a browser at 1280x900: the list rendered to y=563 inside a
- * wrapper that ended at y=282 — 281px of a 448px list lost, plus every
- * control below the From field.
- *
- * DynamicIsland deliberately keeps `overflow: visible` while expanded for the
- * same reason. The cap belongs in plan mode, where the content is genuinely
- * taller than the viewport, and not in route mode, where it is short and the
- * dropdown needs to escape.
- */
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -110,11 +92,6 @@ describe('island scroll wrapper', () => {
   it('does not clip in route mode, so the suggestion list can escape', () => {
     render(<FloatingSearchCard {...baseProps()} planMode={false} />)
 
-    // Asserted on the class list, not computed style: jsdom has no Tailwind
-    // stylesheet, so `getComputedStyle(...).overflowY` is "" for an unset
-    // property and cannot distinguish visible from a scroll container. The
-    // resolved behaviour was verified in a browser instead, where the wrapper
-    // measured overflowY "visible" and all 8 options rendered in the viewport.
     expect(islandContent().className).not.toContain('overflow-y-auto')
   })
 
@@ -144,10 +121,8 @@ describe('island auto-collapse', () => {
 
     await user.click(screen.getByRole('button', { name: pillName }))
 
-    // Generation completes: isPlanning goes busy -> idle.
     rerender(<FloatingSearchCard {...baseProps()} planMode isPlanning={false} />)
 
-    // The compact pill is back, which is the observable form of "collapsed".
     await waitFor(() =>
       expect(screen.getByRole('button', { name: pillName })).toBeInTheDocument()
     )
@@ -160,7 +135,6 @@ describe('island auto-collapse', () => {
     )
 
     await user.click(screen.getByRole('button', { name: pillName }))
-    // Re-render with generation STILL running: no collapse.
     rerender(<FloatingSearchCard {...baseProps()} planMode isPlanning />)
 
     expect(screen.queryByRole('button', { name: pillName })).not.toBeInTheDocument()

@@ -34,20 +34,11 @@ import {
 import { motion } from 'framer-motion'
 import { Route } from 'lucide-react'
 import DynamicIsland from './DynamicIsland'
-// Fallback ref used when no plan-slot consumer is mounted, so the island
-// renders identically in isolation and in route-only mode.
 const noopRef = () => {}
 
-/** Minimum characters before we hit the geocoder (matches the API's own guard). */
 const MIN_QUERY = 2
-/** Keystroke debounce so a fast typist fires one request, not one per letter. */
 const SEARCH_DEBOUNCE_MS = 220
 
-/**
- * The card floats over a full-bleed map. Letting the browser scroll a freshly
- * focused input into view yanks the whole layout on mobile, so every
- * programmatic focus in this file goes through here.
- */
 const focusEl = (el: HTMLElement | null) => el?.focus({ preventScroll: true })
 
 interface FloatingSearchCardProps {
@@ -61,27 +52,9 @@ interface FloatingSearchCardProps {
   isCalculating: boolean
   popularLocations: LocationPoint[]
   disabled?: boolean
-  /**
-   * Increments when the parent changes mode. The island collapses in response;
-   * it owns `isOpen`, so a counter beats exposing the setter upward.
-   */
   collapseSignal?: number
-  /**
-   * When true the island renders the plan slot instead of the route fields.
-   * The shell (morph, clip, dismissal) is unchanged by mode.
-   */
   planMode?: boolean
-  /**
-   * Reports the node the planner config should be portalled into.
-   *
-   * A slot rather than an imported component on purpose: Plan Mode pulls in
-   * Gala's generator, which imports the 37-activity catalog and its menus.
-   * Pulling that into the map's static graph cost 448KB on /tarana-explore and
-   * blew the bundle budget, so the caller owns a lazily-loaded surface that
-   * renders into this node.
-   */
   onPlanSlot?: (node: HTMLElement | null) => void
-  /** Plan generation in flight. Drives the same auto-collapse as routing. */
   isPlanning?: boolean
 }
 
@@ -89,15 +62,9 @@ type SegmentedOption<T extends string> = {
   value: T
   label: string
   icon: React.ReactNode
-  /** On small viewports hide the text label and show the icon only. */
   iconOnly?: boolean
 }
 
-/**
- * Apple-style segmented control: a single white "thumb" pill that slides
- * smoothly between options (both left and right) via framer-motion shared
- * layout (layoutId) - the same feel as the iOS Control Center switcher.
- */
 const SlidingSegmented = <T extends string>({
   options,
   value,
@@ -158,18 +125,6 @@ const VEHICLE_OPTIONS: SegmentedOption<VehicleType>[] = [
   { value: 'truck', label: 'Truck', icon: <Truck className="w-4 h-4" />, iconOnly: true },
 ]
 
-/**
- * Per-field autocomplete lifecycle.
- *
- * Each LocationField owns its own request state. Previously both fields shared a
- * single `searchResults` array in the parent, which meant "To" rendered "From"'s
- * results for a frame and both fields span their loading spinner at once. That is
- * invisible when you have to click between fields manually, but auto-advancing
- * focus makes it happen on every single selection.
- *
- * The sequence counter drops any response that is no longer the newest request,
- * so a slow geocode can never overwrite a faster, later one.
- */
 function useLocationSearch() {
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -178,8 +133,6 @@ function useLocationSearch() {
   const abort = useRef<AbortController | null>(null)
 
   const cancel = useCallback(() => {
-    // Bumping the sequence first invalidates anything queued or in flight, so the
-    // abort below can never be mistaken for a genuine "no results" response.
     seq.current += 1
     if (timer.current) clearTimeout(timer.current)
     timer.current = null
@@ -229,21 +182,11 @@ interface LocationFieldProps {
   placeholder: string
   value: LocationPoint | null
   onChange: (loc: LocationPoint | null) => void
-  /**
-   * Fired synchronously, still inside the user's click/keydown handler, right
-   * after a suggestion is committed. The parent uses it to hand focus to the
-   * other endpoint. It MUST stay inside the gesture call stack — iOS only
-   * raises the software keyboard for a programmatic focus() that happens during
-   * user activation, so deferring this (setTimeout/rAF) would move the caret but
-   * leave the keyboard down.
-   */
   onCommit?: () => void
-  /** Enter pressed with no suggestion to take. */
   onEnter?: () => void
   popularLocations: LocationPoint[]
   dotColor: string
   inputRef: React.RefObject<HTMLInputElement | null>
-  /** Stable id used to wire the combobox to its listbox for screen readers. */
   fieldId: string
 }
 
@@ -269,11 +212,6 @@ const LocationField: React.FC<LocationFieldProps> = ({
   const listboxId = `${fieldId}-listbox`
   const inputId = `${fieldId}-input`
 
-  /**
-   * The last committed name this field knows about. An *external* change (swap
-   * button, parent clearing the route) must refresh the visible text, but a
-   * change this field caused itself must not clobber what the user is typing.
-   */
   const syncedName = useRef<string | null>(value?.name ?? null)
   useEffect(() => {
     const name = value?.name ?? null
@@ -292,22 +230,15 @@ const LocationField: React.FC<LocationFieldProps> = ({
           lat: r.coordinates?.lat ?? NaN,
           lng: r.coordinates?.lng ?? NaN,
         }))
-        // A suggestion without usable coordinates would silently route from 0,0.
         .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)),
     [results, fieldId],
   )
 
-  /**
-   * "Typing" means the text no longer matches what is committed. Focusing a field
-   * that already holds a place should offer the popular list, not "No matches".
-   */
   const isTyping = query.trim().length >= MIN_QUERY && query !== (value?.name ?? '')
   const items = isTyping ? searchItems : popularLocations
 
   useEffect(() => setActive(-1), [items])
 
-  // Close the suggestion list on an outside press. pointerdown (not mousedown)
-  // so touch, pen and mouse behave identically.
   useEffect(() => {
     if (!open) return
     const onPointerDown = (e: PointerEvent) => {
@@ -317,7 +248,6 @@ const LocationField: React.FC<LocationFieldProps> = ({
     return () => document.removeEventListener('pointerdown', onPointerDown, true)
   }, [open])
 
-  // Keep the keyboard-highlighted row in view.
   useEffect(() => {
     if (active < 0) return
     panelRef.current
@@ -350,9 +280,6 @@ const LocationField: React.FC<LocationFieldProps> = ({
     setQuery(v)
     setOpen(true)
     setActive(-1)
-    // Editing the text invalidates the committed place. Without this the parent
-    // keeps the old LocationPoint and can route from somewhere the field is no
-    // longer showing.
     if (value && v !== value.name) {
       syncedName.current = null
       onChange(null)
@@ -363,7 +290,6 @@ const LocationField: React.FC<LocationFieldProps> = ({
 
   const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
-      // Collapse the list first; only a second Escape should close the card.
       if (open) {
         e.stopPropagation()
         setOpen(false)
@@ -389,8 +315,6 @@ const LocationField: React.FC<LocationFieldProps> = ({
     }
 
     if (e.key === 'Enter') {
-      // Take the highlighted row, or the top result of an active query. Never
-      // auto-take a "popular place" the user never aimed at.
       const idx = active >= 0 ? active : isTyping && items.length > 0 ? 0 : -1
       if (open && idx >= 0) {
         e.preventDefault()
@@ -422,8 +346,6 @@ const LocationField: React.FC<LocationFieldProps> = ({
             onChange={handleInput}
             onFocus={(e) => {
               setOpen(true)
-              // Tapping a field that already holds a place selects its text so the
-              // next keystroke replaces it instead of appending.
               if (value) e.currentTarget.select()
             }}
             onKeyDown={handleKey}
@@ -525,9 +447,6 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
   const destinationRef = useRef<HTMLInputElement | null>(null)
   const submitRef = useRef<HTMLButtonElement | null>(null)
 
-  // Report the slot node only when it changes. React invokes a ref callback
-  // with null and then the node on every commit, so passing the parent's
-  // setState straight to `ref` would schedule a render per commit and loop.
   const planSlotSink = useRef(onPlanSlot)
   planSlotSink.current = onPlanSlot
   const setPlanSlot = useCallback((node: HTMLElement | null) => {
@@ -540,31 +459,12 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
     setIsOpen(false)
     setShowOptions(false)
     if (typeof document === 'undefined') return
-    // Drop focus so the mobile keyboard retracts together with the card.
     const activeEl = document.activeElement as HTMLElement | null
     if (activeEl && rootRef.current?.contains(activeEl)) activeEl.blur()
   }, [])
 
-  /**
-   * The card is expanded from *explicit intent*, never from transient DOM focus.
-   *
-   * It used to be derived from a focus/blur pair, which breaks on touch: Safari
-   * and iOS do not focus <button> elements on tap, so the blur fired when you
-   * tapped a suggestion carried relatedTarget === null and read as "the user
-   * left the card". Result: picking a "From" location instantly collapsed the
-   * island back to the "Where to?" pill mid-flow.
-   */
   const expanded = isOpen || isCalculating
 
-  // Dismiss on a genuine outside press. pointerdown fires before focus moves and
-  // is identical across mouse, touch and pen — unlike blur/relatedTarget.
-  // Capture phase so the map's own handlers cannot swallow it.
-  //
-  // A press inside a portalled popover is NOT an outside press. Radix renders
-  // popover content into a wrapper appended to <body>, outside rootRef, so the
-  // containment check alone read "choose a budget" as "the user left" and closed
-  // the card mid-choice, stranding the rest of the form. The route config has
-  // no popover, so this only surfaced once the planner config landed.
   useEffect(() => {
     if (!isOpen) return
     const onPointerDown = (e: PointerEvent) => {
@@ -585,11 +485,6 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
     }
   }, [isOpen, close])
 
-  /**
-   * The parent changes mode by bumping `collapseSignal`. Collapse without
-   * clearing endpoints: they are the user's route work and outlive the mode.
-   * Skipped on the first render so the signal's initial value is inert.
-   */
   const lastCollapseSignal = useRef(collapseSignal)
   useEffect(() => {
     if (collapseSignal === lastCollapseSignal.current) return
@@ -597,12 +492,6 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
     close()
   }, [collapseSignal, close])
 
-  // Auto-collapse when work finishes, in both modes.
-  //
-  // This watched only `isCalculating`, which is the ROUTE pipeline. Plan
-  // Mode's generation runs through a separate flag, so a completed plan left
-  // the island open on top of the results it had just produced. One rule with
-  // two inputs, rather than a second close path for plan mode.
   const wasBusy = useRef(isCalculating || isPlanning)
   useEffect(() => {
     const busy = isCalculating || isPlanning
@@ -610,24 +499,10 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
     wasBusy.current = busy
   }, [isCalculating, isPlanning, close])
 
-  /**
-   * Opening from the pill. The actual focus is deferred to the effect below so
-   * it lands on the *expanded* input, not the still-collapsed DOM node that
-   * exists at the moment of the click. It lands on whichever endpoint is still
-   * empty, so a half-filled route resumes where the user left off. When both are
-   * already set the card expands silently rather than summoning the keyboard.
-   */
   const openIsland = useCallback(() => {
     setIsOpen(true)
   }, [])
 
-  /**
-   * Move focus to the right field *after* the card has committed its expanded
-   * layout to the DOM (and the relevant input actually exists/is visible). Done
-   * synchronously inside the click the input is still the collapsed node and the
-   * focus silently no-ops, taking the field's own onFocus (and its suggestion
-   * list) with it.
-   */
   const pendingFocus = useRef<'origin' | 'destination' | 'submit' | null>(null)
   useEffect(() => {
     if (!isOpen) return
@@ -641,14 +516,6 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
     else if (!destination) focusEl(destinationRef.current)
   }, [isOpen, origin, destination])
 
-  /**
-   * Auto-advance. A commit changes origin/destination, so the deferred focus
-   * effect (keyed on those values) re-runs and lands on the field the user has
-   * not yet filled — or on submit once both are set. Going through the effect
-   * (rather than focusing mid-click) keeps it reliable in every environment,
-   * including jsdom, where a synchronous focus on the still-present node can
-   * race the re-render that swaps the committed text.
-   */
   const handleOriginCommit = useCallback(() => {
     if (!destination) pendingFocus.current = 'destination'
     else pendingFocus.current = 'submit'
@@ -666,8 +533,6 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
 
   const hasEndpoint = !!origin || !!destination
 
-  // The collapsed pill reports what is still selected, so the post-search
-  // collapse reads as "route set", not as "my inputs were thrown away".
   const compactSummary = planMode ? (
     <span className="flex w-full items-center gap-1.5 px-4">
       <Route className="w-4 h-4 flex-shrink-0 text-blue-600" aria-hidden="true" />
@@ -716,15 +581,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
         compactWidth={hasEndpoint ? 320 : 240}
         compactLabel={compactLabel}
       >
-        {/*
-          Scroll only in plan mode. The planner is genuinely taller than a
-          short viewport and needs the cap; route mode is short, and giving its
-          wrapper `overflow-y: auto` created a scroll container that clipped
-          the From/To suggestion list to a fraction of its height (it rendered
-          to y=563 inside a wrapper ending at y=282). The list is absolutely
-          positioned below the field and must be free to escape, which is why
-          DynamicIsland keeps `overflow: visible` while expanded.
-        */}
+        {}
         <div
           className={
             planMode
@@ -733,10 +590,6 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
           }
           onFocusCapture={() => setIsOpen(true)}
           onBlurCapture={(e) => {
-            // Only a real focus hand-off to something outside closes the card.
-            // relatedTarget === null means the browser merely dropped focus
-            // (iOS tap on a non-focusable control, keyboard dismissal, …) and
-            // must not be read as leaving. Outside pointerdown covers that case.
             const next = e.relatedTarget as Node | null
             if (next && !e.currentTarget.contains(next)) close()
           }}
@@ -783,7 +636,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
 
           <div className="border-t border-gray-100" />
 
-          {/* Transport mode — full-width row */}
+          {}
           <div className="px-3 py-2">
             <SlidingSegmented
               layoutId="vehicle-seg"
@@ -793,7 +646,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
             />
           </div>
 
-          {/* Route type — full-width row */}
+          {}
           <div className="px-3 pb-2 flex items-center justify-between">
             <SlidingSegmented
               layoutId="route-seg"
@@ -814,7 +667,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
             </button>
           </div>
 
-          {/* Options drawer */}
+          {}
           {showOptions && (
             <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-white">
               <div>
@@ -869,7 +722,7 @@ const FloatingSearchCard: React.FC<FloatingSearchCardProps> = ({
             </div>
           )}
 
-          {/* Submit */}
+          {}
           <div className="border-t border-gray-100 p-2.5">
             <button
               ref={submitRef}

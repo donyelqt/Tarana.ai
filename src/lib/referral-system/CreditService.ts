@@ -1,6 +1,3 @@
-/**
- * Credit Service - Manages credit operations, consumption, and balance tracking
- */
 
 import { supabaseAdmin } from '../data/supabaseAdmin';
 import { recordRefund } from '../observability/refundMetrics';
@@ -27,9 +24,6 @@ const unlimitedIds = new Set(
 );
 
 export class CreditService {
-  /**
-   * Ensure user profile exists, create if not
-   */
   private static async ensureUserProfile(userId: string): Promise<void> {
     if (!supabaseAdmin) {
       logger.warn('Credit profile assurance skipped: database unavailable', {
@@ -45,8 +39,6 @@ export class CreditService {
 
       await createUserProfile(userId);
     } catch (error) {
-      // Preserve the money path's non-fatal profile behavior: balance and
-      // consumption continue and surface their own typed errors if needed.
       logger.error('Credit profile assurance failed', {
         entryPoint: 'credit-service',
         ...getSafeErrorMetadata(error),
@@ -54,9 +46,6 @@ export class CreditService {
     }
   }
 
-  /**
-   * Get current credit balance for a user
-   */
   static async getCurrentBalance(userId: string): Promise<CreditBalance> {
     if (unlimitedIds.has(userId)) {
       return {
@@ -74,10 +63,8 @@ export class CreditService {
     }
 
     try {
-      // Ensure user profile exists
       await this.ensureUserProfile(userId);
 
-      // Get user profile with credit info
       const { data: profile, error } = await supabaseAdmin
         .from('user_profiles')
         .select('*')
@@ -89,21 +76,18 @@ export class CreditService {
         throw new ReferralSystemError('User profile not found', 'NOT_FOUND', false);
       }
 
-      // Check if credits need refresh (new day)
       const lastRefresh = new Date(profile.last_credit_refresh);
       const now = new Date();
       const needsRefresh = lastRefresh.toDateString() !== now.toDateString();
 
       let usedToday = profile.credits_used_today;
       if (needsRefresh) {
-        // Reset used credits for new day
         usedToday = 0;
         await this.refreshDailyCredits(userId);
       }
 
       const remainingToday = Math.max(0, profile.daily_credits - usedToday);
 
-      // Calculate next refresh time (midnight Manila time)
       const nextRefresh = new Date();
       nextRefresh.setDate(nextRefresh.getDate() + 1);
       nextRefresh.setHours(0, 0, 0, 0);
@@ -126,9 +110,6 @@ export class CreditService {
     }
   }
 
-  /**
-   * Consume credits for a service
-   */
   static async consumeCredits(
     request: ConsumeCreditsRequest
   ): Promise<ConsumeCreditsResult> {
@@ -146,14 +127,10 @@ export class CreditService {
     const { userId, amount, service, description } = request;
 
     try {
-      // No userIds, no RPC internals on stdout: the log store must not
-      // become a per-user activity ledger.
       logger.debug('Credit consumption started', { entryPoint: 'credit-service', service, amount });
 
-      // Ensure user profile exists before consuming credits
       await this.ensureUserProfile(userId);
 
-      // Call the database function to consume credits atomically
       const { data, error } = await supabaseAdmin.rpc('consume_credits', {
         p_user_id: userId,
         p_amount: amount,
@@ -166,7 +143,6 @@ export class CreditService {
         throw error;
       }
 
-      // Check if consumption was successful
       if (!data) {
         const balance = await this.getCurrentBalance(userId);
         throw new InsufficientCreditsError(
@@ -176,7 +152,6 @@ export class CreditService {
         );
       }
 
-      // Get updated balance
       const newBalance = await this.getCurrentBalance(userId);
 
       return {
@@ -196,17 +171,6 @@ export class CreditService {
     }
   }
 
-  /**
-   * Refund credits after a generation that was charged but failed to deliver.
-   *
-   * Delegates to the atomic `refund_credits` RPC: the decrement is a single
-   * guarded UPDATE (no read-modify-write race) and `idempotencyKey` makes
-   * replays — retries, overlapping catch blocks, concurrent duplicates — a
-   * safe no-op. Returns TRUE when this call applied a refund, FALSE when it
-   * was a no-op (unknown profile, replayed key, DB unavailable). Never
-   * throws: callers invoke this from error paths where a throw would mask
-   * the original failure.
-   */
   static async refundCredits(request: {
     userId: string;
     amount: number;
@@ -240,9 +204,6 @@ export class CreditService {
       }
 
       if (data !== true) {
-        // No-op: unknown profile or replayed idempotency key. Warn (not
-        // silent) with the key so replays vs missing users stay
-        // distinguishable in logs.
         logger.warn('[CreditService] refund no-op', { entryPoint: 'credit-service' });
         recordRefund('noop');
         return false;
@@ -257,16 +218,12 @@ export class CreditService {
     }
   }
 
-  /**
-   * Refresh daily credits (called at midnight or manually)
-   */
   static async refreshDailyCredits(userId: string): Promise<RefreshCreditsResult> {
     if (!supabaseAdmin) {
       throw new ReferralSystemError('Database not available', 'DB_ERROR', true);
     }
 
     try {
-      // Reset used credits and update last refresh timestamp
       const { error: updateError } = await supabaseAdmin
         .from('user_profiles')
         .update({
@@ -277,7 +234,6 @@ export class CreditService {
 
       if (updateError) throw updateError;
 
-      // Log the refresh transaction
       const profile = await supabaseAdmin
         .from('user_profiles')
         .select('daily_credits, current_tier')
@@ -293,7 +249,6 @@ export class CreditService {
           balance_after: profile.data.daily_credits,
         });
 
-        // Create daily allocation record
         await supabaseAdmin.from('daily_credit_allocations').insert({
           user_id: userId,
           allocation_date: new Date().toISOString().split('T')[0],
@@ -303,7 +258,6 @@ export class CreditService {
         });
       }
 
-      // Get updated balance
       const newBalance = await this.getCurrentBalance(userId);
 
       return {
@@ -320,9 +274,6 @@ export class CreditService {
     }
   }
 
-  /**
-   * Get credit transaction history
-   */
   static async getCreditHistory(
     userId: string,
     limit: number = 20
@@ -361,9 +312,6 @@ export class CreditService {
     }
   }
 
-  /**
-   * Check if user has sufficient credits
-   */
   static async hasSufficientCredits(
     userId: string,
     requiredAmount: number
@@ -377,9 +325,6 @@ export class CreditService {
     }
   }
 
-  /**
-   * Get available credits (helper function)
-   */
   static async getAvailableCredits(userId: string): Promise<number> {
     try {
       const balance = await this.getCurrentBalance(userId);

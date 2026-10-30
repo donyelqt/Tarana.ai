@@ -12,7 +12,6 @@ import { validatePasswordStrength } from "@/lib/security/inputSanitizer"
 import { GeminiSparkles, FadingDotGrid } from "@/components/auth/GeminiSparkles"
 import { Home } from "lucide-react"
 
-// Component that uses useRouter
 function SignUpForm() {
     const [fullName, setFullName] = useState("")
     const [email, setEmail] = useState("")
@@ -28,11 +27,11 @@ function SignUpForm() {
 
     const getStrengthColor = (strengthLevel: string) => {
         switch (strengthLevel) {
-            case 'very-weak': return '#ff0000'; // Red
-            case 'weak': return '#ff6600';     // Orange
-            case 'medium': return '#ffcc00';   // Yellow
-            case 'strong': return '#66cc00';   // Light Green
-            case 'very-strong': return '#00cc00'; // Green
+            case 'very-weak': return '#ff0000'; 
+            case 'weak': return '#ff6600';     
+            case 'medium': return '#ffcc00';   
+            case 'strong': return '#66cc00';   
+            case 'very-strong': return '#00cc00'; 
             default: return '#ff0000';
         }
     };
@@ -48,7 +47,6 @@ function SignUpForm() {
         }
     };
 
-    // Memoize the password strength calculation to avoid repeated calls
     const passwordStrength = useMemo(() => {
         if (password) {
             return validatePasswordStrength(password);
@@ -61,7 +59,6 @@ function SignUpForm() {
         setError(null)
         setIsLoading(true)
 
-        // Basic validation
         if (!agreed) {
             setError("Please accept the Terms of Service and Privacy Policy")
             setIsLoading(false)
@@ -73,7 +70,6 @@ function SignUpForm() {
             return
         }
 
-        // Check password strength using the same validation as the component
         const { isValid, errors } = validatePasswordStrength(password);
         if (!isValid) {
             setError(errors[0] || "Password does not meet security requirements")
@@ -82,7 +78,6 @@ function SignUpForm() {
         }
 
         try {
-            // Make API call to register the user
             const response = await fetch('/api/auth/register', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -95,7 +90,6 @@ function SignUpForm() {
               throw new Error(data.error || 'Registration failed')
             }
 
-            // Redirect to sign in page after successful registration
             router.push('/auth/signin?registered=true')
         } catch (error: unknown) {
             console.error('Registration error:', error)
@@ -158,7 +152,7 @@ function SignUpForm() {
                             )}
                         </span>
                     </div>
-                    {/* Visual strength indicator */}
+                    {}
                     {passwordStrength && (
                         <div className="strength-meter mt-2">
                             <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -176,7 +170,7 @@ function SignUpForm() {
                             </div>
                         </div>
                     )}
-                    {/* Feedback messages */}
+                    {}
                     {passwordStrength && passwordStrength.feedback && passwordStrength.feedback.length > 0 && (
                         <ul className="password-feedback mt-2 text-sm text-gray-600">
                             {passwordStrength.feedback.map((msg, index) => (
@@ -187,7 +181,7 @@ function SignUpForm() {
                             ))}
                         </ul>
                     )}
-                    {/* Success message when password is valid */}
+                    {}
                     {passwordStrength && passwordStrength.isValid && (
                         <div className="password-success mt-2 text-sm text-green-600 flex items-start">
                             <span className="mr-2">✓</span>
@@ -260,30 +254,30 @@ function SignUpForm() {
 const SignUp = () => {
     return (
         <div className="min-h-screen flex">
-            {/* Left Panel */}
+            {}
             <div className="hidden md:flex w-1/2 bg-[#0066FF] flex-col justify-center items-center text-white relative overflow-hidden">
-              {/* ── Apple Liquid Glass coating ── */}
+              {}
               <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
-                {/* 1. Glass tint — slightly lighter blue simulating glass thickness over solid color */}
+                {}
                 <div className="absolute inset-0" style={{
                   background: 'rgba(255, 255, 255, 0.06)',
                 }} />
 
-                {/* 2. Top-edge specular highlight — Apple's signature: a thin bright line at the very top where virtual light hits the glass surface */}
+                {}
                 <div className="absolute top-0 left-0 right-0 h-px" style={{
                   background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)',
                   boxShadow: '0 1px 12px rgba(255,255,255,0.4)',
                 }} />
               </div>
-              {/* ── End Liquid Glass coating ── */}
+              {}
 
-              {/* Gemini sparkles — sparse white dots on blue (texture, not competing with grid) */}
+              {}
               <GeminiSparkles variant="white" count={20} minSize={2} maxSize={7} />
 
-              {/* Fading dot grid — top-left, mirrors right panel's top-right; primary texture layer */}
+              {}
               <FadingDotGrid dotColor="#cce4ff" dotSize={3} gap={14} widthFraction={0.55} heightFraction={0.6} corner="top-left" />
 
-              {/* Referral logo watermark — matches dashboard styling */}
+              {}
               <img
                 src="/images/referafriend.png"
                 alt=""
@@ -304,14 +298,14 @@ const SignUp = () => {
                 <Link href="/" className="inline-block bg-white text-[#0066FF] font-medium rounded-xl px-7 py-3 text-base shadow-md hover:bg-gray-100 transition">Back to Home</Link>
               </div>
             </div>
-            {/* Right Panel */}
+            {}
             <div className="flex flex-1 items-center justify-center bg-white relative">
-              {/* Gemini sparkles — blue/violet dots on white */}
+              {}
               <GeminiSparkles variant="blue" count={35} minSize={2} maxSize={7} />
-              {/* Fading dot grid — top-right, matches bryllim.com reference */}
+              {}
               <FadingDotGrid dotColor="#93c5fd" dotSize={3} gap={14} widthFraction={0.55} heightFraction={0.6} />
 
-              {/* Mobile Back to Home */}
+              {}
               <Link
                 href="/"
                 className="md:hidden absolute top-4 left-4 z-10 inline-flex items-center gap-1.5 bg-[#0066FF] text-white font-medium rounded-full px-4 py-1.5 text-sm shadow-sm active:scale-95 transition-transform"
@@ -321,7 +315,7 @@ const SignUp = () => {
               </Link>
               <div className="w-full max-w-md space-y-8 p-10 mx-4 relative z-10">
                     <div className="text-center mb-8">
-                      {/* Brand accent */}
+                      {}
                       <div className="w-8 h-1 bg-[#0066FF] rounded-full mx-auto mb-5" />
                       <h2 className="text-[28px] font-semibold text-gray-900 tracking-tight leading-tight">
                         Welcome<span className="text-[#0066FF]"> to Tarana.ai</span>
@@ -344,7 +338,7 @@ const SignUp = () => {
                           </AnimatePresence>
                       </div>
                     </div>
-                    {/* Wrap the component that uses useRouter in Suspense */}
+                    {}
                     <Suspense fallback={<div className="h-10">Loading...</div>}>
                         <SignUpForm />
                     </Suspense>

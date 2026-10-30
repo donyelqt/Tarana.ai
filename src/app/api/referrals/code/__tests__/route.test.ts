@@ -1,8 +1,3 @@
-/**
- * Tests for GET /api/referrals/code (auth-adjacent path).
- * 401 unauthenticated; 404-on-null exact contract; 200 {success,referralCode};
- * 500 mapping on throw.
- */
 import { GET } from '../route';
 import { getServerSession } from 'next-auth';
 import { ReferralService } from '@/lib/referral-system';
@@ -15,8 +10,6 @@ jest.mock('@/lib/referral-system', () => ({
   ReferralService: { getUserReferralCode: jest.fn() },
 }));
 
-// jest.setup.js replaces global Response with a minimal mock lacking the
-// static json() NextResponse.json() delegates to. Restore just that static.
 const MockedResponse = globalThis.Response as unknown as {
   new (body?: unknown, init?: { status?: number; headers?: Record<string, string> }): InstanceType<typeof globalThis.Response>;
   json(body: unknown, init?: { status?: number }): unknown;

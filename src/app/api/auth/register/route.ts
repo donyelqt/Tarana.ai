@@ -9,17 +9,17 @@ import { timedHttp } from '@/lib/observability/httpMetrics';
 import { logger } from '@/lib/observability/logger';
 import { getRequestId } from '@/middleware/requestId';
 import { getSafeErrorMetadata } from '@/lib/observability/safeErrorMetadata';
-// Rate limiter for registration attempts
+
 const registerRateLimit = createRateLimitMiddleware(rateLimitConfigs.auth);
 
 export async function POST(request: NextRequest) {
   return timedHttp('/api/auth/register', 'POST', async () => {
     const requestId = getRequestId(request);
   try {
-    // Check required environment variables
+    
     checkRequiredEnvVars(['NEXTAUTH_SECRET', 'SUPABASE_SERVICE_ROLE_KEY']);
 
-    // Apply rate limiting
+    
     const rateLimitResult = registerRateLimit(request);
     if (!rateLimitResult.allowed) {
       const response = NextResponse.json(
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const requestBody = await request.json();
     const { fullName, email, password, referralCode, agreed } = requestBody;
 
-    // Validate required fields
+    
     if (!fullName || !email || !password) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Server-side ToS consent enforcement (client checkbox alone is bypassable
-    // via direct POST, so agreement must be asserted in the request body).
+    
+    
     if (agreed !== true) {
       return NextResponse.json(
         { error: 'You must accept the Terms of Service and Privacy Policy' },
@@ -53,15 +53,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Normalize the referral code once, up front. `validate`/`track-referral`
-    // both uppercase; register previously validated the raw value and then
-    // created the referral with it, so a lowercase `?ref=abc123` could pass
-    // validation and still fail (or store a differently-cased code) later.
+    
+    
+    
+    
     const normalizedReferralCode = typeof referralCode === 'string'
       ? referralCode.trim().toUpperCase()
       : '';
 
-    // Validate referral code if provided
+    
     if (normalizedReferralCode) {
       const isValidReferralCode = await ReferralService.validateReferralCode(normalizedReferralCode);
       if (!isValidReferralCode) {
@@ -72,24 +72,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Comprehensive input sanitization and validation
+    
     const { sanitized, errors } = sanitizeUserRegistration({ fullName, email, password });
 
     if (errors.length > 0) {
       return NextResponse.json(
-        { error: errors[0] }, // Return first error
+        { error: errors[0] }, 
         { status: 400 }
       );
     }
 
     try {
-      // Create user in Supabase with sanitized data (records ToS acceptance time)
+      
       const newUser = await createUserInSupabase(sanitized.fullName, sanitized.email, sanitized.password, new Date().toISOString());
 
-      // ✅ REFERRAL SYSTEM: Create user profile and handle referral
+      
       if (newUser?.id) {
         try {
-          // Create user profile with default tier (non-fatal)
+          
           try {
             await createUserProfile(newUser.id);
           } catch (profileError) {
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          // Create referral relationship if referral code provided
+          
           if (normalizedReferralCode) {
             const referralResult = await ReferralService.createReferral({
               referralCode: normalizedReferralCode,
@@ -138,20 +138,20 @@ export async function POST(request: NextRequest) {
             },
             requestId
           );
-          // Don't block registration if profile creation fails
+          
         }
       }
 
-      // Return success response (without exposing sensitive data)
+      
       return NextResponse.json(
         { success: true, message: 'User registered successfully' },
         { status: 201 }
       );
     } catch (userError: unknown) {
-      // Anti-enumeration: duplicate emails answer with the same neutral
-      // outcome as any other creation failure, so unauthenticated callers
-      // cannot sweep for registered addresses via 409-vs-201. Raw DB error
-      // text stays server-side in the structured log below.
+      
+      
+      
+      
       logger.warn(
         'Account creation did not complete',
         {

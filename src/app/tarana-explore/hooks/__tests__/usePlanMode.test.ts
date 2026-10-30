@@ -1,16 +1,3 @@
-/**
- * The request Plan Mode actually sends.
- *
- * The generation route rejected every Plan Mode request with a 400 because
- * the body carried `weatherData: null`. Zod's `.optional()` accepts
- * `undefined` and rejects `null`, and `JSON.stringify` keeps a null as a
- * present key, so the route saw exactly that and refused it before any charge
- * or model call.
- *
- * These cases drive the hook and inspect the bytes on the wire, which is the
- * only level where the bug was visible — the schema test proves `null` is
- * rejected, this proves the hook stops sending it.
- */
 import { renderHook, act, waitFor } from '@testing-library/react'
 
 const generateItineraryMock = jest.fn()
@@ -76,13 +63,11 @@ describe('usePlanMode request body', () => {
     expect(weatherArg).toEqual(clearWeather)
     expect(weatherArg).not.toBeNull()
 
-    // The wire shape is what the route parses: a present key must not be null.
     const onWire = JSON.parse(JSON.stringify({ weatherData: weatherArg }))
     expect(onWire.weatherData).not.toBeNull()
   })
 
   it('omits the key entirely when the provider fails, instead of sending null', async () => {
-    // fetchWeatherData swallows provider errors and returns null.
     fetchWeatherMock.mockResolvedValue(null)
     const { result } = renderHook(() => usePlanMode())
 

@@ -28,38 +28,13 @@ const BLUE = '#0066FF';
 const MEAL_TABS = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'] as const;
 type MealTab = (typeof MEAL_TABS)[number];
 
-/**
- * CafeDetail — one detail for catalog browsing AND saved records (§8).
- *
- * Keyed by cafe name: catalog info (real vendored data) + "Your saved
- * dishes" for web-imported menu_items + menu tabs where dishes exist
- * (section hidden otherwise — no dead buttons) + Save/Unsave against the
- * active profile. Saved state derives from SQLite, so list and detail
- * never disagree.
- *
- * Web parity: the web detail (`src/app/saved-meals/[id]/page.tsx`) carries
- * two actions this screen was missing — "View on Map" and "show this card to
- * cafe staff" (the MealCardPopup). Both land here, in the platform's idiom:
- * the map action is one system handoff, and the card is a native sheet rather
- * than a web overlay.
- */
 export default function CafeDetail({ navigation, route }: { navigation: any; route: { params?: { name?: string } } }) {
   const [cafe, setCafe] = useState<Cafe | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [savedDishes, setSavedDishes] = useState<SavedDish[]>([]);
-  // The opaque `items` snapshot as stored, kept verbatim so the meal card
-  // can read quantities that `parseSavedItems` deliberately drops. Both
-  // views render from the same column, so they can never disagree.
   const [savedItemsRaw, setSavedItemsRaw] = useState<string | null>(null);
   const [tab, setTab] = useState<MealTab>('Breakfast');
-  // Dishes picked for the next save. Empty means "nothing picked", which the
-  // save CTA refuses rather than writing an empty meal. A loaded saved row
-  // pre-checks the dishes it already holds, so editing an existing meal
-  // starts from what is on disk rather than a blank slate.
   const [selected, setSelected] = useState<DishSelection[]>([]);
-  // Meal card shown to cafe staff. Only a saved row can open one, so the
-  // gating is `savedId` rather than this flag — the flag is the sheet's own
-  // open/closed state, nothing more.
   const [cardOpen, setCardOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,19 +84,10 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
     try {
       const profileId = await getActiveProfileId();
       if (!profileId) throw new Error('Create a profile first.');
-      // Web parity (useTaranaEatsService.saveToMeals): the row price is the
-      // sum of the picked dishes and the snapshot is the whole selection, so
-      // a meal saved here shows every dish on web instead of the first one.
       const items = snapshotSelection(selected);
       const saved = await createMeal({
         profileId,
         cafeName: cafe.name,
-        // The tab labels are mobile UI; `meal_type` is the web-visible column.
-        // Map through the web union before persisting so a row saved under
-        // Snacks or Drinks carries 'Snack' and matches the web filter
-        // (src/app/saved-meals/page.tsx:77) instead of silently vanishing
-        // there. A multi-tab selection maps its dominant tab, so the row is
-        // filed under where the meal actually sits.
         mealType: selectedDishMealType(selected, toWebMealType),
         price: selectedDishTotal(selected),
         goodFor: cafe.popularFor.slice(0, 3),
@@ -151,8 +117,6 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
       setSavedId(null);
       setSavedDishes([]);
       setSavedItemsRaw(null);
-      // A card left open on a row that no longer exists would show staff a
-      // meal that was just deleted.
       setCardOpen(false);
       setArming(false);
     } catch (e) {
@@ -184,18 +148,11 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
 
   const dishes: MenuItem[] = cafe.fullMenu[tab] ?? [];
   const dishCount = menuDishCount(cafe.fullMenu);
-  // Null for the 10 catalogued cafes with no pinned coordinate — the action
-  // is then not rendered at all, rather than opening a maps search for a
-  // place we cannot name. `spotMapsUrl` returns null if the coords are absent.
   const coords = cafeCoordinates(cafe.name);
   const mapsUrl = coords ? spotMapsUrl(coords.lat, coords.lon) : null;
-  // Card rows come from the stored snapshot, which is where the saved dishes
-  // live; `savedDishes` above only carries name + price and no quantity.
   const cardItems = mealCardItems(savedItemsRaw);
 
   return (
-    // Fragment, not a wrapper View: the sheet must sit beside the scroll
-    // content, not inside it, so it can overlay and not scroll away.
     <>
       <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.eyebrow}>{cafe.cuisine.join(' · ')}</Text>
@@ -222,9 +179,6 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
               </View>
             ))}
             {mapsUrl ? (
-              /* Same system handoff as ActivitySheet's Location action — one
-                 Linking.openURL on the shared Google-Maps URL, no map SDK and
-                 no webview, exactly as the existing pattern does it. */
               <TouchableOpacity
                 activeOpacity={0.85}
                 accessibilityRole="button"
@@ -340,22 +294,6 @@ export default function CafeDetail({ navigation, route }: { navigation: any; rou
   );
 }
 
-/**
- * MealCard — native sheet for the card shown to cafe staff.
- *
- * Web parity: `src/app/saved-meals/components/MealCardPopup.tsx` renders the
- * blue header ("Tarana Eats" + "Show this card to cafe staff for
- * confirmation."), the cafe name and location, one row per dish with
- * "₱price x quantity" beside a blue line total, and a footer with
- * "Selected Items (n)", "Total: ₱N" and the valid-until date. The web card
- * also closes on "Mark as Used" — that writes nothing on mobile (no server
- * call behind it) and the row stays saved, so the sheet simply closes; the
- * action would be a lie without a write.
- *
- * Sheet grammar copied from ActivitySheet: transparent backdrop, slide-up
- * animation, drag handle, and a dismiss target covering the whole backdrop,
- * so a tap anywhere outside closes. Same primitives, same look.
- */
 function MealCard({
   visible,
   restaurantName,
@@ -386,9 +324,7 @@ function MealCard({
           onPress={onClose}
         />
         <View style={styles.card}>
-          {/* ActivitySheet's drag handle, so this sheet announces itself as
-              the same kind of surface. It sits on white above the blue
-              header, which is what makes the sheet read as a sheet. */}
+          {}
           <View style={styles.cardHandleHit}>
             <View style={styles.cardHandle} />
           </View>
@@ -443,11 +379,6 @@ function MealCard({
   );
 }
 
-/**
- * Full-width hero for the 3 cafes with real photos. Null uri (17 cafes)
- * or any load failure (offline included) renders nothing — the detail
- * below stands on its own.
- */
 function CafeHero({ uri, name }: { uri: string | null; name: string }) {
   const [failed, setFailed] = useState(false);
   if (!uri || failed) return null;
@@ -505,8 +436,6 @@ const styles = StyleSheet.create({  root: { flex: 1, backgroundColor: '#F2F2F7' 
   unsaveBtn: { marginTop: 8, borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', paddingVertical: 14, alignItems: 'center' },
   unsaveArmed: { backgroundColor: '#fef2f2', borderColor: '#dc2626' },
   unsaveText: { color: '#374151', fontSize: 15, fontWeight: '600' },
-  // "Open in Maps" — the one red-bordered action, same treatment as
-  // ActivitySheet's Location button so the two are recognizable as siblings.
   mapsBtn: {
     marginTop: 4,
     borderRadius: 16,
@@ -517,8 +446,6 @@ const styles = StyleSheet.create({  root: { flex: 1, backgroundColor: '#F2F2F7' 
     backgroundColor: '#ffffff',
   },
   mapsText: { color: BLUE, fontSize: 15, fontWeight: '600' },
-  // Meal-card action — the blue filled CTA, one step below the primary
-  // save CTA in weight so the two are never confused for each other.
   cardBtn: {
     marginTop: 4,
     borderRadius: 16,
@@ -527,8 +454,6 @@ const styles = StyleSheet.create({  root: { flex: 1, backgroundColor: '#F2F2F7' 
     alignItems: 'center',
   },
   cardText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
-  // Meal card sheet — ActivitySheet's backdrop/handle grammar with this
-  // sheet's own inner card (blue header, dish rows, totals footer).
   backdrop: { flex: 1, backgroundColor: 'rgba(17, 24, 39, 0.4)', justifyContent: 'flex-end' },
   dismiss: { flex: 1 },
   card: {
@@ -559,8 +484,6 @@ const styles = StyleSheet.create({  root: { flex: 1, backgroundColor: '#F2F2F7' 
   cardCafe: { fontSize: 22, fontWeight: '700', color: '#111827' },
   cardLocation: { fontSize: 13, color: '#6b7280', marginBottom: 4 },
   cardEmpty: { fontSize: 13, color: '#6b7280' },
-  // One row per dish, matching the detail's own dish row (white card, 12
-  // radius, 12 pad) so the sheet reads as the same surface, not a new one.
   cardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

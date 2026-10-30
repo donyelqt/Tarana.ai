@@ -18,23 +18,7 @@ interface DatePickerProps {
   setDate: (date: Date | undefined) => void;
   disabled?: boolean;
   placeholder?: string;
-  /**
-   * Width override for the trigger.
-   *
-   * The 220px default suits a `flex gap-3` row but overflows a two-column
-   * grid, where two fixed triggers plus the gap exceed the container and the
-   * row spills. Callers laying the trigger out in a grid pass `w-full min-w-0`
-   * so each one fills its own column instead of imposing a fixed width.
-   */
   className?: string;
-  /**
-   * date-fns pattern for the selected date.
-   *
-   * `PPP` ("September 30th, 2026") needs about 198px of button, measured in
-   * the island's 14px General Sans. A caller with a narrower trigger passes a
-   * compact pattern such as "MMM d, yyyy" ("Sep 30, 2026", ~80px) instead of
-   * letting the label truncate.
-   */
   dateFormat?: string;
 }
 
@@ -61,9 +45,7 @@ export function DatePicker({
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-          {/* Truncating, because a caller may now make the trigger narrower than
-              the formatted date, and an overflowing label would spill outside
-              the button. */}
+          {}
           <span className="truncate">
             {date ? format(date, dateFormat) : placeholder || "Pick a date"}
           </span>

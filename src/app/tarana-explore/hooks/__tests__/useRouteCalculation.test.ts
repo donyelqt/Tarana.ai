@@ -1,11 +1,3 @@
-/**
- * Regression tests for useRouteCalculation.refreshTraffic.
- *
- * Defect: refreshTraffic performed fetch() INSIDE a setState updater, which
- * React StrictMode double-invokes in dev — firing the traffic request twice
- * per 5-minute tick. The fix reads state outside the updater (ref mirror),
- * so one invocation always equals exactly one fetch.
- */
 
 import React from 'react'
 import { renderHook, act } from '@testing-library/react'
@@ -61,7 +53,6 @@ const REFRESHED_TRAFFIC = {
 const StrictModeWrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(React.StrictMode, null, children)
 
-/** Seed the hook with a current route via calculate(). */
 async function seedWithRoute(result: { current: ReturnType<typeof useRouteCalculation> }) {
   fetchMock.mockResolvedValueOnce({
     ok: true,

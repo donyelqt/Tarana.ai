@@ -33,12 +33,10 @@ describe("isZeroActivityItinerary (H1 zero-result refund helper)", () => {
     });
 
     it("returns false when at least one item has activities even if others are empty (deliverable)", () => {
-        // "zero-result" means EVERY period is empty. If even one period has
-        // activities, the user got something deliverable — no refund.
         const text = JSON.stringify({
             title: "Partial match",
             items: [
-                { period: "morning" }, // no activities key — counted as zero
+                { period: "morning" }, 
                 { period: "afternoon", activities: [{ title: "Burnham Park" }] },
             ],
         });
@@ -70,7 +68,6 @@ describe("isZeroActivityItinerary (H1 zero-result refund helper)", () => {
     });
 
     it("returns false for the real Baguio Day 1 sample shape", () => {
-        // Mirror of itineraryData.ts sampleItinerary shape: items[*].activities[*].title
         const text = JSON.stringify({
             title: "Baguio Day 1",
             subtitle: "Your curated 1-day Baguio experience",
@@ -93,9 +90,6 @@ describe("isZeroActivityItinerary (H1 zero-result refund helper)", () => {
     });
 
     it("returns true for an empty-periods payload (poison-filter style response)", () => {
-        // Mirrors what GuaranteedJsonEngine.createIntelligentFallback might
-        // return when no activities matched: every period has activities:[]
-        // and a `reason` explaining the gap.
         const text = JSON.stringify({
             title: "No match",
             items: [

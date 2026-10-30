@@ -17,30 +17,6 @@ import { formatPHP } from './ui';
 
 const BLUE = '#0066FF';
 
-/**
- * SavedMealScreen — one saved meal, read-only (§8).
- *
- * (Named `SavedMealScreen` rather than `SavedMealDetail`: `savedMealDetail.ts`
- * is the pure helper module next to it, and on a case-insensitive filesystem
- * the two names would collide.)
- *
- * Web parity: `src/app/saved-meals/[id]/page.tsx` shows the saved row (cafe,
- * meal type, price, location, good-for) with the dish snapshot on it, a
- * "View on Map" action, and the staff card. SavedCafes rows push HERE now
- * rather than CafeDetail: a saved row is a RECORD the user keeps, not a
- * catalog entry to re-pick from, so the screen's job is to say what was
- * saved and let the user act on it — re-picking is CafeDetail's job.
- *
- * What is deliberately absent, because writing it would be a lie:
- * "Mark as Used" exists on web but is a toast that persists nothing (no
- * PATCH in mealService.ts, no is_used column in saved_meals), so this
- * screen offers no such control.
- *
- * Maps differs from web on purpose: web geocodes the prose `location`
- * string, mobile has no address service, so it resolves the cafe NAME
- * against the shared Baguio database (see savedMealDetail.ts:76-79) and
- * hides the action entirely when no pinned coordinate exists.
- */
 export default function SavedMealDetail({
   route,
 }: {
@@ -56,8 +32,6 @@ export default function SavedMealDetail({
       const profileId = await getActiveProfileId();
       if (!profileId) throw new Error('Create a profile first to view saved meals.');
       const rows = await listMeals(profileId);
-      // No by-id read exists; the established pattern is filtering the
-      // profile's list (CafeDetail.tsx:78, SavedCafes.tsx:48).
       setMeal(rows.find((m) => m.id === id) ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load this meal.');

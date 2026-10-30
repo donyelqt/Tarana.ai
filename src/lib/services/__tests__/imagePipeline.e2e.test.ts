@@ -1,25 +1,3 @@
-/**
- * End-to-end image pipeline, network boundary mocked.
- *
- * The reported symptom was a split verdict: the log said
- * `Image for "Luneta Park": tier=unsplash` and the card still rendered the
- * logo. A unit test on `getAccurateImageForPlace` cannot see that — the
- * image can be resolved correctly and then destroyed further downstream.
- *
- * So this drives the REAL pipeline end to end and only stubs `fetch` at the
- * process boundary:
- *
- *   findAndScoreActivities-shaped enriched activities (image: "")
- *     -> enrichActivitiesWithImages        (real tier chain, real curated map)
- *     -> server allowlist                  (real searchMetadata shape)
- *     -> Gemini-shaped model output        (NO searchMetadata - it never has one)
- *     -> handleItineraryProcessing(allowlist)
- *     -> the response the browser receives
- *
- * The assertion is on the final object: the URL the tier chain resolved must
- * be the URL in the response. If any step in between substitutes a
- * placeholder, this fails.
- */
 
 import { enrichActivitiesWithImages } from '../imageService';
 import { handleItineraryProcessing } from '@/app/api/gemini/itinerary-generator/lib/responseHandler';
@@ -52,7 +30,6 @@ describe('resolved images survive to the response', () => {
     process.env.UNSPLASH_ACCESS_KEY = 'test-unsplash-key';
     fetchMock = jest.fn(async (url: unknown) => {
       const s = String(url);
-      // Wikimedia: no pageimage thumbnail for these titles (the real miss).
       if (s.includes('wikipedia.org')) {
         return { ok: true, status: 200, json: async () => ({ query: { pages: {} } }) };
       }
@@ -72,14 +49,12 @@ describe('resolved images survive to the response', () => {
       '@/app/api/gemini/itinerary-generator/lib/responseHandler'
     );
 
-    // Manila path: not curated, arrives with an empty image.
     const candidates = [{ title: 'Luneta Park', lat: 14.6, lon: 120.98, image: '' }];
 
     const enriched = await enrich(candidates, { city: 'Manila' });
     const resolved = enriched[0].image;
     expect(resolved).toBe(UNSPLASH_URL);
 
-    // searchMetadata as findAndScoreActivities actually builds it.
     const allowlist = enriched.map((a) => ({
       image: a.image,
       title: a.title,
@@ -88,8 +63,6 @@ describe('resolved images survive to the response', () => {
       tags: ['Nature & Scenery'],
     }));
 
-    // Model output: schema-valid, and — as GuaranteedJsonEngine returns it —
-    // carries no searchMetadata at all.
     const modelOutput = {
       title: 'Manila Itinerary',
       subtitle: 'One day',
@@ -118,7 +91,6 @@ describe('resolved images survive to the response', () => {
       '@/app/api/gemini/itinerary-generator/lib/responseHandler'
     );
 
-    // No Wikipedia thumb, no Unsplash hit -> tier chain returns null.
     fetchMock.mockImplementation(async (url: unknown) => {
       const s = String(url);
       if (s.includes('api.unsplash.com')) {
@@ -130,7 +102,6 @@ describe('resolved images survive to the response', () => {
     const enriched = await enrich([{ title: 'Arroceros Forest Park', lat: 14.6, lon: 120.98, image: '' }], {
       city: 'Manila',
     });
-    // Preserved-as-empty rather than null; both fall back downstream.
     expect(enriched[0].image).toBeFalsy();
 
     const allowlist = [
@@ -164,7 +135,6 @@ describe('resolved images survive to the response', () => {
     );
 
     const activity = (response.items[0].activities as Array<{ image: unknown }>)[0];
-    // A real asset the browser can load, so onError never fires.
     expect(activity.image).toBe('/images/taranaai.png');
   });
 });

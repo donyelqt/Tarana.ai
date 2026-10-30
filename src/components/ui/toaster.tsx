@@ -1,12 +1,9 @@
-// Adapted from shadcn UI toast component
-// https://ui.shadcn.com/docs/components/toast
 
 "use client"
 
 import { useToast } from "./use-toast"
 import { useEffect } from "react"
 
-// New component for individual toast item
 function ToastItem({ toast, dismiss }: { toast: any; dismiss: (id: string) => void }) {
   const { id, title, description, variant, duration, action } = toast
 
@@ -22,7 +19,7 @@ function ToastItem({ toast, dismiss }: { toast: any; dismiss: (id: string) => vo
 
   return (
     <div
-      key={id} // key is still useful here for React's reconciliation, though it won't be passed as a prop
+      key={id} 
       className={`w-full bg-white border rounded-lg shadow-lg p-4 transition-all transform translate-x-0 slide-in-from-right-full animate-in duration-300 ${variant === "destructive" ? "border-red-500 bg-red-50" : variant === "success" ? "border-green-500 bg-green-50" : "border-gray-200"}`}
       role="alert"
     >

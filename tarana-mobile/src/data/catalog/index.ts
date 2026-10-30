@@ -1,15 +1,3 @@
-/**
- * Mobile cafe index — 20 real Baguio entries, fields transcribed verbatim
- * from `src/app/tarana-eats/data/restaurants.ts` (names, cuisines, prices,
- * locations, about, hours, dietary, tags).
- *
- * Menus: all 20 entries carry their full dish lists, copied byte-for-byte
- * from `src/app/tarana-eats/data/menus/*.ts` into `./menus/` (only their
- * `import { FullMenu } from "../types"` resolves here to the local
- * `catalog/types.ts` — zero other imports, Metro-safe by construction).
- * `hasMenu: true` for every entry, so detail screens never hide the menu
- * section; `EMPTY_MENU` exists only as the `entry()` fallback.
- */
 import { EMPTY_MENU, menuDishCount, type Cafe, type FullMenu } from './types';
 export { EMPTY_MENU, menuDishCount };
 export type { Cafe, FullMenu };
@@ -333,7 +321,6 @@ export function findCafe(name: string): Cafe | undefined {
   return CAFES.find((c) => c.name === name);
 }
 
-/** Local suggestion engine: filter by budget ceiling + cuisine + diet. No AI, no network — real filtering. */
 export function suggestCafes(input: {
   maxBudget?: number | null;
   cuisine?: string | null;

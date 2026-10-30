@@ -1,10 +1,3 @@
-// ====================================================================
-// KUBO GRILL MENU DATA
-// ====================================================================
-// Kubo Grill in Baguio City is a laid-back Filipino restaurant known for its 
-// rustic kubo-style ambiance and hearty grilled dishes, perfect for casual 
-// dining and enjoying local flavors with family and friends.
-// ====================================================================
 
 import { FullMenu } from "../types";
 

@@ -1,20 +1,6 @@
-/**
- * Edge cases for the cross-city curated-image leak.
- *
- * The reported symptom was a Manila place rendering a Baguio place's photo
- * ("Poblacion Market" -> Baguio Night Market, "Robinsons Supermarket Tutuban"
- * -> Mines View Park). The curated catalog is keyed by bare title with no
- * city dimension, and its titles are ordinary venue names that also exist
- * outside Baguio, so a name collision silently produces a wrong-city photo.
- *
- * Every case below is a real collision or a real regression risk, not a
- * restatement of the same assertion.
- */
 
 import { enrichActivitiesWithImages, getAccurateImageForPlace } from '../imageService';
 
-// Titles that are genuinely in CURATED_IMAGE_MAP AND are ordinary venue
-// names a non-Baguio city also has. These are the collision surface.
 const COLLIDING = [
   'The Mansion',
   'Botanical Garden',
@@ -28,8 +14,6 @@ describe('curated catalog is Baguio-only', () => {
   beforeEach(() => {
     jest.resetModules();
     delete process.env.UNSPLASH_ACCESS_KEY;
-    // No Wikimedia thumb, no Unsplash hit: a collision must end with no
-    // curated image rather than another city's one.
     fetchMock = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -59,7 +43,6 @@ describe('curated catalog is Baguio-only', () => {
   }
 
   it('an unknown city fails closed rather than open', async () => {
-    // No cityId at all: the previous `= "baguio"` default answered here.
     expect(await getAccurateImageForPlace({ title: 'The Mansion' })).toBeNull();
   });
 
@@ -68,9 +51,6 @@ describe('curated catalog is Baguio-only', () => {
       [{ title: 'Botanical Garden', image: '', lat: 14.6, lon: 120.98 }],
       { city: 'Manila', cityId: 'manila' }
     );
-    // Falsy, not null: an unresolvable chain preserves the incoming empty
-    // string instead of overwriting it. Either way the card falls back —
-    // what must never happen is a Baguio photo.
     expect(out[0].image).toBeFalsy();
   });
 
@@ -99,9 +79,6 @@ describe('curated catalog is Baguio-only', () => {
   });
 
   it('keeps the curated catalog authoritative for Baguio (by design)', async () => {
-    // Tier 0 is documented as "fastest, most accurate for known titles", so
-    // for Baguio the curated photo wins over a supplied one. In production
-    // they agree — the server allowlist already carries the curated image.
     const out = await enrichActivitiesWithImages(
       [{ title: 'The Mansion', image: 'https://images.unsplash.com/photo-something-else' }],
       { cityId: 'baguio' }

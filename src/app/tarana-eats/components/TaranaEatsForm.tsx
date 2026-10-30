@@ -75,7 +75,6 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form inputs
     if (showOutOfCredits) {
       toast({
         title: "Credits required",
@@ -95,32 +94,26 @@ export default function TaranaEatsForm({ onGenerate, isLoading = false, onLoadin
     }
     
     try {
-      // Call the AI-powered recommendations service
       const recommendations = await generateRecommendations(formValues);
       
-      // Pass the AI-generated recommendations to the parent component
       if (recommendations) {
         onGenerate({ matches: recommendations });
       } else if (aiError) {
         console.error("AI recommendation error:", aiError);
-        // If AI failed, show error toast and use fallback
         toast({
           title: "Using Sample Data",
           description: "We couldn't generate AI recommendations. Using sample data instead.",
           variant: "destructive",
         });
-        // Pass the form values directly to be handled by the fallback logic
         onGenerate(formValues);
       }
     } catch (err) {
       console.error("Failed to generate recommendations:", err);
-      // If an exception occurs, show error toast and use fallback
       toast({
         title: "Error",
         description: "An unexpected error occurred. Using sample data instead.",
         variant: "destructive",
       });
-      // Pass the form values to fallback logic
       onGenerate(formValues);
     }
   };

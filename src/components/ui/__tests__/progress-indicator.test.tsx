@@ -31,11 +31,9 @@ describe('ProgressIndicator', () => {
   });
 
   it('should validate progress percentage bounds', () => {
-    // Test that component would handle values outside 0-100 range
     const negativeProgress = -10;
     const overProgress = 150;
     
-    // Simulate the Math.min/Math.max logic from component
     const clampedNegative = Math.min(100, Math.max(0, negativeProgress));
     const clampedOver = Math.min(100, Math.max(0, overProgress));
     

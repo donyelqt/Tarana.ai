@@ -19,7 +19,7 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
     }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 1. Get user profile
+    
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('*')
@@ -31,7 +31,7 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    // 2. Get all referrals where user is referrer
+    
     const { data: referrals, error: referralsError } = await supabase
       .from('referrals')
       .select(`
@@ -54,11 +54,11 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       logger.error("Error fetching referrals", { error: referralsError }, getRequestId(req));
     }
 
-    // 3. Count active referrals manually
+    
     const activeCount = referrals?.filter(r => r.status === 'active').length || 0;
     const pendingCount = referrals?.filter(r => r.status === 'pending').length || 0;
 
-    // 4. Calculate expected tier
+    
     const expectedTier = activeCount >= 5 ? 'Voyager' 
       : activeCount >= 3 ? 'Smart Traveler'
       : activeCount >= 1 ? 'Explorer'
@@ -69,7 +69,7 @@ export const GET = withAuth(async (req: NextRequest, userId: string) => {
       : expectedTier === 'Explorer' ? 6
       : 5;
 
-    // 5. Check if tier is correct
+    
     const tierMismatch = profile.current_tier !== expectedTier || profile.daily_credits !== expectedCredits;
 
     return NextResponse.json({
@@ -122,7 +122,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
 
     logger.info('Referral tier fix started', { entryPoint: LOG_ENTRY_POINT }, requestId);
 
-    // 1. Get active referral count
+    
     const { data: referrals, error: referralsError } = await supabase
       .from('referrals')
       .select('id, status')
@@ -135,7 +135,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
 
     const activeCount = referrals?.filter(r => r.status === 'active').length || 0;
 
-    // 2. Calculate correct tier
+    
     const correctTier = activeCount >= 5 ? 'Voyager' 
       : activeCount >= 3 ? 'Smart Traveler'
       : activeCount >= 1 ? 'Explorer'
@@ -146,7 +146,7 @@ export const POST = withAuth(async (req: NextRequest, userId: string) => {
       : correctTier === 'Explorer' ? 6
       : 5;
 
-    // 3. Update user profile
+    
     const { data: updated, error: updateError } = await supabase
       .from('user_profiles')
       .update({

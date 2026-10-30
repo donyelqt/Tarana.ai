@@ -1,42 +1,7 @@
-/**
- * `exportLocalMeals` — the observable contract of the meals export
- * direction.
- *
- * The network boundary is the test seam: `../auth` (token issuance) and the
- * global `fetch` (the POST to `/api/saved-meals`) are doubled, while the
- * SQLite layer stays real-ish — the Db namespace is mocked only to hand
- * back a fixed meal list, so nothing under test touches a device database.
- *
- * What is pinned here, and why each is a contract rather than a detail:
- * 1. Only `source === 'local'` meals with a usable body are exported. A
- *    web-import row is already on the web and must be left alone.
- * 2. The SAME idempotency key on every attempt, derived from the LOCAL MEAL
- *    ID. A retry must converge to one web row, never duplicate, so the key
- *    is asserted stable across two runs and distinct per meal.
- * 3. The shape conversion that only this seam needs: local `good_for` is a
- *    string array, web `good_for` is ONE nullable string. It flattens to
- *    the first entry and to null when absent.
- * 4. A per-meal failure is collected, not thrown, and never aborts the rest
- *    of the batch — the three failure modes (rejected, unreachable,
- *    unreadable reply) each leave the other meals exported.
- * 5. A row the web schema would reject is skipped with a reason BEFORE the
- *    round-trip, never POSTed into a 400.
- *
- * The DELETE absence is itself asserted: no test here may ever expect a
- * delete, and a `method` other than POST would fail the URL/shape
- * assertions.
- */
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { exportLocalMeals, type ExportSummary } from '../../data';
 import type { LocalMeal } from '../../db';
 
-/**
- * `../config` is mocked so the seam's `config.webBaseUrl` resolves without
- * pulling `expo-constants`: that package ships an ESM entry jest's
- * `transformIgnorePatterns` cannot transform, and it would fail the whole
- * suite at import time for a value this test never varies. The seam reads it
- * through this object, so the mock is the same surface.
- */
 jest.mock('../../config', () => ({
   config: { webBaseUrl: 'http://localhost:3000' },
   requireConfig: (key: string) => {
@@ -44,25 +9,12 @@ jest.mock('../../config', () => ({
   },
 }));
 
-/**
- * `../llm/modelManager` is the native boundary the seam reaches through
- * `generateWithLlama`. The path is relative to THIS file, so
- * `../../llm/...` = `src/llm/...`.
- */
 jest.mock('../../llm/modelManager', () => ({
   isLlamaAvailable: () => false,
   getModelStatus: async () => ({ state: 'not-downloaded', bytesDownloaded: 0, bytesTotal: 0, path: null }),
   MODEL_PATH: '/models/model.gguf',
 }), { virtual: true });
 
-/**
- * `../supabase` imports `expo-secure-store` (a native module whose package
- * entry jest cannot transform) and `tarana-web/data/supabaseClient`, which
- * reads `process.env.NEXT_PUBLIC_*` at load. Neither is on the export path —
- * `exportLocalMeals` talks to the web over `fetch` only — so the module is
- * stubbed; any dependency on it would surface as a failing call, not a
- * silently working import.
- */
 jest.mock('../../supabase', () => ({
   createMobileSupabaseClient: () => {
     throw new Error('The export path must not use the Supabase client.');
@@ -70,35 +22,12 @@ jest.mock('../../supabase', () => ({
   getSupabaseUrl: () => 'http://localhost:54321',
 }));
 
-/**
- * `tarana-web/*` is stubbed: the seam imports city config for the peak-hours
- * traffic helpers (utterly unrelated to export), and the shared module
- * resolves through a tsconfig `paths`/Metro `extraNodeModules` remap that
- * this jest config does not mirror. Only the two helpers are reachable from
- * the import, so the stub can be minimal — but it is a stub, NOT a mock of
- * behaviour: nothing here needs city math.
- */
 jest.mock('tarana-web/data/cityConfig', () => ({
   getCityCenter: () => ({ lat: 16.4, lon: 120.6 }),
   getCityTimezone: () => 'Asia/Manila',
   CITY_CONFIGS: {},
 }), { virtual: true });
 
-/**
- * Token bridge double. `withMobileAuth` is the only auth surface the export
- * touches (it never re-exchanges), so a resolved header object is enough.
- *
- * The double mirrors the real contract: it spreads the caller's headers and
- * attaches the Bearer credential (auth.ts:125-133). Asserting the merged
- * shape proves the seam passes `Content-Type` — a double that returned only
- * the token would pass a broken implementation.
- *
- * `jest.fn` is created INSIDE the factory and retrieved with
- * `jest.requireMock`: a factory may not close over a test-scope binding
- * (jest's out-of-scope guard), and under babel's ESM interop a hoisted
- * reference to one resolves to `undefined` on the other side. The mock is
- * then reached by the same module id the seam imports.
- */
 jest.mock('../../auth', () => ({
   withMobileAuth: jest.fn(async (headers: Record<string, string> = {}) => ({
     ...headers,
@@ -112,13 +41,6 @@ const mockWithMobileAuth = () =>
     (headers?: Record<string, string>) => Promise<Record<string, string>>
   >;
 
-/**
- * SQLite double: one row-set per test, driven through `listMealsByProfile`.
- * `linkExportedRow` is present because the export path now writes the web id
- * back to the row after a successful POST; everything else the seam might call
- * stays absent so an accidental use fails loudly rather than silently doing
- * nothing.
- */
 jest.mock('../../db', () => ({
   listMealsByProfile: jest.fn(),
   linkExportedRow: jest.fn(async () => {}),
@@ -134,7 +56,6 @@ const mockLinkExportedRow = () =>
 
 const PROFILE_ID = 'profile-1';
 
-/** A fully-formed local meal: the only kind that can be exported. */
 function localMeal(overrides: Partial<LocalMeal> = {}): LocalMeal {
   return {
     id: 'meal-local-1',
@@ -144,7 +65,6 @@ function localMeal(overrides: Partial<LocalMeal> = {}): LocalMeal {
     price: 250,
     good_for: ['Coffee', 'Local Beans'],
     location: 'Baguio City',
-    // The dish snapshot createMeal writes: name + price + quantity.
     items: JSON.stringify([{ name: 'Sourdough Toast', price: 250, quantity: 1 }]),
     source: 'local',
     source_id: null,
@@ -161,12 +81,9 @@ interface CapturedRequest {
   body: unknown;
 }
 
-/** Records every fetch the seam makes, answering each with the given script. */
 function mockFetch(responder: (body: unknown, n: number) => { ok: boolean; status: number; json: unknown }) {
   const captured: CapturedRequest[] = [];
   (globalThis as { fetch?: unknown }).fetch = jest.fn(async (url: string | URL | Request, init?: RequestInit) => {
-    // Headers arrive as a plain object here (the seam builds them itself), so
-    // a Record read is exact — no shape is assumed of the wider Request init.
     const headers = (init?.headers ?? {}) as Record<string, string>;
     let body: unknown = null;
     try {
@@ -190,13 +107,10 @@ function mockFetch(responder: (body: unknown, n: number) => { ok: boolean; statu
   return captured;
 }
 
-/** The canonical "saved" reply the route sends on 200. */
 const SAVED_OK = { ok: true, status: 200, json: { success: true, data: { id: 'web-meal-1' } } };
 
 beforeEach(() => {
   jest.clearAllMocks();
-  // `clearAllMocks` drops the implementation declared in the factory, so
-  // it is re-armed here with the real contract (spread + Bearer).
   mockWithMobileAuth().mockImplementation(async (headers: Record<string, string> = {}) => ({
     ...headers,
     Authorization: 'Bearer test-token',
@@ -214,14 +128,12 @@ describe('exportLocalMeals — what gets exported', () => {
     expect(summary).toEqual({ exported: 1, skipped: 0, failures: [] });
     expect(captured).toHaveLength(1);
     expect(captured[0].url).toBe('http://localhost:3000/api/saved-meals');
-    // POST only — export never deletes on the web side.
     expect(captured[0].method).toBe('POST');
     expect(captured[0].body).toMatchObject({
       cafe_name: 'Good Shepherd Cafe',
       meal_type: 'Breakfast',
       price: 250,
       location: 'Baguio City',
-      // The local `items` JSON string is forwarded as parsed `menu_items`.
       menu_items: [{ name: 'Sourdough Toast', price: 250, quantity: 1 }],
     });
   });
@@ -229,7 +141,6 @@ describe('exportLocalMeals — what gets exported', () => {
   it('excludes web-import rows', async () => {
     mockListMealsByProfile().mockResolvedValue([
       localMeal({ id: 'meal-local-1' }),
-      // Already on the web: re-pushing it would fight the import-side dedupe.
       localMeal({ id: 'meal-imported', source: 'web-import', source_id: 'web-1' }),
     ]);
     const captured = mockFetch(() => SAVED_OK);
@@ -237,8 +148,6 @@ describe('exportLocalMeals — what gets exported', () => {
     const summary = await exportLocalMeals(PROFILE_ID);
 
     expect(summary.exported).toBe(1);
-    // Not "skipped": an imported row is not an export candidate at all, so
-    // it is neither sent nor counted as a failure.
     expect(summary.skipped).toBe(0);
     expect(summary.failures).toEqual([]);
     expect(captured).toHaveLength(1);
@@ -246,12 +155,6 @@ describe('exportLocalMeals — what gets exported', () => {
   });
 
   it('marks the exported row web-import, so it is not re-POSTed', async () => {
-    // The write-back is what closes the local → web → local round trip: the
-    // import conflicts on `(source, source_id)` and always inserts
-    // `source = 'web-import'`, so a row still marked 'local' can never match
-    // and a later import inserts a second copy. Here the Db mock records the
-    // call; the marking's own semantics are pinned in
-    // `exportImportConvergence.test.ts` on a real engine.
     mockListMealsByProfile().mockResolvedValue([localMeal()]);
     const captured = mockFetch(() => SAVED_OK);
 
@@ -269,7 +172,6 @@ describe('exportLocalMeals — what gets exported', () => {
     const summary = await exportLocalMeals(PROFILE_ID);
 
     expect(summary).toEqual({ exported: 0, skipped: 0, failures: [] });
-    // No bearer request is even attempted for an empty batch.
     expect(captured).toHaveLength(0);
     expect(mockWithMobileAuth()).not.toHaveBeenCalled();
   });
@@ -281,14 +183,12 @@ describe('exportLocalMeals — idempotency', () => {
     const captured = mockFetch(() => SAVED_OK);
 
     await exportLocalMeals(PROFILE_ID);
-    // Same local rows, same expected outcome: a retry must be identical.
     await exportLocalMeals(PROFILE_ID);
 
     expect(captured).toHaveLength(2);
     const keys = captured.map((c) => c.headers['Idempotency-Key']);
     expect(keys[0]).toBe(keys[1]);
     expect(keys[0]).toContain('meal-local-1');
-    // The constructed key must be stable, not a per-run nonce.
     expect(typeof keys[0]).toBe('string');
     expect(keys[0]!.length).toBeGreaterThan(0);
   });
@@ -426,7 +326,6 @@ describe('exportLocalMeals — failures are collected, never thrown', () => {
 
   it('survives an unreadable reply body', async () => {
     mockListMealsByProfile().mockResolvedValue([localMeal()]);
-    // `json` rejects: a truncated/proxied body must not crash the loop.
     (globalThis as { fetch?: unknown }).fetch = jest.fn(async () => ({
       ok: true,
       status: 200,
@@ -459,7 +358,6 @@ describe('exportLocalMeals — local validation skips what the web would reject'
     expect(summary.exported).toBe(0);
     expect(summary.skipped).toBe(1);
     expect(summary.failures[0]).toContain('missing the details the web requires');
-    // No round-trip for a meal already known to be invalid.
     expect(captured).toHaveLength(0);
   });
 
@@ -477,7 +375,6 @@ describe('exportLocalMeals — local validation skips what the web would reject'
     expect(summary.skipped).toBe(2);
     expect(summary.failures).toHaveLength(2);
     expect(captured).toHaveLength(1);
-    // The only request made is for the priced meal.
     expect(captured[0].headers['Idempotency-Key']).toContain('meal-ok');
   });
 

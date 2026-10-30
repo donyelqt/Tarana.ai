@@ -14,11 +14,6 @@ import taranaai2 from "../../public/images/taranaai2.png"
 
 const SIDEBAR_COLLAPSED_KEY = 'tarana-sidebar-collapsed';
 
-/**
- * Desktop rail state. Expanded by default; persisted per browser. Each page
- * remounts its own Sidebar, so localStorage (not context) is the shared
- * source of truth. SSR-safe: first paint expanded, storage syncs in effect.
- */
 const SidebarContext = createContext<SidebarState | null>(null);
 
 interface SidebarState {
@@ -27,11 +22,6 @@ interface SidebarState {
   contentClass: (expandedClass: string) => string;
 }
 
-/**
- * Root-level shared rail state (mounted in app/layout, survives navigation).
- * localStorage is the persisted backing; context is the reactive channel —
- * storage alone cannot re-render sibling hook instances on toggle.
- */
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsedState] = useState(false);
 
@@ -43,7 +33,6 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
             window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1"
         );
       } catch {
-        // Private mode etc. — preference simply does not persist.
       }
     };
     read();
@@ -58,12 +47,9 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
         window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, value ? "1" : "0");
       }
     } catch {
-      // Non-persisted toggle still works for the session.
     }
   }, []);
 
-  // Content offset companion: collapsed rail is w-20 on desktop.
-  // Both literals keep Tailwind JIT happy.
   const contentClass = useCallback(
     (expandedClass: string) => {
       if (!collapsed) return expandedClass;
@@ -81,7 +67,6 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
 }
 
-/** Shared rail state — must be used under SidebarProvider (root layout). */
 export function useSidebarCollapsed(): SidebarState {
   const ctx = useContext(SidebarContext);
   if (!ctx) throw new Error("useSidebarCollapsed must be used within SidebarProvider");
@@ -95,8 +80,6 @@ const Sidebar = () => {
   const { enabled: soundOn, setEnabled: setSoundOn } = useInterfaceSound()
   const { collapsed, setCollapsed } = useSidebarCollapsed()
 
-  // Shared-layout indicator: framer-motion measures + springs the pill between
-  // links automatically (layoutId). Direction-aware by geometry; bounce = overshoot.
   const reduceMotion = useReducedMotion()
   const pillTransition = reduceMotion
     ? { duration: 0 }
@@ -110,7 +93,6 @@ const Sidebar = () => {
     />
   )
 
-  // Close the mobile drawer when resizing up to desktop
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768 && isMobileMenuOpen) {
@@ -124,7 +106,7 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* Mobile hamburger button */}
+      {}
       <button
         className="md:hidden fixed top-4 right-4 z-50 flex flex-col justify-center items-center w-10 h-10 rounded-lg bg-white shadow-md transition-all duration-200 focus:outline-none"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -135,9 +117,9 @@ const Sidebar = () => {
         <span className={`block w-5 h-0.5 bg-gray-900 transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'opacity-0' : 'mb-1'}`}></span>
         <span className={`block w-5 h-0.5 bg-gray-900 transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'transform -rotate-45 -translate-y-1' : ''}`}></span>
       </button>
-      {/* Mobile hamburger button */}
+      {}
 
-      {/* Sidebar - hidden on mobile unless toggled */}
+      {}
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 ${collapsed ? 'md:w-20 md:p-4' : 'md:w-64'} bg-white border-r border-gray-200 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-[transform,width] duration-300 ease-in-out flex flex-col justify-between p-6`}>
         <div>
           <div className={`flex items-center mb-12 ${collapsed ? 'md:flex-col md:justify-center md:gap-3' : 'md:justify-between'}`}>
@@ -183,7 +165,7 @@ const Sidebar = () => {
               </span>
               <span className={collapsed ? 'md:hidden' : ''}>Tarana Explore</span>
             </Link>
-            {/* SAVED PLANS section */}
+            {}
             <div className={`px-4 pt-4 pb-2 text-[11px] font-medium text-gray-400 tracking-wide ${collapsed ? 'md:hidden' : ''}`}>
               Saved Plans
             </div>
@@ -248,7 +230,7 @@ const Sidebar = () => {
         </div>
       </aside>
 
-      {/* Overlay for mobile when sidebar is open */}
+      {}
       <div 
         className={`fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden ${isMobileMenuOpen ? 'block' : 'hidden'}`}
         onClick={() => setIsMobileMenuOpen(false)}

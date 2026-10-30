@@ -57,7 +57,6 @@ export const CreditBalanceWidget: React.FC<CreditBalanceWidgetProps> = ({
 
   useEffect(() => {
     fetchBalance()
-    // Refresh every minute to keep balance updated
     const interval = setInterval(fetchBalance, 60000)
     return () => clearInterval(interval)
   }, [session])
@@ -143,7 +142,7 @@ export const CreditBalanceWidget: React.FC<CreditBalanceWidgetProps> = ({
       </div>
 
       <div className="space-y-3">
-        {/* Credit Display */}
+        {}
         <div className="flex items-end gap-2">
           <span className="text-3xl font-bold text-gray-900">
             {balance.remainingToday}
@@ -153,7 +152,7 @@ export const CreditBalanceWidget: React.FC<CreditBalanceWidgetProps> = ({
           </span>
         </div>
 
-        {/* Progress Bar */}
+        {}
         <div className="space-y-1">
           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
             <div
@@ -169,7 +168,7 @@ export const CreditBalanceWidget: React.FC<CreditBalanceWidgetProps> = ({
 
         {showDetails && (
           <>
-            {/* Next Refresh */}
+            {}
             <div className="pt-3 border-t border-blue-200">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-600">Next refresh</span>
@@ -182,7 +181,7 @@ export const CreditBalanceWidget: React.FC<CreditBalanceWidgetProps> = ({
               </div>
             </div>
 
-            {/* Low Credit Warning */}
+            {}
             {balance.remainingToday <= 1 && balance.remainingToday > 0 && (
               <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-xs text-yellow-800">
@@ -191,7 +190,7 @@ export const CreditBalanceWidget: React.FC<CreditBalanceWidgetProps> = ({
               </div>
             )}
 
-            {/* No Credits Warning */}
+            {}
             {balance.remainingToday === 0 && (
               <div className="p-2 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-xs text-red-800">

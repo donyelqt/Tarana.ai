@@ -1,31 +1,3 @@
-/**
- * Trip edit logic — the observable contract of an edit either reaching the
- * database as something coherent or not being saved at all.
- *
- * The screen's own wiring cannot be rendered here (this suite is
- * `testEnvironment: 'node'`), and that is exactly where the harmful
- * mistakes live: a blank title written to the row, or a re-save of an
- * untouched form overwriting a concurrent change with the same values.
- *
- * What is pinned here, and why each is a contract rather than a detail:
- * 1. A draft reads a null column as '' — an edit form must never show the
- *    string "null" to a user.
- * 2. A blank title is refused, matching createTrip's own refusal to
- *    fabricate a name, so no edit produces an unnameable row.
- * 3. A whitespace-only title is also refused — `.trim()` on the way out is
- *    not the same as accepting "   ".
- * 4. An untouched draft reports no change, so a save button that appears
- *    for an unedited form cannot write.
- * 5. Each field on its own counts as a change (title/date/budget), because
- *    a per-field comparison that accidentally ORs everything together
- *    would look correct here and still miss a real edit.
- * 6. Tags compare as SETS by order-insensitive equality is NOT claimed
- *    here: reordering tags IS a change, since the row's rendering order is
- *    user-visible. Pinned so nobody "optimizes" it to a set compare.
- * 7. An empty blank field saves as null, not '' — the column is NULL in the
- *    schema and a form-cleared date should not become an empty string.
- * 8. Tags drop their blanks, so "Baguio, , food" is two tags.
- */
 import { describe, expect, it } from '@jest/globals';
 import {
   draftFromTrip,

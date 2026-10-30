@@ -4,8 +4,6 @@ export interface SavedMealInput {
   cafe_name: string;
   meal_type: string;
   price: number;
-  // Nullable: the client sends null when the model reports no headcount, the
-  // route schema accepts it, and the column is nullable.
   good_for?: string | null;
   location?: string | null;
   image?: string | null;
@@ -13,11 +11,6 @@ export interface SavedMealInput {
   menu_items?: unknown[];
 }
 
-/**
- * Thrown when Supabase reports an error on the list path. Carries the raw
- * provider details so the route can preserve its existing error wire shape
- * (`details`/`hint`/`code`) without touching the database itself.
- */
 export class MealDbError extends Error {
   details: string;
   hint?: string;
@@ -32,13 +25,6 @@ export class MealDbError extends Error {
   }
 }
 
-/**
- * List the caller's saved meals, newest first.
- *
- * The route owns auth (withAuth) and the HTTP shape; this service owns the
- * DB read so the route can be unit-tested by mocking one function instead
- * of the whole Supabase client chain.
- */
 export async function listMeals(userId: string) {
   const { data, error } = await supabaseAdmin
     .from('saved_meals')
@@ -57,11 +43,6 @@ export async function listMeals(userId: string) {
   return data ?? [];
 }
 
-/**
- * Insert a validated meal row for the caller. Input is validated by the
- * route's Zod schema before it reaches here. Throws on DB error — the route
- * maps that to its 500 response.
- */
 export async function createMeal(userId: string, input: SavedMealInput) {
   const { data, error } = await supabaseAdmin
     .from('saved_meals')
@@ -86,11 +67,6 @@ export async function createMeal(userId: string, input: SavedMealInput) {
   return data;
 }
 
-/**
- * Fetch one meal scoped to the caller. Returns null when absent — the route
- * treats that as 404, indistinguishable from another user's row (the RLS
- * remediation 2026-09-19 deliberately leaks nothing here).
- */
 export async function getMealById(id: string, userId: string) {
   const { data, error } = await supabaseAdmin
     .from('saved_meals')
@@ -106,10 +82,6 @@ export async function getMealById(id: string, userId: string) {
   return data;
 }
 
-/**
- * Delete one meal scoped to the caller. Returns true when a row was deleted,
- * false otherwise (route maps false to 404).
- */
 export async function deleteMealById(id: string, userId: string): Promise<boolean> {
   const { data: deleted, error } = await supabaseAdmin
     .from('saved_meals')
@@ -126,12 +98,6 @@ export async function deleteMealById(id: string, userId: string): Promise<boolea
   return true;
 }
 
-/**
- * Upsert the caller's notes row for one meal. Uses upsert (not update +
- * insert) so the first note creation and every subsequent edit share one
- * code path — the route never has to distinguish "did a row exist".
- * Returns the saved row or null when the meal is missing/not owned.
- */
 export interface MealNotesInput {
   title: string | null;
   notes: string | null;
@@ -163,11 +129,6 @@ export async function updateMealNotes(
   return data;
 }
 
-/**
- * Fetch the caller's notes row for one meal. Returns null when no notes
- * row exists — the route treats that as "no notes" rather than 404, because
- * the meal itself may exist and the user simply hasn't written notes yet.
- */
 export async function getMealNotes(mealId: string, userId: string) {
   const { data, error } = await supabaseAdmin
     .from('saved_meal_notes')

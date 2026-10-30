@@ -156,7 +156,6 @@ describe('itinerary-generator POST idempotency (2.3)', () => {
   test('leaves the no-key path untouched (no idempotency machinery runs)', async () => {
     const out = await POST(post({ prompt: '' }));
 
-    // Empty prompt fails validation before any charge or claim.
     expect(out.status).toBe(400);
     expect(claimMock).not.toHaveBeenCalled();
     expect(completeMock).not.toHaveBeenCalled();

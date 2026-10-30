@@ -18,26 +18,22 @@ import {
   type SpotPayload,
 } from '@/app/dashboard/utils';
 
-// Retrieval stays wider than the pill row: boracay + cebu have no standalone
-// pills (they surface through the Visayas tab) but the route still serves
-// them, so direct ?city=boracay/?city=cebu calls and the region union work.
+
+
+
 const SUPPORTED = ['baguio', 'cebu', 'manila', 'davao', 'boracay', 'el_nido'] as const;
 
-/** Spots enriched per scope change — photos + traffic for the visible head. */
+
 const ENRICH_LIMIT = 6;
 
-/** Shared-threshold mapping (thresholds live in trafficColors/getTrafficLevel). */
+
 function toBadgeTraffic(level: string): SpotPayload['traffic'] {
   if (level === 'HIGH' || level === 'SEVERE') return 'High';
   if (level === 'MODERATE') return 'Moderate';
   return 'Low';
 }
 
-/**
- * True only for a real photo (Wikimedia/Unsplash/Google http URL).
- * TomTom static-map thumbnails and local placeholders never qualify —
- * map filler must never displace curated cards.
- */
+
 function isRealPhoto(image: unknown): boolean {
   if (typeof image !== 'string' || !image.startsWith('http')) return false;
   if (image.includes('api.tomtom.com/map')) return false;
@@ -45,23 +41,7 @@ function isRealPhoto(image: unknown): boolean {
   return true;
 }
 
-/**
- * GET /api/spots?city=baguio|cebu|manila|davao
- * Spot candidates per city. Baguio serves the FULL mixed pool — curated
- * entries (coords, photos, peak hours, zero enrichment) in catalog order
- * plus up to 8 TomTom extras — rotated by day via rotateByDay. Full-pool
- * rotation replaced curated-first because the display slices 3: curated-first
- * pinned extras at indices 37+ where they never rendered, making scale
- * invisible. Quality is guarded at the source instead — extras are enriched
- * (tier-chain photos + measured traffic) and only photo-verified extras
- * (real Wikimedia/Unsplash/Google URL, never TomTom-static-map-only) join
- * the pool, so rotation carries no quality risk. Other cities serve live
- * TomTom POI search, enriched with real photos (imageService tier chain)
- * and measured traffic (TomTom flow → shared thresholds). Anything
- * unmeasurable stays absent — the client hides badge/photo rather than
- * guessing.
- * Ranking stays client-side (rankSpots) for every city.
- */
+
 export async function GET(request: Request) {
   return timedHttp('/api/spots', 'GET', async () => {
   const req = request as NextRequest;
@@ -119,7 +99,7 @@ export async function GET(request: Request) {
           if (candidates.length >= 8) break;
         }
 
-        // Enrich extras ONLY — curated entries stay exactly as today.
+        
         const withImages = await enrichActivitiesWithImages(
           candidates.map((s) => ({
             title: s.name,
@@ -140,7 +120,7 @@ export async function GET(request: Request) {
               );
               s.traffic = toBadgeTraffic(getTrafficLevelFromScore(t.congestionScore));
             } catch {
-              // Badge stays hidden — measured or nothing.
+              
             }
           })
         );
@@ -157,7 +137,7 @@ export async function GET(request: Request) {
 
         extras = verified;
       } catch (e) {
-        // Scale is best-effort — curated pool still serves on TomTom failure.
+        
         logger.error(
           'Baguio extras failed, serving curated only',
           {
@@ -168,10 +148,10 @@ export async function GET(request: Request) {
           requestId
         );
       }
-      // Full-pool rotation (NOT curated-first): the display slices 3, so
-      // curated-first pinned extras at indices 37+ where they never rendered.
-      // Photo guard above carries the quality burden — only real-photo extras
-      // join — so the whole pool rotates together like every other city.
+      
+      
+      
+      
       const pool = [...curated, ...extras];
       const dayIndex = Math.floor(Date.now() / 86400000);
       const rotated = rotateByDay(pool, dayIndex);
@@ -193,9 +173,9 @@ export async function GET(request: Request) {
     }
 
     const cfg = getCityConfig(city);
-    // getTouristPois already dedupes by provider id + name/coordinate keys.
-    // Re-deduping by coordinates alone here would collapse distinct venues that
-    // legitimately share a building or gate.
+    
+    
+    
     const touristPois = await getTouristPois(city);
     const live: SpotPayload[] = touristPois.map((r) => ({
       name: r.name,
@@ -204,13 +184,13 @@ export async function GET(request: Request) {
       lon: r.coordinates.lng,
       peakHours: null,
     }));
-    // Spots-only curated overlays (malls the allowlist rejects): prepended so
-    // they rotate WITH the pool, not pinned at head. Yields to live rows on
-    // title collision; enrichment below dresses them like any head row.
+    
+    
+    
     const spots = withSpotOverlays(city, live);
-    // Daily rotation (Gala strict-city parity): TomTom order is deterministic,
-    // so without rotation the same 3 surface every day. Rotates the pool before
-    // head-6 enrichment so every head is fully dressed. Baguio untouched.
+    
+    
+    
     const dayIndex = Math.floor(Date.now() / 86400000);
     const rotatedSpots = rotateByDay(spots, dayIndex);
     if (rotatedSpots.length > 1) {
@@ -228,9 +208,9 @@ export async function GET(request: Request) {
       );
     }
 
-    // Enrich only the visible head: real photos (tier chain, cached) and
-    // measured traffic (flow → shared thresholds). Per-spot failures degrade
-    // to placeholder/undisplayed — never guessed.
+    
+    
+    
     const head = rotatedSpots.slice(0, ENRICH_LIMIT);
     const withImages = await enrichActivitiesWithImages(
       head.map((s) => ({
@@ -252,7 +232,7 @@ export async function GET(request: Request) {
           );
           s.traffic = toBadgeTraffic(getTrafficLevelFromScore(t.congestionScore));
         } catch {
-          // Badge stays hidden — measured or nothing.
+          
         }
       })
     );

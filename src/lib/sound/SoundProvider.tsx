@@ -19,7 +19,6 @@ interface SoundContextValue {
 
 const SoundContext = createContext<SoundContextValue | null>(null);
 
-/** Interactive elements that earn hover + click sounds. */
 const CLICK_SELECTOR = 'button, a[href], [role="button"]';
 
 export function SoundProvider({ children }: { children: ReactNode }) {
@@ -33,8 +32,6 @@ export function SoundProvider({ children }: { children: ReactNode }) {
 
   const play = useCallback(() => playClick(), []);
 
-  // Warm the AudioContext on the very first gesture anywhere (silent) so the
-  // first real blip never races resume(). Independent of the toggle.
   useEffect(() => {
     const unlock = () => unlockAudio();
     document.addEventListener('pointerdown', unlock, { once: true });

@@ -1,16 +1,8 @@
-/**
- * Client-side referral tracking utilities
- * Handles storing and processing referral codes during signup
- */
 
 const REFERRAL_STORAGE_KEY = 'pending_referral_code';
 const REFERRAL_EXPIRY_KEY = 'pending_referral_expiry';
-const REFERRAL_EXPIRY_DAYS = 30; // Referral code valid for 30 days
+const REFERRAL_EXPIRY_DAYS = 30; 
 
-/**
- * Store referral code from URL parameter
- * Call this when user lands on site with ?ref=CODE
- */
 export function storeReferralCode(code: string): void {
   if (typeof window === 'undefined') return;
   
@@ -34,10 +26,6 @@ export function storeReferralCode(code: string): void {
   }
 }
 
-/**
- * Get stored referral code if not expired
- * Returns null if no code or expired
- */
 export function getStoredReferralCode(): string | null {
   if (typeof window === 'undefined') return null;
 
@@ -65,10 +53,6 @@ export function getStoredReferralCode(): string | null {
   }
 }
 
-/**
- * Clear stored referral code
- * Call this after successfully tracking the referral
- */
 export function clearReferralCode(): void {
   if (typeof window === 'undefined') return;
 
@@ -81,10 +65,6 @@ export function clearReferralCode(): void {
   }
 }
 
-/**
- * Track referral code after successful signup
- * Call this immediately after user signs in for the first time
- */
 export async function trackReferralAfterSignup(): Promise<{
   success: boolean;
   message?: string;
@@ -147,10 +127,6 @@ export async function trackReferralAfterSignup(): Promise<{
   }
 }
 
-/**
- * Check URL for referral code and store it
- * Call this on initial page load
- */
 export function checkAndStoreReferralFromURL(): void {
   if (typeof window === 'undefined') return;
 

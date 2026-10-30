@@ -1,6 +1,3 @@
-/**
- * Referral Service - Manages referral codes, relationships, and statistics
- */
 
 import { supabaseAdmin } from '../data/supabaseAdmin';
 import {
@@ -17,9 +14,6 @@ import {
 } from './types';
 
 export class ReferralService {
-  /**
-   * Create a new referral relationship
-   */
   static async createReferral(
     request: CreateReferralRequest
   ): Promise<CreateReferralResult> {
@@ -30,7 +24,6 @@ export class ReferralService {
     const { referralCode, newUserId } = request;
 
     try {
-      // Find referrer by code
       const { data: referrerProfile, error: referrerError } = await supabaseAdmin
         .from('user_profiles')
         .select('id')
@@ -43,12 +36,10 @@ export class ReferralService {
 
       const referrerId = referrerProfile.id;
 
-      // Check for self-referral
       if (referrerId === newUserId) {
         throw new SelfReferralError();
       }
 
-      // Check for existing referral
       const { data: existingReferral } = await supabaseAdmin
         .from('referrals')
         .select('id')
@@ -60,7 +51,6 @@ export class ReferralService {
         throw new DuplicateReferralError();
       }
 
-      // Create referral relationship
       const { data: newReferral, error: insertError } = await supabaseAdmin
         .from('referrals')
         .insert({
@@ -74,7 +64,6 @@ export class ReferralService {
 
       if (insertError) throw insertError;
 
-      // Triggers will automatically update tier and counts
 
       return {
         success: true,
@@ -92,9 +81,6 @@ export class ReferralService {
         };
       }
 
-      // Concurrent double-submit: both pass the check-then-insert select,
-      // the loser hits UNIQUE(referrer_id, referee_id) (23505). Map it to
-      // the same benign duplicate outcome as the clean path, not a 500.
       if (typeof error === 'object' && error !== null && (error as { code?: unknown }).code === '23505') {
         return { success: false, error: new DuplicateReferralError().message };
       }
@@ -108,16 +94,12 @@ export class ReferralService {
     }
   }
 
-  /**
-   * Get referral statistics for a user
-   */
   static async getReferralStats(userId: string): Promise<ReferralStats> {
     if (!supabaseAdmin) {
       throw new ReferralSystemError('Database not available', 'DB_ERROR', true);
     }
 
     try {
-      // Get user profile
       const { data: profile, error: profileError } = await supabaseAdmin
         .from('user_profiles')
         .select('*')
@@ -126,7 +108,6 @@ export class ReferralService {
 
       if (profileError) throw profileError;
 
-      // Get recent referrals with referee info
       const { data: referrals, error: referralsError } = await supabaseAdmin
         .from('referrals')
         .select(`
@@ -145,15 +126,13 @@ export class ReferralService {
       const currentTier = profile.current_tier as UserTier;
       const activeReferrals = profile.active_referrals;
 
-      // Calculate next tier requirement
       const nextTier = this.getNextTier(currentTier);
       const nextTierConfig = nextTier ? TIER_CONFIGS[nextTier] : null;
       const nextTierRequirement = nextTierConfig
         ? nextTierConfig.requiredReferrals - activeReferrals
         : 0;
 
-      // Calculate total bonus credits
-      const bonusCredits = profile.daily_credits - 5; // Base is 5
+      const bonusCredits = profile.daily_credits - 5; 
 
       return {
         totalReferrals: profile.total_referrals,
@@ -181,9 +160,6 @@ export class ReferralService {
     }
   }
 
-  /**
-   * Validate a referral code
-   */
   static async validateReferralCode(code: string): Promise<boolean> {
     if (!supabaseAdmin) {
       throw new ReferralSystemError('Database not available', 'DB_ERROR', true);
@@ -203,9 +179,6 @@ export class ReferralService {
     }
   }
 
-  /**
-   * Get user's referral code
-   */
   static async getUserReferralCode(userId: string): Promise<string | null> {
     if (!supabaseAdmin) {
       throw new ReferralSystemError('Database not available', 'DB_ERROR', true);
@@ -226,9 +199,6 @@ export class ReferralService {
     }
   }
 
-  /**
-   * Get active referrals for a user
-   */
   static async getActiveReferrals(userId: string): Promise<Referral[]> {
     if (!supabaseAdmin) {
       throw new ReferralSystemError('Database not available', 'DB_ERROR', true);
@@ -263,9 +233,6 @@ export class ReferralService {
     }
   }
 
-  /**
-   * Update referral status
-   */
   static async updateReferralStatus(
     referralId: string,
     status: 'active' | 'inactive'
@@ -282,7 +249,6 @@ export class ReferralService {
 
       if (error) throw error;
 
-      // Trigger will automatically recalculate tier
     } catch (error) {
       console.error('Error updating referral status:', error);
       throw new ReferralSystemError(
@@ -293,9 +259,6 @@ export class ReferralService {
     }
   }
 
-  /**
-   * Helper: Get next tier
-   */
   private static getNextTier(currentTier: UserTier): UserTier | null {
     const tierOrder: UserTier[] = ['Default', 'Explorer', 'Smart Traveler', 'Voyager'];
     const currentIndex = tierOrder.indexOf(currentTier);
@@ -307,16 +270,10 @@ export class ReferralService {
     return tierOrder[currentIndex + 1];
   }
 
-  /**
-   * Get referral code from user ID
-   */
   static async getReferralCodeFromUserId(userId: string): Promise<string | null> {
     return this.getUserReferralCode(userId);
   }
 
-  /**
-   * Get user ID from referral code
-   */
   static async getUserIdFromReferralCode(code: string): Promise<string | null> {
     if (!supabaseAdmin) {
       return null;

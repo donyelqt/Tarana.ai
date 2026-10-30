@@ -160,9 +160,6 @@ describe('saved-itineraries collection route', () => {
   });
 
   it('rejects cross-user ownership tampering at the type level', async () => {
-    // A caller sends another user's id inside formData: the route sources
-    // user_id only from the session, never from the body (compile-time shape
-    // has no user_id field, runtime insert uses session.user.id).
     mockedCreateItinerary.mockResolvedValue({ id: 'itin-1' });
 
     const res = await post({ ...validBody, user_id: 'user-2', userId: 'user-2' } as unknown as Record<
@@ -177,8 +174,6 @@ describe('saved-itineraries collection route', () => {
   });
 
   it('accepts the exact generator save payload including traffic metadata', async () => {
-    // Mirrors useItineraryGenerator.handleSaveItinerary: generated activities
-    // carry trafficAnalysis/trafficLevel/lat/lon plus city scope passthrough.
     mockedCreateItinerary.mockResolvedValue({ id: 'itin-1' });
 
     const payload = {
@@ -211,9 +206,6 @@ describe('saved-itineraries collection route', () => {
   });
 
   it('returns empty data array when the caller owns no rows', async () => {
-    // Regression guard for "cannot access my itineraries": the old client
-    // SELECT silently RLS-filtered to zero rows. The route must return an
-    // explicit empty success (not 404) so list vs. forbidden stay distinct.
     mockedListItineraries.mockResolvedValue([]);
 
     const res = await GET(makeRequest());
@@ -222,9 +214,6 @@ describe('saved-itineraries collection route', () => {
   });
 
   it('maps stored JSON strings to objects for legacy rows', async () => {
-    // Pre-migration rows may store form_data/itinerary_data as JSON text
-    // (see savedItineraries.ts JSON.parse branches). The route must serve
-    // the same object shape the detail page destructures.
     const legacyForm = JSON.stringify(validBody.formData);
     const legacyItinerary = JSON.stringify(validBody.itineraryData);
     mockedListItineraries.mockResolvedValue([

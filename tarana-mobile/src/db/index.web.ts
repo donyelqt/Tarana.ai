@@ -1,15 +1,3 @@
-/**
- * Web stub for the local store (`index.ts` is the native implementation).
- *
- * Metro platform resolution picks this file for `-p web` bundles, so the
- * expo-sqlite wasm graph (`wa-sqlite.wasm`, web-alpha, needs bundler +
- * COEP/COOP plumbing per the SDK 57 docs) never enters the web bundle.
- * The app ships native (iOS/Android); web is a bundling smoke gate only.
- *
- * Same exported API, in-memory backing. Active-profile id reuses the
- * platform-aware TokenStorage (localStorage on web) so that half behaves
- * identically. Data does not survive reload — acceptable for smoke.
- */
 import * as TokenStorage from '../tokenStorage';
 import type { LocalProfile, LocalTrip, LocalMeal } from './index';
 
@@ -228,26 +216,9 @@ export async function upsertImportedMeal(input: {
   return created;
 }
 
-// ── Export → web id link ──────────────────────────────────
 
-/**
- * The two tables that carry the import idempotency key `(source, source_id)`.
- * Mirrors the native export in `index.ts`, where the doc comment explains why
- * the web id has to be written back at all (a NULL `source_id` cannot match an
- * import's ON CONFLICT, so the round trip would duplicate the row).
- */
 export type ExportedTable = 'trips' | 'meals';
 
-/**
- * In-memory twin of `index.ts`'s `linkExportedRow`: write the web id onto one
- * local row, scoped by `id`, nothing else touched.
- *
- * `source` is ALSO set to 'web-import', exactly as native does: the import
- * conflicts on `(source, source_id)` and always inserts
- * `source = 'web-import'`, so a linked row left as 'local' can never match
- * that conflict and the import would insert a second copy. An unknown `id` is
- * a no-op rather than a throw.
- */
 export async function linkExportedRow(
   table: ExportedTable,
   id: string,

@@ -6,17 +6,6 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-/**
- * Native port of web DynamicIsland (tarana-explore/components/DynamicIsland).
- *
- * Same physics: spring m=1, stiffness=210, damping=23 (ζ≈0.794, ≈1.2%
- * overshoot, settle ≈0.26s). framer-motion and Reanimated solve the same
- * m·x'' + c·x' + k·(x−target)=0 ODE, so the constants transfer 1:1.
- * Same silhouette: collapsed pill (radius 9999, h52), expanded 28-radius
- * card; content clipped to the pill ONLY while morphing, then released
- * so suggestion dropdowns escape the rounded clip. No gesture-handler
- * needed — interaction is tap-only.
- */
 const DI_SPRING = { stiffness: 210, damping: 23, mass: 1 } as const;
 const COMPACT_HEIGHT = 52;
 const COMPACT_MIN_WIDTH = 240;
@@ -54,7 +43,6 @@ export default function DynamicIsland({
     w.value = withSpring(targetW, DI_SPRING);
     h.value = withSpring(targetH, DI_SPRING);
     r.value = withSpring(expanded ? 28 : 9999, DI_SPRING);
-    // Clip only while morphing (settle ≈0.26s per the verified model).
     setClip(true);
     const t = setTimeout(() => setClip(false), 350);
     return () => clearTimeout(t);
@@ -105,7 +93,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.92)',
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    // backdrop blur has no RN equivalent without extra deps — opacity fill stands in.
     shadowColor: '#000000',
     shadowOpacity: 0.18,
     shadowRadius: 14,

@@ -1,7 +1,3 @@
-/**
- * Traffic-Aware Map Component
- * Displays routes with traffic color coding for user awareness
- */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { 
@@ -51,18 +47,13 @@ export function TrafficAwareMap({
   const [mapInstance, setMapInstance] = useState<any>(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
 
-  // Initialize map (placeholder for actual map library integration)
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // This would be replaced with actual map library initialization
-    // For example: Leaflet, Google Maps, or Mapbox
     const initializeMap = async () => {
       try {
-        // Placeholder map initialization
         console.log('🗺️ Traffic Map: Initializing map with traffic visualization');
         
-        // Simulate map loading
         setTimeout(() => {
           setIsMapLoaded(true);
           console.log('✅ Traffic Map: Map loaded successfully');
@@ -76,35 +67,23 @@ export function TrafficAwareMap({
     initializeMap();
   }, []);
 
-  // Update route visualization when routes change
   useEffect(() => {
     if (!isMapLoaded || !mapInstance) return;
 
     console.log('🎨 Traffic Map: Updating route visualization with traffic colors');
     
-    // Clear existing routes
-    // mapInstance.clearRoutes();
 
-    // Add current route with traffic-aware styling
     if (currentRoute && trafficAnalysis) {
       const trafficLevel = getTrafficLevelFromScore(trafficAnalysis.congestionScore);
       const routeStyle = getTrafficPolylineStyle(trafficLevel, 8);
       
       console.log(`📍 Traffic Map: Drawing primary route with ${trafficLevel} traffic level`, routeStyle);
       
-      // Add route to map with traffic colors
-      // mapInstance.addRoute(currentRoute, {
-      //   ...routeStyle,
-      //   zIndex: 1000,
-      //   interactive: true,
-      //   popup: `Traffic Level: ${trafficLevel}<br/>Congestion: ${trafficAnalysis.congestionScore}%`
-      // });
     }
 
-    // Add alternative routes with different styling
     alternativeRoutes.forEach((route, index) => {
       const routeStyle = {
-        color: '#6b7280', // Gray for alternatives
+        color: '#6b7280', 
         weight: 4,
         opacity: 0.6,
         dashArray: '5, 10'
@@ -112,66 +91,33 @@ export function TrafficAwareMap({
       
       console.log(`📍 Traffic Map: Drawing alternative route ${index + 1}`, routeStyle);
       
-      // mapInstance.addRoute(route, {
-      //   ...routeStyle,
-      //   zIndex: 500 - index,
-      //   interactive: true,
-      //   popup: `Alternative Route ${index + 1}`
-      // });
     });
 
-    // Add traffic-aware segment visualization
     if (trafficAnalysis?.segmentAnalysis) {
       trafficAnalysis.segmentAnalysis.forEach((segment, index) => {
         const segmentStyle = getTrafficPolylineStyle(segment.trafficLevel, 6);
         
         console.log(`🛣️ Traffic Map: Drawing segment ${index} with ${segment.trafficLevel} traffic`, segmentStyle);
         
-        // mapInstance.addSegment(segment, {
-        //   ...segmentStyle,
-        //   zIndex: 750,
-        //   popup: `Segment: ${segment.roadName}<br/>Traffic: ${segment.trafficLevel}<br/>Speed: ${segment.speedKmh} km/h`
-        // });
       });
     }
 
   }, [currentRoute, alternativeRoutes, trafficAnalysis, isMapLoaded, mapInstance]);
 
-  // Add markers for origin, destination, and waypoints
   useEffect(() => {
     if (!isMapLoaded || !mapInstance) return;
 
-    // Clear existing markers
-    // mapInstance.clearMarkers();
 
-    // Add origin marker
     if (origin) {
       console.log('📍 Traffic Map: Adding origin marker', origin);
-      // mapInstance.addMarker(origin, {
-      //   icon: 'start',
-      //   color: '#10b981',
-      //   popup: `Start: ${origin.name}`
-      // });
     }
 
-    // Add destination marker
     if (destination) {
       console.log('📍 Traffic Map: Adding destination marker', destination);
-      // mapInstance.addMarker(destination, {
-      //   icon: 'end',
-      //   color: '#ef4444',
-      //   popup: `End: ${destination.name}`
-      // });
     }
 
-    // Add waypoint markers
     waypoints.forEach((waypoint, index) => {
       console.log(`📍 Traffic Map: Adding waypoint ${index + 1}`, waypoint);
-      // mapInstance.addMarker(waypoint, {
-      //   icon: 'waypoint',
-      //   color: '#f59e0b',
-      //   popup: `Waypoint ${index + 1}: ${waypoint.name}`
-      // });
     });
 
   }, [origin, destination, waypoints, isMapLoaded, mapInstance]);
@@ -238,7 +184,7 @@ export function TrafficAwareMap({
       {renderTrafficLegend()}
       {renderLoadingOverlay()}
       
-      {/* Route Selection Controls */}
+      {}
       {(currentRoute || alternativeRoutes.length > 0) && (
         <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg border p-3 z-10">
           <h4 className="text-sm font-semibold text-gray-900 mb-2">Route Options</h4>

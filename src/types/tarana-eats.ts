@@ -4,7 +4,7 @@ export interface MenuItem {
   price: number;
   image: string;
   tags?: string[];
-  quantity?: number; // Quantity for cart/selection functionality
+  quantity?: number; 
 }
 
 export interface FullMenu {
@@ -20,8 +20,8 @@ export interface ResultMatch {
   meals: number;
   price: number;
   image: string;
-  reason?: string; // Added reason field for AI explanations
-  fullMenu?: FullMenu; // Added full menu data
+  reason?: string; 
+  fullMenu?: FullMenu; 
 }
 
 export interface TaranaEatsFormValues {

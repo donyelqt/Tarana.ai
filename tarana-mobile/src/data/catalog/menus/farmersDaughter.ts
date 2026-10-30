@@ -1,9 +1,3 @@
-// ====================================================================
-// FARMER'S DAUGHTER MENU DATA
-// ====================================================================
-// Farmer's Daughter in Baguio serves a delightful farm-to-table experience, 
-// offering wholesome, locally-sourced Filipino dishes in a charming rustic ambiance.
-// ====================================================================
 
 import { FullMenu } from "../types";
 

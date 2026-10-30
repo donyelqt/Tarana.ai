@@ -96,21 +96,17 @@ export default function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [inAppNotifications, setInAppNotifications] = useState(true);
   
-  // Profile state
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
   
-  // Form state
   const [fullName, setFullName] = useState('');
   const [location, setLocation] = useState('');
   const [bio, setBio] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Weather state
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [isWeatherLoading, setIsWeatherLoading] = useState(true);
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin');
@@ -153,7 +149,6 @@ export default function SettingsPage() {
     }
   }, [profileError, toast]);
 
-  // Track changes
   useEffect(() => {
     if (!profile) return;
     
@@ -215,11 +210,9 @@ export default function SettingsPage() {
     },
   });
 
-  // Handle save
   const handleSave = async () => {
     if (!hasChanges) return;
     
-    // Validation
     if (!fullName.trim()) {
       toast({
         title: 'Validation Error',
@@ -292,7 +285,6 @@ export default function SettingsPage() {
     };
   }, []);
 
-  // Loading state
   if (!hasInitialLoad && (status === 'loading' || isProfileLoading)) {
     return <ProfileSettingsSkeleton />;
   }
@@ -309,14 +301,14 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Sidebar */}
+      {}
       <Sidebar />
 
-      {/* Main Content - add left padding on desktop to accommodate fixed sidebar */}
+      {}
       <main className={`${contentClass('md:pl-72')} flex-1 bg-[#f7f9fb] px-4 sm:px-6 md:px-8 py-6 md:py-8`}>
         <div className="min-h-screen">
           <div className="max-w-6xl mx-auto w-full">
-            {/* Page Title */}
+            {}
             <div className="mb-6">
               <div className="bg-white w-full md:w-auto rounded-3xl px-5 sm:px-6 py-3 inline-flex items-center font-bold text-lg sm:text-xl md:text-2xl text-gray-900 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
                 Settings
@@ -324,14 +316,14 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column - Profile Settings */}
+              {}
               <div className="lg:col-span-2 space-y-6">
-                {/* Profile Settings Card */}
+                {}
                 <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
                   <h2 className="text-xl font-semibold text-gray-900 mb-6">Profile Settings</h2>
 
                   <div className="space-y-6">
-                    {/* Avatar and Full Name */}
+                    {}
                     <div className="flex items-start gap-4">
                       <div className="w-16 h-16 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden">
                         <img
@@ -358,7 +350,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* Email Address */}
+                    {}
                     <div>
                       <label className="block text-sm font-semibold text-gray-900 mb-2">
                         Email Address
@@ -374,7 +366,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* Location */}
+                    {}
                     <div>
                       <label className="block text-sm font-semibold text-gray-900 mb-2">
                         Location
@@ -392,7 +384,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* Bio */}
+                    {}
                     <div>
                       <label className="block text-sm font-semibold text-gray-900 mb-2">
                         Bio
@@ -411,7 +403,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Save Changes Button */}
+                  {}
                   <div className="flex justify-end mt-8">
                     <button
                       onClick={handleSave}
@@ -425,12 +417,12 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* Notification Settings Card */}
+                {}
                 <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
                   <h2 className="text-xl font-semibold text-gray-900 mb-6">Notification Settings</h2>
 
                   <div className="space-y-6">
-                    {/* Email Notifications */}
+                    {}
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-base font-semibold text-gray-900">Email Notifications</h3>
@@ -452,7 +444,7 @@ export default function SettingsPage() {
                       </button>
                     </div>
 
-                    {/* In-App Notifications */}
+                    {}
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-base font-semibold text-gray-900">In-App Notifications</h3>
@@ -477,9 +469,9 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Right Column - Widgets */}
+              {}
               <div className="space-y-6">
-                {/* Baguio Weather */}
+                {}
                 <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Baguio Weather</h3>
                   <div className="flex items-center gap-3">
@@ -498,7 +490,7 @@ export default function SettingsPage() {
 
                 <RecommendedForYou />
 
-                {/* Upcoming Events */}
+                {}
                 <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Events</h3>
                   <div className="bg-gray-200 rounded-2xl h-40 flex items-center justify-center">

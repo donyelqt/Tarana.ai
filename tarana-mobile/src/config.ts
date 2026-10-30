@@ -1,11 +1,3 @@
-/**
- * Runtime config for the mobile app.
- *
- * The web app reads its values from `process.env.*`; on mobile those are not
- * available at import time, so the values ship through `app.json` `extra`
- * and are read via `Constants`. This adapter falls back to `process.env`
- * so the same code path works during local Metro dev against the web env.
- */
 import Constants from 'expo-constants';
 
 type MobileConfig = {

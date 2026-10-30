@@ -49,17 +49,6 @@ function parsePayload(raw: string | null): Payload | null {
   }
 }
 
-/**
- * TripDetail — read-only itinerary with delete (§8).
- *
- * Web detail skeleton recomposed native: header → info tiles → day
- * sections (Day N + date header, web parity) → activity cards with
- * Reviews/Maps actions opening the ActivitySheet (= web PlaceDetail
- * modal: About/Location/Reviews recomposed native, one system Maps
- * action, honest Reviews-Coming-Soon empty state). Web Smart Refresh
- * stays server-side (session-cookie, no mobile token path) — no dead
- * refresh button. Delete is a two-step arm (no modal dependency).
- */
 export default function TripDetail({ navigation, route }: { navigation: any; route: { params?: { id?: string } } }) {
   const [trip, setTrip] = useState<LocalTrip | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -110,17 +99,6 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
     }
   };
 
-  /**
-   * Edit mode. Entering copies the row into a draft rather than editing it
-   * in place: a half-typed title must never sit in the row a back-tap
-   * would render, and leaving without saving discards the draft.
-   *
-   * The trip's own four fields (title, date, endDate, budget, tags) are
-   * editable. A start-date edit re-derives the end date live (matching the
-   * web dialog), and on save both dates are patched into the payload's
-   * `formData.dates` — the rest of the payload body stays read-only, so an
-   * edit can never rewrite a generated itinerary.
-   */
   const onEdit = () => {
     if (!trip) return;
     setError(null);
@@ -149,9 +127,6 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
         payload: trip.payload,
       });
       const updated = await updateTrip(trip.id, profileId, payload);
-      // A null return means the row vanished under us (or belongs to another
-      // profile); leave edit mode rather than showing a form for a trip that
-      // is no longer the one on screen.
       if (updated) setTrip(updated);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save trip.');
@@ -184,8 +159,6 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
   const form = payload?.formData;
   const heroUri = firstPayloadImage(trip.payload);
 
-  // Web parity (saved-trips/[id]:393-410): a new day starts at "Morning".
-  // Flat period list → day groups so Day N + date headers render.
   const days: Period[][] = [];
   for (const period of items) {
     if ((period.period ?? '').toLowerCase().includes('morning') && days.length > 0) {
@@ -237,9 +210,6 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
             value={draft.date}
             onChangeText={(date) => {
               setDraft({ ...draft, date });
-              // End date auto-derives from start + duration, matching the web
-              // dialog. A hand-typed end is overridden when start moves; the
-              // duration is fixed by the trip and a new start needs a new end.
               if (date && form?.duration) {
                 const end = deriveEndDate(date, form.duration);
                 if (end) setDraft((d) => (d ? { ...d, endDate: end } : d));
@@ -391,9 +361,7 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
         ))
       )}
 
-      {/* Edit sits above Delete and is hidden while the form is open, so
-          the screen never offers both an unfinished edit and a delete of
-          the trip being edited. */}
+      {}
       {editing ? null : (
         <TouchableOpacity
           style={styles.editBtn}
@@ -423,10 +391,6 @@ export default function TripDetail({ navigation, route }: { navigation: any; rou
   );
 }
 
-/**
- * Photo hero (Airbnb pattern: photography carries the card). Renders only
- * when a real photo exists; the title block below stands alone otherwise.
- */
 function TripHero({ uri, title }: { uri: string; title: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;

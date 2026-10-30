@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import type { LocationPoint, RouteData } from '@/types/route-optimization';
 import type { MapStyle } from '@/lib/integrations/tomtomMapUtils';
 
-// Map must be client-only and skip SSR (TomTom uses window) — same as ExploreMapView.
+
 const InteractiveRouteMap = dynamic(
   () => import('@/app/tarana-explore/components/route/InteractiveRouteMap'),
   { ssr: false }
@@ -43,7 +43,7 @@ declare global {
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
-/** Cap bridge paths so a pathological payload can't OOM the map. */
+
 const MAX_PATH_PTS = 50000;
 
 function toLocation(raw: BridgeLocation | null | undefined): LocationPoint | null {
@@ -95,16 +95,11 @@ function post(msg: { type: string; routeId?: string }) {
   try {
     window.ReactNativeWebView?.postMessage(JSON.stringify(msg));
   } catch {
-    /* native shell absent (desktop debug) — map still works standalone */
+    
   }
 }
 
-/**
- * EmbedMap — the web explore map minus the explore UI, driven by native.
- * Owns the same state ExploreMapView owns (endpoints, routes, style,
- * recenter, tilt) so InteractiveRouteMap behaves identically: same
- * markers, polylines, glow, traffic flow, fit-bounds, retry, style swap.
- */
+
 export default function EmbedMap() {
   const [origin, setOrigin] = useState<LocationPoint | null>(null);
   const [destination, setDestination] = useState<LocationPoint | null>(null);
@@ -113,7 +108,7 @@ export default function EmbedMap() {
   const [mapStyle, setMapStyle] = useState<MapStyle>('main');
   const [recenterSignal, setRecenterSignal] = useState(0);
   const [tiltOn, setTiltOn] = useState(true);
-  // Web parity: useRouteCalculation isCalculating → "Analyzing routes…" overlay.
+  
   const [loading, setLoading] = useState(false);
   const styleControlRef = useRef<{ changeStyle: (style: MapStyle) => void } | null>(null);
 
@@ -161,7 +156,7 @@ export default function EmbedMap() {
             break;
         }
       } catch {
-        /* malformed bridge payload — never crash the map */
+        
       }
     };
     post({ type: 'embed-ready' });

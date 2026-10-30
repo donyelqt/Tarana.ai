@@ -10,7 +10,6 @@ import {
 
 const TEST_SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef";
 
-// Fixed clock: 2026-09-14T00:00:00Z.
 const FIXED_NOW = 1788998400000;
 
 describe("benchToken", () => {
@@ -77,7 +76,6 @@ describe("benchToken", () => {
     process.env.BENCH_BYPASS_AUTH = "true";
     process.env.BENCH_HMAC_SECRET = "too-short";
     const w = currentWindowIndex(FIXED_NOW);
-    // Signed with the short secret an operator mistakenly configured...
     const forged = `${w}:${computeBenchToken("too-short", w)}`;
     expect(verifyBenchToken(forged, FIXED_NOW)).toBe(false);
     expect(benchBypassEnabled()).toBe(false);
@@ -103,11 +101,8 @@ describe("benchToken", () => {
 
     expect(configuredBenchUserId()).toBe(CUSTOM_ID);
     expect(verifyBenchToken(token, FIXED_NOW)).toBe(true);
-    // resolveBenchUserId defaults to the real clock, so use the current window
-    // (the fixed-clock token from 2026-09-14 is outside the ±1 window today).
     const wNow = currentWindowIndex();
     expect(resolveBenchUserId(tokenFor(wNow))).toBe(CUSTOM_ID);
-    // A valid token with no configured id still resolves to the default.
     delete process.env.BENCH_USER_ID;
     expect(resolveBenchUserId(tokenFor(wNow))).toBe("00000000-0000-0000-0000-000000000001");
   });

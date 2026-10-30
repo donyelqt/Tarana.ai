@@ -5,20 +5,10 @@ export type TargetCityId = 'cebu' | 'manila' | 'davao' | 'boracay' | 'el_nido';
 
 export const TARGET_CITY_IDS: readonly TargetCityId[] = ['cebu', 'manila', 'davao', 'boracay', 'el_nido'];
 
-/** Candidate pool target; consumers keep their own smaller render/enrichment caps. */
 export const TOURIST_POI_TARGET = 50;
 
-/** TomTom's documented maximum `limit` for one Search request. */
 export const TOURIST_POI_RAW_LIMIT = 100;
 
-/**
- * Category-name allowlist for "tourist spot".
- *
- * TomTom's numeric category IDs are not pinned here on purpose: the POI
- * response is the authority, and category names are reviewable. Matching is
- * normalized substring matching, so "important tourist attraction" and
- * "tourist attraction" both qualify, while "restaurant" and "office" do not.
- */
 export const TOURIST_CATEGORY_ALLOWLIST: readonly string[] = [
   'attraction',
   'tourist',
@@ -72,19 +62,11 @@ function normalizedCategories(result: SearchResult): string[] {
     .map((value) => value.toLowerCase().trim());
 }
 
-/**
- * Word-boundary match keeps short terms from false-accepting unrelated
- * categories: "church" must not match "churchill", "park" must not match
- * "shopping park", "lake" must not match "lakeland", "trail" must not match
- * "trailers". The term still matches inside a longer phrase when it appears as
- * a whole word ("important tourist attraction" → "tourist").
- */
 function categoryMatchesTerm(category: string, term: string): boolean {
   const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`).test(category);
 }
 
-/** True when the provider result is a category-verified tourist POI in-city. */
 export function isTouristPoi(result: SearchResult, cityId: TargetCityId): boolean {
   const placeType = typeof result.placeType === 'string' ? result.placeType.trim() : '';
   if (!/^poi$/i.test(placeType)) return false;
@@ -105,14 +87,6 @@ function normalizedName(result: SearchResult): string {
   return result.name.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Stable identity for duplicate suppression.
- *
- * Coordinate-only keys collapse distinct venues inside one building, so the
- * provider ID and normalized name come first. Same-name results within the
- * same ~100m coordinate bucket are provider jitter and collapse to the best
- * score; distinct names at identical coordinates stay distinct.
- */
 function identityKeys(result: SearchResult): string[] {
   const lat = result.coordinates.lat;
   const lon = result.coordinates.lng;
@@ -124,14 +98,6 @@ function identityKeys(result: SearchResult): string[] {
   ];
 }
 
-/**
- * Interest-targeted eligibility.
- *
- * The tourist allowlist intentionally rejects restaurants/cafes, but a user
- * who picks "Food & Culinary" is explicitly asking for them. This keeps the
- * same structural guarantees (real POI, in-city, finite coords) while
- * dropping only the tourist-category requirement.
- */
 export function isInterestPoi(result: SearchResult, cityId: TargetCityId): boolean {
   const placeType = typeof result.placeType === 'string' ? result.placeType.trim() : '';
   if (!/^poi$/i.test(placeType)) return false;
@@ -143,10 +109,6 @@ export function isInterestPoi(result: SearchResult, cityId: TargetCityId): boole
   return isWithinCityBounds(lat, lon, cityId);
 }
 
-/**
- * Interest-layer selection: structural eligibility + the same stable dedupe,
- * but no tourist allowlist. Used for the personalization layer only.
- */
 export function selectInterestPois(
   results: readonly SearchResult[],
   cityId: TargetCityId,
@@ -167,14 +129,6 @@ export function selectInterestPois(
   return accepted;
 }
 
-/**
- * Merge the personalization layer ahead of the coverage layer.
- *
- * Interests must genuinely lead: sorting both layers together by provider
- * score would let a high-scoring tourist POI outrank an interest match. This
- * takes interest matches first (score-ordered within the layer), then fills
- * the remaining slots from the tourist pool, deduping across both.
- */
 export function mergeInterestFirst(
   interest: readonly SearchResult[],
   tourist: readonly SearchResult[],
@@ -204,10 +158,6 @@ export function mergeInterestFirst(
   return accepted;
 }
 
-/**
- * Filter to eligible tourist POIs and dedupe without synthetic padding.
- * Sorted by provider relevance descending; callers may re-rank for interests.
- */
 export function selectTouristPois(
   results: readonly SearchResult[],
   cityId: TargetCityId,

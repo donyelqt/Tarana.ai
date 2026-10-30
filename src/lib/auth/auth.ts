@@ -2,7 +2,6 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
-// Removed unused direct supabase client import
 import { supabaseAdmin } from '../data/supabaseAdmin';
 import { ReferralService } from '../referral-system/ReferralService';
 import { logger } from '@/lib/observability/logger';
@@ -20,27 +19,23 @@ import {
   resolveTokenUserId,
 } from './sessionValidity';
 
-// Interface for user data from Supabase (align with your 'users' table structure)
 interface SupabaseUser {
-  id: string; // Typically a UUID from Supabase
+  id: string; 
   email: string;
-  hashed_password?: string; // Ensure this matches your table column name
-  full_name?: string; // Ensure this matches your table column name
-  image?: string; // Added for the new image field
-  tos_accepted_at?: string | null; // ToS/Privacy acceptance timestamp (NULL = not accepted)
-  // Add other fields as necessary, e.g., created_at, updated_at
+  hashed_password?: string; 
+  full_name?: string; 
+  image?: string; 
+  tos_accepted_at?: string | null; 
 }
 
-// Function to add a new user to Supabase
 export async function createUserInSupabase(fullName: string, email: string, password: string, tosAcceptedAt?: string) {
-  // Check if user already exists using the admin client
   const { data: existingUser, error: fetchError } = await supabaseAdmin
     .from('users')
     .select('email')
     .eq('email', email.toLowerCase())
     .single();
 
-  if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116: 'No rows found'
+  if (fetchError && fetchError.code !== 'PGRST116') { 
     logger.error('Error checking for existing user', { entryPoint: 'auth', ...getSafeErrorMetadata(fetchError) });
     throw new Error('Error checking for existing user');
   }
@@ -51,14 +46,12 @@ export async function createUserInSupabase(fullName: string, email: string, pass
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const { data: newUser, error: insertError } = await supabaseAdmin // <--- USE supabaseAdmin
+  const { data: newUser, error: insertError } = await supabaseAdmin 
     .from('users')
     .insert({
       full_name: fullName,
       email: email.toLowerCase(),
-      hashed_password: hashedPassword, // Changed 'password' to 'hashed_password'
-      // Server-enforced ToS acceptance at registration (column added by
-      // 20260905000000 migration; omit when absent, e.g. legacy callers).
+      hashed_password: hashedPassword, 
       ...(tosAcceptedAt ? { tos_accepted_at: tosAcceptedAt } : {}),
     })
     .select('id, full_name, email')
@@ -69,36 +62,32 @@ export async function createUserInSupabase(fullName: string, email: string, pass
     throw new Error('Failed to create user');
   }
 
-  return newUser; // Returns { id, full_name, email }
+  return newUser; 
 }
 
-// Function to find a user by email from Supabase
 export async function findUserByEmailFromSupabase(email: string): Promise<SupabaseUser | null> {
-  const { data, error } = await supabaseAdmin // <--- USE supabaseAdmin
+  const { data, error } = await supabaseAdmin 
     .from('users')
-    .select('*') // Select all necessary fields, including hashed_password
+    .select('*') 
     .eq('email', email.toLowerCase())
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') return null; // User not found
+    if (error.code === 'PGRST116') return null; 
     logger.error('Error fetching user by email', { entryPoint: 'auth', ...getSafeErrorMetadata(error) });
     return null;
   }
   return data as SupabaseUser;
 }
 
-// Function to verify password against Supabase user's hashed password
 export async function verifySupabaseUserPassword(email: string, suppliedPassword: string): Promise<boolean> {
   const user = await findUserByEmailFromSupabase(email);
   if (!user || !user.hashed_password) {
-    return false; // User not found or no password stored
+    return false; 
   }
   return await bcrypt.compare(suppliedPassword, user.hashed_password);
 }
 
-// Reads the ToS/Privacy acceptance flag for an email. Fail-closed (false) on
-// any DB error so the consent gate, not an exception, handles the outcome.
 async function fetchTosAccepted(email?: string | null): Promise<boolean> {
   if (!email) return false;
   try {
@@ -135,7 +124,6 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, req) {
-        // This is where you would typically verify the user credentials against your database
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
@@ -149,23 +137,18 @@ export const authOptions: NextAuthOptions = {
           throw error;
         }
 
-        // rememberMe will be handled in the signin page
 
         try {
-          // Find user by email from Supabase
           const user = await findUserByEmailFromSupabase(credentials.email);
 
           if (!user || !user.hashed_password) {
-            // User not found or password not set
             registerFailedLogin(loginIdentifier);
             return null;
           }
 
-          // Verify password using bcrypt against the stored hash
           const isPasswordValid = await bcrypt.compare(credentials.password, user.hashed_password);
 
           if (!isPasswordValid) {
-            // Add a small delay to prevent timing attacks, though bcrypt itself is slow
             await new Promise(resolve => setTimeout(resolve, 250 + Math.random() * 100));
             registerFailedLogin(loginIdentifier);
             return null;
@@ -173,10 +156,9 @@ export const authOptions: NextAuthOptions = {
 
           resetLoginAttempts(loginIdentifier);
 
-          // Return user data (ensure 'name' corresponds to 'full_name' or similar in your SupabaseUser interface)
           return {
             id: user.id,
-            name: user.full_name || user.email, // Use full_name if available, otherwise fallback to email
+            name: user.full_name || user.email, 
             email: user.email,
             image: user.image,
           };
@@ -194,25 +176,18 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days default
+    maxAge: 30 * 24 * 60 * 60, 
   },
   jwt: {
-    maxAge: 30 * 24 * 60 * 60, // 30 days default
+    maxAge: 30 * 24 * 60 * 60, 
   },
   callbacks: {
     async signIn({ user, account, profile }) {
       if (account?.provider === "google" && !user.email) {
-        // No address to match, link, or provision: deny before any lookup.
         logger.error('Google sign-in refused: missing email', { entryPoint: 'auth' });
         return false;
       }
       if (account?.provider === "google" && user.email) {
-        // The row match below is by email alone, so an unverified address
-        // would hand an attacker the victim's row (account takeover): the
-        // Google userinfo profile asserts `email_verified`, and only a
-        // verified address may link to an existing row OR create a new one.
-        // Read it from the raw provider profile (`profile`, the userinfo
-        // response), not from the mapped `user` (the stock mapper drops it).
         const emailVerified =
           (profile as { email_verified?: unknown } | null | undefined)?.email_verified === true;
         if (!emailVerified) {
@@ -228,11 +203,10 @@ export const authOptions: NextAuthOptions = {
 
           if (fetchError && fetchError.code !== 'PGRST116') {
             logger.error('Error fetching user during sign-in', { entryPoint: 'auth', ...getSafeErrorMetadata(fetchError) });
-            return false; // Prevent sign-in if there's a DB error
+            return false; 
           }
 
           if (dbUser) {
-            // User exists, update image if it's missing or different
             if (dbUser.image !== user.image && user.image) {
               const { error: updateError } = await supabaseAdmin
                 .from('users')
@@ -240,18 +214,16 @@ export const authOptions: NextAuthOptions = {
                 .eq('id', dbUser.id);
               if (updateError) {
                 logger.error('Error updating user image', { entryPoint: 'auth', ...getSafeErrorMetadata(updateError) });
-                // Decide if this should prevent sign-in
               }
             }
           } else {
-            // New user via Google, create a record in the users table
             const { error: insertError } = await supabaseAdmin
               .from('users')
               .insert({
                 full_name: user.name || user.email?.split('@')[0] || "New User",
                 email: user.email.toLowerCase(),
                 image: user.image,
-                hashed_password: "GOOGLE_OAUTH_USER" // Dummy value to satisfy NOT NULL constraint
+                hashed_password: "GOOGLE_OAUTH_USER" 
               });
 
             if (insertError) {
@@ -272,8 +244,6 @@ export const authOptions: NextAuthOptions = {
           token.name = session.user.name ?? token.name;
           token.picture = session.user.image ?? token.picture;
         }
-        // Refresh the ToS flag so a fresh consent acceptance takes effect
-        // without requiring re-login (fail closed on DB errors).
         if (token.email) {
           (token as unknown as { tosAccepted?: boolean }).tosAccepted =
             await fetchTosAccepted(token.email as string);
@@ -311,8 +281,6 @@ export const authOptions: NextAuthOptions = {
           token.id = resolvedDbUser.id;
 
           resolvedName = resolvedDbUser?.full_name ?? user.name ?? resolvedName;
-          // First-time Google OAuth provisions with NULL tos_accepted_at, so
-          // the post-login middleware gate picks these users up for consent.
           (token as unknown as { tosAccepted?: boolean }).tosAccepted =
             !!(resolvedDbUser as { tos_accepted_at?: string | null } | null)?.tos_accepted_at;
         } else {
@@ -326,19 +294,6 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email ?? token.email;
         token.name = resolvedName ?? token.name;
 
-        // Pin the current credential-change instant onto this session. `iat`
-        // cannot serve this purpose: next-auth re-stamps it on every re-encode
-        // (verified), so it records the last cookie write, not the sign-in.
-        //
-        // The sign-in request performs exactly one read (this one): the
-        // `session` callback never runs on the sign-in route (the callback
-        // route calls `callbacks.jwt` only), so nothing reads twice here.
-        //
-        // Null-out is deliberate: when the read fails, a null stamp on a never
-        // -changed account still compares equal to the live null. For an
-        // account that HAS changed its credential, the next readable refresh
-        // rejects the session — fail-closed in the safe direction, and
-        // self-healing: a fresh sign-in re-stamps from the live value.
         (token as unknown as Record<string, unknown>)[PASSWORD_CHANGED_CLAIM] =
           (await readPasswordChangedAt(token.id as string)) ?? null;
       }
@@ -355,41 +310,13 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
-      // Generate a simple token identifier (not a real Supabase JWT, just for tracking)
       if (!token.accessToken && token.id) {
         token.accessToken = `custom_${token.id}_${Date.now()}`;
       }
 
-      // The credential-change gate is NOT here. Returning null from this
-      // callback only denies a session by accident: the session route still
-      // calls the `session` callback with the ORIGINAL decoded token and
-      // dereferences `session.user.id` from it, so the denial depends on that
-      // dereference throwing (a swallowed TypeError -> JWT_SESSION_ERROR), not
-      // on any documented contract. Verified in
-      // `scripts/prove-session-invalidation.ts`: a null token is returned to
-      // the caller as a live session as soon as the session callback tolerates
-      // it. Enforcement lives in the `session` callback, which decides the
-      // body explicitly.
       return token;
     },
     async session({ session, token }) {
-      // Reject a session whose credential stamp no longer matches the account.
-      // Every authorization path in the app resolves identity through
-      // `getServerSession`, so returning a user-less session here signs the
-      // holder out everywhere at once — web page, API handler, and the mobile
-      // synthetic cookie — while the JWT itself stays intact (no DB write, no
-      // clock dependence).
-      //
-      // Checked in `session` rather than in `jwt` because next-auth ignores a
-      // null `jwt` return on the session route; it only honours the session
-      // callback's body. See the note in `jwt`.
-      // Cost, stated plainly: one indexed `users` SELECT per session
-      // resolution (server-side, via the `getServerSession` call sites; edge
-      // middleware stays a pure decode with no DB import). The sign-in route
-      // reads only the single stamp above. No cache by design — a cached value
-      // re-opens the window this gate exists to close, and the unreadable read
-      // already fails open, so a slow database degrades auth gracefully instead
-      // of signing users out.
       const sessionUserId = resolveTokenUserId(token as unknown as Record<string, unknown>);
       if (sessionUserId) {
         const currentChangedAt = await readPasswordChangedAt(sessionUserId);
@@ -408,13 +335,6 @@ export const authOptions: NextAuthOptions = {
           logger.warn('Session rejected: token predates the password change', {
             entryPoint: 'auth',
           });
-          // An empty object is the only shape that makes next-auth treat the
-          // session as absent: `getServerSession` returns null (not a body
-          // with `expires` only, which the client would still report as
-          // authenticated), and the client's `getSession` maps a key-less
-          // body to null -> `status: 'unauthenticated'`. The declared return
-          // type cannot express "no session" (it requires `user`/`expires`),
-          // so the cast is confined to this one statement.
           return {} as unknown as typeof session;
         }
       }
@@ -424,10 +344,8 @@ export const authOptions: NextAuthOptions = {
         if (token.name) {
           session.user.name = token.name as string;
         }
-        // Cheap mirror of the middleware enforcement claim for client use.
         (session as unknown as { tosAccepted?: boolean }).tosAccepted =
           (token as unknown as { tosAccepted?: boolean }).tosAccepted ?? false;
-        // Add a mock access token (since we're using admin client, this is just for display)
         session.accessToken = token.accessToken as string;
       }
       return session;

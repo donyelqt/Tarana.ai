@@ -17,8 +17,8 @@ async function main() {
       ['Food & Culinary'],
       'cloudy' as any,
       1,
-      null,          // model — subquery expansion not needed for strict path
-      false,         // trafficAware=false → fast mode, isolates retrieval correctness
+      null,          
+      false,         
       cityId
     );
     const acts: Array<{ title: string; lat?: number; lon?: number }> = [];

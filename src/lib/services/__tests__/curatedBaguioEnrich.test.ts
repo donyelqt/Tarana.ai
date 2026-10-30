@@ -1,16 +1,3 @@
-/**
- * Regression: Baguio Gala cards rendered the logo fallback even though
- * `CURATED_IMAGE_MAP` holds a verified photo for every curated place
- * (e.g. "K-Flavors Buffet" → /images/kflavors_taranagala.jpg).
- *
- * Root cause: `enrichActivitiesWithImages` had two exits that skipped Tier 0
- * entirely — the "all curated" fast path returned the input array untouched,
- * and the per-item loop `return`ed on a curated title before ever calling
- * `getAccurateImageForPlace`. So the curated image was only reachable via a
- * path curated titles never take. Baguio activities arrive from vector
- * search / the TomTom supplement with `image: ""`, so they kept the empty
- * string all the way to the client fallback.
- */
 
 describe('curated Baguio images survive batch enrichment', () => {
   let fetchMock: jest.Mock;
@@ -24,7 +11,6 @@ describe('curated Baguio images survive batch enrichment', () => {
   });
 
   it('applies the curated photo when every activity is curated (fast path)', async () => {
-    // Baguio vector search hands these over with an empty image string.
     const out = await enrichActivitiesWithImages(
       [
         { title: 'K-Flavors Buffet', image: '' },

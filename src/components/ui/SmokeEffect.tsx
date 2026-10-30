@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 const MAX_PARTICLES = 30
-const SPAWN_INTERVAL = 100 // ms
+const SPAWN_INTERVAL = 100 
 
 const SmokeEffect = () => {
   const containerRef = useRef<HTMLDivElement>(null)

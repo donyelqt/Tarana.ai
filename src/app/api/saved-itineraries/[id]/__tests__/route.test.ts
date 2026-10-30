@@ -130,8 +130,6 @@ describe('saved-itineraries [id] route', () => {
   });
 
   it('PATCH allows explicit null to clear refresh state', async () => {
-    // Mirrors updateItinerary's explicit-undefined contract: null must reach
-    // the database (clears refresh_metadata), unlike a dropped key.
     mockedUpdateItineraryById.mockResolvedValue(row);
 
     const res = await PATCH(req({ refreshMetadata: null }), params());

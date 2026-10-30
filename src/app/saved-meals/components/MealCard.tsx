@@ -45,7 +45,6 @@ const MealCard = ({ meal }: MealCardProps) => {
     try {
       const success = await deleteMeal(meal.id);
       if (success) {
-        // Invalidate React Query cache to trigger refetch
         await queryClient.invalidateQueries({ queryKey: ['saved-meals'] });
         await queryClient.invalidateQueries({ queryKey: ['saved-meal', meal.id] });
         
@@ -180,7 +179,7 @@ const MealCard = ({ meal }: MealCardProps) => {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-3xl shadow-[0_20px_60px_rgb(0,0,0,0.15)] border border-gray-200/60 p-8 max-w-sm w-full animate-in zoom-in-95 duration-300">
@@ -195,7 +194,7 @@ const MealCard = ({ meal }: MealCardProps) => {
           </div>
         </div>
       )}
-      {/* Notes Edit Modal */}
+      {}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-3xl shadow-[0_20px_60px_rgb(0,0,0,0.15)] border border-gray-200/60 p-8 max-w-md w-full animate-in zoom-in-95 duration-300">

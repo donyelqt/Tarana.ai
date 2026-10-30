@@ -1,18 +1,6 @@
 import nextConfig from '../../../../next.config';
 import { RENDERABLE_IMAGE_HOSTS, isRenderableImageUrl } from '../imageService';
 
-/**
- * Regression guard for the 2026-09-25 Dashboard crash:
- *
- *   Invalid src prop (https://thumb.wikimedia.org/...) on `next/image`,
- *   hostname "thumb.wikimedia.org" is not configured under images
- *
- * Wikimedia moved page-image thumbnails from upload.wikimedia.org to
- * thumb.wikimedia.org (Phabricator T427465). `onError` on the <Image> never
- * fires for this class of failure — `next/image` throws while resolving the
- * loader — so the only durable guard is keeping the service's renderable-host
- * allowlist and next.config's remotePatterns in lockstep.
- */
 
 type RemotePattern = { protocol?: string; hostname?: string; pathname?: string };
 
@@ -27,7 +15,6 @@ function configuredHosts(): string[] {
     .filter((hostname) => hostname.length > 0);
 }
 
-/** `**.example.com` style patterns match the bare domain and any subdomain. */
 function patternMatchesHost(pattern: string, host: string): boolean {
   if (pattern === host) return true;
   if (pattern.startsWith('**.')) {

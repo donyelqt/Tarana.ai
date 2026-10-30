@@ -52,8 +52,6 @@ beforeAll(async () => {
   upsertMock = search.upsertActivityEmbedding as jest.Mock;
   mockLogger = observability.logger as unknown as { error: jest.Mock };
 });
-// REINDEX_SECRET is captured when the route module loads; this test intentionally
-// imports after setting the environment so the auth configuration is exercised.
 
 afterAll(() => {
   if (originalSecret === undefined) delete process.env.REINDEX_SECRET;

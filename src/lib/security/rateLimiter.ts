@@ -14,17 +14,12 @@ interface RateLimitConfig {
   skipSuccessfulRequests?: boolean;
 }
 
-/**
- * In-memory rate limiter for API endpoints
- * Production apps should use Redis or similar distributed cache
- */
 const RATE_LIMIT_STORE_CAP = 10000;
 class InMemoryRateLimiter {
   private store = new Map<string, RateLimitEntry>();
   private cleanupInterval: NodeJS.Timeout;
 
   constructor() {
-    // Clean up expired entries every 5 minutes
     this.cleanupInterval = setInterval(() => {
       this.cleanup();
     }, 5 * 60 * 1000);
@@ -37,8 +32,6 @@ class InMemoryRateLimiter {
         this.store.delete(key);
       }
     }
-    // Bound memory: spoofed identities create one entry each. Evict oldest
-    // beyond the cap so a single isolate cannot OOM.
     while (this.store.size > RATE_LIMIT_STORE_CAP) {
       const oldest = this.store.keys().next();
       if (oldest.done) break;
@@ -47,9 +40,6 @@ class InMemoryRateLimiter {
   }
 
   private getClientIdentifier(request: NextRequest): string {
-    // x-forwarded-for is attacker-controlled (first entry spoofable) and
-    // User-Agent rotates freely: neither may widen identity. Prefer the
-    // platform-set x-real-ip; fall back to the LAST forwarded hop.
     const forwarded = request.headers.get('x-forwarded-for');
     const hops = (forwarded ?? '').split(',').map((h) => h.trim()).filter(Boolean);
     const ip = request.headers.get('x-real-ip') || (hops.length > 0 ? hops[hops.length - 1] : null) || 'unknown';
@@ -63,17 +53,12 @@ class InMemoryRateLimiter {
     resetTime: number;
     retryAfter?: number;
   } {
-    // Scope the entry to the limiter name too. Different configs (e.g. the
-    // global `api` limiter and the `mobileToken` exchange limiter) have
-    // different window lengths; keying only on client would let one bucket
-    // silently reset the other's window and cross-contaminate counts.
     const clientId = key ? `${key}:${this.getClientIdentifier(request)}` : this.getClientIdentifier(request);
     const now = Date.now();
     const windowStart = now - config.windowMs;
 
     let entry = this.store.get(clientId);
 
-    // Check if client is currently blocked
     if (entry?.blocked && entry.blockUntil && entry.blockUntil > now) {
       return {
         allowed: false,
@@ -83,7 +68,6 @@ class InMemoryRateLimiter {
       };
     }
 
-    // Initialize or reset entry if window has passed
     if (!entry || entry.resetTime <= now) {
       entry = {
         count: 0,
@@ -92,10 +76,8 @@ class InMemoryRateLimiter {
       };
     }
 
-    // Increment request count
     entry.count++;
 
-    // Check if limit exceeded
     if (entry.count > config.maxRequests) {
       entry.blocked = true;
       entry.blockUntil = now + config.blockDurationMs;
@@ -127,57 +109,46 @@ class InMemoryRateLimiter {
   }
 }
 
-// Global rate limiter instance
 const rateLimiter = new InMemoryRateLimiter();
 
-// Predefined rate limit configurations
 export const rateLimitConfigs = {
-  // Authentication endpoints - stricter limits
   auth: {
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 5, // 5 attempts per window
-    blockDurationMs: 30 * 60 * 1000, // Block for 30 minutes
+    windowMs: 15 * 60 * 1000, 
+    maxRequests: 5, 
+    blockDurationMs: 30 * 60 * 1000, 
   },
   
-  // Password reset - very strict
   passwordReset: {
-    windowMs: 60 * 60 * 1000, // 1 hour
-    maxRequests: 3, // 3 attempts per hour
-    blockDurationMs: 2 * 60 * 60 * 1000, // Block for 2 hours
+    windowMs: 60 * 60 * 1000, 
+    maxRequests: 3, 
+    blockDurationMs: 2 * 60 * 60 * 1000, 
   },
   
-  // API endpoints - moderate limits
   api: {
-    windowMs: 60 * 1000, // 1 minute
-    maxRequests: 60, // 60 requests per minute
-    blockDurationMs: 5 * 60 * 1000, // Block for 5 minutes
+    windowMs: 60 * 1000, 
+    maxRequests: 60, 
+    blockDurationMs: 5 * 60 * 1000, 
   },
   
-  // Heavy operations (AI/ML endpoints)
   heavy: {
-    windowMs: 60 * 1000, // 1 minute
-    maxRequests: 10, // 10 requests per minute
-    blockDurationMs: 10 * 60 * 1000, // Block for 10 minutes
+    windowMs: 60 * 1000, 
+    maxRequests: 10, 
+    blockDurationMs: 10 * 60 * 1000, 
   },
 
-  // Referral validation - tighter unauthenticated limits
   referralValidation: {
-    windowMs: 5 * 60 * 1000, // 5 minutes
-    maxRequests: 20, // 20 attempts per window
-    blockDurationMs: 15 * 60 * 1000, // Block for 15 minutes
+    windowMs: 5 * 60 * 1000, 
+    maxRequests: 20, 
+    blockDurationMs: 15 * 60 * 1000, 
   },
 
-  // Mobile token issuance - very strict, one-time exchange
   mobileToken: {
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 5, // 5 exchanges per window
-    blockDurationMs: 60 * 60 * 1000, // Block for 1 hour
+    windowMs: 15 * 60 * 1000, 
+    maxRequests: 5, 
+    blockDurationMs: 60 * 60 * 1000, 
   },
 } as const;
 
-/**
- * Rate limiting middleware function
- */
 export function createRateLimitMiddleware(config: RateLimitConfig) {
   return (request: NextRequest) => {
     return rateLimiter.checkRateLimit(request, config);

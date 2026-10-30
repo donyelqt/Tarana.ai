@@ -1,15 +1,8 @@
 import { config as loadEnv } from "dotenv";
 
-// Load .env first (if present), then .env.local to override / supplement
 loadEnv();
 loadEnv({ path: ".env.local", override: true });
 
-/*
-  Batch embed and upsert all activities from the built-in sample itinerary.
-  Usage:
-    # Ensure env vars are set: GOOGLE_GEMINI_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-    pnpm tsx scripts/indexSampleItinerary.ts   # or npm run index-embeddings
-*/
 
 import { upsertActivityEmbedding } from "../src/lib/search/vectorSearch";
 import { sampleItinerary } from "../src/app/itinerary-generator/data/itineraryData";
@@ -44,7 +37,7 @@ async function main() {
   let success = 0;
   for (const act of activities) {
     try {
-      const id = act.title; // simplistic unique key; change to UUID if needed
+      const id = act.title; 
       const imageUrl = typeof act.image === "string" ? act.image : (act.image as any)?.src || "";
       await upsertActivityEmbedding({
         activity_id: id,

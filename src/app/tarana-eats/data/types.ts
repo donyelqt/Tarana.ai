@@ -1,15 +1,6 @@
-// ====================================================================
-// TARANA EATS TYPE DEFINITIONS
-// ====================================================================
-//
-// This file contains all type definitions for the Tarana Eats feature
-// to maintain consistency across the application.
-//
-// ====================================================================
 
 import { MenuItem } from "@/types/tarana-eats";
 
-// Define the structure for categorized menu items
 export interface FullMenu {
   Breakfast: MenuItem[];
   Lunch: MenuItem[];
@@ -18,12 +9,10 @@ export interface FullMenu {
   Drinks: MenuItem[];
 }
 
-// Extended MenuItem type with category
 export interface MenuItemWithCategory extends MenuItem {
   category: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks';
 }
 
-// Full restaurant data with all details
 export interface RestaurantData {
   name: string;
   cuisine: string[];
@@ -43,7 +32,6 @@ export interface RestaurantData {
   hours?: string;
 }
 
-// Saved meal experience for AI processing
 export interface SavedMealExperience {
   id: string;
   restaurant: string;
@@ -58,7 +46,6 @@ export interface SavedMealExperience {
   fullMenu: FullMenu;
 }
 
-// Form options data structure
 export interface FormOptionsData {
   cuisineOptions: any[];
   paxOptions: any[];
@@ -66,7 +53,6 @@ export interface FormOptionsData {
   mealTypeOptions: string[];
 }
 
-// Combined dataset for API
 export interface CombinedFoodData {
   restaurants: RestaurantData[];
   savedMeals: SavedMealExperience[];

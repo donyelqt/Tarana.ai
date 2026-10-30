@@ -65,10 +65,6 @@ const validMeal = {
   price: 250,
 };
 
-// The catalog stores site-relative image paths (`/images/comingsoon.png`).
-// Requiring an absolute URL here rejected 20 of 20 real save payloads, so the
-// Tarana Eats save button always failed. These pin both directions: the shapes
-// the app really sends must pass, and active-content URLs must still fail.
 describe('POST image handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();

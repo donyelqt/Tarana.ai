@@ -14,15 +14,6 @@ import {
 
 const IDEMPOTENCY_ROUTE = '/api/account';
 
-/**
- * DELETE /api/account
- *
- * Executes the deletion the privacy policy promises ("we delete or anonymize
- * your personal data"). Requires an explicit confirm token in the body so a
- * stray or prefetched DELETE cannot erase an account, and supports the
- * standard Idempotency-Key replay so a retry answers the same way instead of
- * failing against an already-deleted user.
- */
 export const DELETE = withAuth(async (req: NextRequest, userId: string) => {
   const requestId = getRequestId(req);
   return timedHttp('/api/account', 'DELETE', async () => {
@@ -36,7 +27,6 @@ export const DELETE = withAuth(async (req: NextRequest, userId: string) => {
       try {
         body = await req.json();
       } catch {
-        // Body is optional; the confirm-token check below fails closed.
       }
       if ((body as { confirm?: unknown } | null)?.confirm !== 'DELETE') {
         return NextResponse.json(

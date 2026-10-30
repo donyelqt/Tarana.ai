@@ -1,15 +1,3 @@
-/**
- * End-to-end-of-component network counts for the dashboard TanStack Query
- * migration (XYZ metric, measured — not derived).
- *
- * Renders the REAL page.tsx three times against ONE real QueryClient (mirrors
- * the app layout where QueryProvider outlives page remounts), with auth mocked
- * as authenticated and fetch routed by URL. Counts /api/weather and
- * /api/referrals/stats calls per mount.
- *
- * What this is: full component + real React Query cache behavior.
- * What this is not: a real browser (jsdom, no paint) — see XYZ doc.
- */
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -41,8 +29,6 @@ jest.mock('next/image', () => ({
 
 jest.mock('framer-motion', () => {
   const ReactLib = jest.requireActual<typeof import('react')>('react');
-  // Strip motion-only props so assertions see plain DOM (mirrors the
-  // FloatingSearchCard precedent; extended with div for the welcome header).
   const MOTION_ONLY = new Set([
     'initial',
     'animate',
@@ -80,8 +66,6 @@ jest.mock(
   { virtual: true }
 );
 
-// Deterministic taste signal: a Korean + Japanese save should surface
-// same-family cafes the user hasn't saved yet.
 jest.mock('@/lib/data/supabaseMeals', () => ({
   getSavedMeals: async () => [
     { id: 'm1', cafeName: 'Itaewon Cafe', mealType: 'Lunch', price: 300, goodFor: 2, location: 'Session Road', image: 'y' },
@@ -139,10 +123,6 @@ function routeFetch(url: unknown) {
   }
   if (u.includes('/api/weather')) {
     weatherCalls.push(u);
-    // Regression pin for the 2026-09-03 [object Object] incident: TanStack
-    // invokes queryFn with a context argument, so a bare function reference
-    // as queryFn serialises lat as "[object Object]". Every call must carry
-    // real numeric coordinates.
     const parsed = new URL(u, 'http://localhost:3000');
     weatherCoords.push({
       lat: parseFloat(parsed.searchParams.get('lat') ?? 'NaN'),
@@ -185,7 +165,6 @@ describe('dashboard network counts across 3 mounts (one shared client)', () => {
       await waitFor(() => expect(screen.getByText('MEALS SAVED')).toBeInTheDocument());
       await waitFor(() => expect(screen.getByText('34')).toBeInTheDocument());
       await waitFor(() => expect(screen.getByText('EXPLORERS')).toBeInTheDocument());
-      // Real recommendation engine: 3 spot cards + 3 taste-matched cafe cards
       await waitFor(() => expect(screen.getByText('Suggested Spots')).toBeInTheDocument());
       await waitFor(() =>
         expect(screen.getAllByText('Visit Spot')).toHaveLength(3)

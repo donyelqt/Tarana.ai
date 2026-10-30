@@ -11,10 +11,6 @@ const payloadSchema = z.object({
   code: z.string().trim().min(1).max(50),
 });
 
-/**
- * POST /api/referrals/validate
- * Validate a referral code (no authentication required)
- */
 export async function POST(req: NextRequest) {
   return timedHttp('/api/referrals/validate', 'POST', async () => {
   try {

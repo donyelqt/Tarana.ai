@@ -1,11 +1,3 @@
-/**
- * Welcome header contract.
- *
- * The card is a link to profile settings, so it must be reachable and
- * labeled as one. It must not, however, move on its own: the 2s self-hover
- * timer is gone, and hover is a response to a real pointer. A reintroduced
- * timer flips the class list without input, so advancing time covers it.
- */
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, act } from '@testing-library/react';

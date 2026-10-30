@@ -1,11 +1,3 @@
-/**
- * The island is one surface with two configurations.
- *
- * Plan Mode swaps what the island *contains* without touching what it *is*:
- * the morph, the dismissal, and the collapse contract are shared. The island
- * supplies a DOM slot and the lazily-loaded surface portals the planner config
- * into it, so Gala's generator never enters the map's initial bundle.
- */
 import React, { useCallback, useState } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -14,7 +6,6 @@ import FloatingSearchCard from '../FloatingSearchCard'
 import PlanIslandConfig from '../PlanIslandConfig'
 import { ToastProvider } from '@/components/ui/use-toast'
 import type { LocationPoint, RoutePreferences } from '@/types/route-optimization'
-// Aliased: the DOM has its own FormData, which shadows Gala's payload type.
 import type { FormData as ItineraryFormData } from '@/app/itinerary-generator/types'
 jest.mock('framer-motion', () => {
   const ReactLib = jest.requireActual<typeof import('react')>('react')
@@ -34,10 +25,6 @@ jest.mock('framer-motion', () => {
     'onAnimationComplete',
     'drag',
   ])
-  // One component per tag, cached. Returning a fresh component on every
-  // property access makes React unmount and remount the subtree on each
-  // render, which fires the slot ref as null -> node -> null forever and trips
-  // React's update-depth guard.
   const cache = new Map<string, unknown>()
   return {
     motion: new Proxy(
@@ -99,12 +86,6 @@ const prefs: RoutePreferences = { routeType: 'fastest', vehicleType: 'car' }
 const noop = () => {}
 const budgetOption = /₱5,000 - ₱10,000\/day/i
 
-/**
- * Mirrors the production wiring: the island owns a slot node and the lazily
- * loaded surface portals the config into it. The slot callback ignores a
- * repeated node; React fires ref callbacks on every commit, and a state update
- * per commit would loop.
- */
 function PlanHost({
   onSubmit,
   onRouteSubmit = noop,
@@ -163,12 +144,6 @@ function renderIsland(overrides: Partial<React.ComponentProps<typeof FloatingSea
   return props
 }
 
-/**
- * The island renders its collapsed children inert (opacity 0,
- * pointer-events none), so a test that clicks the config must open it first,
- * exactly as a user taps the pill. The pill's name is state-dependent:
- * "Open search" with no endpoints, "Edit route from ..." once one is set.
- */
 async function openIsland(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: /open search|edit route/i }))
 }
@@ -239,9 +214,6 @@ describe('FloatingSearchCard plan-mode swap', () => {
     await user.click(screen.getByRole('button', { name: /budget range/i }))
     await user.click(await screen.findByRole('button', { name: budgetOption }))
 
-    // The budget popover renders in a portal outside the island's own root, so
-    // its pointerdown read as an outside press and closed the card mid-choice,
-    // leaving the rest of the form unreachable.
     expect(screen.getByRole('button', { name: /budget range/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '2' })).toBeEnabled()
   })

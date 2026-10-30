@@ -1,31 +1,3 @@
-/**
- * `updateTrip` — the observable contract of editing a trip's own fields.
- *
- * The SQLite layer stays real (a `node:sqlite` double reads the schema out of
- * `db/index.ts`'s own source, so it cannot drift), because the interesting
- * failures here are database-shaped: a NULL written where a JSON string
- * belongs, a row that survives an update scoped to the wrong profile, or a
- * column silently left stale by a partial UPDATE.
- *
- * What is pinned here, and why each is a contract rather than a detail:
- * 1. The edit reaches the row and a fresh read returns the new values — not
- *    just the returned row, because `updateTrip` re-SELECTs and a bug could
- *    make the return value lie while the stored row stayed old.
- * 2. A null field stores SQL NULL, not the string "null". A date the user
- *    cleared must read back as null, since `formatDate` guards on it.
- * 3. `tags` survives as JSON and comes back parsed, in order. The row's
- *    tag order is user-visible, so it must round-trip unchanged.
- * 4. A profile mismatch finds no row: the WHERE clause is the whole
- *    ownership boundary, and an edit that crossed profiles would let one
- *    account's edit rewrite another's trip.
- * 5. A wrong-profile edit leaves the original row byte-identical — the
- *    same boundary checked from the other side.
- * 6. `payload` is untouched by an update. It holds the generated
- *    itinerary; an edit to title/date/budget must never rewrite it, or a
- *    rename would silently drop the day plan.
- * 7. An unknown id yields null rather than throwing, so a row deleted
- *    while the edit form was open does not crash the save.
- */
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { createProfile, createTrip, listTrips, updateTrip } from '../../data';
 

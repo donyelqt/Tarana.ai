@@ -1,4 +1,3 @@
-// Polyfill Response.json
 const MockedResponse2 = globalThis.Response as unknown as {
   new (body?: unknown, init?: { status?: number; headers?: Record<string, string> }): any;
   json(body: unknown, init?: { status?: number }): any;
@@ -21,7 +20,6 @@ jest.mock('@/lib/observability/logger', () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
 }));
 
-// Mock service boundary — route owns validation + expiry check, service owns DB + hashing
 jest.mock('@/lib/services/passwordService', () => ({
   findUserByResetToken: jest.fn(),
   hashPassword: jest.fn(),
@@ -68,7 +66,7 @@ describe('/api/auth/reset-password', () => {
 
   const validUser = (overrides: Record<string, unknown> = {}) => ({
     id: 'user-123',
-    reset_token_expiry: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
+    reset_token_expiry: new Date(Date.now() + 3600000).toISOString(), 
     ...overrides,
   });
 
@@ -106,7 +104,7 @@ describe('/api/auth/reset-password', () => {
     it('should return 400 when password is too short', async () => {
       const request = createMockRequest({
         token: 'valid-token',
-        password: '1234567' // 7 characters
+        password: '1234567' 
       });
 
       const response = await POST(request);
@@ -119,7 +117,7 @@ describe('/api/auth/reset-password', () => {
     it('should accept password with exactly 8 characters', async () => {
       const request = createMockRequest({
         token: 'valid-token',
-        password: '12345678' // 8 characters
+        password: '12345678' 
       });
 
       mockFindUserByResetToken.mockResolvedValue(validUser());
@@ -197,7 +195,6 @@ describe('/api/auth/reset-password', () => {
         password: 'newpassword123'
       });
 
-      // make expiry slightly in past to ensure expired (route uses now > expiry, equality is not expired)
       mockFindUserByResetToken.mockResolvedValue(
         validUser({ reset_token_expiry: new Date(Date.now() - 1000).toISOString() })
       );
@@ -292,7 +289,7 @@ describe('/api/auth/reset-password', () => {
     });
 
     it('should handle long passwords correctly', async () => {
-      const longPassword = 'a'.repeat(100); // 100 character password
+      const longPassword = 'a'.repeat(100); 
       const request = createMockRequest({
         token: 'valid-token',
         password: longPassword
@@ -366,7 +363,6 @@ describe('/api/auth/reset-password', () => {
 
       await POST(request);
 
-      // Service owns the clearing — route delegates user id + hashed password
       expect(mockResetPassword).toHaveBeenCalledWith('user-123', 'hashed_password_123');
     });
   });

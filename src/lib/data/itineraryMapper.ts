@@ -1,12 +1,6 @@
 import { z } from 'zod';
 import { normalizeImagePath, getFallbackImage } from '@/lib/images/imageUtils';
 
-/**
- * Single mapping from `itineraries` rows (snake_case, legacy JSON-text
- * tolerant) to the camelCase shape the saved-trips UI destructures.
- * Lives in lib so both API routes and the browser data layer share it —
- * list vs. detail can never drift, and lib never imports upward from app/.
- */
 export function resolveItineraryImage(rawImage: unknown, tags: string[]): string {
   if (typeof rawImage !== "string" || rawImage.trim() === "") {
     return getFallbackImage(tags);
@@ -85,10 +79,6 @@ export function mapRowToSavedItinerary(row: LegacyJsonRow | Record<string, unkno
     activityCoordinates: (record.activity_coordinates as ItineraryDbRow["activity_coordinates"]) ?? undefined,
   };
 }
-// Validation mirrors the browser save payload in
-// src/app/itinerary-generator/hooks/useItineraryGenerator.ts:123-142.
-// Passthrough preserves traffic metadata / city scope fields the UI adds
-// without requiring a schema change for every additive field.
 
 export const ItineraryFormDataSchema = z
   .object({
@@ -148,11 +138,6 @@ export const SaveItinerarySchema = z.object({
   weatherData: z.record(z.string(), z.unknown()).optional(),
 });
 
-// Partial update: every field optional. The three editable trip fields also
-// accept an explicit null so a user clearing one in the editor persists a
-// NULL column rather than being rejected by a `min(1)` guard that the clear
-// path would always hit. `SaveItinerarySchema` still requires all three on
-// create, so a new row can never be saved without them.
 export const UpdateItinerarySchema = z
   .object({
     title: z.string().min(1).max(200).nullable().optional(),

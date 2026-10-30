@@ -1,11 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { ExploreMapProps } from './ExploreMapView.native';
 
-/**
- * Web-export fallback: react-native-webview has no web implementation, so
- * the Metro `-p web` smoke gate renders this instead of breaking. The
- * interactive TomTom map needs a device build (or Expo Go).
- */
 export default function ExploreMapView(_props: ExploreMapProps) {
   return (
     <View style={styles.fill}>

@@ -1,7 +1,3 @@
-/**
- * Real-Time Performance Monitor
- * Track and compare performance metrics before/after Week 1 optimizations
- */
 
 interface PerformanceMetric {
   operation: string;
@@ -16,9 +12,6 @@ class PerformanceMonitor {
   private metrics: Map<string, PerformanceMetric[]> = new Map();
   private activeOperations: Map<string, number> = new Map();
   
-  /**
-   * Start tracking an operation
-   */
   start(operationId: string, operation: string): void {
     this.activeOperations.set(operationId, Date.now());
     
@@ -27,9 +20,6 @@ class PerformanceMonitor {
     }
   }
   
-  /**
-   * End tracking an operation
-   */
   end(operationId: string, operation: string, metadata?: {
     cacheHit?: boolean;
     strategyUsed?: string;
@@ -60,9 +50,6 @@ class PerformanceMonitor {
     return duration;
   }
   
-  /**
-   * Get statistics for an operation
-   */
   getStats(operation: string): {
     count: number;
     avgDuration: number;
@@ -91,9 +78,6 @@ class PerformanceMonitor {
     };
   }
   
-  /**
-   * Get comprehensive report
-   */
   getReport(): string {
     let report = '\n═══════════════════════════════════════════════════\n';
     report += '📊 PERFORMANCE MONITORING REPORT\n';
@@ -123,9 +107,6 @@ class PerformanceMonitor {
     return report;
   }
   
-  /**
-   * Compare with baseline (before optimizations)
-   */
   compareWithBaseline(baseline: {
     operation: string;
     avgDuration: number;
@@ -159,17 +140,11 @@ class PerformanceMonitor {
     return comparison;
   }
   
-  /**
-   * Reset all metrics
-   */
   reset(): void {
     this.metrics.clear();
     this.activeOperations.clear();
   }
   
-  /**
-   * Export metrics as JSON
-   */
   exportMetrics(): string {
     const data: any = {};
     
@@ -184,12 +159,8 @@ class PerformanceMonitor {
   }
 }
 
-// Singleton instance
 export const performanceMonitor = new PerformanceMonitor();
 
-/**
- * Convenience decorator for automatic tracking
- */
 export function trackPerformance(operation: string) {
   return function (
     target: any,
@@ -217,9 +188,6 @@ export function trackPerformance(operation: string) {
   };
 }
 
-/**
- * Week 1 Baseline Metrics (Before Optimization)
- */
 export const WEEK1_BASELINE = [
   { operation: 'search_phase', avgDuration: 350 },
   { operation: 'traffic_phase', avgDuration: 550 },
@@ -228,13 +196,9 @@ export const WEEK1_BASELINE = [
   { operation: 'total_pipeline', avgDuration: 3100 }
 ];
 
-/**
- * Quick test function
- */
 export async function runPerformanceTest() {
   console.log('🧪 Running performance test...\n');
   
-  // Simulate operations
   const operations = ['search_phase', 'traffic_phase', 'ai_generation_phase', 'processing_phase'];
   
   for (let i = 0; i < 10; i++) {
@@ -242,7 +206,6 @@ export async function runPerformanceTest() {
       const operationId = `${op}_${i}`;
       performanceMonitor.start(operationId, op);
       
-      // Simulate work
       await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
       
       performanceMonitor.end(operationId, op, {

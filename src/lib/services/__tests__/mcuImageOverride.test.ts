@@ -1,12 +1,3 @@
-/**
- * Regression: Manila Central University card rendered Far Eastern
- * University's Nicanor Reyes Hall photo.
- *
- * Root cause: MCU's Wikipedia page exists but carries no pageimage
- * thumbnail, so Tier 2 reports a miss and Tier 2b Unsplash returns a
- * textually-near but wrong university photo. The override below pins the
- * verified MCU campus file; this suite fails if the override is removed.
- */
 
 const MCU_OVERRIDE_URL =
   'https://thumb.wikimedia.org/wikipedia/commons/thumb/0/08/Manila_Central_University%2C_Caloocan%2C_Mar_2024_%281%29.jpg/960px-Manila_Central_University%2C_Caloocan%2C_Mar_2024_%281%29.jpg';
@@ -60,8 +51,6 @@ describe('Manila Central University image override', () => {
 
     const url = await getAccurateImageForPlace({ title: 'Some Unknown Place XYZ', lat: 14.6, lon: 120.98 });
 
-    // Tier 1 is gone: no billed Places round-trip, and no keyed URL can be
-    // served. The tier chain falls through to Wikimedia/Unsplash/null.
     expect(googleFetch).not.toHaveBeenCalled();
     expect(url === null || !String(url).includes('test-places-key')).toBe(true);
     delete process.env.GOOGLE_PLACES_API_KEY;

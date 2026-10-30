@@ -41,8 +41,6 @@ const DashboardContent = () => {
   const [showSplash, setShowSplash] = useState(false)
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false)
   const [referralTracked, setReferralTracked] = useState(false)
-  // Real DB-issued code (8-char trigger output). The old `${EMAIL}2024`
-  // fabrication matched no user_profiles row — every copied link was dead.
   const { data: referralCodeData } = useQuery(
     referralCodeQueryOptions(status, session?.user?.id)
   )
@@ -62,8 +60,6 @@ const DashboardContent = () => {
     })
   }
 
-  // Baguio weather: 10-minute staleTime is appropriate for weather (doesn't change  // minute-to-minute); useQuery replaces the manual useState/useEffect/useLoading
-  // trio and prevents a refetch on every dashboard remount.
   const {
     data: weatherData,
     isLoading: loading,
@@ -71,21 +67,12 @@ const DashboardContent = () => {
   } = useQuery<WeatherData | null>(
     weatherQueryOptions(status === "authenticated")
   )
-  // fetchWeatherFromAPI swallows errors and returns a fallback WeatherData, so
-  // weatherIsError is effectively unreachable in practice. Keep the local string
-  // for any future queryFn change that lets the error propagate.
   const error = weatherIsError ? "Could not load weather data" : null
 
-  // Referral stats: /api/referrals/stats is the production-safe endpoint
-  // (/api/referrals/debug 404s in production — debug/route.ts:10-12).
-  // Config lives in ./utils (unit-tested, shared with the cache test).
-  // Cached 60s; invalidated after a successful trackReferralAfterSignup.
   const { data: referralStats } = useQuery(
     referralQueryOptions(status, session?.user?.id)
   )
 
-  // Tarana Stats: public aggregates from GET /api/stats (exact-count head
-  // queries + static cafes length). dataUpdatedAt powers the freshness line.
   const { data: taranaStats, dataUpdatedAt: statsUpdatedAt } = useQuery(
     taranaStatsQueryOptions(status)
   )
@@ -93,10 +80,8 @@ const DashboardContent = () => {
     ? new Date(statsUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : null
 
-  // Track referral after signup (with delay to allow profile creation)
   useEffect(() => {
     if (status === 'authenticated' && !referralTracked) {
-      // Wait 2 seconds to ensure user profile is created
       const timer = setTimeout(() => {
         trackReferralAfterSignup()
           .then((result) => {
@@ -107,8 +92,6 @@ const DashboardContent = () => {
                 description: "Your friend will receive bonus credits. Thanks for joining!",
                 duration: 4000,
               });
-              // Invalidate the cached referral-stats so the new tier is
-              // reflected on the next render without a manual re-fetch.
               queryClient.invalidateQueries({ queryKey: ["referral-stats", session?.user?.id] });
             } else if (result.error && !result.error.includes('No referral code')) {
               console.log('ℹ️ Referral tracking result:', result.error);
@@ -147,14 +130,12 @@ const DashboardContent = () => {
   }, [searchParams, router])
 
   useEffect(() => {
-    // Redirect to login if not authenticated
     if (status === 'unauthenticated') {
       router.push('/auth/signin')
       return
     }
   }, [status, router])
 
-  // Premium flat splash — 4s, white, first-name welcome + honest progress
   if (status === 'loading' || showSplash) {
     if (status === 'loading') {
       return (
@@ -183,21 +164,13 @@ const DashboardContent = () => {
   
   return (
     <div className="min-h-screen bg-white">
-      {/* Sidebar */}
+      {}
       <Sidebar />
-      {/* Main Content - add left padding on desktop to accommodate fixed sidebar */}
+      {}
       <main className={`${contentClass('md:pl-64')} flex-1 flex flex-col md:flex-row`}>
-        {/* Center Content */}
+        {}
         <div className="flex-1 p-8 md:p-12 pt-16 md:pt-12">
-          {/*
-            A real control: this navigates to profile settings, so the hover
-            lift, focus ring, and chevron below are honest affordances rather
-            than decoration implying a click that does not exist.
-
-            The 2s self-hover timer stays gone. Motion here responds only to a
-            real pointer or keyboard focus, and the transition is scoped to
-            transform and box-shadow so it never animates layout.
-          */}
+          {}
           <NextLink
             href="/settings"
             className="group block rounded-2xl mb-8 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-2 motion-safe:hover:shadow-[0_0_28px_rgba(96,165,250,0.65),0_0_80px_rgba(59,130,246,0.4),0_16px_48px_rgba(29,78,216,0.5)] transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
@@ -208,7 +181,7 @@ const DashboardContent = () => {
                 <h1 className="text-xl font-bold text-white text-balance">Welcome Back, {session?.user?.name || 'Traveler'}!<span className="wave ml-1 text-3xl" aria-hidden="true">👋</span></h1>
                 <div className="text-gray-200 text-sm">Ready to plan your next adventure?</div>
                 <span className="sr-only">Open profile settings</span>
-                {/*<div className="text-gray-500 text-sm">{session?.user?.email}</div>*/}
+                {}
               </div>
               <ChevronRight size={22} aria-hidden="true" className="shrink-0 text-white/70 transition-transform duration-200 motion-safe:group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:transform-none" />
             </div>
@@ -307,7 +280,7 @@ const DashboardContent = () => {
           </div>
           <SuggestedSpots />
 
-          {/* Tarana Explore navigation card */}
+          {}
           <button
             type="button"
             onClick={() => router.push("/tarana-explore")}
@@ -320,7 +293,7 @@ const DashboardContent = () => {
 
           <RecommendedCafes />
         </div>
-        {/* Right Sidebar */}
+        {}
         <div className="w-full md:w-80 border-2 border-gray-200 bg-white rounded-2xl p-6 mt-8 md:mt-12 mr-0 md:mr-8 flex-shrink-0 h-full">
           <div className="mb-6">
             <div className="font-semibold text-lg mb-2">Baguio Weather</div>
@@ -384,7 +357,6 @@ const DashboardContent = () => {
                 )}
               </div>
             ) : (
-              // Fallback UI if weatherData is null and not loading/error
               <div className="bg-gray-100 rounded-xl p-4 flex flex-col items-center justify-center h-32 text-center">
                 <svg className="h-8 w-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m8.485-8.485h-1M4.515 12H3.5m14.97-7.485l-.707-.707M6.222 6.222l-.707-.707m12.026 12.026l-.707.707M6.222 17.778l-.707.707" /></svg>
                 <div className="text-gray-500">Weather data unavailable</div>
@@ -498,7 +470,7 @@ const DashboardContent = () => {
         </div>
       </main>
       
-      {/* Referral Modal */}
+      {}
       <ReferralModal 
         open={isReferralModalOpen} 
         onOpenChange={setIsReferralModalOpen}

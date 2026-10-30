@@ -1,10 +1,3 @@
-/**
- * Parallel Traffic Processor for Ultra-Fast Traffic Analysis
- * Batch processing with intelligent deduplication and geographic clustering
- * 
- * @author Doniele Arys Antonio
- * @version 3.0.0
- */
 
 import { agenticTrafficAnalyzer, TrafficAnalysisResult } from "@/lib/traffic";
 import { getActivityCoordinates } from "@/lib/data";
@@ -15,7 +8,7 @@ import { sampleItineraryCombined } from "@/app/itinerary-generator/data/itinerar
 export interface TrafficProcessingOptions {
   maxConcurrency: number;
   batchSize: number;
-  proximityThreshold: number; // km
+  proximityThreshold: number; 
   enableLocationClustering: boolean;
   enableResultCaching: boolean;
   timeoutMs: number;
@@ -30,19 +23,16 @@ export interface TrafficProcessingMetrics {
   clustersCreated: number;
 }
 
-/**
- * High-performance traffic processor with geographic optimization
- */
 export class ParallelTrafficProcessor {
   private static instance: ParallelTrafficProcessor;
   
   private readonly defaultOptions: TrafficProcessingOptions = {
     maxConcurrency: 16,
     batchSize: 10,
-    proximityThreshold: 1.5, // 1.5 km ~ broader clustering
+    proximityThreshold: 1.5, 
     enableLocationClustering: true,
     enableResultCaching: true,
-    timeoutMs: 15000 // Increased to 15 seconds to prevent premature timeouts
+    timeoutMs: 15000 
   };
 
   private activeSemaphore: Semaphore;
@@ -61,9 +51,6 @@ export class ParallelTrafficProcessor {
     return ParallelTrafficProcessor.instance;
   }
 
-  /**
-   * Process activities with ultra-fast parallel traffic analysis and strict filtering
-   */
   async processActivitiesUltraFast(activities: Activity[]): Promise<{
     enhancedActivities: Activity[];
     metrics: TrafficProcessingMetrics;
@@ -82,7 +69,6 @@ export class ParallelTrafficProcessor {
     let apiCallsReduced = 0;
     let clustersCreated = 0;
 
-    // Phase 1: Check cache for existing results (50-100ms)
     const { cached, uncached } = await this.separateCachedActivities(activities);
     cacheHits = cached.length;
     
@@ -90,7 +76,6 @@ export class ParallelTrafficProcessor {
       console.log(`⚡ CACHE ACCELERATION: ${cached.length}/${activities.length} activities from cache`);
     }
 
-    // Phase 2: Create location clusters for uncached activities (100-200ms)
     let clusters: Activity[][] = [];
     if (this.options.enableLocationClustering && uncached.length > 0) {
       clusters = this.createLocationClusters(uncached);
@@ -101,16 +86,12 @@ export class ParallelTrafficProcessor {
       clusters = uncached.map(activity => [activity]);
     }
 
-    // Phase 3: Parallel traffic analysis (300-800ms)
     const enhancedClusters = await this.processClustersConcurrently(clusters);
     
-    // Phase 4: Combine cached and processed results (50ms)
     const allEnhanced = [...cached, ...enhancedClusters.flat()];
     
-    // Phase 5: Wait for real-time traffic data to complete before filtering
     await this.waitForTrafficDataCompletion();
     
-    // Phase 6: CRITICAL TRAFFIC FILTERING - Only allow VERY_LOW, LOW, and MODERATE traffic
     const filteredActivities = this.applyStrictTrafficFiltering(allEnhanced);
     
     const totalTime = Date.now() - startTime;
@@ -129,9 +110,6 @@ export class ParallelTrafficProcessor {
     return { enhancedActivities: filteredActivities, metrics };
   }
 
-  /**
-   * Separate activities into cached and uncached
-   */
   private async separateCachedActivities(activities: Activity[]): Promise<{
     cached: Activity[];
     uncached: Activity[];
@@ -168,9 +146,6 @@ export class ParallelTrafficProcessor {
     return { cached, uncached };
   }
 
-  /**
-   * Create geographic clusters to minimize API calls
-   */
   private createLocationClusters(activities: Activity[]): Activity[][] {
     const clusters: Activity[][] = [];
     const processed = new Set<string>();
@@ -188,7 +163,6 @@ export class ParallelTrafficProcessor {
         continue;
       }
 
-      // Find nearby activities within proximity threshold
       for (const other of activities) {
         if (processed.has(other.title)) continue;
 
@@ -208,9 +182,6 @@ export class ParallelTrafficProcessor {
     return clusters;
   }
 
-  /**
-   * Process clusters concurrently with controlled parallelism
-   */
   private async processClustersConcurrently(clusters: Activity[][]): Promise<Activity[][]> {
     if (!clusters.length) {
       return [];
@@ -236,9 +207,6 @@ export class ParallelTrafficProcessor {
     return results;
   }
 
-  /**
-   * Process single cluster with timeout protection
-   */
   private async processClusterWithTimeout(cluster: Activity[], clusterIndex: number): Promise<Activity[]> {
     const timeoutPromise = new Promise<Activity[]>((_, reject) => {
       setTimeout(() => reject(new Error('Cluster processing timeout')), this.options.timeoutMs);
@@ -254,13 +222,9 @@ export class ParallelTrafficProcessor {
     }
   }
 
-  /**
-   * Process single geographic cluster
-   */
   private async processCluster(cluster: Activity[], clusterIndex: number): Promise<Activity[]> {
     if (!cluster.length) return [];
 
-    // Use representative activity for the cluster
     const representative = cluster[0];
     const coords = this.getCoordinatesCached(representative.title);
     
@@ -271,7 +235,6 @@ export class ParallelTrafficProcessor {
     try {
       console.log(`🔄 Processing cluster ${clusterIndex + 1}: ${cluster.length} activities near ${representative.title}`);
       
-      // Single traffic analysis for the entire cluster
       const trafficAnalysis = await agenticTrafficAnalyzer.analyzeActivityTraffic(
         representative.title,
         representative.title,
@@ -290,7 +253,6 @@ export class ParallelTrafficProcessor {
         }
       );
 
-      // Apply traffic data to all activities in cluster
       const enhancedCluster = cluster.map(activity => {
         const activityCoords = this.getCoordinatesCached(activity.title) || coords;
         
@@ -304,7 +266,6 @@ export class ParallelTrafficProcessor {
           lon: activityCoords.lon
         };
 
-        // Cache individual results for future use
         if (this.options.enableResultCaching) {
           smartCacheManager.cacheTrafficData(activityCoords.lat, activityCoords.lon, trafficAnalysis);
         }
@@ -322,9 +283,6 @@ export class ParallelTrafficProcessor {
     }
   }
 
-  /**
-   * Create fallback cluster with conservative traffic data - mark as HIGH to exclude
-   */
   private createFallbackCluster(cluster: Activity[]): Activity[] {
     console.log(`⚠️ FALLBACK CLUSTER: Using safe moderate traffic data for ${cluster.length} activities`);
     return cluster.map(activity => {
@@ -353,17 +311,10 @@ export class ParallelTrafficProcessor {
     });
   }
 
-  /**
-   * Wait for traffic data completion with timeout
-   */
   private async waitForTrafficDataCompletion(): Promise<void> {
-    // All cluster processing promises are awaited upstream; no additional delay required.
     return;
   }
 
-  /**
-   * Preload all activity coordinates for O(1) lookup
-   */
   private preloadCoordinates(): void {
     const activities = sampleItineraryCombined.items[0].activities;
     let loaded = 0;
@@ -379,18 +330,12 @@ export class ParallelTrafficProcessor {
     console.log(`📍 COORDINATES PRELOAD: Cached ${loaded}/${activities.length} activity coordinates`);
   }
 
-  /**
-   * Get coordinates with O(1) cache lookup
-   */
   private getCoordinatesCached(title: string): { lat: number; lon: number } | null {
     return this.locationCache.get(title) || null;
   }
 
-  /**
-   * Calculate distance between coordinates (optimized)
-   */
   private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371; // Earth's radius in km
+    const R = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -400,9 +345,6 @@ export class ParallelTrafficProcessor {
     return R * c;
   }
 
-  /**
-   * Create empty metrics for error cases
-   */
   private createEmptyMetrics(): TrafficProcessingMetrics {
     return {
       totalActivities: 0,
@@ -414,9 +356,6 @@ export class ParallelTrafficProcessor {
     };
   }
 
-  /**
-   * Apply strict traffic filtering - only allow VERY_LOW, LOW, and MODERATE traffic
-   */
   private applyStrictTrafficFiltering(activities: any[]): any[] {
     console.log(`\n🚦 STRICT TRAFFIC FILTERING: Starting with ${activities.length} activities`);
     
@@ -425,31 +364,26 @@ export class ParallelTrafficProcessor {
       const crowdLevel = activity.crowdLevel;
       const recommendation = activity.trafficRecommendation;
       
-      // CRITICAL: Only allow VERY_LOW, LOW, and MODERATE traffic levels
       if (trafficLevel && !['VERY_LOW', 'LOW', 'MODERATE'].includes(trafficLevel)) {
         console.log(`🚫 EXCLUDING HIGH TRAFFIC: "${activity.title}" - Traffic Level: ${trafficLevel} (FORBIDDEN)`);
         return false;
       }
       
-      // CRITICAL: Exclude activities with UNKNOWN traffic (fallback case)
       if (!trafficLevel || trafficLevel === 'UNKNOWN') {
         console.log(`🚫 EXCLUDING UNKNOWN TRAFFIC: "${activity.title}" - Traffic Level: ${trafficLevel || 'UNKNOWN'} (CONSERVATIVE EXCLUSION)`);
         return false;
       }
       
-      // Exclude HIGH crowd levels
       if (crowdLevel === 'HIGH' || crowdLevel === 'VERY_HIGH') {
         console.log(`🚫 EXCLUDING HIGH CROWDS: "${activity.title}" - Crowd Level: ${crowdLevel}`);
         return false;
       }
       
-      // Exclude AVOID_NOW recommendations
       if (recommendation === 'AVOID_NOW') {
         console.log(`🚫 EXCLUDING AVOID_NOW: "${activity.title}" - Recommendation: ${recommendation}`);
         return false;
       }
       
-      // Add traffic tags for frontend display
       const tags = [...(activity.tags || [])];
       if (trafficLevel === 'VERY_LOW' || trafficLevel === 'LOW') {
         if (!tags.includes('low-traffic')) {
@@ -482,9 +416,6 @@ export class ParallelTrafficProcessor {
     return filtered;
   }
 
-  /**
-   * Get processor performance statistics
-   */
   getPerformanceStats(): {
     activeRequests: number;
     cacheSize: number;
@@ -495,14 +426,11 @@ export class ParallelTrafficProcessor {
       activeRequests: this.activeSemaphore.getActiveCount(),
       cacheSize: smartCacheManager.getStats().totalEntries,
       coordinatesCacheSize: this.locationCache.size,
-      averageClusterSize: 0 // Will be calculated during processing
+      averageClusterSize: 0 
     };
   }
 }
 
-/**
- * Semaphore for controlling concurrent operations
- */
 class Semaphore {
   private permits: number;
   private queue: Array<() => void> = [];
@@ -553,5 +481,4 @@ class Semaphore {
   }
 }
 
-// Export singleton instance
 export const parallelTrafficProcessor = ParallelTrafficProcessor.getInstance();

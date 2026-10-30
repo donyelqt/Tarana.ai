@@ -1,21 +1,3 @@
-/**
- * Regression: the Visit Spot arrival card showed the Tarana brand mark instead
- * of the real photo, for every spot whose image was a site-relative path.
- *
- * Cause was the Explore-side guard from #685, which accepted only
- * `https://` URLs. In practice almost no card uses one:
- *
- *   - Baguio's curated catalogue stores local paths
- *     ("Great wall of Baguio" -> "/images/great_wall_of_baguio.jpg")
- *   - the cafe registry stores local paths too
- *
- * so every local photo was silently dropped and the card fell back. Only
- * TomTom-enriched POIs, which carry remote https URLs, ever rendered.
- *
- * The value is hand-editable, so the fix must stay strict about what it
- * accepts — this file pins both halves: the real shapes are kept, and the
- * dangerous ones are refused.
- */
 
 import { isSafeImageSrc } from '../ExploreMapView'
 

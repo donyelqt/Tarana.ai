@@ -1,10 +1,3 @@
-/**
- * Cron Job API Endpoint - Evaluate Itinerary Refreshes
- * Scheduled background job to check all itineraries for refresh needs.
- *
- * @route GET /api/cron/evaluate-refreshes
- * @author Tarana.ai Engineering Team
- */
 
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';

@@ -1,18 +1,6 @@
-/**
- * Regression test: TomTom Search must pin `view=Unified` explicitly.
- *
- * Incident (2026-09-12 dev logs): every `searchLocations` call failed with
- * `400 BadRequest: 'PH' is not a valid view`. Root cause: we sent
- * `countrySet=PH` with no `view`, so TomTom derived view=PH from it — and
- * PH is a valid countrySet but not a valid view. Fix: always send
- * `view=Unified` (documented default for non-listed regions).
- * This test fails without the fix (asserts the outgoing query string).
- */
 
 process.env.TOMTOM_API_KEY = 'test-key-for-view-param-test';
 
-// Require (not import): the singleton reads env at module load, and
-// ES imports hoist above the assignment above.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { tomtomRoutingService } = require('../tomtomRouting');
 

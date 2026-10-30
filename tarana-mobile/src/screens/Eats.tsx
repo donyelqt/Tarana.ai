@@ -8,19 +8,6 @@ import Thumb from './Thumb';
 
 const BLUE = '#0066FF';
 
-/**
- * Eats — browse Baguio cafes + local suggestions (§8).
- *
- * Web form skeleton recomposed native: budget → cuisine → pax → dietary →
- * CTA → match cards → detail. Two deliberate divergences, both documented:
- * 1. No meal-type filter yet — it is only meaningful with full dish lists
- *    (20 of 20 cafes vendored, gated by `data/catalog/__tests__/catalog.test.ts`,
- *    which pins the count and rejects EMPTY_MENU); it arrives with the full
- *    catalog, not as a half-working filter.
- * 2. Suggestions run on-device (`suggestCafes`: budget ceiling + cuisine +
- *    diet) instead of the 401-gated AI POST. Real filtering, no network.
- * Save lives in CafeDetail (single save path, no duplicates).
- */
 const CUISINES = [...new Set(CAFES.flatMap((c) => c.cuisine))].sort();
 const DIETS = [...new Set(CAFES.flatMap((c) => c.dietaryOptions))].sort();
 

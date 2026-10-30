@@ -1,6 +1,3 @@
-/**
- * Tier Service - Manages user tier calculations and benefits
- */
 
 import { supabaseAdmin } from '../data/supabaseAdmin';
 import {
@@ -11,9 +8,6 @@ import {
 } from './types';
 
 export class TierService {
-  /**
-   * Calculate user tier based on active referrals
-   */
   static calculateTierFromReferrals(activeReferrals: number): UserTier {
     if (activeReferrals >= 5) return 'Voyager';
     if (activeReferrals >= 3) return 'Smart Traveler';
@@ -21,30 +15,20 @@ export class TierService {
     return 'Default';
   }
 
-  /**
-   * Get tier configuration
-   */
   static getTierConfig(tier: UserTier): TierConfig {
     return TIER_CONFIGS[tier];
   }
 
-  /**
-   * Get all tier configurations
-   */
   static getAllTiers(): TierConfig[] {
     return Object.values(TIER_CONFIGS);
   }
 
-  /**
-   * Update user tier (called by triggers, but can be manually invoked)
-   */
   static async updateUserTier(userId: string): Promise<void> {
     if (!supabaseAdmin) {
       throw new ReferralSystemError('Database not available', 'DB_ERROR', true);
     }
 
     try {
-      // Count active referrals
       const { count: activeCount, error: countError } = await supabaseAdmin
         .from('referrals')
         .select('id', { count: 'exact', head: true })
@@ -57,7 +41,6 @@ export class TierService {
       const newTier = this.calculateTierFromReferrals(resolvedActiveCount);
       const tierConfig = this.getTierConfig(newTier);
 
-      // Update user profile
       const { error: updateError } = await supabaseAdmin
         .from('user_profiles')
         .update({
@@ -79,9 +62,6 @@ export class TierService {
     }
   }
 
-  /**
-   * Get user's current tier
-   */
   static async getUserTier(userId: string): Promise<UserTier> {
     if (!supabaseAdmin) {
       throw new ReferralSystemError('Database not available', 'DB_ERROR', true);
@@ -102,16 +82,10 @@ export class TierService {
     }
   }
 
-  /**
-   * Get tier benefits for a specific tier
-   */
   static getTierBenefits(tier: UserTier): string[] {
     return this.getTierConfig(tier).benefits;
   }
 
-  /**
-   * Get progress to next tier
-   */
   static async getTierProgress(
     userId: string
   ): Promise<{
@@ -166,9 +140,6 @@ export class TierService {
     }
   }
 
-  /**
-   * Helper: Get next tier
-   */
   private static getNextTier(currentTier: UserTier): UserTier | null {
     const tierOrder: UserTier[] = ['Default', 'Explorer', 'Smart Traveler', 'Voyager'];
     const currentIndex = tierOrder.indexOf(currentTier);
@@ -180,9 +151,6 @@ export class TierService {
     return tierOrder[currentIndex + 1];
   }
 
-  /**
-   * Check if user can upgrade tier
-   */
   static async canUpgradeTier(userId: string): Promise<boolean> {
     try {
       const progress = await this.getTierProgress(userId);
@@ -193,16 +161,10 @@ export class TierService {
     }
   }
 
-  /**
-   * Get daily credits for a tier
-   */
   static getDailyCreditsForTier(tier: UserTier): number {
     return this.getTierConfig(tier).dailyCredits;
   }
 
-  /**
-   * Get required referrals for a tier
-   */
   static getRequiredReferralsForTier(tier: UserTier): number {
     return this.getTierConfig(tier).requiredReferrals;
   }
