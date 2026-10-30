@@ -1,14 +1,30 @@
-import { readFileSync, writeFileSync } from 'fs';
+import { readdirSync, readFileSync, writeFileSync } from 'fs';
+import { join } from 'path';
 import * as ts from 'typescript';
-import fg from 'fast-glob';
 
-const globPattern = process.argv[2] || 'src/**/*.{ts,tsx}';
+const SKIP = new Set(['node_modules', '.next', 'coverage', '.git', 'dist']);
+const ROOTS = process.argv.slice(2);
+const targets = ROOTS.length > 0 ? ROOTS : ['src', 'tests', 'scripts', 'public', 'tarana-mobile'];
 
-const files = fg.sync(globPattern, {
-  cwd: process.cwd(),
-  ignore: ['**/node_modules/**', '**/.next/**', '**/coverage/**', '**/next-env.d.ts'],
-  absolute: true,
-}) as string[];
+function walk(dir: string, out: string[]): void {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      if (SKIP.has(entry.name)) continue;
+      walk(join(dir, entry.name), out);
+    } else if (/\.tsx?$/.test(entry.name) && entry.name !== 'next-env.d.ts') {
+      out.push(join(dir, entry.name));
+    }
+  }
+}
+
+const files: string[] = [];
+for (const root of targets) walk(root, files);
 
 const DIRECTIVE =
   /@ts-(nocheck|check|ignore|expect-error)|eslint-(disable|enable)|prettier-ignore|@jest-environment|istanbul ignore|@license|@preserve|webpack(ChunkName|Prefetch|Preload)|@vite-ignore|@__PURE__|^\/\/\/ <reference/;
