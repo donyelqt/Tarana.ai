@@ -70,7 +70,7 @@ function toImageSrc(value: unknown): string | null {
 
 function initialsFor(value: string | null): string {
   if (!value) return 'M';
-  const words = value.trim().split(/\s+/).filter(Boolean);
+  const words = value.trim().split(/\s+/).filter((word) => /[a-zA-Z0-9]/.test(word));
   return (words.length > 1 ? words.slice(0, 2).map((word) => word[0]) : [words[0]?.[0] ?? 'M']).join('').toUpperCase();
 }
 
