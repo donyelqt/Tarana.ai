@@ -423,19 +423,17 @@ const SavedMealPage = () => {
                       </Button>
                     </div>
                   </div>
-                ) : (
-                  notes?.title && (
-                    <div className="mt-3">
-                      <p className="text-sm font-semibold text-gray-900">{notes.title}</p>
-                      {notes.notes && <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{notes.notes}</p>}
-                    </div>
-                  )
-                )}
+                ) : (notes?.title?.trim() || notes?.notes?.trim()) ? (
+                  <div className="mt-3">
+                    {notes?.title?.trim() && <p className="text-sm font-semibold text-gray-900">{notes.title}</p>}
+                    {notes?.notes?.trim() && <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{notes.notes}</p>}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
           <div className="w-full h-80 xl:col-span-3 xl:h-[360px] xl:self-start rounded-3xl overflow-hidden relative shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60">
-                        <Image src={mealDetails.image} alt={mealDetails.name || 'Meal Image'} fill className="object-cover" />
+                        <Image src={mealDetails.image} alt={mealDetails.cafeName || 'Saved meal'} fill className="object-cover" />
           </div>
         </div>
 
