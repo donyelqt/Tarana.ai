@@ -19,6 +19,7 @@ const combinedSavedMeals = [
 const individualSavedMeals = [
   {
     id: 'meal-2',
+    cafeName: 'Good Shepherd Cafe',
     mealType: 'Breakfast',
     price: '675',
     goodFor: '6',
@@ -29,6 +30,7 @@ const individualSavedMeals = [
   },
   {
     id: 'meal-3',
+    cafeName: 'Sage & Vine',
     mealType: 'Dinner',
     price: 1125,
     goodFor: '6',
@@ -114,5 +116,50 @@ describe('SavedMealCustomCards — dense meal cards', () => {
 
     expect(screen.getByRole('heading', { name: 'No meal cards yet' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Find meals' })).toBeTruthy();
+  });
+  it('renders the first item image when available and the row image as a fallback', () => {
+    const image = '/assets/images/baguio_panorama.png';
+    const { container } = renderSection({
+      combinedSavedMeals: [{
+        ...combinedSavedMeals[0],
+        image: '/assets/images/bad-root.png',
+        items: [
+          { ...combinedSavedMeals[0].items[0], image },
+          combinedSavedMeals[0].items[1],
+        ],
+      }],
+      individualSavedMeals: [
+        { ...individualSavedMeals[0], image },
+        individualSavedMeals[1],
+      ],
+    });
+
+    expect(container.querySelectorAll(`img[src="${image}"]`)).toHaveLength(2);
+  });
+
+  it('renders cafe initials when no image is available', () => {
+    const { container } = renderSection();
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.getByText('OM')).toBeTruthy();
+    expect(screen.getByText('GS')).toBeTruthy();
+    expect(screen.getByText('SV')).toBeTruthy();
+  });
+
+  it('ignores untrusted image protocols', () => {
+    const image = 'javascript:alert(1)';
+    const { container } = renderSection({
+      combinedSavedMeals: [{
+        ...combinedSavedMeals[0],
+        image,
+        items: [
+          { ...combinedSavedMeals[0].items[0], image },
+          combinedSavedMeals[0].items[1],
+        ],
+      }],
+    });
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.getByText('OM')).toBeTruthy();
   });
 });
