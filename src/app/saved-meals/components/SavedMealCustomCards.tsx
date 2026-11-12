@@ -127,9 +127,10 @@ export default function SavedMealCustomCards({
   onDeleteIndividualMeal,
 }: SavedMealCustomCardsProps) {
   const combinedGroups = sanitizeGroups(combinedSavedMeals);
-  const hasCombined = Array.isArray(combinedSavedMeals) && combinedSavedMeals.length > 0 && combinedGroups.length > 0;
+  const hasCombined = combinedGroups.length > 0;
+  const individualNumberOffset = hasCombined ? 2 : 1;
   const individuals = (Array.isArray(individualSavedMeals) ? individualSavedMeals : []).map((individual, index) => {
-    const customNumber = index + 2;
+    const customNumber = index + individualNumberOffset;
     const rawId = individual && typeof individual === "object" ? (individual as SavedMealIndividualCard).id : undefined;
     const id = rawId === undefined || rawId === null ? `custom-meal-${customNumber}` : String(rawId);
     const record = individual && typeof individual === "object" ? (individual as Record<string, unknown>) : {};
@@ -149,7 +150,6 @@ export default function SavedMealCustomCards({
   const combinedItems = combinedGroups.flatMap((group) => group.items);
   const combinedTotal = combinedGroups.reduce((sum, group) => sum + group.totalPrice, 0);
   const combinedGoodFor = combinedGroups.length > 0 ? Math.max(...combinedGroups.map((group) => group.goodFor)) : 1;
-  const combinedPayloadGoodFor = combinedGoodFor;
   const combinedTypeLabel = combinedGroups.map((group) => group.type).find((type): type is string => !!type) ?? "Combined";
   const combinedDishCount = combinedItems.length;
   const combinedPreview = buildCombinedPreview(combinedGroups);
@@ -189,9 +189,8 @@ export default function SavedMealCustomCards({
         <div className="divide-y divide-gray-100">
           {hasCombined && (
             <article
-              className={`py-4 sm:py-5 px-3 sm:px-4 -mx-3 sm:-mx-4 rounded-2xl ${
-                selectedMealId === "custom-meal-1" ? "bg-blue-50" : ""
-              }`}
+              aria-current={selectedMealId === "custom-meal-1" ? "true" : undefined}
+              className={`py-4 sm:py-5 px-2 sm:px-3 ${selectedMealId === "custom-meal-1" ? "bg-blue-50" : ""}`}
             >
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                 <div className="min-w-0">
@@ -234,7 +233,7 @@ export default function SavedMealCustomCards({
                         type: "Combined",
                         items: combinedItems,
                         totalPrice: combinedTotal,
-                        goodFor: combinedPayloadGoodFor,
+                        goodFor: combinedGoodFor,
                       })
                     }
                     className="flex-1 sm:flex-none min-h-[44px] px-4 inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-sm font-semibold hover:bg-blue-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
@@ -261,7 +260,8 @@ export default function SavedMealCustomCards({
             return (
               <article
                 key={individual.id}
-                className={`py-4 sm:py-5 px-3 sm:px-4 -mx-3 sm:-mx-4 rounded-2xl ${isSelected ? "bg-blue-50" : ""}`}
+                aria-current={isSelected ? "true" : undefined}
+                className={`py-4 sm:py-5 px-2 sm:px-3 ${isSelected ? "bg-blue-50" : ""}`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                   <div className="min-w-0">
