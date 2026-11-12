@@ -8,6 +8,7 @@ export interface SavedMealCardGroup {
   totalPrice?: unknown;
   goodFor?: unknown;
   items?: unknown;
+  image?: unknown;
 }
 export interface SavedMealIndividualCard extends SavedMealCardGroup {
   id?: unknown;
@@ -36,6 +37,7 @@ interface SanitizedGroup {
   totalPrice: number;
   goodFor: number;
   items: SanitizedItem[];
+  image?: string | null;
 }
 
 function toFiniteNumber(value: unknown, fallback: number): number {
@@ -54,6 +56,45 @@ function toTrimmedString(value: unknown): string | null {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
+function toImageSrc(value: unknown): string | null {
+  const src = toTrimmedString(value);
+  if (!src) return null;
+  if (src.startsWith('/') && !src.startsWith('//')) return src;
+  try {
+    const url = new URL(src);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? src : null;
+  } catch {
+    return null;
+  }
+}
+
+function initialsFor(value: string | null): string {
+  if (!value) return 'M';
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  return (words.length > 1 ? words.slice(0, 2).map((word) => word[0]) : [words[0]?.[0] ?? 'M']).join('').toUpperCase();
+}
+
+function PreviewImage({ src, fallback }: { src?: string | null; fallback: string | null }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt=""
+        width={40}
+        height={40}
+        loading="lazy"
+        decoding="async"
+        className="h-10 w-10 shrink-0 rounded-xl object-cover bg-gray-100"
+      />
+    );
+  }
+
+  return (
+    <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-xs font-bold text-blue-800">
+      {initialsFor(fallback)}
+    </div>
+  );
+}
 
 function sanitizeItem(item: unknown): SanitizedItem {
   const record = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
@@ -61,7 +102,7 @@ function sanitizeItem(item: unknown): SanitizedItem {
   const price = toFiniteNumber(record.price, 0);
   const rawQuantity = toFiniteNumber(record.quantity, NaN);
   const quantity = Number.isFinite(rawQuantity) && rawQuantity >= 1 ? Math.floor(rawQuantity) : 1;
-  const image = toTrimmedString(record.image);
+  const image = toImageSrc(record.image);
   return image ? { name, price, quantity, image } : { name, price, quantity };
 }
 
@@ -78,6 +119,7 @@ function sanitizeGroup(group: unknown): SanitizedGroup {
     totalPrice: toFiniteNumber(record.totalPrice, 0),
     goodFor: toPax(record.goodFor),
     items: sanitizeItems(record.items),
+    image: toImageSrc(record.image),
   };
 }
 
@@ -144,6 +186,8 @@ export default function SavedMealCustomCards({
       items,
       totalPrice: toFiniteNumber(record.price, 0),
       goodFor: toPax(record.goodFor),
+      cafeName: toTrimmedString(record.cafeName),
+      image: toImageSrc(record.image),
     };
   });
 
@@ -153,6 +197,8 @@ export default function SavedMealCustomCards({
   const combinedTypeLabel = combinedGroups.map((group) => group.type).find((type): type is string => !!type) ?? "Combined";
   const combinedDishCount = combinedItems.length;
   const combinedPreview = buildCombinedPreview(combinedGroups);
+  const combinedPreviewImage = combinedGroups[0]?.items[0]?.image ?? combinedGroups[0]?.image ?? null;
+  const combinedPreviewFallback = combinedGroups[0]?.cafeName ?? null;
 
   const cardCount = (hasCombined ? 1 : 0) + individuals.length;
   const isEmpty = cardCount === 0;
@@ -190,8 +236,10 @@ export default function SavedMealCustomCards({
           {hasCombined && (
             <article
               aria-current={selectedMealId === "custom-meal-1" ? "true" : undefined}
-              className={`py-4 sm:py-5 px-2 sm:px-3 ${selectedMealId === "custom-meal-1" ? "bg-blue-50" : ""}`}
+              className={`grid grid-cols-[40px_minmax(0,1fr)] items-start gap-3 py-4 sm:py-5 px-2 sm:px-3 ${selectedMealId === "custom-meal-1" ? "bg-blue-50" : ""}`}
             >
+              <PreviewImage src={combinedPreviewImage} fallback={combinedPreviewFallback} />
+              <div className="min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -250,6 +298,7 @@ export default function SavedMealCustomCards({
                   </button>
                 </div>
               </div>
+              </div>
             </article>
           )}
 
@@ -257,12 +306,16 @@ export default function SavedMealCustomCards({
             const isSelected = selectedMealId === individual.id;
             const dishCount = individual.items.length;
             const preview = buildIndividualPreview(individual.items);
+            const previewImage = individual.items[0]?.image ?? individual.image ?? null;
+            const previewFallback = individual.cafeName;
             return (
               <article
                 key={individual.id}
                 aria-current={isSelected ? "true" : undefined}
-                className={`py-4 sm:py-5 px-2 sm:px-3 ${isSelected ? "bg-blue-50" : ""}`}
+                className={`grid grid-cols-[40px_minmax(0,1fr)] items-start gap-3 py-4 sm:py-5 px-2 sm:px-3 ${isSelected ? "bg-blue-50" : ""}`}
               >
+                <PreviewImage src={previewImage} fallback={previewFallback} />
+                <div className="min-w-0">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -320,6 +373,7 @@ export default function SavedMealCustomCards({
                       <Trash2 aria-hidden="true" className="w-5 h-5" />
                     </button>
                   </div>
+                </div>
                 </div>
               </article>
             );
