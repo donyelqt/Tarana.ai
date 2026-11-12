@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/data/supabaseAdmin';
+import { logger } from '@/lib/observability/logger';
 
 export interface SavedMealInput {
   cafe_name: string;
@@ -40,7 +41,33 @@ export async function listMeals(userId: string) {
     );
   }
 
-  return data ?? [];
+  const meals = data ?? [];
+  if (meals.length === 0) return [];
+
+  const { data: noteRows, error: notesError } = await supabaseAdmin
+    .from('saved_meal_notes')
+    .select('meal_id, title, notes')
+    .eq('user_id', userId)
+    .in('meal_id', meals.map((meal) => meal.id));
+
+  if (notesError) {
+    logger.warn('Saved meal notes unavailable; rendering saved meals without nicknames', {
+      errorName: notesError.name,
+    });
+    return meals.map((meal) => ({ ...meal, notes: null }));
+  }
+
+  const notesByMealId = new Map(
+    (noteRows ?? []).map((row: any) => [row.meal_id as string, {
+      title: row.title ?? null,
+      notes: row.notes ?? null,
+    }])
+  );
+
+  return meals.map((meal) => ({
+    ...meal,
+    notes: notesByMealId.get(meal.id) ?? null,
+  }));
 }
 
 export async function createMeal(userId: string, input: SavedMealInput) {
