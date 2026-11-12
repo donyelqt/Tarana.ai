@@ -236,7 +236,7 @@ export default function SavedMealCustomCards({
                         goodFor: combinedGoodFor,
                       })
                     }
-                    className="flex-1 sm:flex-none min-h-[44px] px-4 inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-sm font-semibold hover:bg-blue-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    className="flex-1 sm:flex-none min-h-[44px] px-5 inline-flex items-center justify-center rounded-xl bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white text-sm font-semibold shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                   >
                     View Meal Card
                   </button>
@@ -244,7 +244,7 @@ export default function SavedMealCustomCards({
                     type="button"
                     aria-label="Delete saved meal 1"
                     onClick={onDeleteCombinedMeal}
-                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
                   >
                     <Trash2 aria-hidden="true" className="w-5 h-5" />
                   </button>
@@ -307,7 +307,7 @@ export default function SavedMealCustomCards({
                           goodFor: individual.goodFor,
                         })
                       }
-                      className="flex-1 sm:flex-none min-h-[44px] px-4 inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-sm font-semibold hover:bg-blue-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                      className="flex-1 sm:flex-none min-h-[44px] px-5 inline-flex items-center justify-center rounded-xl bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white text-sm font-semibold shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     >
                       View Meal Card
                     </button>
@@ -315,7 +315,7 @@ export default function SavedMealCustomCards({
                       type="button"
                       aria-label={`Delete saved meal ${individual.customNumber}`}
                       onClick={() => onDeleteIndividualMeal(individual.id)}
-                      className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                      className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
                     >
                       <Trash2 aria-hidden="true" className="w-5 h-5" />
                     </button>
