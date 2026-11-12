@@ -208,7 +208,10 @@ describe('PlanIslandConfig date derivation', () => {
     
     
     
-    const cell = within(calendar).getByRole('gridcell', { name: new RegExp(`^${day}$`) })
+    const cells = within(calendar).getAllByRole('gridcell', { name: new RegExp(`^${day}$`) })
+    const currentMonthCell = cells.find((cell) => !cell.hasAttribute('data-month'))
+    if (!currentMonthCell) throw new Error(`No current-month cell for day ${day}`)
+    const cell = currentMonthCell
     await user.click(within(cell).getByRole('button'))
     await user.keyboard('{Escape}')
   }
