@@ -46,14 +46,14 @@ const SpotlightCard = ({
     ? `/tarana-explore?to=${encodeURIComponent(coordinates.name)}&toLat=${coordinates.lat}&toLon=${coordinates.lon}${trafficParam}${imageParam}`
     : null;
   const [imageFailed, setImageFailed] = useState(false);
-  const showPhoto = !!image && !imageFailed;
+  const showPhoto = !!image && !isPlaceholder(image) && !imageFailed;
 
   return (
     <div className="bg-white border border-gray-200/40 rounded-2xl flex flex-col shadow-lg hover:shadow-xl hover:-translate-y-1 transition-[transform,box-shadow] duration-300 overflow-hidden">
       <div className="relative w-full h-40 bg-[#eff6ff] overflow-hidden flex items-center justify-center">
         <Image
-          src="/images/taranaai2.png"
-          alt="Tarana.ai"
+          src="/images/taranaai.png"
+          alt=""
           width={96}
           height={96}
           className="object-contain"
