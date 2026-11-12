@@ -18,6 +18,8 @@ const MealTypeIcon = ({ mealType }: { mealType: SavedMeal['mealType'] }) => {
   switch (mealType) {
     case 'Breakfast':
       return <Coffee size={16} className="text-gray-500" />;
+    case 'Lunch':
+      return <Utensils size={16} className="text-gray-500" />;
     case 'Dinner':
       return <Utensils size={16} className="text-gray-500" />;
     case 'Snack':
