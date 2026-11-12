@@ -33,6 +33,8 @@ const MealCard = ({ meal }: MealCardProps) => {
   const router = useRouter();
   const { data: session } = useSession();
   const queryClient = useQueryClient();
+  const displayTitle = meal.notes?.title?.trim() || meal.cafeName;
+  const hasNickname = displayTitle !== meal.cafeName;
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -73,7 +75,7 @@ const MealCard = ({ meal }: MealCardProps) => {
   };
 
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editTitle, setEditTitle] = useState(meal.cafeName);
+  const [editTitle, setEditTitle] = useState(displayTitle);
   const [editNotes, setEditNotes] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
@@ -82,10 +84,10 @@ const MealCard = ({ meal }: MealCardProps) => {
     e.stopPropagation();
     const existing = await getMealNotes(meal.id);
     if (existing) {
-      setEditTitle(existing.title ?? meal.cafeName);
+      setEditTitle(existing.title ?? displayTitle);
       setEditNotes(existing.notes ?? '');
     } else {
-      setEditTitle(meal.cafeName);
+      setEditTitle(displayTitle);
       setEditNotes('');
     }
     setShowEditModal(true);
@@ -101,7 +103,8 @@ const MealCard = ({ meal }: MealCardProps) => {
       });
       if (success) {
         toast({ title: 'Success', description: 'Notes saved successfully', variant: 'success' });
-        queryClient.invalidateQueries({ queryKey: ['saved-meals'] });
+        await queryClient.invalidateQueries({ queryKey: ['saved-meals'] });
+        await queryClient.invalidateQueries({ queryKey: ['saved-meal-notes', meal.id] });
         setShowEditModal(false);
       } else {
         toast({ title: 'Error', description: 'Failed to save notes', variant: 'destructive' });
@@ -134,7 +137,12 @@ const MealCard = ({ meal }: MealCardProps) => {
         </div>
         <div className="p-5">
           <div className="flex justify-between items-start">
-            <h3 className="text-lg font-bold text-gray-900">{meal.cafeName}</h3>
+            <div className="min-w-0">
+              <h3 className="line-clamp-2 min-h-[3.5rem] text-lg font-bold text-gray-900">{displayTitle}</h3>
+              {hasNickname && (
+                <p className="mt-0.5 text-xs font-medium text-gray-500">{meal.cafeName}</p>
+              )}
+            </div>
             <div className="flex items-center text-sm text-gray-600">
               <MealTypeIcon mealType={meal.mealType} />
               <span className="ml-1.5">{meal.mealType}</span>
@@ -165,6 +173,7 @@ const MealCard = ({ meal }: MealCardProps) => {
               variant="outline" 
               className="h-10 border-gray-300 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-gray-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
               onClick={handleEditClick}
+              aria-label="Edit notes"
             >
               <Pencil size={16} />
             </Button>
@@ -172,6 +181,7 @@ const MealCard = ({ meal }: MealCardProps) => {
               variant="outline" 
               className="h-10 border-gray-300 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
               onClick={handleDeleteClick}
+              aria-label="Delete saved meal"
             >
               <Trash2 size={16} />
             </Button>
