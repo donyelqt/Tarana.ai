@@ -74,9 +74,7 @@ const SavedMealPage = () => {
   });
 
   useEffect(() => {
-    if (notesData) {
-      setNotes(notesData);
-    }
+    setNotes(notesData ?? null);
   }, [notesData]);
 
   if (typeof window !== 'undefined' && !selectedMealId) {
@@ -231,7 +229,10 @@ const SavedMealPage = () => {
       });
       if (success) {
         setNotes({ title: editTitle.trim() || null, notes: editNotesText.trim() || null });
-        queryClient.invalidateQueries({ queryKey: ['saved-meal-notes', mealId] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['saved-meal-notes', mealId] }),
+          queryClient.invalidateQueries({ queryKey: ['saved-meals'] }),
+        ]);
         toast({ title: 'Success', description: 'Notes saved successfully', variant: 'success' });
         setEditingNotes(false);
       } else {
