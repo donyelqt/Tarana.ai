@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { SavedMeal } from "@/app/saved-meals/data";
-import { Utensils, Users, MapPin, Coffee, Pizza, Croissant, Trash2, Pencil, X } from "lucide-react";
+import { Utensils, Users, MapPin, Coffee, Pizza, Croissant, Trash2, Pencil, NotebookPen, X } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
@@ -33,6 +33,7 @@ const MealCard = ({ meal }: MealCardProps) => {
   const router = useRouter();
   const { data: session } = useSession();
   const queryClient = useQueryClient();
+  const notePreview = meal.notes?.notes?.trim() || null;
   const displayTitle = meal.notes?.title?.trim() || meal.cafeName;
   const hasNickname = displayTitle !== meal.cafeName;
 
@@ -162,6 +163,13 @@ const MealCard = ({ meal }: MealCardProps) => {
             <MapPin size={16} className="mr-2" />
             <span>{meal.location}</span>
           </div>
+          {notePreview && (
+            <div className="mt-3 flex items-start gap-2 border-t border-gray-100 pt-3 text-sm leading-snug text-gray-600">
+              <NotebookPen size={15} className="mt-0.5 shrink-0 text-blue-600" aria-hidden="true" />
+              <span className="sr-only">Your notes:</span>
+              <p className="line-clamp-2">{notePreview}</p>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 mt-4">
             <Link href={`/saved-meals/${meal.id}`} passHref className="flex-1">
