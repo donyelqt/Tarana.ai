@@ -30,6 +30,10 @@ export async function getSavedMeals(): Promise<SavedMeal[]> {
     location: meal.location,
     image: meal.image,
     menuItems: meal.menu_items || [],
+    notes: meal.notes ? {
+      title: meal.notes.title ?? null,
+      notes: meal.notes.notes ?? null,
+    } : null,
   })) as SavedMeal[];
 }
 
@@ -158,11 +162,11 @@ export async function deleteMeal(mealId: string): Promise<boolean> {
 
 export async function getMealNotes(mealId: string): Promise<{ title: string | null; notes: string | null } | null> {
   try {
-    const { data } = await authedFetch<{ data: any; notes: any }>('/api/saved-meals/' + mealId, {
+    const { notes } = await authedFetch<{ data: any; notes: any }>('/api/saved-meals/' + mealId, {
       method: 'GET',
     });
-    if (!data || !data.notes) return null;
-    return { title: data.notes.title ?? null, notes: data.notes.notes ?? null };
+    if (!notes) return null;
+    return { title: notes.title ?? null, notes: notes.notes ?? null };
   } catch (error) {
     console.error('Error fetching meal notes:', error);
     return null;
