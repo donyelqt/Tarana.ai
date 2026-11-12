@@ -135,6 +135,25 @@ export async function updateMealNotes(
   userId: string,
   input: MealNotesInput
 ) {
+  const { data: meal, error: mealError } = await supabaseAdmin
+    .from('saved_meals')
+    .select('id')
+    .eq('id', mealId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (mealError) {
+    throw new MealDbError(
+      mealError.message,
+      (mealError as { hint?: string }).hint,
+      (mealError as { code?: string }).code
+    );
+  }
+
+  if (!meal) {
+    return null;
+  }
+
   const { data, error } = await supabaseAdmin
     .from('saved_meal_notes')
     .upsert({
