@@ -1,0 +1,331 @@
+import Link from "next/link";
+import { Coffee, Croissant, Trash2, Utensils, UtensilsCrossed, Wine } from "lucide-react";
+
+export interface SavedMealCardItem { name?: unknown; price?: unknown; quantity?: unknown }
+export interface SavedMealCardGroup {
+  cafeName?: unknown;
+  type?: unknown;
+  totalPrice?: unknown;
+  goodFor?: unknown;
+  items?: unknown;
+}
+export interface SavedMealIndividualCard extends SavedMealCardGroup {
+  id?: unknown;
+  mealType?: unknown;
+  price?: unknown;
+}
+export interface SavedMealCustomCardsProps {
+  combinedSavedMeals?: SavedMealCardGroup[] | null;
+  individualSavedMeals?: SavedMealIndividualCard[] | null;
+  selectedMealId?: string | null;
+  onViewMealCard: (meal: { id: string; type: string; items: Array<{ name: string; price: number; quantity: number; image?: string }>; totalPrice: number; goodFor: number }) => void;
+  onDeleteCombinedMeal: () => void;
+  onDeleteIndividualMeal: (id: string) => void;
+}
+
+interface SanitizedItem {
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+}
+
+interface SanitizedGroup {
+  cafeName: string | null;
+  type: string | null;
+  totalPrice: number;
+  goodFor: number;
+  items: SanitizedItem[];
+}
+
+function toFiniteNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === "number" ? value : typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function toPax(value: unknown): number {
+  const parsed = toFiniteNumber(value, NaN);
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return Math.max(1, Math.floor(parsed));
+}
+
+function toTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function sanitizeItem(item: unknown): SanitizedItem {
+  const record = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+  const name = toTrimmedString(record.name) ?? "Menu item";
+  const price = toFiniteNumber(record.price, 0);
+  const rawQuantity = toFiniteNumber(record.quantity, NaN);
+  const quantity = Number.isFinite(rawQuantity) && rawQuantity >= 1 ? Math.floor(rawQuantity) : 1;
+  const image = toTrimmedString(record.image);
+  return image ? { name, price, quantity, image } : { name, price, quantity };
+}
+
+function sanitizeItems(value: unknown): SanitizedItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(sanitizeItem);
+}
+
+function sanitizeGroup(group: unknown): SanitizedGroup {
+  const record = group && typeof group === "object" ? (group as Record<string, unknown>) : {};
+  return {
+    cafeName: toTrimmedString(record.cafeName),
+    type: toTrimmedString(record.type),
+    totalPrice: toFiniteNumber(record.totalPrice, 0),
+    goodFor: toPax(record.goodFor),
+    items: sanitizeItems(record.items),
+  };
+}
+
+function sanitizeGroups(value: unknown): SanitizedGroup[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(sanitizeGroup);
+}
+
+function formatPeso(value: number): string {
+  return toFiniteNumber(value, 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function MealTypeIcon({ type, className }: { type: string; className?: string }) {
+  const normalized = type.trim();
+  if (normalized === "Breakfast") return <Coffee aria-hidden="true" className={className} />;
+  if (normalized === "Snack" || normalized === "Snacks") return <Croissant aria-hidden="true" className={className} />;
+  if (normalized === "Drinks") return <Wine aria-hidden="true" className={className} />;
+  return <Utensils aria-hidden="true" className={className} />;
+}
+
+function buildCombinedPreview(groups: SanitizedGroup[]): string {
+  return groups
+    .map((group) => {
+      const names = group.items.map((item) => item.name).join(" · ");
+      if (group.cafeName) return names ? `${group.cafeName}: ${names}` : group.cafeName;
+      return names;
+    })
+    .filter((segment) => segment.length > 0)
+    .join("; ");
+}
+
+function buildIndividualPreview(items: SanitizedItem[]): string {
+  return items
+    .map((item) => (item.quantity > 1 ? `${item.name} × ${item.quantity}` : item.name))
+    .join(" · ");
+}
+
+export default function SavedMealCustomCards({
+  combinedSavedMeals,
+  individualSavedMeals,
+  selectedMealId,
+  onViewMealCard,
+  onDeleteCombinedMeal,
+  onDeleteIndividualMeal,
+}: SavedMealCustomCardsProps) {
+  const combinedGroups = sanitizeGroups(combinedSavedMeals);
+  const hasCombined = Array.isArray(combinedSavedMeals) && combinedSavedMeals.length > 0 && combinedGroups.length > 0;
+  const individuals = (Array.isArray(individualSavedMeals) ? individualSavedMeals : []).map((individual, index) => {
+    const customNumber = index + 2;
+    const rawId = individual && typeof individual === "object" ? (individual as SavedMealIndividualCard).id : undefined;
+    const id = rawId === undefined || rawId === null ? `custom-meal-${customNumber}` : String(rawId);
+    const record = individual && typeof individual === "object" ? (individual as Record<string, unknown>) : {};
+    const items = sanitizeItems(record.items);
+    const mealType = toTrimmedString(record.mealType);
+    return {
+      id,
+      customNumber,
+      mealType,
+      typeLabel: mealType ?? "Meal",
+      items,
+      totalPrice: toFiniteNumber(record.price, 0),
+      goodFor: toPax(record.goodFor),
+    };
+  });
+
+  const combinedItems = combinedGroups.flatMap((group) => group.items);
+  const combinedTotal = combinedGroups.reduce((sum, group) => sum + group.totalPrice, 0);
+  const combinedGoodFor = combinedGroups.length > 0 ? Math.max(...combinedGroups.map((group) => group.goodFor)) : 1;
+  const combinedPayloadGoodFor = combinedGoodFor;
+  const combinedTypeLabel = combinedGroups.map((group) => group.type).find((type): type is string => !!type) ?? "Combined";
+  const combinedDishCount = combinedItems.length;
+  const combinedPreview = buildCombinedPreview(combinedGroups);
+
+  const cardCount = (hasCombined ? 1 : 0) + individuals.length;
+  const isEmpty = cardCount === 0;
+
+  return (
+    <section
+      aria-labelledby="your-saved-meals-heading"
+      className="bg-white rounded-3xl border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.06)] p-4 sm:p-6"
+    >
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h2 id="your-saved-meals-heading" className="text-xl sm:text-2xl font-bold text-gray-900">
+          Your Saved Meals
+        </h2>
+        <span className="text-sm text-gray-500 tabular-nums whitespace-nowrap">
+          {cardCount} {cardCount === 1 ? "card" : "cards"}
+        </span>
+      </div>
+
+      {isEmpty ? (
+        <div className="flex flex-col items-center justify-center text-center py-12 px-4">
+          <UtensilsCrossed aria-hidden="true" className="w-10 h-10 text-gray-300 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900">No meal cards yet</h3>
+          <p className="mt-1 text-sm text-gray-500 max-w-xs">
+            Save meals from Tarana Eats and they will appear here.
+          </p>
+          <Link
+            href="/tarana-eats"
+            className="mt-5 inline-flex items-center justify-center min-h-[44px] px-5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          >
+            Find meals
+          </Link>
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100">
+          {hasCombined && (
+            <article
+              className={`py-4 sm:py-5 px-3 sm:px-4 -mx-3 sm:-mx-4 rounded-2xl ${
+                selectedMealId === "custom-meal-1" ? "bg-blue-50" : ""
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {selectedMealId === "custom-meal-1" && (
+                      <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5">
+                        Selected
+                      </span>
+                    )}
+                    <h3 className="text-lg font-bold text-gray-900">Custom Meal 1</h3>
+                    <span className="text-xs text-gray-400 tabular-nums">
+                      {combinedDishCount} {combinedDishCount === 1 ? "item" : "items"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <MealTypeIcon type={combinedTypeLabel} className="w-5 h-5" />
+                  <span className="text-sm font-medium">{combinedTypeLabel}</span>
+                </div>
+              </div>
+
+              {combinedPreview && (
+                <p className="mt-2 text-sm text-gray-600 leading-snug line-clamp-2 break-words">
+                  {combinedPreview}
+                </p>
+              )}
+
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-gray-900 tabular-nums">₱{formatPeso(combinedTotal)}</p>
+                  <p className="mt-0.5 text-sm text-gray-500">Good for {combinedGoodFor} pax</p>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    aria-label="View saved meal card 1"
+                    onClick={() =>
+                      onViewMealCard({
+                        id: "custom-meal-1",
+                        type: "Combined",
+                        items: combinedItems,
+                        totalPrice: combinedTotal,
+                        goodFor: combinedPayloadGoodFor,
+                      })
+                    }
+                    className="flex-1 sm:flex-none min-h-[44px] px-4 inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-sm font-semibold hover:bg-blue-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  >
+                    View Meal Card
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Delete saved meal 1"
+                    onClick={onDeleteCombinedMeal}
+                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                  >
+                    <Trash2 aria-hidden="true" className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </article>
+          )}
+
+          {individuals.map((individual) => {
+            const isSelected = selectedMealId === individual.id;
+            const dishCount = individual.items.length;
+            const preview = buildIndividualPreview(individual.items);
+            return (
+              <article
+                key={individual.id}
+                className={`py-4 sm:py-5 px-3 sm:px-4 -mx-3 sm:-mx-4 rounded-2xl ${isSelected ? "bg-blue-50" : ""}`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {isSelected && (
+                        <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5">
+                          Selected
+                        </span>
+                      )}
+                      <h3 className="text-lg font-bold text-gray-900">Custom Meal {individual.customNumber}</h3>
+                      <span className="text-xs text-gray-400 tabular-nums">
+                        {dishCount} {dishCount === 1 ? "item" : "items"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <MealTypeIcon type={individual.typeLabel} className="w-5 h-5" />
+                    <span className="text-sm font-medium">{individual.typeLabel}</span>
+                  </div>
+                </div>
+
+                {preview && (
+                  <p className="mt-2 text-sm text-gray-600 leading-snug line-clamp-2 break-words">
+                    {preview}
+                  </p>
+                )}
+
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900 tabular-nums">₱{formatPeso(individual.totalPrice)}</p>
+                    <p className="mt-0.5 text-sm text-gray-500">Good for {individual.goodFor} pax</p>
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      aria-label={`View saved meal card ${individual.customNumber}`}
+                      onClick={() =>
+                        onViewMealCard({
+                          id: individual.id,
+                          type: individual.mealType ?? "SavedMeal",
+                          items: individual.items,
+                          totalPrice: individual.totalPrice,
+                          goodFor: individual.goodFor,
+                        })
+                      }
+                      className="flex-1 sm:flex-none min-h-[44px] px-4 inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-sm font-semibold hover:bg-blue-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    >
+                      View Meal Card
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Delete saved meal ${individual.customNumber}`}
+                      onClick={() => onDeleteIndividualMeal(individual.id)}
+                      className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                    >
+                      <Trash2 aria-hidden="true" className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
