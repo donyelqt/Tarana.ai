@@ -65,10 +65,12 @@ const SavedMealsPage = () => {
     return savedMeals.filter((meal) => {
       const dishNames = (meal.menuItems ?? []).map((item) => String(item?.name ?? "").toLowerCase());
       const noteTitle = (meal.notes?.title ?? "").trim().toLowerCase();
+      const noteBody = (meal.notes?.notes ?? "").trim().toLowerCase();
       const matchesQuery =
         query === "" ||
         meal.cafeName.toLowerCase().includes(query) ||
         (noteTitle !== "" && noteTitle.includes(query)) ||
+        (noteBody !== "" && noteBody.includes(query)) ||
         dishNames.some((name) => name.includes(query));
       const matchesMealType =
         mealTypeFilter === "all" || meal.mealType.toLowerCase() === mealTypeFilter;
