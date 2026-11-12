@@ -82,6 +82,7 @@ function buildMealDetail(data: any, individualSavedMeals: SavedMeal[]) {
   const savedMealsData = (data.menu_items || []).map((item: any, index: number) => ({
     id: item.id || `${data.id}_item_${index}`,
     name: item.name || `${data.meal_type} Meal`,
+    cafeName: data.cafe_name,
     type: data.meal_type,
     items: Array.isArray(item.items) ? item.items.map((menuItem: any) => ({
       name: menuItem.name,
@@ -114,6 +115,7 @@ function buildMealDetail(data: any, individualSavedMeals: SavedMeal[]) {
     savedMeals: savedMealsData.length > 0 ? savedMealsData : [{
       id: data.id,
       name: `${data.cafe_name} - ${data.meal_type}`,
+      cafeName: data.cafe_name,
       type: data.meal_type,
       items: [{ name: `${data.cafe_name} - ${data.meal_type}`, price: data.price, quantity: 1, image: data.image }],
       totalPrice: data.price,
