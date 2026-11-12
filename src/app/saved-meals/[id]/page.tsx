@@ -6,18 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Clock, Trash2, Coffee, MapPin, User, Utensils, Croissant, Wine, Map, Star, Pencil, X } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { useParams, useRouter } from 'next/navigation';
-import { savedMeals } from '../data';
 import Link from 'next/link';
-import { FullMenu } from '@/app/tarana-eats/data/taranaEatsData';
 import { useToast } from '@/components/ui/use-toast';
 import MealCardPopup from '../components/MealCardPopup';
+import SavedMealCustomCards from '../components/SavedMealCustomCards';
 import { deleteMeal, saveMeal, getSavedMeals } from '@/lib/data/supabaseMeals';
 import { getSavedMealById, getMealNotes, updateMealNotes } from '@/lib/data/supabaseMeals';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import { MealDetailSkeleton } from '@/components/ui/MealDetailSkeleton';
-
-const mealDetailsData = {};
 
 const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'];
 
@@ -437,138 +434,15 @@ const SavedMealPage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 mb-8 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Saved Meals</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {}
-            {mealDetails.savedMeals && mealDetails.savedMeals.length > 0 && (
-              <div 
-                className={`bg-white rounded-2xl p-6 border w-full shadow-md transition-all duration-300 hover:shadow-lg ${
-                  selectedMealId === 'custom-meal-1' 
-                    ? 'border-blue-500 ring-2 ring-blue-200' 
-                    : 'border-gray-200'
-                }`}
-              >
-                {selectedMealId === 'custom-meal-1' && (
-                  <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full mb-3 inline-block">
-                    Selected Meal
-                  </div>
-                )}
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-lg font-bold">Custom Meal 1</h3>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <MealIcon type={mealDetails.mealType || 'Meals'} className="w-5 h-5" />
-                    <span className="font-medium">{mealDetails.mealType || 'Meals'}</span>
-                  </div>
-                </div>
-                <div className="space-y-1 text-gray-500">
-                  {mealDetails.savedMeals.map((savedMeal: any, idx: number) => (
-                    <div key={idx} className="border-b border-gray-100 pb-2 mb-2 last:border-0">
-                      <p className="font-medium">{savedMeal.cafeName}</p>
-                      {savedMeal.items && savedMeal.items.map((item: any, itemIdx: number) => (
-                        <p key={itemIdx} className="text-sm ml-2">{item.name} - ₱{item.price} x {item.quantity || 1}</p>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-between items-center mt-4">
-                  <p className="text-lg font-bold">Total: ₱{mealDetails.savedMeals.reduce((sum: number, meal: any) => 
-                    sum + (meal.totalPrice || 0), 0).toFixed(2)}</p>
-                  <p className="text-gray-500">Good for {Math.max(...mealDetails.savedMeals.map((m: any) => m.goodFor || 1))} pax</p>
-                </div>
-                <div className="flex items-center gap-3 mt-4">
-                  <Button 
-                    onClick={() => handleShowMealCard({
-                      id: 'custom-meal-1',
-                      type: 'Combined',
-                      items: mealDetails.savedMeals.flatMap((meal: any) => meal.items || []),
-                      totalPrice: mealDetails.savedMeals.reduce((sum: number, meal: any) => 
-                        sum + (meal.totalPrice || 0), 0),
-                      goodFor: mealDetails.savedMeals.reduce((sum: number, meal: any) => 
-                        Math.max(sum, meal.goodFor || 1), 1)
-                    })}
-                    className={`flex-1 py-3 h-auto rounded-xl transition-all duration-300 hover:-translate-y-0.5 ${
-                      selectedMealId === 'custom-meal-1' 
-                        ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold shadow-lg shadow-green-500/30'
-                        : 'bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-semibold shadow-lg shadow-blue-500/30'
-                    }`}
-                  >
-                    {selectedMealId === 'custom-meal-1' ? 'Selected Meal' : 'View Meal Card'}
-                  </Button>
-                  <Button 
-                    onClick={handleDeleteMeal}
-                    variant="outline" 
-                    className="py-3 h-auto rounded-xl border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 font-semibold px-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <Trash2 size={18} />
-                  </Button>
-                </div>
-              </div>
-            )}
-            
-            {}
-            {}
-            {}
-            
-            {}
-            {mealDetails.individualSavedMeals && mealDetails.individualSavedMeals.length > 0 && (
-              mealDetails.individualSavedMeals.map((individualMeal: any, index: number) => {
-                const customMealNumber = index + 2; 
-                const isSelected = selectedMealId === individualMeal.id;
-                return (
-                  <div 
-                    key={individualMeal.id} 
-                    className={`bg-white rounded-2xl p-6 border w-full shadow-md transition-all duration-300 hover:shadow-lg ${
-                      isSelected 
-                        ? 'border-blue-500 ring-2 ring-blue-200' 
-                        : 'border-gray-200'
-                    }`}
-                  >
-                    {isSelected && (
-                      <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full mb-3 inline-block">
-                        Selected Meal
-                      </div>
-                    )}
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="text-lg font-bold">Custom Meal {customMealNumber}</h3>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <MealIcon type={individualMeal.mealType} className="w-5 h-5" />
-                        <span className="font-medium">{individualMeal.mealType}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-1 text-gray-500">
-                      {individualMeal.items && individualMeal.items.map((item: any, idx: number) => (
-                        <p key={idx}>{item.name} - ₱{item.price} x {item.quantity || 1}</p>
-                      ))}
-                    </div>
-                    <div className="flex justify-between items-center mt-4">
-                      <p className="text-lg font-bold">Total: ₱{individualMeal.price ? individualMeal.price.toFixed(2) : '0.00'}</p>
-                      <p className="text-gray-500">Good for {individualMeal.goodFor}pax</p>
-                    </div>
-                    <div className="flex items-center gap-3 mt-4">
-                      <Button 
-                        onClick={() => handleShowMealCard(individualMeal)}
-                        className={`flex-1 py-3 h-auto rounded-xl transition-all duration-300 hover:-translate-y-0.5 ${
-                            isSelected 
-                            ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold shadow-lg shadow-green-500/30'
-                        : 'bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-semibold shadow-lg shadow-blue-500/30'
-                        }`}
-                      >
-                        {isSelected ? 'Selected Meal' : 'View Meal Card'}
-                      </Button>
-                      <Button 
-                        onClick={() => handleDeleteIndividualMeal(individualMeal.id)}
-                        variant="outline" 
-                        className="py-3 h-auto rounded-xl border-gray-300 text-red-500 hover:text-red-600 hover:bg-red-50 font-semibold px-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                      >
-                        <Trash2 size={18} />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+        <div className="mb-8">
+          <SavedMealCustomCards
+            combinedSavedMeals={mealDetails.savedMeals}
+            individualSavedMeals={mealDetails.individualSavedMeals}
+            selectedMealId={selectedMealId}
+            onViewMealCard={handleShowMealCard}
+            onDeleteCombinedMeal={handleDeleteMeal}
+            onDeleteIndividualMeal={handleDeleteIndividualMeal}
+          />
         </div>
 
         {}
