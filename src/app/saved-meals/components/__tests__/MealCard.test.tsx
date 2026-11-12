@@ -73,6 +73,21 @@ describe('MealCard — the saved nickname is visible before the detail page', ()
     expect(screen.getByRole('heading', { name: 'Cafe Baguio' })).toBeTruthy();
   });
 });
+describe('MealCard — the note body is visible on the card', () => {
+  it('shows the saved note text with a notes label for assistive tech', () => {
+    renderCard();
+
+    expect(screen.getByText('No MSG')).toBeTruthy();
+    expect(screen.getByText('Your notes:')).toBeTruthy();
+  });
+
+  it('renders no notes row when the note body is blank', () => {
+    renderCard({ ...meal, notes: { title: 'Evening ramen', notes: '   ' } });
+
+    expect(screen.queryByText('Your notes:')).toBeNull();
+  });
+});
+
 
 describe('MealCard — saving notes refreshes both saved-meals queries', () => {
   it('invalidates the list and notes caches after a successful save', async () => {
