@@ -54,9 +54,6 @@ const SavedMealPage = () => {
       if (meal && meal.menuItems && meal.menuItems.length > 0) {
         setActiveMenu(meal.menuItems[0].type);
       }
-      if (meal?.cafeName) {
-        document.title = `Tarana.ai | ${meal.cafeName}`;
-      }
       return meal;
     },
     enabled: !!mealId,
@@ -76,6 +73,14 @@ const SavedMealPage = () => {
   useEffect(() => {
     setNotes(notesData ?? null);
   }, [notesData]);
+
+  const nickname = notes?.title?.trim() || null;
+  const displayTitle = nickname ?? mealDetails?.cafeName ?? '';
+  const hasNickname = nickname !== null && !!mealDetails && nickname !== mealDetails.cafeName;
+
+  useEffect(() => {
+    if (displayTitle) document.title = `Tarana.ai | ${displayTitle}`;
+  }, [displayTitle]);
 
   if (typeof window !== 'undefined' && !selectedMealId) {
     const searchParams = new URLSearchParams(window.location.search);
@@ -138,8 +143,10 @@ const SavedMealPage = () => {
     try {
       const success = await deleteMeal(individualMealId);
       if (success) {
-        await queryClient.invalidateQueries({ queryKey: ['saved-meal', mealId] });
-        
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['saved-meal', mealId] }),
+          queryClient.invalidateQueries({ queryKey: ['saved-meals'] }),
+        ]);
         toast({
           title: "Success",
           description: "Individual meal deleted successfully!",
@@ -312,19 +319,20 @@ const SavedMealPage = () => {
       <Sidebar />
       <main className="flex-1 md:pl-72 p-8">
         <div className="text-sm text-gray-500 mb-4">
-          <Link href="/saved-meals" className="hover:text-blue-600">Saved Plans</Link> &gt; <Link href="/saved-meals" className="hover:text-blue-600">Meals</Link> &gt; {mealDetails.cafeName}
+          <Link href="/saved-meals" className="hover:text-blue-600">Saved Plans</Link> &gt; <Link href="/saved-meals" className="hover:text-blue-600">Meals</Link> &gt; {displayTitle}
         </div>
         
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 mb-8">
           <div className="xl:col-span-2 flex flex-col gap-6">
             <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-200/60 flex items-center gap-6 transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
               <div className="w-24 h-24 rounded-full bg-[#7d5a44] flex-shrink-0 flex items-center justify-center text-white text-center font-bold text-lg leading-tight">
-                {mealDetails.cafeName?.substring(0, 2)}
+                {displayTitle.substring(0, 2)}
               </div>
               <div className="flex-1">
                 <div className="flex justify-between">
-                  <h1 className="text-3xl font-bold text-gray-900">{mealDetails.cafeName}</h1>
+                  <h1 className="text-3xl font-bold text-gray-900">{displayTitle}</h1>
                 </div>
+                {hasNickname && <p className="mt-1 text-sm font-medium text-gray-500">{mealDetails.cafeName}</p>}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-500 mt-2">
                   <span className="flex items-center gap-1.5"><MapPin size={16} />{mealDetails.location}</span>
                   <span className="flex items-center gap-1.5"><Clock size={16} />{mealDetails.hours}</span>
