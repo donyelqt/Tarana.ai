@@ -1,3 +1,8 @@
+export interface SavedMealNotes {
+  title: string | null;
+  notes: string | null;
+}
+
 export interface SavedMeal {
   id: string;
   cafeName: string;
@@ -7,6 +12,7 @@ export interface SavedMeal {
   location: string;
   image: string;
   menuItems?: any[];
+  notes?: SavedMealNotes | null;
 }
 
 export const savedMeals: SavedMeal[] = [];
