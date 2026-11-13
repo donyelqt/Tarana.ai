@@ -219,11 +219,12 @@ const SavedTrips = () => {
                     View Itinerary
                   </Button>
                   <Button
-                    className="flex-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-medium py-2 px-4 rounded-xl transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                    variant="outline"
+                    className="h-10 flex-none border-gray-300 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-gray-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
                     onClick={(e) => handleEditClick(itinerary, e)}
+                    aria-label="Edit saved trip"
                   >
-                    <Pencil className="h-4 w-4" />
-                    Edit
+                    <Pencil size={16} aria-hidden="true" />
                   </Button>
                   {}
                   <Button
