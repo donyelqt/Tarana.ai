@@ -220,7 +220,7 @@ const SavedTrips = () => {
                   </Button>
                   <Button
                     variant="outline"
-                    className="h-10 flex-none border-gray-300 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-gray-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                    className="flex-none border-gray-300 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-gray-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md px-4 py-2"
                     onClick={(e) => handleEditClick(itinerary, e)}
                     aria-label="Edit saved trip"
                   >
