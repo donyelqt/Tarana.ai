@@ -6,20 +6,19 @@ import Sidebar from "../../components/Sidebar"
 import { useSidebarCollapsed } from "@/components/Sidebar";
 import SuggestedSpots from "./components/SuggestedSpots"
 import RecommendedCafes from "./components/RecommendedCafes"
+import QuickActions from "./components/QuickActions"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { BAGUIO_COORDINATES, WeatherData, getWeatherIconUrl } from "@/lib/core/utils"
-import { Bookmark, Plus, MapPin, Car, Utensils, Wand2, Link, Share2, ChevronRight } from "lucide-react"
+import { Link, Share2, ChevronRight } from "lucide-react"
 import NextLink from "next/link"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { noProfile } from "public"
 import { ReferralModal } from "./components/ReferralModal"
 import { useToast } from "@/components/ui/use-toast"
 import { trackReferralAfterSignup } from "@/lib/referral-system/client/referralTracking"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { motion, useReducedMotion } from "framer-motion"
 import {
   buildInviteLink,  getReferralDisplay,
   isFallbackWeather,
@@ -36,8 +35,6 @@ const DashboardContent = () => {
   const { data: session, status } = useSession()
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const reduceMotion = useReducedMotion()
-  const firstName = (session?.user?.name || 'Traveler').split(' ')[0]
   const [showSplash, setShowSplash] = useState(false)
   const [isReferralModalOpen, setIsReferralModalOpen] = useState(false)
   const [referralTracked, setReferralTracked] = useState(false)
@@ -186,110 +183,8 @@ const DashboardContent = () => {
               <ChevronRight size={22} aria-hidden="true" className="shrink-0 text-white/70 transition-transform duration-200 motion-safe:group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:transform-none" />
             </div>
           </NextLink>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Popover>
-              <PopoverTrigger asChild>
-                <button type="button" className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
-                  <Plus size={28} className="mb-2 text-blue-700 feature-icon-float" aria-hidden="true" />
-                  <div className="font-semibold text-lg">Create New Plan</div>
-                  <div className="text-gray-500 text-sm mt-1">AI-powered trip and food planning</div>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-2">
-                <div className="grid gap-2">
-                  <div className="px-2 pt-1 text-lg font-semibold">What to create?</div>
-                  <button
-                    type="button"
-                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50 text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                    onClick={() => router.push("/itinerary-generator")}
-                  >
-                    <div className="flex items-center">
-                      <Wand2 className="mr-3 h-5 w-5 text-blue-500" aria-hidden="true" />
-                      <div>
-                        <div className="font-medium">New Itinerary</div>
-                        <div className="text-xs text-gray-500">
-                          Generate a personalized travel plan.
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50 text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                    onClick={() => router.push("/tarana-eats")}
-                  >
-                    <div className="flex items-center">
-                      <Utensils className="mr-3 h-5 w-5 text-green-500" aria-hidden="true" />
-                      <div>
-                        <div className="font-medium">Food Recommendations</div>
-                        <div className="text-xs text-gray-500">
-                          Discover your next favorite meal.
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button type="button" className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
-                  <div className="mb-2 feature-icon-float" style={{ animationDelay: '0.8s' }}>
-                    <Bookmark size={28} className="text-blue-700 fill-blue-700" aria-hidden="true" />
-                  </div>
-                  <div className="font-semibold text-lg">View Saved Plans</div>
-                  <div className="text-gray-500 text-sm mt-1">Access your planned Itineraries and meals</div>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-2">
-                <div className="grid gap-2">
-                  <div className="px-2 pt-1 text-lg font-semibold"> Select Plans to View</div>
-                  <button
-                    type="button"
-                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50 text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                    onClick={() => router.push("/saved-trips")}
-                  >
-                    <div className="flex items-center">
-                      <Car className="mr-3 h-5 w-5 text-blue-500" aria-hidden="true" />
-                      <div>
-                        <div className="font-medium">Saved Trips</div>
-                        <div className="text-xs text-gray-500">
-                          Access your travel itineraries.
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-blue-50 text-left w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                    onClick={() => router.push("/saved-meals")}
-                  >
-                    <div className="flex items-center">
-                      <Utensils className="mr-3 h-5 w-5 text-green-500" aria-hidden="true" />
-                      <div>
-                        <div className="font-medium">Saved Meals</div>
-                        <div className="text-xs text-gray-500">
-                          Revisit your food recommendations.
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
+          <QuickActions />
           <SuggestedSpots />
-
-          {}
-          <button
-            type="button"
-            onClick={() => router.push("/tarana-explore")}
-            className="bg-white rounded-2xl border-2 border-gray-200 p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:shadow-lg transition-shadow mb-8 w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          >
-            <MapPin size={28} className="mb-2 text-blue-500 feature-icon-float" style={{ animationDelay: '1.6s' }} aria-hidden="true" />
-            <div className="font-semibold text-lg">Explore Routes</div>
-            <div className="text-gray-500 text-sm mt-1">Smart traffic-aware navigation</div>
-          </button>
 
           <RecommendedCafes />
         </div>
