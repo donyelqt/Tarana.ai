@@ -49,8 +49,7 @@ const pillClass = (active: boolean): string =>
 const SuggestedSpots = () => {
   const [view, setView] = useState<SpotsView>('baguio');
   const pillsRef = useRef<HTMLDivElement>(null);
-  const { data: session, status } = useSession();
-  void session;
+  const { status } = useSession();
   const authed = status === 'authenticated';
 
   const isRegion = isRegionView(view);
@@ -112,13 +111,36 @@ const SuggestedSpots = () => {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     pill.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest', inline: 'start' });
   }, [view]);
+  const viewLabel = isRegion
+    ? REGION_META[view].label
+    : (SPOT_SCOPES.find((scope) => scope.id === view)?.label ?? view);
+  const isLoading = isRegion
+    ? view === VISAYAS_ID
+      ? regionBoracay.isLoading || regionCebu.isLoading
+      : regionBaguio.isLoading || regionManila.isLoading
+    : citySpots.isLoading;
+  const isError = isRegion
+    ? view === VISAYAS_ID
+      ? regionBoracay.isError || regionCebu.isError
+      : regionBaguio.isError || regionManila.isError
+    : citySpots.isError;
+  const retrySpots = () => {
+    if (view === VISAYAS_ID) {
+      void regionBoracay.refetch();
+      void regionCebu.refetch();
+    } else if (view === LUZON_ID) {
+      void regionBaguio.refetch();
+      void regionManila.refetch();
+    } else {
+      void citySpots.refetch();
+    }
+  };
   return (
     <div className="mb-8">
       <div className="flex justify-between items-center mb-4 px-1">
         <h2 className="font-medium text-xl text-gray-900">Suggested Spots</h2>
         <p className="text-sm text-gray-500">{subtitle}</p>
       </div>
-      {}
       <div
         ref={pillsRef}
         role="group"
@@ -138,32 +160,25 @@ const SuggestedSpots = () => {
           </button>
         ))}
       </div>
-      {isRegion ? (
-        (view === VISAYAS_ID
-          ? regionBoracay.isLoading || regionCebu.isLoading
-          : regionBaguio.isLoading || regionManila.isLoading) ? (
-          <div className="text-sm text-gray-500 px-1" role="status">Finding spots…</div>
-        ) : cards.length === 0 ? (
-          <div className="text-sm text-gray-500 px-1" role="status">
-            No spots found yet — try Baguio.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cards.map((spot, i) => (
-              <SpotlightCard key={keys[i] ?? spot.name} {...spot} ctaText="Visit Spot" />
-            ))}
-          </div>
-        )
-      ) : !citySpots.data ? (
+      {isLoading ? (
         <div className="text-sm text-gray-500 px-1" role="status">Finding spots…</div>
-      ) : cards.length === 0 ? (
-        <div className="text-sm text-gray-500 px-1" role="status">
-          No spots found yet — try Baguio.
+      ) : isError ? (
+        <div className="px-1 py-3" role="alert">
+          <p className="text-sm text-red-700">We could not load spots.</p>
+          <button
+            type="button"
+            onClick={retrySpots}
+            className="mt-2 min-h-[44px] px-4 rounded-xl border border-red-200 text-red-700 text-sm font-medium hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+          >
+            Retry
+          </button>
         </div>
+      ) : cards.length === 0 ? (
+        <div className="text-sm text-gray-500 px-1" role="status">No spots found for {viewLabel} right now.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cards.map((spot) => (
-            <SpotlightCard key={spot.name} {...spot} ctaText="Visit Spot" />
+          {cards.map((spot, index) => (
+            <SpotlightCard key={keys[index] ?? spot.name} {...spot} ctaText="Visit Spot" />
           ))}
         </div>
       )}
