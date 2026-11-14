@@ -221,10 +221,10 @@ const HeroSection = ({ id }: { id?: string }) => {
                             <h4 className="text-sm font-semibold text-gray-900 mb-1">Baguio Cathedral</h4>
                             <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                8:00AM-8:45AM
+                                8:00–8:45 AM
                             </div>
                             <p className="text-xs text-gray-600 leading-relaxed">
-                                Start your morning at Baguio Cathedral, a neo-Gothic landmark with twin spires and panoramic Baguio views.
+                                A neo-Gothic landmark with twin spires and panoramic Baguio views.
                             </p>
                         </div>
                     </div>
