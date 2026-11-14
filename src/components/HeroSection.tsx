@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
-import { goodtaste, taranaai2 } from "../../public"
+import { baguio_cathedral, taranaai2 } from "../../public"
 
 const HeroSection = ({ id }: { id?: string }) => {
     return (
@@ -216,15 +216,15 @@ const HeroSection = ({ id }: { id?: string }) => {
                                 Low Traffic
                             </div>
                             <div className="rounded-xl overflow-hidden mb-3">
-                                <Image src={goodtaste} alt="Breakfast at Goodtaste" width={320} height={180} className="w-full h-40 object-cover" />
+                                <Image src={baguio_cathedral} alt="Baguio Cathedral in Baguio City" width={320} height={180} className="w-full h-40 object-cover" />
                             </div>
-                            <h4 className="text-sm font-semibold text-gray-900 mb-1">Breakfast at Goodtaste</h4>
+                            <h4 className="text-sm font-semibold text-gray-900 mb-1">Baguio Cathedral</h4>
                             <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                7:30AM-9:00AM
+                                8:00AM-8:45AM
                             </div>
                             <p className="text-xs text-gray-600 leading-relaxed">
-                                Fuel up with a hearty Filipino-Chinese breakfast at Goodtaste, a Baguio favorite known for generous portions and fast service.
+                                Start your morning at Baguio Cathedral, a neo-Gothic landmark with twin spires and panoramic Baguio views.
                             </p>
                         </div>
                     </div>
