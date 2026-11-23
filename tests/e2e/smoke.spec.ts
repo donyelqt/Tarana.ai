@@ -14,7 +14,11 @@ test('signin renders without submitting credentials', async ({ page }) => {
   await expect(page.getByRole('link', { name: /register/i })).toBeVisible();
 });
 
-test('dashboard rejects unauthenticated access', async ({ page }) => {
+test('dashboard rejects unauthenticated access', async ({ page, request }) => {
+  const sessionResponse = await request.get('/api/auth/session');
+  expect(sessionResponse.status()).toBe(200);
+  expect(await sessionResponse.json()).toEqual({});
+
   await page.goto('/dashboard');
   await page.waitForURL(/\/auth\/signin/, { timeout: 10_000 });
   expect(page.url()).toContain('/auth/signin');
