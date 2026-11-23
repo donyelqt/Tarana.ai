@@ -76,6 +76,16 @@ describe('tripEditError — a blank title never reaches the row', () => {
   it('allows a titled draft', () => {
     expect(tripEditError(draft())).toBeNull();
   });
+
+  it('refuses more tags than a trip can hold', () => {
+    const tags = Array.from({ length: 51 }, (_, i) => `tag ${i}`).join(', ');
+    expect(tripEditError(draft({ tags }))).toBe('A trip can hold at most 50 tags.');
+  });
+
+  it('allows exactly 50 tags', () => {
+    const tags = Array.from({ length: 50 }, (_, i) => `tag ${i}`).join(', ');
+    expect(tripEditError(draft({ tags }))).toBeNull();
+  });
 });
 
 describe('tripEditChanged — only a real edit writes', () => {

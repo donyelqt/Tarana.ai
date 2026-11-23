@@ -88,8 +88,11 @@ export function parseTags(raw: string): string[] {
     .filter((t) => t.length > 0);
 }
 
+export const MAX_TAGS = 50;
+
 export function tripEditError(draft: TripEditDraft): string | null {
   if (draft.title.trim().length === 0) return 'Give the trip a title before saving.';
+  if (parseTags(draft.tags).length > MAX_TAGS) return `A trip can hold at most ${MAX_TAGS} tags.`;
   return null;
 }
 
