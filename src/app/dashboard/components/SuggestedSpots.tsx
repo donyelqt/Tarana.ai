@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import SpotlightCard from "./cards/SpotlightCard";
+import SpotlightCardsSkeleton from "./cards/SpotlightCardsSkeleton";
 import {
   spotsQueryOptions,
   toSpotCard,
@@ -114,11 +115,13 @@ const SuggestedSpots = () => {
   const viewLabel = isRegion
     ? REGION_META[view].label
     : (SPOT_SCOPES.find((scope) => scope.id === view)?.label ?? view);
-  const isLoading = isRegion
-    ? view === VISAYAS_ID
-      ? regionBoracay.isLoading || regionCebu.isLoading
-      : regionBaguio.isLoading || regionManila.isLoading
-    : citySpots.isLoading;
+  const isLoading =
+    status === 'loading' ||
+    (isRegion
+      ? view === VISAYAS_ID
+        ? regionBoracay.isLoading || regionCebu.isLoading
+        : regionBaguio.isLoading || regionManila.isLoading
+      : citySpots.isLoading);
   const isError = isRegion
     ? view === VISAYAS_ID
       ? regionBoracay.isError || regionCebu.isError
@@ -161,7 +164,7 @@ const SuggestedSpots = () => {
         ))}
       </div>
       {isLoading ? (
-        <div className="text-sm text-gray-500 px-1" role="status">Finding spots…</div>
+        <SpotlightCardsSkeleton label="Finding spots…" />
       ) : isError ? (
         <div className="px-1 py-3" role="alert">
           <p className="text-sm text-red-700">We could not load spots.</p>
