@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import SpotlightCard from "./cards/SpotlightCard";
+import SpotlightCardsSkeleton from "./cards/SpotlightCardsSkeleton";
 import { rankCafes, toCafeCard } from "../utils";
 import { getSavedMeals } from "@/lib/data/supabaseMeals";
 
@@ -38,7 +39,7 @@ export const RecommendedCafes = () => {
       </div>
 
       {status === "loading" || isLoading ? (
-        <div className="text-sm text-gray-500 px-1" role="status">Finding cafes…</div>
+        <SpotlightCardsSkeleton label="Finding cafes…" showTraffic />
       ) : isError ? (
         <div className="px-1 py-3" role="alert">
           <p className="text-sm text-red-700">We could not load recommended cafes.</p>
