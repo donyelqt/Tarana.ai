@@ -125,8 +125,8 @@ const MealCard = ({ meal }: MealCardProps) => {
 
   return (
     <>
-      <div className="group relative overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-1">
-        <div className="relative h-48">
+      <div className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-gray-200/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] hover:-translate-y-1">
+        <div className="relative h-48 shrink-0">
           <Image
             src={
               meal.image && (meal.image.startsWith("/") || meal.image.startsWith("http://") || meal.image.startsWith("https://"))
@@ -138,7 +138,7 @@ const MealCard = ({ meal }: MealCardProps) => {
             objectFit="cover"
           />
         </div>
-        <div className="p-5">
+        <div className="flex flex-1 flex-col p-5">
           <div className="flex justify-between items-start">
             <div className="min-w-0">
               <h3 className="line-clamp-2 min-h-[3.5rem] text-lg font-bold text-gray-900">{displayTitle}</h3>
@@ -173,15 +173,15 @@ const MealCard = ({ meal }: MealCardProps) => {
             </div>
           )}
 
-          <div className="flex items-center gap-2 mt-4">
+          <div className="mt-auto flex items-center gap-2 pt-4">
             <Link href={`/saved-meals/${meal.id}`} passHref className="flex-1">
-              <Button className="flex-1 w-full h-10 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-medium py-2 px-4 rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5">
+              <Button className="flex-1 w-full h-11 bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-medium py-2 px-4 rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5">
                 View Full Menu
               </Button>
             </Link>
             <Button 
               variant="outline" 
-              className="h-10 border-gray-300 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-gray-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+              className="h-11 border-gray-300 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-gray-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
               onClick={handleEditClick}
               aria-label="Edit notes"
             >
@@ -189,7 +189,7 @@ const MealCard = ({ meal }: MealCardProps) => {
             </Button>
             <Button 
               variant="outline" 
-              className="h-10 border-gray-300 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+              className="h-11 border-gray-300 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
               onClick={handleDeleteClick}
               aria-label="Delete saved meal"
             >
