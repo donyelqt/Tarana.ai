@@ -40,6 +40,9 @@ const CUISINE_OPTIONS = (() => {
     .map(([value, label]) => ({ value, label }));
 })();
 
+const generateButtonClass =
+  "h-11 gap-2 rounded-xl bg-[#0066FF] px-5 text-sm font-semibold text-white shadow-sm transition-all duration-150 ease-out hover:bg-[#0052cc] hover:shadow-md active:scale-[0.97] active:bg-[#0047b3] motion-reduce:transition-none motion-reduce:active:scale-100";
+
 const SavedMealsPage = () => {
   const { contentClass } = useSidebarCollapsed();
   const [searchQuery, setSearchQuery] = useState("");
@@ -100,7 +103,7 @@ const SavedMealsPage = () => {
       <main className={`${contentClass('md:pl-64')} flex-1`}>
         <div className="p-8">
           {}
-          <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-3xl border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
+          <div className="mb-8 flex flex-col items-start gap-4 rounded-3xl border border-gray-200/60 bg-white p-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)] sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Saved Meals</h1>
               <p className="text-gray-500 mt-1">
@@ -108,10 +111,10 @@ const SavedMealsPage = () => {
               </p>
             </div>
             <Button 
-              className="bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-xl flex items-center shadow-lg shadow-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5"
+              className={`${generateButtonClass} w-full sm:w-auto`}
               onClick={handleGenerateMeals}
             >
-              <Plus size={20} className="mr-2" />
+              <Plus size={18} aria-hidden="true" />
               Generate
             </Button>
           </div>
@@ -213,10 +216,10 @@ const SavedMealsPage = () => {
               </p>
               {!searchQuery && (
                 <Button
-                  className="bg-gradient-to-b from-blue-700 to-blue-500 hover:to-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-300 hover:-translate-y-0.5"
+                  className={`${generateButtonClass} w-full sm:w-auto`}
                   onClick={handleGenerateMeals}
                 >
-                  <Plus size={20} className="mr-2" />
+                  <Plus size={18} aria-hidden="true" />
                   Generate Meals
                 </Button>
               )}
