@@ -100,7 +100,7 @@ const SavedMealsPage = () => {
       <main className={`${contentClass('md:pl-64')} flex-1`}>
         <div className="p-8">
           {}
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-3xl border border-gray-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:shadow-[0_20px_60px_rgb(0,0,0,0.08)]">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Saved Meals</h1>
               <p className="text-gray-500 mt-1">
